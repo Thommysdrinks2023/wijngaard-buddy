@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { differenceInDays, format, parseISO, startOfYear } from "date-fns";
 import { nl } from "date-fns/locale";
 import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
-import { OBSERVATIE_TYPES } from "@/lib/types";
+import { OBSERVATIE_TYPES, type Rij } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 
 export const Route = createFileRoute("/dashboard")({
@@ -23,7 +23,7 @@ function Dashboard() {
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
 
   const rijenById = useMemo(() => {
-    const m = new Map<string, (typeof rijenQ.data extends Array<infer T> ? T : never)>();
+    const m = new Map<string, Rij>();
     rijenQ.data?.forEach((r) => m.set(r.id, r));
     return m;
   }, [rijenQ.data]);
