@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
 import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,6 +17,11 @@ import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
 import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
 
+const PerceelkaartRoute = PerceelkaartRouteImport.update({
+  id: '/perceelkaart',
+  path: '/perceelkaart',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InstellingenRoute = InstellingenRouteImport.update({
   id: '/instellingen',
   path: '/instellingen',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/instellingen': typeof InstellingenRoute
+  '/perceelkaart': typeof PerceelkaartRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/instellingen': typeof InstellingenRoute
+  '/perceelkaart': typeof PerceelkaartRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/instellingen': typeof InstellingenRoute
+  '/perceelkaart': typeof PerceelkaartRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/instellingen'
+    | '/perceelkaart'
     | '/rij/$rijId'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/instellingen'
+    | '/perceelkaart'
     | '/rij/$rijId'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/instellingen'
+    | '/perceelkaart'
     | '/rij/$rijId'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -103,11 +115,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   InstellingenRoute: typeof InstellingenRoute
+  PerceelkaartRoute: typeof PerceelkaartRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/perceelkaart': {
+      id: '/perceelkaart'
+      path: '/perceelkaart'
+      fullPath: '/perceelkaart'
+      preLoaderRoute: typeof PerceelkaartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/instellingen': {
       id: '/instellingen'
       path: '/instellingen'
@@ -171,8 +191,18 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   InstellingenRoute: InstellingenRoute,
+  PerceelkaartRoute: PerceelkaartRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
