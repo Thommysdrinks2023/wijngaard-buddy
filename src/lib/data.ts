@@ -164,6 +164,7 @@ export async function fetchObservaties(rijId?: string): Promise<Observatie[]> {
 
 export interface MetingInput {
   rij: string;
+  plant?: number | null;
   datum: string;
   brix?: number | null;
   ph?: number | null;
@@ -180,6 +181,7 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
     try {
       const fd = new FormData();
       fd.append("rij", input.rij);
+      if (input.plant != null) fd.append("plant", String(input.plant));
       fd.append("datum", input.datum);
       if (input.brix != null) fd.append("brix", String(input.brix));
       if (input.ph != null) fd.append("ph", String(input.ph));
@@ -192,6 +194,7 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
       return {
         id: r.id,
         rij: r.rij,
+        plant: r.plant ?? null,
         datum: r.datum,
         brix: r.brix ?? null,
         ph: r.ph ?? null,
@@ -209,6 +212,7 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
   const meting: Meting = {
     id: uid(),
     rij: input.rij,
+    plant: input.plant ?? null,
     datum: input.datum,
     brix: input.brix ?? null,
     ph: input.ph ?? null,
