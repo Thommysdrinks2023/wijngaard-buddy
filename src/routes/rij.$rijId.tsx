@@ -37,6 +37,16 @@ function RijDetail() {
         subtitle={rij ? `${rij.ras} · ${rij.aantal_planten} planten` : ""}
       />
       <div className="mx-auto max-w-screen-md px-3 py-4 space-y-5">
+        {/* Plant view link */}
+        <Link
+          to="/rij/$rijId/planten"
+          params={{ rijId }}
+          className="flex items-center justify-between rounded-2xl border border-border bg-card p-3 text-sm font-medium active:scale-[0.99] transition"
+        >
+          <span>🌿 Bekijk planten in deze rij</span>
+          <span className="text-muted-foreground">→</span>
+        </Link>
+
         {/* Action buttons */}
         <div className="grid grid-cols-2 gap-3">
           <Link

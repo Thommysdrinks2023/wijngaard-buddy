@@ -14,6 +14,7 @@ export type RijpheidScore = 1 | 2 | 3 | 4 | 5;
 export interface Meting {
   id: string;
   rij: string; // rij id
+  plant?: number | null; // optioneel: plantnummer binnen de rij
   datum: string; // ISO date
   brix?: number | null;
   ph?: number | null;
@@ -38,6 +39,7 @@ export const OBSERVATIE_TYPES: { value: ObservatieType; label: string; emoji: st
 export interface Observatie {
   id: string;
   rij: string;
+  plant?: number | null;
   datum: string;
   type: ObservatieType;
   notitie: string;

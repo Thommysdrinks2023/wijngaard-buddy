@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { z } from "zod";
 import {
   createObservatie,
   fetchRijen,
@@ -13,13 +14,19 @@ import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { Camera, Loader2 } from "lucide-react";
 
+const searchSchema = z.object({
+  plant: z.coerce.number().int().positive().optional(),
+});
+
 export const Route = createFileRoute("/rij/$rijId/observatie")({
   component: ObservatiePage,
+  validateSearch: searchSchema,
   head: () => ({ meta: [{ title: "Nieuwe observatie — Wijngaard" }] }),
 });
 
 function ObservatiePage() {
   const { rijId } = Route.useParams();
+  const { plant } = Route.useSearch();
   const router = useRouter();
   const qc = useQueryClient();
   const [invoerder, setInvoerder] = useInvoerder();
@@ -36,6 +43,7 @@ function ObservatiePage() {
     mutationFn: () =>
       createObservatie({
         rij: rijId,
+        plant: plant ?? null,
         datum,
         type,
         notitie,
@@ -57,8 +65,12 @@ function ObservatiePage() {
     <>
       <AppHeader
         back
-        title="Nieuwe observatie"
-        subtitle={rij ? `Rij ${rij.rijnummer} · ${rij.ras}` : ""}
+        title={plant ? `Observatie plant ${plant}` : "Nieuwe observatie"}
+        subtitle={
+          rij
+            ? `Rij ${rij.rijnummer} · ${rij.ras}${plant ? ` · plant ${plant}` : ""}`
+            : ""
+        }
       />
       <form
         onSubmit={(e) => {

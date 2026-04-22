@@ -98,7 +98,7 @@ function Perceelkaart() {
                 return (
                   <button
                     key={r.id}
-                    onClick={() => navigate({ to: "/rij/$rijId", params: { rijId: r.id } })}
+                    onClick={() => navigate({ to: "/rij/$rijId/planten", params: { rijId: r.id } })}
                     aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
                     className="group relative flex shrink-0 flex-col items-center justify-end focus:outline-none"
                     style={{ width: BAR_WIDTH, height: MAX_BAR + 24 }}
