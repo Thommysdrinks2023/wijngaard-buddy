@@ -145,6 +145,7 @@ export async function fetchObservaties(rijId?: string): Promise<Observatie[]> {
       return records.map((r) => ({
         id: r.id,
         rij: r.rij,
+        plant: r.plant ?? null,
         datum: r.datum,
         type: r.type,
         notitie: r.notitie ?? "",
