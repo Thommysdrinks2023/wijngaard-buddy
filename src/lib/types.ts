@@ -39,6 +39,7 @@ export const OBSERVATIE_TYPES: { value: ObservatieType; label: string; emoji: st
 export interface Observatie {
   id: string;
   rij: string;
+  plant?: number | null;
   datum: string;
   type: ObservatieType;
   notitie: string;
