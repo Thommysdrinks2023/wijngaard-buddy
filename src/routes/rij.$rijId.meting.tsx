@@ -3,19 +3,26 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { z } from "zod";
 import { createMeting, fetchRijen, isPbConfigured } from "@/lib/data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { RijpheidStars } from "@/components/rijpheid-stars";
 import { Camera, Loader2 } from "lucide-react";
 
+const searchSchema = z.object({
+  plant: z.coerce.number().int().positive().optional(),
+});
+
 export const Route = createFileRoute("/rij/$rijId/meting")({
   component: MetingPage,
+  validateSearch: searchSchema,
   head: () => ({ meta: [{ title: "Nieuwe meting — Wijngaard" }] }),
 });
 
 function MetingPage() {
   const { rijId } = Route.useParams();
+  const { plant } = Route.useSearch();
   const router = useRouter();
   const qc = useQueryClient();
   const [invoerder, setInvoerder] = useInvoerder();
@@ -35,6 +42,7 @@ function MetingPage() {
     mutationFn: () =>
       createMeting({
         rij: rijId,
+        plant: plant ?? null,
         datum,
         brix: brix ? Number(brix) : null,
         ph: ph ? Number(ph) : null,
@@ -58,8 +66,12 @@ function MetingPage() {
     <>
       <AppHeader
         back
-        title="Nieuwe meting"
-        subtitle={rij ? `Rij ${rij.rijnummer} · ${rij.ras}` : ""}
+        title={plant ? `Meting plant ${plant}` : "Nieuwe meting"}
+        subtitle={
+          rij
+            ? `Rij ${rij.rijnummer} · ${rij.ras}${plant ? ` · plant ${plant}` : ""}`
+            : ""
+        }
       />
       <form
         onSubmit={(e) => {
