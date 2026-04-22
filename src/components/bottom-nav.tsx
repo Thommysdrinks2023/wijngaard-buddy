@@ -1,12 +1,13 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, BarChart3, Grape } from "lucide-react";
+import { Home, BarChart3, Grape, Map } from "lucide-react";
 
 export function BottomNav() {
   const { pathname } = useLocation();
   const items = [
     { to: "/", label: "Rijen", icon: Grape, exact: true },
+    { to: "/perceelkaart", label: "Kaart", icon: Map, exact: false },
     { to: "/dashboard", label: "Dashboard", icon: BarChart3, exact: false },
-    { to: "/instellingen", label: "Instellingen", icon: Home, exact: false },
+    { to: "/instellingen", label: "Meer", icon: Home, exact: false },
   ];
 
   return (
