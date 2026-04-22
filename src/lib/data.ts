@@ -113,6 +113,7 @@ export async function fetchMetingen(rijId?: string): Promise<Meting[]> {
       return records.map((r) => ({
         id: r.id,
         rij: r.rij,
+        plant: r.plant ?? null,
         datum: r.datum,
         brix: r.brix ?? null,
         ph: r.ph ?? null,
