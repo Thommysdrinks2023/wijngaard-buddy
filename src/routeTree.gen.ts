@@ -14,6 +14,7 @@ import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
+import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten'
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
 import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
 
@@ -42,6 +43,11 @@ const RijRijIdRoute = RijRijIdRouteImport.update({
   path: '/rij/$rijId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RijRijIdPlantenRoute = RijRijIdPlantenRouteImport.update({
+  id: '/planten',
+  path: '/planten',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
 const RijRijIdObservatieRoute = RijRijIdObservatieRouteImport.update({
   id: '/observatie',
   path: '/observatie',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
+  '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
+  '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
+  '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
+    | '/rij/$rijId/planten'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
+    | '/rij/$rijId/planten'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
+    | '/rij/$rijId/planten'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -156,6 +168,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RijRijIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rij/$rijId/planten': {
+      id: '/rij/$rijId/planten'
+      path: '/planten'
+      fullPath: '/rij/$rijId/planten'
+      preLoaderRoute: typeof RijRijIdPlantenRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
     '/rij/$rijId/observatie': {
       id: '/rij/$rijId/observatie'
       path: '/observatie'
@@ -176,11 +195,13 @@ declare module '@tanstack/react-router' {
 interface RijRijIdRouteChildren {
   RijRijIdMetingRoute: typeof RijRijIdMetingRoute
   RijRijIdObservatieRoute: typeof RijRijIdObservatieRoute
+  RijRijIdPlantenRoute: typeof RijRijIdPlantenRoute
 }
 
 const RijRijIdRouteChildren: RijRijIdRouteChildren = {
   RijRijIdMetingRoute: RijRijIdMetingRoute,
   RijRijIdObservatieRoute: RijRijIdObservatieRoute,
+  RijRijIdPlantenRoute: RijRijIdPlantenRoute,
 }
 
 const RijRijIdRouteWithChildren = RijRijIdRoute._addFileChildren(
@@ -197,3 +218,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
