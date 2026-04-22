@@ -9,9 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as InstellingenRouteImport } from './routes/instellingen'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
+import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
+import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
 
+const InstellingenRoute = InstellingenRouteImport.update({
+  id: '/instellingen',
+  path: '/instellingen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -22,35 +36,92 @@ const RijRijIdRoute = RijRijIdRouteImport.update({
   path: '/rij/$rijId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RijRijIdObservatieRoute = RijRijIdObservatieRouteImport.update({
+  id: '/observatie',
+  path: '/observatie',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
+const RijRijIdMetingRoute = RijRijIdMetingRouteImport.update({
+  id: '/meting',
+  path: '/meting',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/rij/$rijId': typeof RijRijIdRoute
+  '/dashboard': typeof DashboardRoute
+  '/instellingen': typeof InstellingenRoute
+  '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/rij/$rijId/meting': typeof RijRijIdMetingRoute
+  '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/rij/$rijId': typeof RijRijIdRoute
+  '/dashboard': typeof DashboardRoute
+  '/instellingen': typeof InstellingenRoute
+  '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/rij/$rijId/meting': typeof RijRijIdMetingRoute
+  '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/rij/$rijId': typeof RijRijIdRoute
+  '/dashboard': typeof DashboardRoute
+  '/instellingen': typeof InstellingenRoute
+  '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/rij/$rijId/meting': typeof RijRijIdMetingRoute
+  '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/rij/$rijId'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/instellingen'
+    | '/rij/$rijId'
+    | '/rij/$rijId/meting'
+    | '/rij/$rijId/observatie'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rij/$rijId'
-  id: '__root__' | '/' | '/rij/$rijId'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/instellingen'
+    | '/rij/$rijId'
+    | '/rij/$rijId/meting'
+    | '/rij/$rijId/observatie'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/instellingen'
+    | '/rij/$rijId'
+    | '/rij/$rijId/meting'
+    | '/rij/$rijId/observatie'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  RijRijIdRoute: typeof RijRijIdRoute
+  DashboardRoute: typeof DashboardRoute
+  InstellingenRoute: typeof InstellingenRoute
+  RijRijIdRoute: typeof RijRijIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/instellingen': {
+      id: '/instellingen'
+      path: '/instellingen'
+      fullPath: '/instellingen'
+      preLoaderRoute: typeof InstellingenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -65,12 +136,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RijRijIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rij/$rijId/observatie': {
+      id: '/rij/$rijId/observatie'
+      path: '/observatie'
+      fullPath: '/rij/$rijId/observatie'
+      preLoaderRoute: typeof RijRijIdObservatieRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
+    '/rij/$rijId/meting': {
+      id: '/rij/$rijId/meting'
+      path: '/meting'
+      fullPath: '/rij/$rijId/meting'
+      preLoaderRoute: typeof RijRijIdMetingRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
   }
 }
 
+interface RijRijIdRouteChildren {
+  RijRijIdMetingRoute: typeof RijRijIdMetingRoute
+  RijRijIdObservatieRoute: typeof RijRijIdObservatieRoute
+}
+
+const RijRijIdRouteChildren: RijRijIdRouteChildren = {
+  RijRijIdMetingRoute: RijRijIdMetingRoute,
+  RijRijIdObservatieRoute: RijRijIdObservatieRoute,
+}
+
+const RijRijIdRouteWithChildren = RijRijIdRoute._addFileChildren(
+  RijRijIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  RijRijIdRoute: RijRijIdRoute,
+  DashboardRoute: DashboardRoute,
+  InstellingenRoute: InstellingenRoute,
+  RijRijIdRoute: RijRijIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
