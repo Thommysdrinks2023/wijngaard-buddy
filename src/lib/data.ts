@@ -282,3 +282,83 @@ export async function createObservatie(input: ObservatieInput): Promise<Observat
   writeLs(LS_OBS, all);
   return obs;
 }
+
+// ============= Fenologie =============
+export async function fetchFenologie(rijId?: string): Promise<Fenologie[]> {
+  const pb = getPb();
+  if (pb && pbStatus === "online") {
+    try {
+      const filter = rijId ? `rij = "${rijId}"` : "";
+      const records = await pb.collection("fenologie").getFullList({
+        sort: "-datum,-created",
+        filter,
+      });
+      return records.map((r) => ({
+        id: r.id,
+        rij: r.rij,
+        ras: r.ras,
+        moment: r.moment,
+        datum: r.datum,
+        notitie: r.notitie ?? "",
+        ingevoerd_door: r.ingevoerd_door ?? "",
+        created: r.created,
+      }));
+    } catch {
+      // fall through
+    }
+  }
+  const all = readLs<Fenologie[]>(LS_FENOLOGIE, []);
+  const filtered = rijId ? all.filter((f) => f.rij === rijId) : all;
+  return filtered.sort((a, b) => (a.datum < b.datum ? 1 : -1));
+}
+
+export interface FenologieInput {
+  rij: string;
+  ras: Ras;
+  moment: FenologieMoment;
+  datum: string;
+  notitie?: string;
+  ingevoerd_door: string;
+}
+
+export async function createFenologie(input: FenologieInput): Promise<Fenologie> {
+  const pb = getPb();
+  if (pb && pbStatus === "online") {
+    try {
+      const r = await pb.collection("fenologie").create({
+        rij: input.rij,
+        ras: input.ras,
+        moment: input.moment,
+        datum: input.datum,
+        notitie: input.notitie ?? "",
+        ingevoerd_door: input.ingevoerd_door,
+      });
+      return {
+        id: r.id,
+        rij: r.rij,
+        ras: r.ras,
+        moment: r.moment,
+        datum: r.datum,
+        notitie: r.notitie ?? "",
+        ingevoerd_door: r.ingevoerd_door ?? "",
+        created: r.created,
+      };
+    } catch {
+      // fall through to local
+    }
+  }
+  const fen: Fenologie = {
+    id: uid(),
+    rij: input.rij,
+    ras: input.ras,
+    moment: input.moment,
+    datum: input.datum,
+    notitie: input.notitie,
+    ingevoerd_door: input.ingevoerd_door,
+    created: new Date().toISOString(),
+  };
+  const all = readLs<Fenologie[]>(LS_FENOLOGIE, []);
+  all.push(fen);
+  writeLs(LS_FENOLOGIE, all);
+  return fen;
+}
