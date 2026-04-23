@@ -1,5 +1,5 @@
 import PocketBase from "pocketbase";
-import type { Meting, Observatie, Rij } from "./types";
+import type { Fenologie, FenologieMoment, Meting, Observatie, Ras, Rij } from "./types";
 import { SEED_RIJEN } from "./seed-rijen";
 
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
@@ -41,6 +41,7 @@ export async function pingPb(): Promise<boolean> {
 const LS_RIJEN = "wg.rijen.v1";
 const LS_METINGEN = "wg.metingen.v1";
 const LS_OBS = "wg.observaties.v1";
+const LS_FENOLOGIE = "wg.fenologie.v1";
 const LS_NAME = "wg.invoerder.v1";
 
 function readLs<T>(key: string, fallback: T): T {
