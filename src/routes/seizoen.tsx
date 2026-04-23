@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
@@ -35,9 +35,9 @@ function SeizoenPage() {
     return Array.from(set).sort((a, b) => b - a);
   }, [fenQ.data, huidigJaar]);
 
-  // earliest date per ras x moment for selected year
+  // earliest entry per ras x moment for selected year (with id for edit link)
   const grid = useMemo(() => {
-    const map = new Map<string, string>(); // key = ras|moment, value = ISO date
+    const map = new Map<string, { id: string; datum: string }>();
     fenQ.data?.forEach((f) => {
       try {
         const d = parseISO(f.datum);
@@ -47,8 +47,8 @@ function SeizoenPage() {
       }
       const key = `${f.ras}|${f.moment}`;
       const existing = map.get(key);
-      if (!existing || f.datum < existing) {
-        map.set(key, f.datum);
+      if (!existing || f.datum < existing.datum) {
+        map.set(key, { id: f.id, datum: f.datum });
       }
     });
     return map;
@@ -113,16 +113,18 @@ function SeizoenPage() {
                       {ras}
                     </th>
                     {FENOLOGIE_MOMENTEN.map((m: { value: FenologieMoment }) => {
-                      const datum = grid.get(`${ras}|${m.value}`);
-                      if (datum) {
+                      const entry = grid.get(`${ras}|${m.value}`);
+                      if (entry) {
                         return (
                           <td key={m.value} className="px-1 py-1">
-                            <div
-                              className="flex h-12 min-w-[70px] items-center justify-center rounded-lg bg-success px-2 text-center text-xs font-semibold text-success-foreground"
-                              title={`${ras} — ${m.value}: ${datum}`}
+                            <Link
+                              to="/fenologie/$fenId/bewerken"
+                              params={{ fenId: entry.id }}
+                              className="flex h-12 min-w-[70px] items-center justify-center rounded-lg bg-success px-2 text-center text-xs font-semibold text-success-foreground active:scale-[0.97] transition"
+                              title={`${ras} — ${m.value}: ${entry.datum} (tik om te bewerken)`}
                             >
-                              {format(parseISO(datum), "d MMM", { locale: nl })}
-                            </div>
+                              {format(parseISO(entry.datum), "d MMM", { locale: nl })}
+                            </Link>
                           </td>
                         );
                       }
