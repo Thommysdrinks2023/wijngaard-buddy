@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SeizoenRouteImport } from './routes/seizoen'
 import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
 import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -17,7 +18,13 @@ import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
 import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten'
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
 import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
+import { Route as RijRijIdFenologieRouteImport } from './routes/rij.$rijId.fenologie'
 
+const SeizoenRoute = SeizoenRouteImport.update({
+  id: '/seizoen',
+  path: '/seizoen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PerceelkaartRoute = PerceelkaartRouteImport.update({
   id: '/perceelkaart',
   path: '/perceelkaart',
@@ -58,13 +65,20 @@ const RijRijIdMetingRoute = RijRijIdMetingRouteImport.update({
   path: '/meting',
   getParentRoute: () => RijRijIdRoute,
 } as any)
+const RijRijIdFenologieRoute = RijRijIdFenologieRouteImport.update({
+  id: '/fenologie',
+  path: '/fenologie',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/instellingen': typeof InstellingenRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
@@ -74,7 +88,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/instellingen': typeof InstellingenRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
@@ -85,7 +101,9 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/instellingen': typeof InstellingenRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
@@ -97,7 +115,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/instellingen'
     | '/perceelkaart'
+    | '/seizoen'
     | '/rij/$rijId'
+    | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
@@ -107,7 +127,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/instellingen'
     | '/perceelkaart'
+    | '/seizoen'
     | '/rij/$rijId'
+    | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
@@ -117,7 +139,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/instellingen'
     | '/perceelkaart'
+    | '/seizoen'
     | '/rij/$rijId'
+    | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
@@ -128,11 +152,19 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   InstellingenRoute: typeof InstellingenRoute
   PerceelkaartRoute: typeof PerceelkaartRoute
+  SeizoenRoute: typeof SeizoenRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/seizoen': {
+      id: '/seizoen'
+      path: '/seizoen'
+      fullPath: '/seizoen'
+      preLoaderRoute: typeof SeizoenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/perceelkaart': {
       id: '/perceelkaart'
       path: '/perceelkaart'
@@ -189,16 +221,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RijRijIdMetingRouteImport
       parentRoute: typeof RijRijIdRoute
     }
+    '/rij/$rijId/fenologie': {
+      id: '/rij/$rijId/fenologie'
+      path: '/fenologie'
+      fullPath: '/rij/$rijId/fenologie'
+      preLoaderRoute: typeof RijRijIdFenologieRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
   }
 }
 
 interface RijRijIdRouteChildren {
+  RijRijIdFenologieRoute: typeof RijRijIdFenologieRoute
   RijRijIdMetingRoute: typeof RijRijIdMetingRoute
   RijRijIdObservatieRoute: typeof RijRijIdObservatieRoute
   RijRijIdPlantenRoute: typeof RijRijIdPlantenRoute
 }
 
 const RijRijIdRouteChildren: RijRijIdRouteChildren = {
+  RijRijIdFenologieRoute: RijRijIdFenologieRoute,
   RijRijIdMetingRoute: RijRijIdMetingRoute,
   RijRijIdObservatieRoute: RijRijIdObservatieRoute,
   RijRijIdPlantenRoute: RijRijIdPlantenRoute,
@@ -213,6 +254,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   InstellingenRoute: InstellingenRoute,
   PerceelkaartRoute: PerceelkaartRoute,
+  SeizoenRoute: SeizoenRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
