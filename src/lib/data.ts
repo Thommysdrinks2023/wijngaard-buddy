@@ -362,3 +362,91 @@ export async function createFenologie(input: FenologieInput): Promise<Fenologie>
   writeLs(LS_FENOLOGIE, all);
   return fen;
 }
+
+export interface FenologieUpdateInput {
+  moment: FenologieMoment;
+  datum: string;
+  notitie?: string;
+  ingevoerd_door: string;
+}
+
+export async function updateFenologie(
+  id: string,
+  input: FenologieUpdateInput,
+): Promise<Fenologie> {
+  const pb = getPb();
+  if (pb && pbStatus === "online") {
+    try {
+      const r = await pb.collection("fenologie").update(id, {
+        moment: input.moment,
+        datum: input.datum,
+        notitie: input.notitie ?? "",
+        ingevoerd_door: input.ingevoerd_door,
+      });
+      return {
+        id: r.id,
+        rij: r.rij,
+        ras: r.ras,
+        moment: r.moment,
+        datum: r.datum,
+        notitie: r.notitie ?? "",
+        ingevoerd_door: r.ingevoerd_door ?? "",
+        created: r.created,
+      };
+    } catch {
+      // fall through to local
+    }
+  }
+  const all = readLs<Fenologie[]>(LS_FENOLOGIE, []);
+  const idx = all.findIndex((f) => f.id === id);
+  if (idx === -1) throw new Error("Fenologie niet gevonden");
+  all[idx] = {
+    ...all[idx],
+    moment: input.moment,
+    datum: input.datum,
+    notitie: input.notitie,
+    ingevoerd_door: input.ingevoerd_door,
+  };
+  writeLs(LS_FENOLOGIE, all);
+  return all[idx];
+}
+
+export async function deleteFenologie(id: string): Promise<void> {
+  const pb = getPb();
+  if (pb && pbStatus === "online") {
+    try {
+      await pb.collection("fenologie").delete(id);
+      return;
+    } catch {
+      // fall through
+    }
+  }
+  const all = readLs<Fenologie[]>(LS_FENOLOGIE, []);
+  writeLs(
+    LS_FENOLOGIE,
+    all.filter((f) => f.id !== id),
+  );
+}
+
+export async function fetchFenologieById(id: string): Promise<Fenologie | null> {
+  const pb = getPb();
+  if (pb && pbStatus === "online") {
+    try {
+      const r = await pb.collection("fenologie").getOne(id);
+      return {
+        id: r.id,
+        rij: r.rij,
+        ras: r.ras,
+        moment: r.moment,
+        datum: r.datum,
+        notitie: r.notitie ?? "",
+        ingevoerd_door: r.ingevoerd_door ?? "",
+        created: r.created,
+      };
+    } catch {
+      // fall through
+    }
+  }
+  const all = readLs<Fenologie[]>(LS_FENOLOGIE, []);
+  return all.find((f) => f.id === id) ?? null;
+}
