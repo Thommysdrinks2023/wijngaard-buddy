@@ -2,11 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
-import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
-import { OBSERVATIE_TYPES } from "@/lib/types";
+import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
+import { FENOLOGIE_MOMENTEN, OBSERVATIE_TYPES } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { RijpheidStars } from "@/components/rijpheid-stars";
-import { FlaskConical, Eye, Sprout } from "lucide-react";
+import { FlaskConical, Eye, Sprout, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/rij/$rijId")({
   component: RijDetail,
@@ -24,10 +24,15 @@ function RijDetail() {
     queryKey: ["observaties", rijId],
     queryFn: () => fetchObservaties(rijId),
   });
+  const fenQ = useQuery({
+    queryKey: ["fenologie", rijId],
+    queryFn: () => fetchFenologie(rijId),
+  });
 
   const rij = rijenQ.data?.find((r) => r.id === rijId);
   const metingen = (metingenQ.data ?? []).slice(0, 5);
   const observaties = (obsQ.data ?? []).slice(0, 5);
+  const fenologie = (fenQ.data ?? []).slice(0, 10);
 
   return (
     <>
