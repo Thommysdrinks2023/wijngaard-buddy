@@ -1,5 +1,5 @@
 import PocketBase from "pocketbase";
-import type { Meting, Observatie, Rij } from "./types";
+import type { Fenologie, FenologieMoment, Meting, Observatie, Ras, Rij } from "./types";
 import { SEED_RIJEN } from "./seed-rijen";
 
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
@@ -41,6 +41,7 @@ export async function pingPb(): Promise<boolean> {
 const LS_RIJEN = "wg.rijen.v1";
 const LS_METINGEN = "wg.metingen.v1";
 const LS_OBS = "wg.observaties.v1";
+const LS_FENOLOGIE = "wg.fenologie.v1";
 const LS_NAME = "wg.invoerder.v1";
 
 function readLs<T>(key: string, fallback: T): T {
@@ -280,4 +281,84 @@ export async function createObservatie(input: ObservatieInput): Promise<Observat
   all.push(obs);
   writeLs(LS_OBS, all);
   return obs;
+}
+
+// ============= Fenologie =============
+export async function fetchFenologie(rijId?: string): Promise<Fenologie[]> {
+  const pb = getPb();
+  if (pb && pbStatus === "online") {
+    try {
+      const filter = rijId ? `rij = "${rijId}"` : "";
+      const records = await pb.collection("fenologie").getFullList({
+        sort: "-datum,-created",
+        filter,
+      });
+      return records.map((r) => ({
+        id: r.id,
+        rij: r.rij,
+        ras: r.ras,
+        moment: r.moment,
+        datum: r.datum,
+        notitie: r.notitie ?? "",
+        ingevoerd_door: r.ingevoerd_door ?? "",
+        created: r.created,
+      }));
+    } catch {
+      // fall through
+    }
+  }
+  const all = readLs<Fenologie[]>(LS_FENOLOGIE, []);
+  const filtered = rijId ? all.filter((f) => f.rij === rijId) : all;
+  return filtered.sort((a, b) => (a.datum < b.datum ? 1 : -1));
+}
+
+export interface FenologieInput {
+  rij: string;
+  ras: Ras;
+  moment: FenologieMoment;
+  datum: string;
+  notitie?: string;
+  ingevoerd_door: string;
+}
+
+export async function createFenologie(input: FenologieInput): Promise<Fenologie> {
+  const pb = getPb();
+  if (pb && pbStatus === "online") {
+    try {
+      const r = await pb.collection("fenologie").create({
+        rij: input.rij,
+        ras: input.ras,
+        moment: input.moment,
+        datum: input.datum,
+        notitie: input.notitie ?? "",
+        ingevoerd_door: input.ingevoerd_door,
+      });
+      return {
+        id: r.id,
+        rij: r.rij,
+        ras: r.ras,
+        moment: r.moment,
+        datum: r.datum,
+        notitie: r.notitie ?? "",
+        ingevoerd_door: r.ingevoerd_door ?? "",
+        created: r.created,
+      };
+    } catch {
+      // fall through to local
+    }
+  }
+  const fen: Fenologie = {
+    id: uid(),
+    rij: input.rij,
+    ras: input.ras,
+    moment: input.moment,
+    datum: input.datum,
+    notitie: input.notitie,
+    ingevoerd_door: input.ingevoerd_door,
+    created: new Date().toISOString(),
+  };
+  const all = readLs<Fenologie[]>(LS_FENOLOGIE, []);
+  all.push(fen);
+  writeLs(LS_FENOLOGIE, all);
+  return fen;
 }

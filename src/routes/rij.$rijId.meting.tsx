@@ -39,8 +39,10 @@ function MetingPage() {
   const [foto, setFoto] = useState<File | null>(null);
 
   const m = useMutation({
-    mutationFn: () =>
-      createMeting({
+    mutationFn: () => {
+      if (!invoerder.trim()) throw new Error("Vul je naam in bij 'Ingevoerd door'");
+      if (!datum) throw new Error("Kies een datum");
+      return createMeting({
         rij: rijId,
         plant: plant ?? null,
         datum,
@@ -51,16 +53,22 @@ function MetingPage() {
         notitie,
         fotoFile: foto,
         ingevoerd_door: invoerder,
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success("Meting opgeslagen");
       qc.invalidateQueries({ queryKey: ["metingen"] });
       router.history.back();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message ?? "Opslaan mislukt"),
   });
 
-  const canSave = invoerder.trim().length > 0 && !m.isPending;
+  const handleSave = () => {
+    if (m.isPending) return;
+    m.mutate();
+  };
+
+  const canSave = !m.isPending;
 
   return (
     <>
@@ -76,7 +84,7 @@ function MetingPage() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSave) m.mutate();
+          handleSave();
         }}
         className="mx-auto max-w-screen-md space-y-4 px-3 py-4"
       >
@@ -164,13 +172,13 @@ function MetingPage() {
             onChange={(e) => setInvoerder(e.target.value)}
             placeholder="Je naam"
             className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
-            required
           />
         </Field>
 
         <div className="sticky bottom-20 -mx-3 border-t border-border bg-background/95 px-3 py-3 backdrop-blur">
           <button
-            type="submit"
+            type="button"
+            onClick={handleSave}
             disabled={!canSave}
             className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-semibold text-primary-foreground disabled:opacity-50"
           >

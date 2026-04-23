@@ -6,7 +6,7 @@ import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
 import { OBSERVATIE_TYPES } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { RijpheidStars } from "@/components/rijpheid-stars";
-import { Plus, FlaskConical, Eye } from "lucide-react";
+import { FlaskConical, Eye, Sprout } from "lucide-react";
 
 export const Route = createFileRoute("/rij/$rijId")({
   component: RijDetail,
@@ -48,22 +48,30 @@ function RijDetail() {
         </Link>
 
         {/* Action buttons */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           <Link
             to="/rij/$rijId/meting"
             params={{ rijId }}
-            className="flex h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-primary text-primary-foreground font-semibold shadow-sm active:scale-[0.98] transition"
+            className="flex h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-primary text-primary-foreground text-xs font-semibold shadow-sm active:scale-[0.98] transition px-1 text-center"
           >
-            <FlaskConical className="h-6 w-6" />
-            Meting toevoegen
+            <FlaskConical className="h-5 w-5" />
+            Meting
           </Link>
           <Link
             to="/rij/$rijId/observatie"
             params={{ rijId }}
-            className="flex h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-accent text-accent-foreground font-semibold shadow-sm active:scale-[0.98] transition"
+            className="flex h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-accent text-accent-foreground text-xs font-semibold shadow-sm active:scale-[0.98] transition px-1 text-center"
           >
-            <Eye className="h-6 w-6" />
-            Observatie toevoegen
+            <Eye className="h-5 w-5" />
+            Observatie
+          </Link>
+          <Link
+            to="/rij/$rijId/fenologie"
+            params={{ rijId }}
+            className="flex h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-secondary text-secondary-foreground text-xs font-semibold shadow-sm active:scale-[0.98] transition px-1 text-center"
+          >
+            <Sprout className="h-5 w-5" />
+            Fenologie
           </Link>
         </div>
 

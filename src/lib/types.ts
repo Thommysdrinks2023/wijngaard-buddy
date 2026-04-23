@@ -47,3 +47,30 @@ export interface Observatie {
   ingevoerd_door: string;
   created: string;
 }
+
+// ============= Fenologie =============
+export type FenologieMoment =
+  | "Knopbreek"
+  | "Bloei"
+  | "Zetting"
+  | "Véraison"
+  | "Oogstrijp";
+
+export const FENOLOGIE_MOMENTEN: { value: FenologieMoment; emoji: string; description: string }[] = [
+  { value: "Knopbreek", emoji: "🌱", description: "Eerste knopbreek" },
+  { value: "Bloei", emoji: "🌸", description: "Bloeiende bloemen" },
+  { value: "Zetting", emoji: "🍇", description: "Vruchtzetting" },
+  { value: "Véraison", emoji: "🍷", description: "Kleuromslag" },
+  { value: "Oogstrijp", emoji: "🧺", description: "Klaar voor oogst" },
+];
+
+export interface Fenologie {
+  id: string;
+  rij: string;
+  ras: Ras;
+  moment: FenologieMoment;
+  datum: string; // ISO date
+  notitie?: string;
+  ingevoerd_door: string;
+  created: string;
+}

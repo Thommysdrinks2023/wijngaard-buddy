@@ -2,10 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { differenceInDays, parseISO } from "date-fns";
-import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
+import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
 import { RAS_OPTIONS, type Ras } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, HelpCircle } from "lucide-react";
 
 export const Route = createFileRoute("/perceelkaart")({
   component: Perceelkaart,
@@ -32,6 +32,7 @@ function Perceelkaart() {
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const metingenQ = useQuery({ queryKey: ["metingen"], queryFn: () => fetchMetingen() });
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
+  const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
 
   const recencyByRij = useMemo(() => {
     const map = new Map<
@@ -55,6 +56,29 @@ function Perceelkaart() {
     });
     return map;
   }, [metingenQ.data, obsQ.data]);
+
+  // Rijen die dit seizoen nog geen knopbreek hebben (en het is na 1 april)
+  const ontbrekendKnopbreek = useMemo(() => {
+    const set = new Set<string>();
+    const now = new Date();
+    const huidigJaar = now.getFullYear();
+    const eersteApril = new Date(huidigJaar, 3, 1); // april = month 3
+    if (now < eersteApril) return set;
+    const knopbreekRijen = new Set<string>();
+    fenQ.data?.forEach((f) => {
+      try {
+        if (f.moment === "Knopbreek" && parseISO(f.datum).getFullYear() === huidigJaar) {
+          knopbreekRijen.add(f.rij);
+        }
+      } catch {
+        // ignore
+      }
+    });
+    rijenQ.data?.forEach((r) => {
+      if (!knopbreekRijen.has(r.id)) set.add(r.id);
+    });
+    return set;
+  }, [fenQ.data, rijenQ.data]);
 
   const rijen = useMemo(
     () => [...(rijenQ.data ?? [])].sort((a, b) => a.rijnummer - b.rijnummer),
@@ -120,6 +144,14 @@ function Perceelkaart() {
                           title="Recente meting"
                         />
                       )}
+                      {ontbrekendKnopbreek.has(r.id) && !rec?.recentZiekteSchade && !rec?.recentMeting && (
+                        <span
+                          className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-muted-foreground/70 shadow-sm"
+                          title="Nog geen knopbreek geregistreerd"
+                        >
+                          <HelpCircle className="h-3 w-3" strokeWidth={2.5} />
+                        </span>
+                      )}
                     </div>
 
                     {/* Bar */}
@@ -159,6 +191,12 @@ function Perceelkaart() {
               <AlertTriangle className="h-2.5 w-2.5" strokeWidth={3} />
             </span>
             <span>Recente ziekte / schade</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-muted-foreground/70">
+              <HelpCircle className="h-3 w-3" strokeWidth={2.5} />
+            </span>
+            <span>Knopbreek nog niet geregistreerd</span>
           </div>
         </div>
 

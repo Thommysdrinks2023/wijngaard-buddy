@@ -1,13 +1,14 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, BarChart3, Grape, Map } from "lucide-react";
+import { BarChart3, Grape, Map, Calendar, Settings } from "lucide-react";
 
 export function BottomNav() {
   const { pathname } = useLocation();
   const items = [
     { to: "/", label: "Rijen", icon: Grape, exact: true },
     { to: "/perceelkaart", label: "Kaart", icon: Map, exact: false },
+    { to: "/seizoen", label: "Seizoen", icon: Calendar, exact: false },
     { to: "/dashboard", label: "Dashboard", icon: BarChart3, exact: false },
-    { to: "/instellingen", label: "Meer", icon: Home, exact: false },
+    { to: "/instellingen", label: "Meer", icon: Settings, exact: false },
   ];
 
   return (
@@ -23,7 +24,7 @@ export function BottomNav() {
             <li key={it.to} className="flex-1">
               <Link
                 to={it.to}
-                className={`flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${
+                className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >
