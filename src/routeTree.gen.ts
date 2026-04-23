@@ -19,6 +19,7 @@ import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
 import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
 import { Route as RijRijIdFenologieRouteImport } from './routes/rij.$rijId.fenologie'
+import { Route as FenologieFenIdBewerkenRouteImport } from './routes/fenologie.$fenId.bewerken'
 
 const SeizoenRoute = SeizoenRouteImport.update({
   id: '/seizoen',
@@ -70,6 +71,11 @@ const RijRijIdFenologieRoute = RijRijIdFenologieRouteImport.update({
   path: '/fenologie',
   getParentRoute: () => RijRijIdRoute,
 } as any)
+const FenologieFenIdBewerkenRoute = FenologieFenIdBewerkenRouteImport.update({
+  id: '/fenologie/$fenId/bewerken',
+  path: '/fenologie/$fenId/bewerken',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/perceelkaart'
     | '/seizoen'
     | '/rij/$rijId'
+    | '/fenologie/$fenId/bewerken'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/perceelkaart'
     | '/seizoen'
     | '/rij/$rijId'
+    | '/fenologie/$fenId/bewerken'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/perceelkaart'
     | '/seizoen'
     | '/rij/$rijId'
+    | '/fenologie/$fenId/bewerken'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   PerceelkaartRoute: typeof PerceelkaartRoute
   SeizoenRoute: typeof SeizoenRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
+  FenologieFenIdBewerkenRoute: typeof FenologieFenIdBewerkenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RijRijIdFenologieRouteImport
       parentRoute: typeof RijRijIdRoute
     }
+    '/fenologie/$fenId/bewerken': {
+      id: '/fenologie/$fenId/bewerken'
+      path: '/fenologie/$fenId/bewerken'
+      fullPath: '/fenologie/$fenId/bewerken'
+      preLoaderRoute: typeof FenologieFenIdBewerkenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -256,6 +276,7 @@ const rootRouteChildren: RootRouteChildren = {
   PerceelkaartRoute: PerceelkaartRoute,
   SeizoenRoute: SeizoenRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
+  FenologieFenIdBewerkenRoute: FenologieFenIdBewerkenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
