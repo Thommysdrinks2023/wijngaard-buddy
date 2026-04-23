@@ -192,6 +192,12 @@ function Perceelkaart() {
             </span>
             <span>Recente ziekte / schade</span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-muted-foreground/70">
+              <HelpCircle className="h-3 w-3" strokeWidth={2.5} />
+            </span>
+            <span>Knopbreek nog niet geregistreerd</span>
+          </div>
         </div>
 
         {/* Ras legend */}
