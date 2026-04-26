@@ -15,6 +15,7 @@ import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
+import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
 import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten'
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
 import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
@@ -50,6 +51,11 @@ const RijRijIdRoute = RijRijIdRouteImport.update({
   id: '/rij/$rijId',
   path: '/rij/$rijId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RijRijIdRoute,
 } as any)
 const RijRijIdPlantenRoute = RijRijIdPlantenRouteImport.update({
   id: '/planten',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
+  '/rij/$rijId/': typeof RijRijIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,12 +103,12 @@ export interface FileRoutesByTo {
   '/instellingen': typeof InstellingenRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
-  '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
+  '/rij/$rijId': typeof RijRijIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +123,7 @@ export interface FileRoutesById {
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
+  '/rij/$rijId/': typeof RijRijIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +139,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
+    | '/rij/$rijId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -138,12 +147,12 @@ export interface FileRouteTypes {
     | '/instellingen'
     | '/perceelkaart'
     | '/seizoen'
-    | '/rij/$rijId'
     | '/fenologie/$fenId/bewerken'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
+    | '/rij/$rijId'
   id:
     | '__root__'
     | '/'
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
+    | '/rij/$rijId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -213,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RijRijIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rij/$rijId/': {
+      id: '/rij/$rijId/'
+      path: '/'
+      fullPath: '/rij/$rijId/'
+      preLoaderRoute: typeof RijRijIdIndexRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
     '/rij/$rijId/planten': {
       id: '/rij/$rijId/planten'
       path: '/planten'
@@ -256,6 +273,7 @@ interface RijRijIdRouteChildren {
   RijRijIdMetingRoute: typeof RijRijIdMetingRoute
   RijRijIdObservatieRoute: typeof RijRijIdObservatieRoute
   RijRijIdPlantenRoute: typeof RijRijIdPlantenRoute
+  RijRijIdIndexRoute: typeof RijRijIdIndexRoute
 }
 
 const RijRijIdRouteChildren: RijRijIdRouteChildren = {
@@ -263,6 +281,7 @@ const RijRijIdRouteChildren: RijRijIdRouteChildren = {
   RijRijIdMetingRoute: RijRijIdMetingRoute,
   RijRijIdObservatieRoute: RijRijIdObservatieRoute,
   RijRijIdPlantenRoute: RijRijIdPlantenRoute,
+  RijRijIdIndexRoute: RijRijIdIndexRoute,
 }
 
 const RijRijIdRouteWithChildren = RijRijIdRoute._addFileChildren(
