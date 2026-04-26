@@ -94,33 +94,62 @@ function PlantenPage() {
               Planten ({rij.aantal_planten})
             </h2>
             <div className="rounded-2xl border border-border bg-card p-3">
-              <div className="flex flex-wrap gap-2">
-                {plantStatuses.map((p) => {
-                  const info = STATUS_INFO[p.status];
-                  return (
-                    <button
-                      key={p.nr}
-                      onClick={() => setOpenPlant(p.nr)}
-                      aria-label={`Plant ${p.nr} – ${info.label}`}
-                      className="group flex h-9 w-9 items-center justify-center rounded-full text-[10px] font-bold text-white shadow-sm ring-2 ring-card transition active:scale-95 focus:outline-none focus-visible:ring-primary"
-                      style={{ backgroundColor: info.color }}
-                    >
-                      <span
-                        className={
-                          p.status === "geel"
-                            ? "text-foreground/80"
-                            : "text-white drop-shadow-sm"
-                        }
-                      >
-                        {p.nr}
-                      </span>
-                    </button>
-                  );
-                })}
+              {/* Render planten in groepjes van 5 met palen ertussen.
+                  Elk groepje is een inline-flex blok dat als geheel wrapt,
+                  zodat palen nooit midden in een groep terechtkomen. */}
+              <div className="flex flex-wrap items-center gap-y-3">
+                {Array.from(
+                  { length: Math.ceil(plantStatuses.length / 5) },
+                  (_, groupIdx) => {
+                    const group = plantStatuses.slice(groupIdx * 5, groupIdx * 5 + 5);
+                    const isLastGroup = groupIdx === Math.ceil(plantStatuses.length / 5) - 1;
+                    return (
+                      <div key={groupIdx} className="flex items-center">
+                        <div className="flex items-center gap-1.5">
+                          {group.map((p) => {
+                            const info = STATUS_INFO[p.status];
+                            return (
+                              <button
+                                key={p.nr}
+                                onClick={() => setOpenPlant(p.nr)}
+                                aria-label={`Plant ${p.nr} – ${info.label}`}
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[11px] font-bold shadow-sm ring-2 ring-card transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                style={{ backgroundColor: info.color }}
+                              >
+                                <span
+                                  className={
+                                    p.status === "geel"
+                                      ? "text-foreground/80"
+                                      : "text-white drop-shadow-sm"
+                                  }
+                                >
+                                  {p.nr}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {!isLastGroup && (
+                          <div
+                            aria-hidden
+                            title="Paal"
+                            className="mx-2 shrink-0 rounded-sm"
+                            style={{
+                              width: 8,
+                              height: 52,
+                              backgroundColor: "#9E9E9E",
+                              boxShadow: "inset -1px 0 0 rgba(0,0,0,0.15)",
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  }
+                )}
               </div>
             </div>
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Tik op een plant voor details en acties
+              Tik op een plant voor details en acties · paal na elke 5 planten
             </p>
           </div>
         ) : (
