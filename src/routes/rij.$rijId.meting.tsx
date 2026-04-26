@@ -30,7 +30,8 @@ function MetingPage() {
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const rij = rijenQ.data?.find((r) => r.id === rijId);
 
-  const [datum, setDatum] = useState(format(new Date(), "yyyy-MM-dd"));
+  // Defaults: vandaag, score 3
+  const [datum, setDatum] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
   const [brix, setBrix] = useState("");
   const [ph, setPh] = useState("");
   const [zuur, setZuur] = useState("");
@@ -39,9 +40,13 @@ function MetingPage() {
   const [foto, setFoto] = useState<File | null>(null);
 
   const m = useMutation({
-    mutationFn: () => {
-      if (!invoerder.trim()) throw new Error("Vul je naam in bij 'Ingevoerd door'");
-      if (!datum) throw new Error("Kies een datum");
+    mutationFn: async () => {
+      if (!invoerder.trim()) {
+        throw new Error("Vul je naam in bij 'Ingevoerd door'");
+      }
+      if (!datum) {
+        throw new Error("Kies een datum");
+      }
       return createMeting({
         rij: rijId,
         plant: plant ?? null,
@@ -56,19 +61,19 @@ function MetingPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Meting opgeslagen");
+      toast.success("Meting opgeslagen ✓");
       qc.invalidateQueries({ queryKey: ["metingen"] });
       router.history.back();
     },
-    onError: (e: Error) => toast.error(e.message ?? "Opslaan mislukt"),
+    onError: (e: Error) => {
+      toast.error(e?.message ?? "Opslaan mislukt");
+    },
   });
 
   const handleSave = () => {
     if (m.isPending) return;
     m.mutate();
   };
-
-  const canSave = !m.isPending;
 
   return (
     <>
@@ -78,23 +83,16 @@ function MetingPage() {
         subtitle={
           rij
             ? `Rij ${rij.rijnummer} · ${rij.ras}${plant ? ` · plant ${plant}` : ""}`
-            : ""
+            : "Rij laden…"
         }
       />
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSave();
-        }}
-        className="mx-auto max-w-screen-md space-y-4 px-3 py-4"
-      >
+      <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
         <Field label="Datum">
           <input
             type="date"
             value={datum}
             onChange={(e) => setDatum(e.target.value)}
             className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
-            required
           />
         </Field>
 
@@ -175,18 +173,21 @@ function MetingPage() {
           />
         </Field>
 
-        <div className="sticky bottom-20 -mx-3 border-t border-border bg-background/95 px-3 py-3 backdrop-blur">
+        <div
+          className="sticky -mx-3 border-t border-border bg-background/95 px-3 py-3 backdrop-blur"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 5rem)", zIndex: 50 }}
+        >
           <button
             type="button"
             onClick={handleSave}
-            disabled={!canSave}
+            disabled={m.isPending}
             className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-semibold text-primary-foreground disabled:opacity-50"
           >
             {m.isPending && <Loader2 className="h-5 w-5 animate-spin" />}
             Meting opslaan
           </button>
         </div>
-      </form>
+      </div>
     </>
   );
 }
