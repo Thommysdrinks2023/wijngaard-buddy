@@ -26,7 +26,7 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
           </button>
         ) : (
           <Link
-            to="/"
+            to="/perceelkaart"
             className="flex h-12 items-center gap-2 px-1 text-base font-semibold tracking-tight"
           >
             🍇 Wijngaard
