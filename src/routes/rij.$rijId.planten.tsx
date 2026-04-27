@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
-import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
+import { toast } from "sonner";
+import { createObservatie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
 import { computePlantStatus, STATUS_INFO, type PlantStatus } from "@/lib/plant-status";
+import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import {
   Drawer,
@@ -13,7 +15,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { ChevronLeft, FlaskConical, Eye } from "lucide-react";
+import { Check, ChevronLeft, FlaskConical, Eye, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/rij/$rijId/planten")({
   component: PlantenPage,
