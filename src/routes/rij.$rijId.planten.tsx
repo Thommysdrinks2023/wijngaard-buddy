@@ -25,6 +25,8 @@ export const Route = createFileRoute("/rij/$rijId/planten")({
 function PlantenPage() {
   const { rijId } = Route.useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [invoerder] = useInvoerder();
 
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const metingenQ = useQuery({
@@ -38,6 +40,24 @@ function PlantenPage() {
 
   const rij = rijenQ.data?.find((r) => r.id === rijId);
   const [openPlant, setOpenPlant] = useState<number | null>(null);
+
+  const gezondM = useMutation({
+    mutationFn: (plantNr: number) =>
+      createObservatie({
+        rij: rijId,
+        plant: plantNr,
+        datum: format(new Date(), "yyyy-MM-dd"),
+        type: "gezond",
+        notitie: "Gezond — geen bijzonderheden",
+        ingevoerd_door: invoerder || "Onbekend",
+      }),
+    onSuccess: () => {
+      toast.success("Plant gemarkeerd als gezond ✓");
+      qc.invalidateQueries({ queryKey: ["observaties"] });
+      setOpenPlant(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const plantStatuses = useMemo(() => {
     if (!rij) return [];
