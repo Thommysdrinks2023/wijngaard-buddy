@@ -119,15 +119,19 @@ function ObservatiePage() {
           </div>
         </Field>
 
-        <Field label="Notitie">
+        <Field label="Notitie (optioneel)">
           <textarea
             value={notitie}
             onChange={(e) => setNotitie(e.target.value)}
             rows={4}
             className="w-full rounded-xl border border-input bg-card p-3 text-base"
-            placeholder="Wat zie je?"
-            required
+            placeholder="Wat zie je? (optioneel)"
           />
+          {showSoftWarning && (
+            <p className="mt-1.5 text-sm text-amber-600 dark:text-amber-400">
+              Wil je een korte omschrijving toevoegen?
+            </p>
+          )}
         </Field>
 
         {isPbConfigured() ? (
