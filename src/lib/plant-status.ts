@@ -33,6 +33,8 @@ function statusFromItems(items: SourceItem[]): PlantStatus {
       return "rood";
     case "schade":
       return "oranje";
+    case "gezond":
+      return "groen";
     case "groei":
     case "anders":
     default:
