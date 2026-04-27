@@ -90,11 +90,40 @@ function Perceelkaart() {
     [rijen]
   );
 
-  // Visual scale: max bar height in px
-  const MAX_BAR = 280;
-  const MIN_BAR = 18;
-  const BAR_WIDTH = 14;
-  const BAR_GAP = 4;
+  // SVG canvas — bovenaanzicht zoals luchtfoto
+  // Perceel: westzijde recht, zuidzijde schuin omhoog naar oost, oostzijde recht (kort), noordzijde met lichte knik
+  // Rijen lopen diagonaal van zuidwest naar noordoost (~60° t.o.v. horizontaal)
+  const VB_W = 800;
+  const VB_H = 560;
+
+  // Perceel-polygon (SW, NW, NE-knik, NE, SE) — vorm afgeleid uit luchtfoto
+  const PERCEEL_POINTS = "60,520 60,140 360,60 720,80 720,300";
+
+  // Rij-geometrie: rijen verlopen evenwijdig langs de westzijde (verticaal) maar
+  // worden getekend als diagonale lijnen die de zuid-rand snijden.
+  // We plaatsen rijen langs de schuine zuidrand (van SW naar SE) en laten ze
+  // diagonaal naar boven lopen tot ze de noord-rand raken.
+  const ANGLE_DEG = -62; // hoek van rijen (negatief = naar rechts-omhoog)
+  const angleRad = (ANGLE_DEG * Math.PI) / 180;
+  const dx = Math.cos(angleRad);
+  const dy = Math.sin(angleRad);
+
+  // Zuidrand-segment waarlangs we de rijen verdelen (van SW naar SE)
+  const SW = { x: 60, y: 520 };
+  const SE = { x: 720, y: 300 };
+  const southLen = Math.hypot(SE.x - SW.x, SE.y - SW.y);
+  const sUx = (SE.x - SW.x) / southLen;
+  const sUy = (SE.y - SW.y) / southLen;
+
+  // Maximale rij-lengte (visueel) op basis van perceelhoogte
+  const MAX_LEN = 360; // px in viewBox
+  const MIN_LEN = 28;
+
+  const N = rijen.length;
+  // Begin- en eindmarge langs zuidrand
+  const startOffset = 30;
+  const endOffset = 30;
+  const usable = southLen - startOffset - endOffset;
 
   return (
     <>
@@ -103,80 +132,111 @@ function Perceelkaart() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Perceelkaart</h1>
           <p className="text-sm text-muted-foreground">
-            Bovenaanzicht · {rijen.length} rijen · hoogte = aantal planten
+            Bovenaanzicht · {rijen.length} rijen · lengte = aantal planten
           </p>
         </div>
 
-        {/* Map area */}
+        {/* Map area — SVG bovenaanzicht */}
         <div className="rounded-2xl border border-border bg-card p-3">
-          <div className="overflow-x-auto -mx-1 px-1" style={{ WebkitOverflowScrolling: "touch" }}>
-            <div
-              className="relative flex items-end pb-6 pt-8"
-              style={{ minHeight: MAX_BAR + 56, gap: `${BAR_GAP}px` }}
-            >
-              {rijen.map((r) => {
-                const heightPx =
-                  MIN_BAR + (r.aantal_planten / maxPlanten) * (MAX_BAR - MIN_BAR);
-                const rec = recencyByRij.get(r.id);
-                const color = RAS_KLEUR[r.ras];
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() => navigate({ to: "/rij/$rijId/planten", params: { rijId: r.id } })}
-                    aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
-                    className="group relative flex shrink-0 flex-col items-center justify-end focus:outline-none"
-                    style={{ width: BAR_WIDTH, height: MAX_BAR + 24 }}
-                  >
-                    {/* Indicators above bar */}
-                    <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-0.5"
-                         style={{ bottom: heightPx + 2 }}>
-                      {rec?.recentZiekteSchade && (
-                        <span
-                          className="flex h-4 w-4 items-center justify-center rounded-full bg-warning text-warning-foreground shadow"
-                          title="Recente ziekte/schade"
-                        >
-                          <AlertTriangle className="h-2.5 w-2.5" strokeWidth={3} />
-                        </span>
-                      )}
-                      {rec?.recentMeting && (
-                        <span
-                          className="h-2.5 w-2.5 rounded-full bg-success ring-2 ring-card shadow"
-                          title="Recente meting"
-                        />
-                      )}
-                      {ontbrekendKnopbreek.has(r.id) && !rec?.recentZiekteSchade && !rec?.recentMeting && (
-                        <span
-                          className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-muted-foreground/70 shadow-sm"
-                          title="Nog geen knopbreek geregistreerd"
-                        >
-                          <HelpCircle className="h-3 w-3" strokeWidth={2.5} />
-                        </span>
-                      )}
-                    </div>
+          <svg
+            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            className="w-full h-auto"
+            style={{ maxHeight: "70vh" }}
+            role="img"
+            aria-label="Bovenaanzicht wijngaard"
+          >
+            {/* Achtergrond gras */}
+            <rect x="0" y="0" width={VB_W} height={VB_H} fill="hsl(95 25% 92%)" />
 
-                    {/* Bar */}
-                    <div
-                      className="w-full rounded-t-sm transition-transform group-active:scale-y-95 group-focus-visible:ring-2 group-focus-visible:ring-primary"
-                      style={{
-                        height: heightPx,
-                        backgroundColor: color,
-                        boxShadow: "inset 0 -2px 0 rgba(0,0,0,0.15)",
-                      }}
-                    />
+            {/* Perceel omtrek (vorm uit luchtfoto) */}
+            <polygon
+              points={PERCEEL_POINTS}
+              fill="hsl(80 30% 78%)"
+              stroke="hsl(40 25% 35%)"
+              strokeWidth="2"
+              strokeDasharray="4 3"
+            />
 
-                    {/* Row number — show every 5th + first/last to avoid clutter */}
-                    {(r.rijnummer % 5 === 0 || r.rijnummer === 1 || r.rijnummer === rijen[rijen.length - 1].rijnummer) && (
-                      <span className="absolute -bottom-0 text-[9px] font-medium text-muted-foreground tabular-nums">
-                        {r.rijnummer}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            {/* Rijen */}
+            {rijen.map((r, i) => {
+              // Positie langs zuidrand
+              const t = N === 1 ? 0.5 : i / (N - 1);
+              const baseX = SW.x + sUx * (startOffset + t * usable);
+              const baseY = SW.y + sUy * (startOffset + t * usable);
+              const len = MIN_LEN + (r.aantal_planten / maxPlanten) * (MAX_LEN - MIN_LEN);
+              const tipX = baseX + dx * len;
+              const tipY = baseY + dy * len;
+              const rec = recencyByRij.get(r.id);
+              const color = RAS_KLEUR[r.ras];
+              const showLabel =
+                r.rijnummer % 5 === 0 ||
+                r.rijnummer === 1 ||
+                r.rijnummer === rijen[rijen.length - 1].rijnummer;
+              return (
+                <g
+                  key={r.id}
+                  className="cursor-pointer focus:outline-none"
+                  onClick={() => navigate({ to: "/rij/$rijId/planten", params: { rijId: r.id } })}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
+                >
+                  {/* Klikbaar gebied (breder, transparant) */}
+                  <line
+                    x1={baseX}
+                    y1={baseY}
+                    x2={tipX}
+                    y2={tipY}
+                    stroke="transparent"
+                    strokeWidth="10"
+                  />
+                  {/* Zichtbare rij */}
+                  <line
+                    x1={baseX}
+                    y1={baseY}
+                    x2={tipX}
+                    y2={tipY}
+                    stroke={color}
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+                  {/* Indicator aan de top van de rij */}
+                  {rec?.recentZiekteSchade && (
+                    <circle cx={tipX} cy={tipY} r="5" fill="hsl(var(--warning, 38 92% 50%))" stroke="white" strokeWidth="1.5" />
+                  )}
+                  {!rec?.recentZiekteSchade && rec?.recentMeting && (
+                    <circle cx={tipX} cy={tipY} r="4" fill="hsl(142 71% 45%)" stroke="white" strokeWidth="1.5" />
+                  )}
+                  {!rec?.recentZiekteSchade && !rec?.recentMeting && ontbrekendKnopbreek.has(r.id) && (
+                    <circle cx={tipX} cy={tipY} r="4" fill="hsl(0 0% 70%)" stroke="white" strokeWidth="1.5" />
+                  )}
+                  {/* Rijnummer aan de basis */}
+                  {showLabel && (
+                    <text
+                      x={baseX + sUx * 8 - sUy * 10}
+                      y={baseY + sUy * 8 + sUx * 10}
+                      fontSize="10"
+                      fill="hsl(var(--muted-foreground))"
+                      textAnchor="middle"
+                      className="tabular-nums select-none"
+                    >
+                      {r.rijnummer}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Kompas */}
+            <g transform={`translate(${VB_W - 50}, 40)`}>
+              <circle r="22" fill="white" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.9" />
+              <polygon points="0,-16 5,4 0,0 -5,4" fill="hsl(0 70% 45%)" />
+              <polygon points="0,16 5,-4 0,0 -5,-4" fill="hsl(0 0% 50%)" />
+              <text y="-24" textAnchor="middle" fontSize="9" fontWeight="600" fill="hsl(var(--foreground))">N</text>
+            </g>
+          </svg>
           <p className="mt-1 text-center text-[10px] uppercase tracking-wider text-muted-foreground">
-            ← scroll horizontaal →
+            Tik op een rij om de planten te bekijken
           </p>
         </div>
 
