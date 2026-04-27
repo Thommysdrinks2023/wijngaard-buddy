@@ -262,6 +262,21 @@ function PlantenPage() {
                   )}
                 </div>
 
+                {/* Quick action: mark healthy */}
+                <button
+                  type="button"
+                  onClick={() => gezondM.mutate(openInfo.nr)}
+                  disabled={gezondM.isPending}
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-[var(--color-status-groen,#4CAF50)] bg-[color-mix(in_oklab,#4CAF50_15%,transparent)] text-base font-semibold text-foreground disabled:opacity-50"
+                >
+                  {gezondM.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Check className="h-5 w-5" style={{ color: "#2E7D32" }} />
+                  )}
+                  Markeer als gezond
+                </button>
+
                 {/* Actions */}
                 <div
                   className="grid grid-cols-2 gap-3 pb-6"
