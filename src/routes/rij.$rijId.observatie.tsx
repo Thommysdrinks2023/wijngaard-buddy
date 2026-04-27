@@ -39,17 +39,22 @@ function ObservatiePage() {
   const [notitie, setNotitie] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
 
+  const NEGATIVE_TYPES: ObservatieType[] = ["ziekte", "schade", "uitval"];
+
   const m = useMutation({
-    mutationFn: () =>
-      createObservatie({
+    mutationFn: () => {
+      const trimmed = notitie.trim();
+      const finalNotitie = trimmed.length > 0 ? trimmed : "Geen bijzonderheden";
+      return createObservatie({
         rij: rijId,
         plant: plant ?? null,
         datum,
         type,
-        notitie,
+        notitie: finalNotitie,
         fotoFile: foto,
         ingevoerd_door: invoerder,
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success("Observatie opgeslagen");
       qc.invalidateQueries({ queryKey: ["observaties"] });
@@ -58,8 +63,10 @@ function ObservatiePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const canSave =
-    invoerder.trim().length > 0 && notitie.trim().length > 0 && !m.isPending;
+  const showSoftWarning =
+    notitie.trim().length === 0 && NEGATIVE_TYPES.includes(type);
+
+  const canSave = invoerder.trim().length > 0 && !m.isPending;
 
   return (
     <>
@@ -112,15 +119,19 @@ function ObservatiePage() {
           </div>
         </Field>
 
-        <Field label="Notitie">
+        <Field label="Notitie (optioneel)">
           <textarea
             value={notitie}
             onChange={(e) => setNotitie(e.target.value)}
             rows={4}
             className="w-full rounded-xl border border-input bg-card p-3 text-base"
-            placeholder="Wat zie je?"
-            required
+            placeholder="Wat zie je? (optioneel)"
           />
+          {showSoftWarning && (
+            <p className="mt-1.5 text-sm text-amber-600 dark:text-amber-400">
+              Wil je een korte omschrijving toevoegen?
+            </p>
+          )}
         </Field>
 
         {isPbConfigured() ? (
