@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
-import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
+import { toast } from "sonner";
+import { createObservatie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
 import { computePlantStatus, STATUS_INFO, type PlantStatus } from "@/lib/plant-status";
+import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import {
   Drawer,
@@ -13,7 +15,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { ChevronLeft, FlaskConical, Eye } from "lucide-react";
+import { Check, ChevronLeft, FlaskConical, Eye, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/rij/$rijId/planten")({
   component: PlantenPage,
@@ -23,6 +25,8 @@ export const Route = createFileRoute("/rij/$rijId/planten")({
 function PlantenPage() {
   const { rijId } = Route.useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [invoerder] = useInvoerder();
 
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const metingenQ = useQuery({
@@ -36,6 +40,24 @@ function PlantenPage() {
 
   const rij = rijenQ.data?.find((r) => r.id === rijId);
   const [openPlant, setOpenPlant] = useState<number | null>(null);
+
+  const gezondM = useMutation({
+    mutationFn: (plantNr: number) =>
+      createObservatie({
+        rij: rijId,
+        plant: plantNr,
+        datum: format(new Date(), "yyyy-MM-dd"),
+        type: "gezond",
+        notitie: "Gezond — geen bijzonderheden",
+        ingevoerd_door: invoerder || "Onbekend",
+      }),
+    onSuccess: () => {
+      toast.success("Plant gemarkeerd als gezond ✓");
+      qc.invalidateQueries({ queryKey: ["observaties"] });
+      setOpenPlant(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const plantStatuses = useMemo(() => {
     if (!rij) return [];
@@ -239,6 +261,21 @@ function PlantenPage() {
                     </p>
                   )}
                 </div>
+
+                {/* Quick action: mark healthy */}
+                <button
+                  type="button"
+                  onClick={() => gezondM.mutate(openInfo.nr)}
+                  disabled={gezondM.isPending}
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-[var(--color-status-groen,#4CAF50)] bg-[color-mix(in_oklab,#4CAF50_15%,transparent)] text-base font-semibold text-foreground disabled:opacity-50"
+                >
+                  {gezondM.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Check className="h-5 w-5" style={{ color: "#2E7D32" }} />
+                  )}
+                  Markeer als gezond
+                </button>
 
                 {/* Actions */}
                 <div

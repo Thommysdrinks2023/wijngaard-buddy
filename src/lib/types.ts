@@ -26,9 +26,10 @@ export interface Meting {
   created: string;
 }
 
-export type ObservatieType = "groei" | "ziekte" | "schade" | "uitval" | "anders";
+export type ObservatieType = "gezond" | "groei" | "ziekte" | "schade" | "uitval" | "anders";
 
 export const OBSERVATIE_TYPES: { value: ObservatieType; label: string; emoji: string }[] = [
+  { value: "gezond", label: "Gezond", emoji: "✅" },
   { value: "groei", label: "Groei", emoji: "🌱" },
   { value: "ziekte", label: "Ziekte", emoji: "🦠" },
   { value: "schade", label: "Schade", emoji: "⚠️" },
