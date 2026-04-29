@@ -91,39 +91,48 @@ function Perceelkaart() {
   );
 
   // SVG canvas — bovenaanzicht zoals luchtfoto
-  // Perceel: westzijde recht, zuidzijde schuin omhoog naar oost, oostzijde recht (kort), noordzijde met lichte knik
-  // Rijen lopen diagonaal van zuidwest naar noordoost (~60° t.o.v. horizontaal)
-  const VB_W = 800;
-  const VB_H = 560;
+  // Perceel: onregelmatige trapeziumvorm — links smal/kort, rechts breed/lang.
+  // Rijen lopen diagonaal van linksonder naar rechtsboven.
+  const VB_W = 820;
+  const VB_H = 520;
 
-  // Perceel-polygon (SW, NW, NE-knik, NE, SE) — vorm afgeleid uit luchtfoto
-  const PERCEEL_POINTS = "60,520 60,140 360,60 720,80 720,300";
+  // Hoekpunten van het perceel (afgeleid uit luchtfoto)
+  // SW (linksonder, smalle hoek) → NW (linksboven, kort) → NE (rechtsboven) → SE (rechtsonder)
+  const SW = { x: 70, y: 470 };
+  const NW = { x: 110, y: 380 };
+  const NE = { x: 760, y: 50 };
+  const SE = { x: 760, y: 270 };
 
-  // Rij-geometrie: rijen verlopen evenwijdig langs de westzijde (verticaal) maar
-  // worden getekend als diagonale lijnen die de zuid-rand snijden.
-  // We plaatsen rijen langs de schuine zuidrand (van SW naar SE) en laten ze
-  // diagonaal naar boven lopen tot ze de noord-rand raken.
-  const ANGLE_DEG = -62; // hoek van rijen (negatief = naar rechts-omhoog)
+  // Perceelvorm met licht gebogen onderkant (kwadratische curve via SW)
+  const PERCEEL_PATH = `
+    M ${NW.x} ${NW.y}
+    L ${NE.x} ${NE.y}
+    L ${SE.x} ${SE.y}
+    Q ${(SW.x + SE.x) / 2} ${SW.y + 30} ${SW.x} ${SW.y}
+    Z
+  `;
+
+  // Rij-geometrie: rijen lopen diagonaal omhoog-naar-rechts
+  const ANGLE_DEG = -55; // hoek t.o.v. horizontaal
   const angleRad = (ANGLE_DEG * Math.PI) / 180;
   const dx = Math.cos(angleRad);
   const dy = Math.sin(angleRad);
 
-  // Zuidrand-segment waarlangs we de rijen verdelen (van SW naar SE)
-  const SW = { x: 60, y: 520 };
-  const SE = { x: 720, y: 300 };
-  const southLen = Math.hypot(SE.x - SW.x, SE.y - SW.y);
-  const sUx = (SE.x - SW.x) / southLen;
-  const sUy = (SE.y - SW.y) / southLen;
+  // Onderrand: van SW (linksonder) naar SE (rechtsonder) — basis voor de rijen
+  const baseDX = SE.x - SW.x;
+  const baseDY = SE.y - SW.y;
+  const baseLen = Math.hypot(baseDX, baseDY);
+  const bUx = baseDX / baseLen;
+  const bUy = baseDY / baseLen;
 
-  // Maximale rij-lengte (visueel) op basis van perceelhoogte
-  const MAX_LEN = 360; // px in viewBox
-  const MIN_LEN = 28;
+  // Rij-lengtes: proportioneel aan aantal planten
+  const MAX_LEN = 380;
+  const MIN_LEN = 24;
 
   const N = rijen.length;
-  // Begin- en eindmarge langs zuidrand
-  const startOffset = 30;
-  const endOffset = 30;
-  const usable = southLen - startOffset - endOffset;
+  const startOffset = 18;
+  const endOffset = 18;
+  const usable = baseLen - startOffset - endOffset;
 
   return (
     <>
