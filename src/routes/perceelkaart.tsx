@@ -18,13 +18,13 @@ export const Route = createFileRoute("/perceelkaart")({
 });
 
 const RAS_KLEUR: Record<Ras, string> = {
-  Muscaris: "#fde68a", // lichtgeel
-  "Souveginier Gris": "#eab308", // goudgeel
-  Johanniter: "#86efac", // lichtgroen
-  Regent: "#7e22ce", // paars
-  "Pinot Noir": "#7f1d1d", // donkerrood
-  Chardonnay: "#bbf7d0", // lichtgroen (iets lichter dan Johanniter)
-  Pinotin: "#5c1a2b", // bordeauxrood
+  Muscaris: "#fde68a",
+  "Souveginier Gris": "#eab308",
+  Johanniter: "#86efac",
+  Regent: "#7e22ce",
+  "Pinot Noir": "#7f1d1d",
+  Chardonnay: "#bbf7d0",
+  Pinotin: "#5c1a2b",
 };
 
 function Perceelkaart() {
@@ -35,10 +35,7 @@ function Perceelkaart() {
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
 
   const recencyByRij = useMemo(() => {
-    const map = new Map<
-      string,
-      { recentMeting: boolean; recentZiekteSchade: boolean }
-    >();
+    const map = new Map<string, { recentMeting: boolean; recentZiekteSchade: boolean }>();
     const now = new Date();
     metingenQ.data?.forEach((m) => {
       if (differenceInDays(now, parseISO(m.datum)) < 7) {
@@ -57,12 +54,11 @@ function Perceelkaart() {
     return map;
   }, [metingenQ.data, obsQ.data]);
 
-  // Rijen die dit seizoen nog geen knopbreek hebben (en het is na 1 april)
   const ontbrekendKnopbreek = useMemo(() => {
     const set = new Set<string>();
     const now = new Date();
     const huidigJaar = now.getFullYear();
-    const eersteApril = new Date(huidigJaar, 3, 1); // april = month 3
+    const eersteApril = new Date(huidigJaar, 3, 1);
     if (now < eersteApril) return set;
     const knopbreekRijen = new Set<string>();
     fenQ.data?.forEach((f) => {
@@ -70,9 +66,7 @@ function Perceelkaart() {
         if (f.moment === "Knopbreek" && parseISO(f.datum).getFullYear() === huidigJaar) {
           knopbreekRijen.add(f.rij);
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
     });
     rijenQ.data?.forEach((r) => {
       if (!knopbreekRijen.has(r.id)) set.add(r.id);
@@ -90,49 +84,45 @@ function Perceelkaart() {
     [rijen]
   );
 
-  // SVG canvas — bovenaanzicht zoals luchtfoto
-  // Perceel: onregelmatige trapeziumvorm — links smal/kort, rechts breed/lang.
-  // Rijen lopen diagonaal van linksonder naar rechtsboven.
-  const VB_W = 820;
-  const VB_H = 520;
+  // SVG canvas
+  const VB_W = 800;
+  const VB_H = 500;
 
-  // Hoekpunten van het perceel (afgeleid uit luchtfoto)
-  // SW (linksonder, smalle hoek) → NW (linksboven, kort) → NE (rechtsboven) → SE (rechtsonder)
-  const SW = { x: 70, y: 470 };
-  const NW = { x: 110, y: 380 };
-  const NE = { x: 760, y: 50 };
-  const SE = { x: 760, y: 270 };
+  // Inset margins binnen het perceel
+  const MARGIN_X = 40;
+  const MARGIN_TOP = 40;
+  const MARGIN_BOTTOM = 60; // ruimte voor rijnummers
 
-  // Perceelvorm met licht gebogen onderkant (kwadratische curve via SW)
-  const PERCEEL_PATH = `
-    M ${NW.x} ${NW.y}
-    L ${NE.x} ${NE.y}
-    L ${SE.x} ${SE.y}
-    Q ${(SW.x + SE.x) / 2} ${SW.y + 30} ${SW.x} ${SW.y}
-    Z
-  `;
+  const innerW = VB_W - MARGIN_X * 2;
+  const innerTop = MARGIN_TOP;
+  const innerBottom = VB_H - MARGIN_BOTTOM;
+  const innerH = innerBottom - innerTop;
 
-  // Rij-geometrie: rijen lopen diagonaal omhoog-naar-rechts
-  const ANGLE_DEG = -55; // hoek t.o.v. horizontaal
-  const angleRad = (ANGLE_DEG * Math.PI) / 180;
-  const dx = Math.cos(angleRad);
-  const dy = Math.sin(angleRad);
-
-  // Onderrand: van SW (linksonder) naar SE (rechtsonder) — basis voor de rijen
-  const baseDX = SE.x - SW.x;
-  const baseDY = SE.y - SW.y;
-  const baseLen = Math.hypot(baseDX, baseDY);
-  const bUx = baseDX / baseLen;
-  const bUy = baseDY / baseLen;
-
-  // Rij-lengtes: proportioneel aan aantal planten
-  const MAX_LEN = 380;
-  const MIN_LEN = 24;
+  // Rij-lengtes (proportioneel aan aantal planten)
+  const MIN_LEN = 30;
+  const MAX_LEN = innerH; // langste rij vult bijna volledige hoogte
 
   const N = rijen.length;
-  const startOffset = 18;
-  const endOffset = 18;
-  const usable = baseLen - startOffset - endOffset;
+
+  // Lichtgebogen onderrand: y = innerBottom + sag * (1 - 4*(t-0.5)^2 ) waarbij t = 0..1
+  // Maar we willen dat de bocht juist NAAR BENEDEN gaat in het midden, of beter: de zijkanten iets hoger
+  // Volgens beschrijving: onderrand is licht afgerond. We laten het midden iets lager zakken.
+  const SAG = 18;
+  const baseY = (t: number) => innerBottom + SAG * (1 - 4 * (t - 0.5) * (t - 0.5));
+
+  // Perceelvorm: rechthoek met afgeronde onderkant via kwadratische curve
+  const topLeft = { x: MARGIN_X, y: innerTop };
+  const topRight = { x: VB_W - MARGIN_X, y: innerTop };
+  const bottomRight = { x: VB_W - MARGIN_X, y: baseY(1) };
+  const bottomLeft = { x: MARGIN_X, y: baseY(0) };
+  // Maar werkelijk: links smaller/korter — rechthoek is OK voor de container, rijen variëren binnen.
+  const PERCEEL_PATH = `
+    M ${topLeft.x} ${topLeft.y}
+    L ${topRight.x} ${topRight.y}
+    L ${bottomRight.x} ${bottomRight.y}
+    Q ${VB_W / 2} ${innerBottom + SAG + 12} ${bottomLeft.x} ${bottomLeft.y}
+    Z
+  `;
 
   return (
     <>
@@ -141,42 +131,38 @@ function Perceelkaart() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Perceelkaart</h1>
           <p className="text-sm text-muted-foreground">
-            Bovenaanzicht · {rijen.length} rijen · lengte = aantal planten
+            Bovenaanzicht · {rijen.length} rijen · hoogte = aantal planten
           </p>
         </div>
 
-        {/* Map area — SVG bovenaanzicht */}
-        <div className="rounded-2xl border border-border bg-card p-3">
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card p-3">
           <svg
             viewBox={`0 0 ${VB_W} ${VB_H}`}
-            className="w-full h-auto"
-            style={{ maxHeight: "70vh" }}
+            width={VB_W}
+            className="h-auto"
+            style={{ maxWidth: "100%", minWidth: 600 }}
             role="img"
             aria-label="Bovenaanzicht wijngaard"
           >
-            {/* Achtergrond */}
             <rect x="0" y="0" width={VB_W} height={VB_H} fill="hsl(95 25% 95%)" />
 
             {/* Perceel omtrek */}
             <path
               d={PERCEEL_PATH}
-              fill="#e8f5e9"
-              stroke="#1b5e20"
-              strokeWidth="2.5"
+              fill="#E8F5E9"
+              stroke="#2E7D32"
+              strokeWidth="2"
               strokeDasharray="6 4"
               strokeLinejoin="round"
             />
 
-            {/* Rijen */}
+            {/* Rijen — verticaal, evenredig verdeeld over breedte */}
             {rijen.map((r, i) => {
-              // Positie langs onderrand (van SW naar SE)
               const t = N === 1 ? 0.5 : i / (N - 1);
-              const baseX = SW.x + bUx * (startOffset + t * usable);
-              const baseY = SW.y + bUy * (startOffset + t * usable);
-              // Lengte direct proportioneel aan aantal planten
+              const x = MARGIN_X + 8 + t * (innerW - 16);
+              const yBottom = baseY(t);
               const len = MIN_LEN + (r.aantal_planten / maxPlanten) * (MAX_LEN - MIN_LEN);
-              const tipX = baseX + dx * len;
-              const tipY = baseY + dy * len;
+              const yTop = yBottom - len;
               const rec = recencyByRij.get(r.id);
               const color = RAS_KLEUR[r.ras];
               const showLabel =
@@ -187,45 +173,38 @@ function Perceelkaart() {
                 <g
                   key={r.id}
                   className="cursor-pointer focus:outline-none"
-                  onClick={() => navigate({ to: "/rij/$rijId", params: { rijId: r.id } })}
+                  onClick={() => navigate({ to: "/rij/$rijId/planten", params: { rijId: r.id } })}
                   tabIndex={0}
                   role="button"
                   aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
                 >
-                  {/* Klikbaar gebied (breder, transparant) */}
-                  <line
-                    x1={baseX}
-                    y1={baseY}
-                    x2={tipX}
-                    y2={tipY}
-                    stroke="transparent"
-                    strokeWidth="12"
-                  />
+                  {/* Tap target */}
+                  <line x1={x} y1={yBottom} x2={x} y2={yTop} stroke="transparent" strokeWidth="10" />
                   {/* Zichtbare rij */}
                   <line
-                    x1={baseX}
-                    y1={baseY}
-                    x2={tipX}
-                    y2={tipY}
+                    x1={x}
+                    y1={yBottom}
+                    x2={x}
+                    y2={yTop}
                     stroke={color}
-                    strokeWidth="3.5"
+                    strokeWidth="4"
                     strokeLinecap="round"
                   />
-                  {/* Indicator aan de top van de rij */}
+                  {/* Status indicator aan de top */}
                   {rec?.recentZiekteSchade && (
-                    <circle cx={tipX} cy={tipY} r="5" fill="hsl(var(--warning, 38 92% 50%))" stroke="white" strokeWidth="1.5" />
+                    <circle cx={x} cy={yTop} r="4" fill="hsl(var(--warning, 38 92% 50%))" stroke="white" strokeWidth="1.5" />
                   )}
                   {!rec?.recentZiekteSchade && rec?.recentMeting && (
-                    <circle cx={tipX} cy={tipY} r="4" fill="hsl(142 71% 45%)" stroke="white" strokeWidth="1.5" />
+                    <circle cx={x} cy={yTop} r="3.5" fill="hsl(142 71% 45%)" stroke="white" strokeWidth="1.5" />
                   )}
                   {!rec?.recentZiekteSchade && !rec?.recentMeting && ontbrekendKnopbreek.has(r.id) && (
-                    <circle cx={tipX} cy={tipY} r="4" fill="hsl(0 0% 70%)" stroke="white" strokeWidth="1.5" />
+                    <circle cx={x} cy={yTop} r="3.5" fill="hsl(0 0% 70%)" stroke="white" strokeWidth="1.5" />
                   )}
-                  {/* Rijnummer onder de basis */}
+                  {/* Rijnummer onder onderrand */}
                   {showLabel && (
                     <text
-                      x={baseX - bUy * 12}
-                      y={baseY + bUx * 12 + 4}
+                      x={x}
+                      y={yBottom + 14}
                       fontSize="10"
                       fill="hsl(var(--muted-foreground))"
                       textAnchor="middle"
