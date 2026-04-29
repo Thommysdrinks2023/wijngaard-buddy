@@ -90,8 +90,8 @@ function Perceelkaart() {
 
   // Inset margins binnen het perceel
   const MARGIN_X = 40;
-  const MARGIN_TOP = 40;
-  const MARGIN_BOTTOM = 60; // ruimte voor rijnummers
+  const MARGIN_TOP = 50; // ruimte voor rijnummers boven
+  const MARGIN_BOTTOM = 30;
 
   const innerW = VB_W - MARGIN_X * 2;
   const innerTop = MARGIN_TOP;
@@ -100,29 +100,12 @@ function Perceelkaart() {
 
   // Rij-lengtes (proportioneel aan aantal planten)
   const MIN_LEN = 30;
-  const MAX_LEN = innerH; // langste rij vult bijna volledige hoogte
+  const MAX_LEN = innerH;
 
   const N = rijen.length;
 
-  // Lichtgebogen onderrand: y = innerBottom + sag * (1 - 4*(t-0.5)^2 ) waarbij t = 0..1
-  // Maar we willen dat de bocht juist NAAR BENEDEN gaat in het midden, of beter: de zijkanten iets hoger
-  // Volgens beschrijving: onderrand is licht afgerond. We laten het midden iets lager zakken.
-  const SAG = 18;
-  const baseY = (t: number) => innerBottom + SAG * (1 - 4 * (t - 0.5) * (t - 0.5));
-
-  // Perceelvorm: rechthoek met afgeronde onderkant via kwadratische curve
-  const topLeft = { x: MARGIN_X, y: innerTop };
-  const topRight = { x: VB_W - MARGIN_X, y: innerTop };
-  const bottomRight = { x: VB_W - MARGIN_X, y: baseY(1) };
-  const bottomLeft = { x: MARGIN_X, y: baseY(0) };
-  // Maar werkelijk: links smaller/korter — rechthoek is OK voor de container, rijen variëren binnen.
-  const PERCEEL_PATH = `
-    M ${topLeft.x} ${topLeft.y}
-    L ${topRight.x} ${topRight.y}
-    L ${bottomRight.x} ${bottomRight.y}
-    Q ${VB_W / 2} ${innerBottom + SAG + 12} ${bottomLeft.x} ${bottomLeft.y}
-    Z
-  `;
+  // Alle rijen starten bovenaan op dezelfde horizontale lijn (yTop = innerTop)
+  // en hangen naar beneden. Bottom-rand volgt dus de rij-tips (licht gebogen).
 
   return (
     <>
