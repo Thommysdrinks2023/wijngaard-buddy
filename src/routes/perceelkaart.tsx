@@ -117,27 +117,7 @@ function Perceelkaart() {
     return { r, t, x, yTop, yBottom, len };
   });
 
-  // Perceelvorm: rechte bovenrand, diagonale/gebogen onderrand die de tips volgt
-  const PERCEEL_PATH = (() => {
-    if (rijGeom.length === 0) return "";
-    const leftX = MARGIN_X;
-    const rightX = VB_W - MARGIN_X;
-    const topY = innerTop - 6;
-    // Onderrand: lijnen tussen opeenvolgende rij-tips
-    const tips = rijGeom.map((g) => `L ${g.x.toFixed(1)} ${(g.yBottom + 6).toFixed(1)}`).join(" ");
-    const firstTipY = rijGeom[0].yBottom + 6;
-    const lastTipY = rijGeom[rijGeom.length - 1].yBottom + 6;
-    return `
-      M ${leftX} ${topY}
-      L ${rightX} ${topY}
-      L ${rightX} ${lastTipY}
-      ${tips.split(" ").slice(0).reverse().join(" ").replace(/L/g, "L")}
-      L ${leftX} ${firstTipY}
-      Z
-    `;
-  })();
-
-  // Bovenstaande reverse-truc is fragiel; bouw cleaner:
+  // Perceelvorm: rechte bovenrand, diagonale onderrand die de tips volgt
   const PERCEEL_PATH_2 = (() => {
     if (rijGeom.length === 0) return "";
     const leftX = MARGIN_X;
