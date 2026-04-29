@@ -90,8 +90,8 @@ function Perceelkaart() {
 
   // Inset margins binnen het perceel
   const MARGIN_X = 40;
-  const MARGIN_TOP = 40;
-  const MARGIN_BOTTOM = 60; // ruimte voor rijnummers
+  const MARGIN_TOP = 50; // ruimte voor rijnummers boven
+  const MARGIN_BOTTOM = 30;
 
   const innerW = VB_W - MARGIN_X * 2;
   const innerTop = MARGIN_TOP;
@@ -100,29 +100,43 @@ function Perceelkaart() {
 
   // Rij-lengtes (proportioneel aan aantal planten)
   const MIN_LEN = 30;
-  const MAX_LEN = innerH; // langste rij vult bijna volledige hoogte
+  const MAX_LEN = innerH;
 
   const N = rijen.length;
 
-  // Lichtgebogen onderrand: y = innerBottom + sag * (1 - 4*(t-0.5)^2 ) waarbij t = 0..1
-  // Maar we willen dat de bocht juist NAAR BENEDEN gaat in het midden, of beter: de zijkanten iets hoger
-  // Volgens beschrijving: onderrand is licht afgerond. We laten het midden iets lager zakken.
-  const SAG = 18;
-  const baseY = (t: number) => innerBottom + SAG * (1 - 4 * (t - 0.5) * (t - 0.5));
+  // Alle rijen starten bovenaan op dezelfde horizontale lijn (yTop = innerTop)
+  // en hangen naar beneden. Bottom-rand volgt dus de rij-tips (licht gebogen).
 
-  // Perceelvorm: rechthoek met afgeronde onderkant via kwadratische curve
-  const topLeft = { x: MARGIN_X, y: innerTop };
-  const topRight = { x: VB_W - MARGIN_X, y: innerTop };
-  const bottomRight = { x: VB_W - MARGIN_X, y: baseY(1) };
-  const bottomLeft = { x: MARGIN_X, y: baseY(0) };
-  // Maar werkelijk: links smaller/korter — rechthoek is OK voor de container, rijen variëren binnen.
-  const PERCEEL_PATH = `
-    M ${topLeft.x} ${topLeft.y}
-    L ${topRight.x} ${topRight.y}
-    L ${bottomRight.x} ${bottomRight.y}
-    Q ${VB_W / 2} ${innerBottom + SAG + 12} ${bottomLeft.x} ${bottomLeft.y}
-    Z
-  `;
+  // Pre-compute rij geometry
+  const rijGeom = rijen.map((r, i) => {
+    const t = N === 1 ? 0.5 : i / (N - 1);
+    const x = MARGIN_X + 8 + t * (innerW - 16);
+    const yTop = innerTop;
+    const len = MIN_LEN + (r.aantal_planten / maxPlanten) * (MAX_LEN - MIN_LEN);
+    const yBottom = yTop + len;
+    return { r, t, x, yTop, yBottom, len };
+  });
+
+  // Perceelvorm: rechte bovenrand, diagonale onderrand die de tips volgt
+  const PERCEEL_PATH_2 = (() => {
+    if (rijGeom.length === 0) return "";
+    const leftX = MARGIN_X;
+    const rightX = VB_W - MARGIN_X;
+    const topY = innerTop - 6;
+    const first = rijGeom[0];
+    const last = rijGeom[rijGeom.length - 1];
+    // Volg tips van rechts naar links
+    const reversed = [...rijGeom].reverse();
+    const tipsPath = reversed.map((g) => `L ${g.x.toFixed(1)} ${(g.yBottom + 6).toFixed(1)}`).join(" ");
+    return `
+      M ${leftX} ${topY}
+      L ${rightX} ${topY}
+      L ${rightX} ${(last.yBottom + 6).toFixed(1)}
+      ${tipsPath}
+      L ${leftX} ${(first.yBottom + 6).toFixed(1)}
+      Z
+    `;
+  })();
 
   return (
     <>
@@ -148,7 +162,7 @@ function Perceelkaart() {
 
             {/* Perceel omtrek */}
             <path
-              d={PERCEEL_PATH}
+              d={PERCEEL_PATH_2}
               fill="#E8F5E9"
               stroke="#2E7D32"
               strokeWidth="2"
@@ -156,13 +170,8 @@ function Perceelkaart() {
               strokeLinejoin="round"
             />
 
-            {/* Rijen — verticaal, evenredig verdeeld over breedte */}
-            {rijen.map((r, i) => {
-              const t = N === 1 ? 0.5 : i / (N - 1);
-              const x = MARGIN_X + 8 + t * (innerW - 16);
-              const yBottom = baseY(t);
-              const len = MIN_LEN + (r.aantal_planten / maxPlanten) * (MAX_LEN - MIN_LEN);
-              const yTop = yBottom - len;
+            {/* Rijen — verticaal, hangen vanaf de bovenrand */}
+            {rijGeom.map(({ r, x, yTop, yBottom }) => {
               const rec = recencyByRij.get(r.id);
               const color = RAS_KLEUR[r.ras];
               const showLabel =
@@ -179,32 +188,32 @@ function Perceelkaart() {
                   aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
                 >
                   {/* Tap target */}
-                  <line x1={x} y1={yBottom} x2={x} y2={yTop} stroke="transparent" strokeWidth="10" />
+                  <line x1={x} y1={yTop} x2={x} y2={yBottom} stroke="transparent" strokeWidth="10" />
                   {/* Zichtbare rij */}
                   <line
                     x1={x}
-                    y1={yBottom}
+                    y1={yTop}
                     x2={x}
-                    y2={yTop}
+                    y2={yBottom}
                     stroke={color}
                     strokeWidth="4"
                     strokeLinecap="round"
                   />
-                  {/* Status indicator aan de top */}
+                  {/* Status indicator aan de tip (onderkant) */}
                   {rec?.recentZiekteSchade && (
-                    <circle cx={x} cy={yTop} r="4" fill="hsl(var(--warning, 38 92% 50%))" stroke="white" strokeWidth="1.5" />
+                    <circle cx={x} cy={yBottom} r="4" fill="hsl(var(--warning, 38 92% 50%))" stroke="white" strokeWidth="1.5" />
                   )}
                   {!rec?.recentZiekteSchade && rec?.recentMeting && (
-                    <circle cx={x} cy={yTop} r="3.5" fill="hsl(142 71% 45%)" stroke="white" strokeWidth="1.5" />
+                    <circle cx={x} cy={yBottom} r="3.5" fill="hsl(142 71% 45%)" stroke="white" strokeWidth="1.5" />
                   )}
                   {!rec?.recentZiekteSchade && !rec?.recentMeting && ontbrekendKnopbreek.has(r.id) && (
-                    <circle cx={x} cy={yTop} r="3.5" fill="hsl(0 0% 70%)" stroke="white" strokeWidth="1.5" />
+                    <circle cx={x} cy={yBottom} r="3.5" fill="hsl(0 0% 70%)" stroke="white" strokeWidth="1.5" />
                   )}
-                  {/* Rijnummer onder onderrand */}
+                  {/* Rijnummer boven de bovenrand */}
                   {showLabel && (
                     <text
                       x={x}
-                      y={yBottom + 14}
+                      y={yTop - 10}
                       fontSize="10"
                       fill="hsl(var(--muted-foreground))"
                       textAnchor="middle"
