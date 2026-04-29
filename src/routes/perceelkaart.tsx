@@ -154,24 +154,26 @@ function Perceelkaart() {
             role="img"
             aria-label="Bovenaanzicht wijngaard"
           >
-            {/* Achtergrond gras */}
-            <rect x="0" y="0" width={VB_W} height={VB_H} fill="hsl(95 25% 92%)" />
+            {/* Achtergrond */}
+            <rect x="0" y="0" width={VB_W} height={VB_H} fill="hsl(95 25% 95%)" />
 
-            {/* Perceel omtrek (vorm uit luchtfoto) */}
-            <polygon
-              points={PERCEEL_POINTS}
-              fill="hsl(80 30% 78%)"
-              stroke="hsl(40 25% 35%)"
-              strokeWidth="2"
-              strokeDasharray="4 3"
+            {/* Perceel omtrek */}
+            <path
+              d={PERCEEL_PATH}
+              fill="#e8f5e9"
+              stroke="#1b5e20"
+              strokeWidth="2.5"
+              strokeDasharray="6 4"
+              strokeLinejoin="round"
             />
 
             {/* Rijen */}
             {rijen.map((r, i) => {
-              // Positie langs zuidrand
+              // Positie langs onderrand (van SW naar SE)
               const t = N === 1 ? 0.5 : i / (N - 1);
-              const baseX = SW.x + sUx * (startOffset + t * usable);
-              const baseY = SW.y + sUy * (startOffset + t * usable);
+              const baseX = SW.x + bUx * (startOffset + t * usable);
+              const baseY = SW.y + bUy * (startOffset + t * usable);
+              // Lengte direct proportioneel aan aantal planten
               const len = MIN_LEN + (r.aantal_planten / maxPlanten) * (MAX_LEN - MIN_LEN);
               const tipX = baseX + dx * len;
               const tipY = baseY + dy * len;
@@ -197,7 +199,7 @@ function Perceelkaart() {
                     x2={tipX}
                     y2={tipY}
                     stroke="transparent"
-                    strokeWidth="10"
+                    strokeWidth="12"
                   />
                   {/* Zichtbare rij */}
                   <line
@@ -206,7 +208,7 @@ function Perceelkaart() {
                     x2={tipX}
                     y2={tipY}
                     stroke={color}
-                    strokeWidth="4"
+                    strokeWidth="3.5"
                     strokeLinecap="round"
                   />
                   {/* Indicator aan de top van de rij */}
@@ -219,11 +221,11 @@ function Perceelkaart() {
                   {!rec?.recentZiekteSchade && !rec?.recentMeting && ontbrekendKnopbreek.has(r.id) && (
                     <circle cx={tipX} cy={tipY} r="4" fill="hsl(0 0% 70%)" stroke="white" strokeWidth="1.5" />
                   )}
-                  {/* Rijnummer aan de basis */}
+                  {/* Rijnummer onder de basis */}
                   {showLabel && (
                     <text
-                      x={baseX + sUx * 8 - sUy * 10}
-                      y={baseY + sUy * 8 + sUx * 10}
+                      x={baseX - bUy * 12}
+                      y={baseY + bUx * 12 + 4}
                       fontSize="10"
                       fill="hsl(var(--muted-foreground))"
                       textAnchor="middle"
