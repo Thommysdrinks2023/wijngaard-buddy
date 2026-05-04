@@ -220,7 +220,7 @@ function Perceelkaart() {
                   {showLabel && (
                     <text
                       x={x}
-                      y={yTop - 10}
+                      y={innerTop - 10}
                       fontSize="10"
                       fill="hsl(var(--muted-foreground))"
                       textAnchor="middle"
