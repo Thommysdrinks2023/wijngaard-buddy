@@ -107,14 +107,21 @@ function Perceelkaart() {
   // Alle rijen starten bovenaan op dezelfde horizontale lijn (yTop = innerTop)
   // en hangen naar beneden. Bottom-rand volgt dus de rij-tips (licht gebogen).
 
+  // Maximum length op basis van een "vol" rij (bv. 91 planten) zodat de onderlijn vast ligt
+  const FULL_PLANTEN = maxPlanten;
+
   // Pre-compute rij geometry
   const rijGeom = rijen.map((r, i) => {
     const t = N === 1 ? 0.5 : i / (N - 1);
     const x = MARGIN_X + 8 + t * (innerW - 16);
-    const yTop = innerTop;
-    const len = MIN_LEN + (r.aantal_planten / maxPlanten) * (MAX_LEN - MIN_LEN);
-    const yBottom = yTop + len;
-    return { r, t, x, yTop, yBottom, len };
+    const len = MIN_LEN + (r.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN);
+    const fullLen = MIN_LEN + (MAX_LEN - MIN_LEN); // lengte van volle rij = onderlijn perceel
+    const perceelBottom = innerTop + fullLen;
+    // Uitzondering: rij 68 groeit van onderkant omhoog
+    const groeitVanOnder = r.rijnummer === 68;
+    const yTop = groeitVanOnder ? perceelBottom - len : innerTop;
+    const yBottom = groeitVanOnder ? perceelBottom : innerTop + len;
+    return { r, t, x, yTop, yBottom, len, groeitVanOnder, perceelBottom };
   });
 
   // Perceelvorm: rechte bovenrand, diagonale onderrand die de tips volgt
