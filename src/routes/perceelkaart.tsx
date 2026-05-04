@@ -111,17 +111,24 @@ function Perceelkaart() {
   const FULL_PLANTEN = maxPlanten;
 
   // Pre-compute rij geometry
-  const rijGeom = rijen.map((r, i) => {
+  const rijGeom = rijen.map((r, i, arr) => {
     const t = N === 1 ? 0.5 : i / (N - 1);
     const x = MARGIN_X + 8 + t * (innerW - 16);
     const len = MIN_LEN + (r.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN);
-    const fullLen = MIN_LEN + (MAX_LEN - MIN_LEN); // lengte van volle rij = onderlijn perceel
-    const perceelBottom = innerTop + fullLen;
-    // Uitzondering: rij 68 groeit van onderkant omhoog
+    // Uitzondering: rij 68 groeit van onderkant omhoog — onderkant gelijk
+    // aan onderkant van buurrij (rij 67), met gat aan de bovenkant.
     const groeitVanOnder = r.rijnummer === 68;
-    const yTop = groeitVanOnder ? perceelBottom - len : innerTop;
-    const yBottom = groeitVanOnder ? perceelBottom : innerTop + len;
-    return { r, t, x, yTop, yBottom, len, groeitVanOnder, perceelBottom };
+    let yTop = innerTop;
+    let yBottom = innerTop + len;
+    if (groeitVanOnder) {
+      const buur = arr[i - 1] ?? arr[i + 1];
+      const buurLen = buur
+        ? MIN_LEN + (buur.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN)
+        : len;
+      yBottom = innerTop + buurLen;
+      yTop = yBottom - len;
+    }
+    return { r, t, x, yTop, yBottom, len, groeitVanOnder };
   });
 
   // Perceelvorm: rechte bovenrand, diagonale onderrand die de tips volgt
