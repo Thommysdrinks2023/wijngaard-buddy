@@ -13,73 +13,87 @@ export interface SeedRij {
   aantal_planten: number;
 }
 
-// Helper to build evenly-spaced plant counts across a range
-function spread(start: number, end: number, planten: number[]): SeedRij[] {
-  const nums: number[] = [];
-  for (let i = start; i <= end; i++) nums.push(i);
-  return nums.map((n, i) => ({
-    rijnummer: n,
-    ras: "Muscaris" as Ras,
-    aantal_planten: planten[i] ?? planten[planten.length - 1],
-  }));
-}
+const data: SeedRij[] = [
+  // Muscaris
+  { rijnummer: 1, ras: "Muscaris", aantal_planten: 10 },
+  { rijnummer: 2, ras: "Muscaris", aantal_planten: 15 },
+  { rijnummer: 3, ras: "Muscaris", aantal_planten: 20 },
+  { rijnummer: 4, ras: "Muscaris", aantal_planten: 25 },
+  { rijnummer: 5, ras: "Muscaris", aantal_planten: 30 },
+  // Souveginier Gris
+  { rijnummer: 6, ras: "Souveginier Gris", aantal_planten: 34 },
+  { rijnummer: 7, ras: "Souveginier Gris", aantal_planten: 39 },
+  { rijnummer: 8, ras: "Souveginier Gris", aantal_planten: 43 },
+  { rijnummer: 9, ras: "Souveginier Gris", aantal_planten: 49 },
+  { rijnummer: 10, ras: "Souveginier Gris", aantal_planten: 49 },
+  { rijnummer: 11, ras: "Souveginier Gris", aantal_planten: 49 },
+  { rijnummer: 12, ras: "Souveginier Gris", aantal_planten: 50 },
+  { rijnummer: 13, ras: "Souveginier Gris", aantal_planten: 50 },
+  { rijnummer: 14, ras: "Souveginier Gris", aantal_planten: 50 },
+  { rijnummer: 15, ras: "Souveginier Gris", aantal_planten: 56 },
+  { rijnummer: 16, ras: "Souveginier Gris", aantal_planten: 58 },
+  { rijnummer: 17, ras: "Souveginier Gris", aantal_planten: 59 },
+  { rijnummer: 18, ras: "Souveginier Gris", aantal_planten: 60 },
+  { rijnummer: 19, ras: "Souveginier Gris", aantal_planten: 61 },
+  { rijnummer: 20, ras: "Souveginier Gris", aantal_planten: 63 },
+  { rijnummer: 21, ras: "Souveginier Gris", aantal_planten: 63 },
+  // Johanniter
+  { rijnummer: 22, ras: "Johanniter", aantal_planten: 64 },
+  { rijnummer: 23, ras: "Johanniter", aantal_planten: 66 },
+  { rijnummer: 24, ras: "Johanniter", aantal_planten: 67 },
+  { rijnummer: 25, ras: "Johanniter", aantal_planten: 68 },
+  { rijnummer: 26, ras: "Johanniter", aantal_planten: 70 },
+  { rijnummer: 27, ras: "Johanniter", aantal_planten: 72 },
+  { rijnummer: 28, ras: "Johanniter", aantal_planten: 74 },
+  { rijnummer: 29, ras: "Johanniter", aantal_planten: 75 },
+  { rijnummer: 30, ras: "Johanniter", aantal_planten: 75 },
+  { rijnummer: 31, ras: "Johanniter", aantal_planten: 77 },
+  { rijnummer: 32, ras: "Johanniter", aantal_planten: 79 },
+  { rijnummer: 33, ras: "Johanniter", aantal_planten: 81 },
+  { rijnummer: 34, ras: "Johanniter", aantal_planten: 82 },
+  { rijnummer: 35, ras: "Johanniter", aantal_planten: 83 },
+  { rijnummer: 36, ras: "Johanniter", aantal_planten: 84 },
+  { rijnummer: 37, ras: "Johanniter", aantal_planten: 85 },
+  { rijnummer: 38, ras: "Johanniter", aantal_planten: 85 },
+  { rijnummer: 39, ras: "Johanniter", aantal_planten: 86 },
+  { rijnummer: 40, ras: "Johanniter", aantal_planten: 87 },
+  // Regent
+  { rijnummer: 41, ras: "Regent", aantal_planten: 88 },
+  { rijnummer: 42, ras: "Regent", aantal_planten: 88 },
+  { rijnummer: 43, ras: "Regent", aantal_planten: 89 },
+  { rijnummer: 44, ras: "Regent", aantal_planten: 89 },
+  { rijnummer: 46, ras: "Regent", aantal_planten: 90 },
+  { rijnummer: 47, ras: "Regent", aantal_planten: 90 },
+  // Pinot Noir
+  { rijnummer: 45, ras: "Pinot Noir", aantal_planten: 90 },
+  { rijnummer: 65, ras: "Pinot Noir", aantal_planten: 87 },
+  { rijnummer: 68, ras: "Pinot Noir", aantal_planten: 36 },
+  // Chardonnay
+  { rijnummer: 48, ras: "Chardonnay", aantal_planten: 90 },
+  { rijnummer: 49, ras: "Chardonnay", aantal_planten: 91 },
+  { rijnummer: 50, ras: "Chardonnay", aantal_planten: 91 },
+  { rijnummer: 51, ras: "Chardonnay", aantal_planten: 91 },
+  { rijnummer: 52, ras: "Chardonnay", aantal_planten: 91 },
+  { rijnummer: 53, ras: "Chardonnay", aantal_planten: 91 },
+  { rijnummer: 54, ras: "Chardonnay", aantal_planten: 90 },
+  { rijnummer: 55, ras: "Chardonnay", aantal_planten: 90 },
+  { rijnummer: 56, ras: "Chardonnay", aantal_planten: 90 },
+  // Pinotin
+  { rijnummer: 57, ras: "Pinotin", aantal_planten: 90 },
+  { rijnummer: 58, ras: "Pinotin", aantal_planten: 90 },
+  { rijnummer: 59, ras: "Pinotin", aantal_planten: 89 },
+  { rijnummer: 60, ras: "Pinotin", aantal_planten: 89 },
+  { rijnummer: 61, ras: "Pinotin", aantal_planten: 89 },
+  { rijnummer: 62, ras: "Pinotin", aantal_planten: 88 },
+  { rijnummer: 63, ras: "Pinotin", aantal_planten: 88 },
+  { rijnummer: 64, ras: "Pinotin", aantal_planten: 87 },
+  { rijnummer: 66, ras: "Pinotin", aantal_planten: 87 },
+  { rijnummer: 67, ras: "Pinotin", aantal_planten: 87 },
+];
 
-function linear(start: number, end: number, vStart: number, vEnd: number): number[] {
-  const len = end - start + 1;
-  if (len === 1) return [vStart];
-  const step = (vEnd - vStart) / (len - 1);
-  return Array.from({ length: len }, (_, i) => Math.round(vStart + step * i));
-}
+data.sort((a, b) => a.rijnummer - b.rijnummer);
 
-const rijen: SeedRij[] = [];
-
-// Muscaris: rijen 1–4 (5, 10, 15, 20 planten)
-[5, 10, 15, 20].forEach((p, i) =>
-  rijen.push({ rijnummer: i + 1, ras: "Muscaris", aantal_planten: p })
-);
-
-// Souveginier Gris: rijen 5–21 (25 t/m 63)
-linear(5, 21, 25, 63).forEach((p, i) =>
-  rijen.push({ rijnummer: 5 + i, ras: "Souveginier Gris", aantal_planten: p })
-);
-
-// Johanniter: rijen 22–41 (64 t/m 87), rij 33 ontbreekt
-{
-  const nums = [];
-  for (let n = 22; n <= 41; n++) if (n !== 33) nums.push(n);
-  const planten = linear(0, nums.length - 1, 64, 87);
-  nums.forEach((n, i) => rijen.push({ rijnummer: n, ras: "Johanniter", aantal_planten: planten[i] }));
-}
-
-// Regent: rijen 42–45, 47–48 (88–90)
-{
-  const nums = [42, 43, 44, 45, 47, 48];
-  const planten = linear(0, nums.length - 1, 88, 90);
-  nums.forEach((n, i) => rijen.push({ rijnummer: n, ras: "Regent", aantal_planten: planten[i] }));
-}
-
-// Pinot Noir: rijen 46, 66, 69 (90, 87, 36)
-[
-  { rijnummer: 46, aantal_planten: 90 },
-  { rijnummer: 66, aantal_planten: 87 },
-  { rijnummer: 69, aantal_planten: 36 },
-].forEach((r) => rijen.push({ ...r, ras: "Pinot Noir" }));
-
-// Chardonnay: rijen 49–57 (90–91)
-linear(49, 57, 90, 91).forEach((p, i) =>
-  rijen.push({ rijnummer: 49 + i, ras: "Chardonnay", aantal_planten: p })
-);
-
-// Pinotin: rijen 58–65, 67–68 (87–90)
-{
-  const nums = [58, 59, 60, 61, 62, 63, 64, 65, 67, 68];
-  const planten = linear(0, nums.length - 1, 87, 90);
-  nums.forEach((n, i) => rijen.push({ rijnummer: n, ras: "Pinotin", aantal_planten: planten[i] }));
-}
-
-rijen.sort((a, b) => a.rijnummer - b.rijnummer);
-
-export const SEED_RIJEN: SeedRij[] = rijen;
+export const SEED_RIJEN: SeedRij[] = data;
 
 export const RAS_OPTIONS: Ras[] = [
   "Muscaris",
