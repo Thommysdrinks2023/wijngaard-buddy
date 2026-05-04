@@ -38,7 +38,7 @@ export async function pingPb(): Promise<boolean> {
 }
 
 // ---------- localStorage helpers ----------
-const LS_RIJEN = "wg.rijen.v1";
+const LS_RIJEN = "wg.rijen.v2";
 const LS_METINGEN = "wg.metingen.v1";
 const LS_OBS = "wg.observaties.v1";
 const LS_FENOLOGIE = "wg.fenologie.v1";

@@ -86,7 +86,7 @@ function Instellingen() {
           </h2>
           <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">Wijngaard veld-app</p>
-            <p>69 rijen vooraf geladen · mobiel-eerst · NL</p>
+            <p>68 rijen vooraf geladen · mobiel-eerst · NL</p>
           </div>
         </section>
       </div>
