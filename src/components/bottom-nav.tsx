@@ -1,13 +1,14 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { BarChart3, Map, Calendar, Settings, LineChart } from "lucide-react";
+import { BarChart3, Map, Calendar, Settings, LineChart, ClipboardList } from "lucide-react";
 
 export function BottomNav() {
   const { pathname } = useLocation();
   const items = [
     { to: "/perceelkaart", label: "Kaart", icon: Map, exact: false },
     { to: "/seizoen", label: "Seizoen", icon: Calendar, exact: false },
-    { to: "/dashboard", label: "Dashboard", icon: BarChart3, exact: false },
-    { to: "/grafieken", label: "Grafieken", icon: LineChart, exact: false },
+    { to: "/steekproeven", label: "Steek", icon: ClipboardList, exact: false },
+    { to: "/dashboard", label: "Dash", icon: BarChart3, exact: false },
+    { to: "/grafieken", label: "Grafiek", icon: LineChart, exact: false },
     { to: "/instellingen", label: "Meer", icon: Settings, exact: false },
   ];
 

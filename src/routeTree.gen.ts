@@ -15,8 +15,11 @@ import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as GrafiekenRouteImport } from './routes/grafieken'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SteekproevenIndexRouteImport } from './routes/steekproeven.index'
+import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.beheer'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
 import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
+import { Route as SteekproevenPuntIdInvoerRouteImport } from './routes/steekproeven.$puntId.invoer'
 import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten'
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
 import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
@@ -53,6 +56,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SteekproevenIndexRoute = SteekproevenIndexRouteImport.update({
+  id: '/steekproeven/',
+  path: '/steekproeven/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SteekproevenBeheerRoute = SteekproevenBeheerRouteImport.update({
+  id: '/steekproeven/beheer',
+  path: '/steekproeven/beheer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RijRijIdRoute = RijRijIdRouteImport.update({
   id: '/rij/$rijId',
   path: '/rij/$rijId',
@@ -63,6 +76,12 @@ const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RijRijIdRoute,
 } as any)
+const SteekproevenPuntIdInvoerRoute =
+  SteekproevenPuntIdInvoerRouteImport.update({
+    id: '/steekproeven/$puntId/invoer',
+    path: '/steekproeven/$puntId/invoer',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const RijRijIdPlantenRoute = RijRijIdPlantenRouteImport.update({
   id: '/planten',
   path: '/planten',
@@ -97,11 +116,14 @@ export interface FileRoutesByFullPath {
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/steekproeven/beheer': typeof SteekproevenBeheerRoute
+  '/steekproeven/': typeof SteekproevenIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
+  '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
   '/rij/$rijId/': typeof RijRijIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -111,11 +133,14 @@ export interface FileRoutesByTo {
   '/instellingen': typeof InstellingenRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
+  '/steekproeven/beheer': typeof SteekproevenBeheerRoute
+  '/steekproeven': typeof SteekproevenIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
+  '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
   '/rij/$rijId': typeof RijRijIdIndexRoute
 }
 export interface FileRoutesById {
@@ -127,11 +152,14 @@ export interface FileRoutesById {
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
+  '/steekproeven/beheer': typeof SteekproevenBeheerRoute
+  '/steekproeven/': typeof SteekproevenIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
+  '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
   '/rij/$rijId/': typeof RijRijIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -144,11 +172,14 @@ export interface FileRouteTypes {
     | '/perceelkaart'
     | '/seizoen'
     | '/rij/$rijId'
+    | '/steekproeven/beheer'
+    | '/steekproeven/'
     | '/fenologie/$fenId/bewerken'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
+    | '/steekproeven/$puntId/invoer'
     | '/rij/$rijId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -158,11 +189,14 @@ export interface FileRouteTypes {
     | '/instellingen'
     | '/perceelkaart'
     | '/seizoen'
+    | '/steekproeven/beheer'
+    | '/steekproeven'
     | '/fenologie/$fenId/bewerken'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
+    | '/steekproeven/$puntId/invoer'
     | '/rij/$rijId'
   id:
     | '__root__'
@@ -173,11 +207,14 @@ export interface FileRouteTypes {
     | '/perceelkaart'
     | '/seizoen'
     | '/rij/$rijId'
+    | '/steekproeven/beheer'
+    | '/steekproeven/'
     | '/fenologie/$fenId/bewerken'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
+    | '/steekproeven/$puntId/invoer'
     | '/rij/$rijId/'
   fileRoutesById: FileRoutesById
 }
@@ -189,7 +226,10 @@ export interface RootRouteChildren {
   PerceelkaartRoute: typeof PerceelkaartRoute
   SeizoenRoute: typeof SeizoenRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
+  SteekproevenBeheerRoute: typeof SteekproevenBeheerRoute
+  SteekproevenIndexRoute: typeof SteekproevenIndexRoute
   FenologieFenIdBewerkenRoute: typeof FenologieFenIdBewerkenRoute
+  SteekproevenPuntIdInvoerRoute: typeof SteekproevenPuntIdInvoerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -236,6 +276,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/steekproeven/': {
+      id: '/steekproeven/'
+      path: '/steekproeven'
+      fullPath: '/steekproeven/'
+      preLoaderRoute: typeof SteekproevenIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/steekproeven/beheer': {
+      id: '/steekproeven/beheer'
+      path: '/steekproeven/beheer'
+      fullPath: '/steekproeven/beheer'
+      preLoaderRoute: typeof SteekproevenBeheerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rij/$rijId': {
       id: '/rij/$rijId'
       path: '/rij/$rijId'
@@ -249,6 +303,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/rij/$rijId/'
       preLoaderRoute: typeof RijRijIdIndexRouteImport
       parentRoute: typeof RijRijIdRoute
+    }
+    '/steekproeven/$puntId/invoer': {
+      id: '/steekproeven/$puntId/invoer'
+      path: '/steekproeven/$puntId/invoer'
+      fullPath: '/steekproeven/$puntId/invoer'
+      preLoaderRoute: typeof SteekproevenPuntIdInvoerRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/rij/$rijId/planten': {
       id: '/rij/$rijId/planten'
@@ -316,7 +377,10 @@ const rootRouteChildren: RootRouteChildren = {
   PerceelkaartRoute: PerceelkaartRoute,
   SeizoenRoute: SeizoenRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
+  SteekproevenBeheerRoute: SteekproevenBeheerRoute,
+  SteekproevenIndexRoute: SteekproevenIndexRoute,
   FenologieFenIdBewerkenRoute: FenologieFenIdBewerkenRoute,
+  SteekproevenPuntIdInvoerRoute: SteekproevenPuntIdInvoerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
