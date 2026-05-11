@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SeizoenRouteImport } from './routes/seizoen'
 import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
 import { Route as InstellingenRouteImport } from './routes/instellingen'
+import { Route as GrafiekenRouteImport } from './routes/grafieken'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
@@ -35,6 +36,11 @@ const PerceelkaartRoute = PerceelkaartRouteImport.update({
 const InstellingenRoute = InstellingenRouteImport.update({
   id: '/instellingen',
   path: '/instellingen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GrafiekenRoute = GrafiekenRouteImport.update({
+  id: '/grafieken',
+  path: '/grafieken',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -86,6 +92,7 @@ const FenologieFenIdBewerkenRoute = FenologieFenIdBewerkenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/grafieken'
     | '/instellingen'
     | '/perceelkaart'
     | '/seizoen'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/grafieken'
     | '/instellingen'
     | '/perceelkaart'
     | '/seizoen'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/grafieken'
     | '/instellingen'
     | '/perceelkaart'
     | '/seizoen'
@@ -172,6 +184,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  GrafiekenRoute: typeof GrafiekenRoute
   InstellingenRoute: typeof InstellingenRoute
   PerceelkaartRoute: typeof PerceelkaartRoute
   SeizoenRoute: typeof SeizoenRoute
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/instellingen'
       fullPath: '/instellingen'
       preLoaderRoute: typeof InstellingenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/grafieken': {
+      id: '/grafieken'
+      path: '/grafieken'
+      fullPath: '/grafieken'
+      preLoaderRoute: typeof GrafiekenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -291,6 +311,7 @@ const RijRijIdRouteWithChildren = RijRijIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  GrafiekenRoute: GrafiekenRoute,
   InstellingenRoute: InstellingenRoute,
   PerceelkaartRoute: PerceelkaartRoute,
   SeizoenRoute: SeizoenRoute,
@@ -300,3 +321,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
