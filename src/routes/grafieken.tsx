@@ -212,9 +212,8 @@ function GrafiekenPage() {
 
   // ============ Grafiek 4: Steekproef Brix verloop per plant ============
   const stkPlantById = useMemo(() => {
-    const m = new Map<string, (typeof stkPlantenQ.data extends infer X ? X : never) extends Array<infer Y> ? Y : never>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    stkPlantenQ.data?.forEach((p) => m.set(p.id, p as any));
+    const m = new Map<string, NonNullable<typeof stkPlantenQ.data>[number]>();
+    stkPlantenQ.data?.forEach((p) => m.set(p.id, p));
     return m;
   }, [stkPlantenQ.data]);
 
