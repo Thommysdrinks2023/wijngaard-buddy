@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AppHeader } from "@/components/app-header";
-import { BottomNav } from "@/components/bottom-nav";
 import {
   getSteekproefPlanten,
   getSteekproefMetingen,
@@ -160,7 +159,6 @@ function SteekproevenPage() {
           </section>
         ))}
       </main>
-      <BottomNav />
     </div>
   );
 }
