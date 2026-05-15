@@ -22,6 +22,8 @@ import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
 import { OBSERVATIE_TYPES, type Ras, type Rij } from "@/lib/types";
 import { RAS_OPTIONS } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
+import { YearSelector } from "@/components/year-selector";
+import { useSeizoen } from "@/lib/seizoen";
 import {
   getOogst,
   getSteekproefMetingen,
@@ -30,13 +32,6 @@ import {
   ZIEKTEDRUK_OPTIES,
   type ZiekteDruk,
 } from "@/lib/steekproef";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export const Route = createFileRoute("/grafieken")({
   component: GrafiekenPage,
@@ -127,7 +122,7 @@ function GrafiekenPage() {
     return Array.from(s).sort((a, b) => b - a);
   }, [metingenQ.data, obsQ.data, stkMetingenQ.data]);
 
-  const [jaar, setJaar] = useState<number>(new Date().getFullYear());
+  const [jaar] = useSeizoen();
   const [tab, setTab] = useState<"metingen" | "steekproeven">("metingen");
 
   // ============ Grafiek 1: Brix verloop per ras ============
@@ -324,20 +319,7 @@ function GrafiekenPage() {
       <main className="mx-auto max-w-screen-md space-y-5 px-4 py-5">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl font-semibold tracking-tight">Grafieken</h1>
-          <div className="w-32">
-            <Select value={String(jaar)} onValueChange={(v) => setJaar(Number(v))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {beschikbareJaren.map((j) => (
-                  <SelectItem key={j} value={String(j)}>
-                    {j}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <YearSelector extra={beschikbareJaren} />
         </div>
 
         {/* Tabs */}
