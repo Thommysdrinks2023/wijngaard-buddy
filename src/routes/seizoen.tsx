@@ -27,6 +27,8 @@ import {
 } from "@/lib/werkkalender";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { YearSelector } from "@/components/year-selector";
+import { useSeizoen } from "@/lib/seizoen";
 import {
   Dialog,
   DialogContent,
@@ -68,7 +70,7 @@ function SeizoenPage() {
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const huidigJaar = new Date().getFullYear();
-  const [jaar, setJaar] = useState<number>(huidigJaar);
+  const [jaar] = useSeizoen();
   const [invoerder, setInvoerderName] = useInvoerder();
 
   // Werkkalender (localStorage) — bump nonce on changes for re-render
@@ -179,21 +181,8 @@ function SeizoenPage() {
 
         {/* Jaarselector */}
         <div className="flex items-center gap-2">
-          <label htmlFor="jaar" className="text-sm font-medium text-foreground">
-            Jaar
-          </label>
-          <select
-            id="jaar"
-            value={jaar}
-            onChange={(e) => setJaar(Number(e.target.value))}
-            className="h-10 rounded-lg border border-input bg-card px-3 text-sm"
-          >
-            {beschikbareJaren.map((j) => (
-              <option key={j} value={j}>
-                {j}
-              </option>
-            ))}
-          </select>
+          <span className="text-sm font-medium text-foreground">Seizoen</span>
+          <YearSelector extra={beschikbareJaren} />
         </div>
 
         {/* Fenologie tabel */}
