@@ -16,6 +16,7 @@ export interface Meting {
   rij: string; // rij id
   plant?: number | null; // optioneel: plantnummer binnen de rij
   datum: string; // ISO date
+  seizoen?: number;
   brix?: number | null;
   ph?: number | null;
   zuurgraad?: number | null;
@@ -42,6 +43,7 @@ export interface Observatie {
   rij: string;
   plant?: number | null;
   datum: string;
+  seizoen?: number;
   type: ObservatieType;
   notitie: string;
   foto?: string;
@@ -71,6 +73,7 @@ export interface Fenologie {
   ras: Ras;
   moment: FenologieMoment;
   datum: string; // ISO date
+  seizoen?: number;
   notitie?: string;
   ingevoerd_door: string;
   created: string;
