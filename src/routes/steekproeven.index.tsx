@@ -11,6 +11,8 @@ import {
   type SteekproefPlant,
 } from "@/lib/steekproef";
 import { RAS_OPTIONS } from "@/lib/seed-rijen";
+import { YearSelector } from "@/components/year-selector";
+import { useSeizoen } from "@/lib/seizoen";
 import { AlertTriangle, Plus, Settings2 } from "lucide-react";
 
 export const Route = createFileRoute("/steekproeven/")({
@@ -24,6 +26,7 @@ export const Route = createFileRoute("/steekproeven/")({
 });
 
 function SteekproevenPage() {
+  const [jaar] = useSeizoen();
   const puntenQ = useQuery({
     queryKey: ["steekproef_planten"],
     queryFn: async () => getSteekproefPlanten(),
@@ -35,12 +38,14 @@ function SteekproevenPage() {
 
   const laatsteMeting = useMemo(() => {
     const map = new Map<string, SteekproefMeting>();
-    metingenQ.data?.forEach((m) => {
-      const cur = map.get(m.plantId);
-      if (!cur || cur.datum < m.datum) map.set(m.plantId, m);
-    });
+    metingenQ.data
+      ?.filter((m) => m.seizoen === jaar)
+      .forEach((m) => {
+        const cur = map.get(m.plantId);
+        if (!cur || cur.datum < m.datum) map.set(m.plantId, m);
+      });
     return map;
-  }, [metingenQ.data]);
+  }, [metingenQ.data, jaar]);
 
   const perRas = useMemo(() => {
     const map = new Map<string, SteekproefPlant[]>();
@@ -66,12 +71,15 @@ function SteekproevenPage() {
               Vaste meetplanten per ras voor consistente seizoensvergelijking.
             </p>
           </div>
-          <Link
-            to="/steekproeven/beheer"
-            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium"
-          >
-            <Settings2 className="h-4 w-4" /> Beheer
-          </Link>
+          <div className="flex flex-col items-end gap-2">
+            <YearSelector />
+            <Link
+              to="/steekproeven/beheer"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium"
+            >
+              <Settings2 className="h-4 w-4" /> Beheer
+            </Link>
+          </div>
         </div>
 
         {puntenQ.data && puntenQ.data.length === 0 && (

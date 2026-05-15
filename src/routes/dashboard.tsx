@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { differenceInDays, format, parseISO, startOfYear } from "date-fns";
+import { differenceInDays, format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
-import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
-import { OBSERVATIE_TYPES, type Rij } from "@/lib/types";
+import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
+import { FENOLOGIE_MOMENTEN, OBSERVATIE_TYPES, type Rij } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
+import { YearSelector } from "@/components/year-selector";
+import { useSeizoen } from "@/lib/seizoen";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -17,10 +19,16 @@ export const Route = createFileRoute("/dashboard")({
   }),
 });
 
+function jaarOf(item: { seizoen?: number; datum: string }): number {
+  return item.seizoen ?? parseISO(item.datum).getFullYear();
+}
+
 function Dashboard() {
+  const [jaar] = useSeizoen();
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const metingenQ = useQuery({ queryKey: ["metingen"], queryFn: () => fetchMetingen() });
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
+  const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
 
   const rijenById = useMemo(() => {
     const m = new Map<string, Rij>();
@@ -28,11 +36,24 @@ function Dashboard() {
     return m;
   }, [rijenQ.data]);
 
-  // Avg Brix per ras this week
+  const metingenSeizoen = useMemo(
+    () => metingenQ.data?.filter((m) => jaarOf(m) === jaar) ?? [],
+    [metingenQ.data, jaar],
+  );
+  const obsSeizoen = useMemo(
+    () => obsQ.data?.filter((o) => jaarOf(o) === jaar) ?? [],
+    [obsQ.data, jaar],
+  );
+  const fenSeizoen = useMemo(
+    () => fenQ.data?.filter((f) => jaarOf(f) === jaar) ?? [],
+    [fenQ.data, jaar],
+  );
+
+  // Avg Brix per ras (deze week, binnen seizoen)
   const brixPerRas = useMemo(() => {
     const acc = new Map<string, { sum: number; n: number }>();
     const now = new Date();
-    metingenQ.data?.forEach((m) => {
+    metingenSeizoen.forEach((m) => {
       if (m.brix == null) return;
       const days = differenceInDays(now, parseISO(m.datum));
       if (days > 7 || days < 0) return;
@@ -46,24 +67,29 @@ function Dashboard() {
     return Array.from(acc.entries())
       .map(([ras, v]) => ({ ras, avg: v.sum / v.n, n: v.n }))
       .sort((a, b) => b.avg - a.avg);
-  }, [metingenQ.data, rijenById]);
+  }, [metingenSeizoen, rijenById]);
 
-  // Rijen with uitval observations this season
+  // Rijen with uitval observations dit seizoen
   const uitvalRijen = useMemo(() => {
-    const seasonStart = startOfYear(new Date());
     const ids = new Set<string>();
-    obsQ.data?.forEach((o) => {
+    obsSeizoen.forEach((o) => {
       if (o.type !== "uitval") return;
-      if (parseISO(o.datum) < seasonStart) return;
       ids.add(o.rij);
     });
     return Array.from(ids)
       .map((id) => rijenById.get(id))
       .filter((r): r is NonNullable<typeof r> => Boolean(r))
       .sort((a, b) => a.rijnummer - b.rijnummer);
-  }, [obsQ.data, rijenById]);
+  }, [obsSeizoen, rijenById]);
 
-  // Last 10 activities
+  // Fenologie momenten geregistreerd dit seizoen
+  const fenMomenten = useMemo(() => {
+    const set = new Set<string>();
+    fenSeizoen.forEach((f) => set.add(f.moment));
+    return FENOLOGIE_MOMENTEN.filter((m) => set.has(m.value));
+  }, [fenSeizoen]);
+
+  // Last 10 activities (binnen seizoen)
   const recent = useMemo(() => {
     const items: Array<{
       id: string;
@@ -73,7 +99,7 @@ function Dashboard() {
       rijId: string;
       rijLabel: string;
     }> = [];
-    metingenQ.data?.forEach((m) => {
+    metingenSeizoen.forEach((m) => {
       const r = rijenById.get(m.rij);
       items.push({
         id: `m-${m.id}`,
@@ -87,7 +113,7 @@ function Dashboard() {
         rijLabel: r ? `Rij ${r.rijnummer} · ${r.ras}` : "Rij",
       });
     });
-    obsQ.data?.forEach((o) => {
+    obsSeizoen.forEach((o) => {
       const r = rijenById.get(o.rij);
       const t = OBSERVATIE_TYPES.find((x) => x.value === o.type);
       items.push({
@@ -102,18 +128,51 @@ function Dashboard() {
     return items
       .sort((a, b) => (a.datum < b.datum ? 1 : -1))
       .slice(0, 10);
-  }, [metingenQ.data, obsQ.data, rijenById]);
+  }, [metingenSeizoen, obsSeizoen, rijenById]);
 
   return (
     <>
       <AppHeader title="Dashboard" />
       <div className="mx-auto max-w-screen-md space-y-6 px-3 py-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Overzicht van het seizoen
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Overzicht van het seizoen</p>
+          </div>
+          <YearSelector />
         </div>
+
+        {/* Seizoen samenvatting */}
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Seizoen samenvatting
+          </h2>
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="Seizoen" value={String(jaar)} />
+            <Stat label="Metingen" value={String(metingenSeizoen.length)} />
+            <Stat label="Observaties" value={String(obsSeizoen.length)} />
+          </div>
+          <div className="mt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Fenologie dit seizoen
+            </p>
+            {fenMomenten.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nog geen fenologie geregistreerd.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {fenMomenten.map((m) => (
+                  <span
+                    key={m.value}
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium"
+                  >
+                    <span>{m.emoji}</span>
+                    {m.value}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
 
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -183,7 +242,7 @@ function Dashboard() {
           </h2>
           {recent.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Nog geen activiteit.
+              Nog geen activiteit dit seizoen.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -218,5 +277,16 @@ function Dashboard() {
         </section>
       </div>
     </>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-muted/40 px-3 py-2 text-center">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className="text-xl font-bold tabular-nums">{value}</p>
+    </div>
   );
 }
