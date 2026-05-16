@@ -84,6 +84,18 @@ function SteekproevenPage() {
           </div>
         </div>
 
+        {(puntenQ.isError || metingenQ.isError) && (
+          <ErrorState
+            error={puntenQ.error || metingenQ.error}
+            onRetry={() => {
+              puntenQ.refetch();
+              metingenQ.refetch();
+            }}
+            invoerHref="/steekproeven/beheer"
+            invoerLabel="Naar beheer"
+          />
+        )}
+
         {puntenQ.data && puntenQ.data.length === 0 && (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
             <p className="text-sm text-muted-foreground">
