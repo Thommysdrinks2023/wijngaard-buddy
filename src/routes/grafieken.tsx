@@ -24,6 +24,7 @@ import { RAS_OPTIONS } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
 import {
   getOogst,
@@ -322,6 +323,22 @@ function GrafiekenPage() {
           <h1 className="text-xl font-semibold tracking-tight">Grafieken</h1>
           <YearSelector extra={beschikbareJaren} />
         </div>
+
+        {(rijenQ.isError || metingenQ.isError || obsQ.isError || stkPlantenQ.isError || stkMetingenQ.isError || oogstQ.isError) && (
+          <ErrorState
+            error={rijenQ.error || metingenQ.error || obsQ.error || stkPlantenQ.error || stkMetingenQ.error || oogstQ.error}
+            onRetry={() => {
+              rijenQ.refetch();
+              metingenQ.refetch();
+              obsQ.refetch();
+              stkPlantenQ.refetch();
+              stkMetingenQ.refetch();
+              oogstQ.refetch();
+            }}
+            invoerHref="/perceelkaart"
+            invoerLabel="Naar perceelkaart"
+          />
+        )}
 
         {/* Tabs */}
         <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted/30 p-1">

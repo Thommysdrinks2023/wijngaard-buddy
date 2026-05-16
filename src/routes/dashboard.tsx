@@ -8,6 +8,7 @@ import { FENOLOGIE_MOMENTEN, OBSERVATIE_TYPES, type Rij } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
 
 export const Route = createFileRoute("/dashboard")({
@@ -142,6 +143,20 @@ function Dashboard() {
           </div>
           <YearSelector />
         </div>
+
+        {(rijenQ.isError || metingenQ.isError || obsQ.isError || fenQ.isError) && (
+          <ErrorState
+            error={rijenQ.error || metingenQ.error || obsQ.error || fenQ.error}
+            onRetry={() => {
+              rijenQ.refetch();
+              metingenQ.refetch();
+              obsQ.refetch();
+              fenQ.refetch();
+            }}
+            invoerHref="/perceelkaart"
+            invoerLabel="Naar perceelkaart"
+          />
+        )}
 
         {/* Seizoen samenvatting */}
         <section className="rounded-2xl border border-border bg-card p-4">

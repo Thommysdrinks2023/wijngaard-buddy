@@ -13,6 +13,7 @@ import {
 import { RAS_OPTIONS } from "@/lib/seed-rijen";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
 import { AlertTriangle, Plus, Settings2 } from "lucide-react";
 
@@ -82,6 +83,18 @@ function SteekproevenPage() {
             </Link>
           </div>
         </div>
+
+        {(puntenQ.isError || metingenQ.isError) && (
+          <ErrorState
+            error={puntenQ.error || metingenQ.error}
+            onRetry={() => {
+              puntenQ.refetch();
+              metingenQ.refetch();
+            }}
+            invoerHref="/steekproeven/beheer"
+            invoerLabel="Naar beheer"
+          />
+        )}
 
         {puntenQ.data && puntenQ.data.length === 0 && (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
