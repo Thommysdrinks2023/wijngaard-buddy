@@ -240,9 +240,8 @@ function Dashboard() {
             Laatste 10 activiteiten
           </h2>
           {recent.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Nog geen activiteit dit seizoen.
-            </p>
+            <EmptyState />
+
           ) : (
             <ul className="space-y-2">
               {recent.map((it) => (
