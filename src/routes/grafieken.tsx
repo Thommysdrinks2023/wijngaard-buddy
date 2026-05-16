@@ -342,7 +342,7 @@ function GrafiekenPage() {
           <>
             <ChartCard title="Brix verloop per ras">
               {brixVerloop.length === 0 ? (
-                <EmptyState />
+                <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={brixVerloop} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
@@ -375,7 +375,7 @@ function GrafiekenPage() {
 
             <ChartCard title="Gemiddelde Brix per ras">
               {brixGemPerRas.length === 0 ? (
-                <EmptyState />
+                <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={brixGemPerRas} margin={{ top: 8, right: 12, left: 0, bottom: 40 }}>
@@ -401,7 +401,7 @@ function GrafiekenPage() {
 
             <ChartCard title="Observaties per type">
               {obsPerType.length === 0 ? (
-                <EmptyState />
+                <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -430,7 +430,7 @@ function GrafiekenPage() {
           <>
             <ChartCard title="Steekproef Brix verloop">
               {stkBrixVerloop.length === 0 ? (
-                <EmptyState msg="Nog geen steekproefmetingen — voer je eerste steekproef in." />
+                <ChartEmpty msg="Nog geen steekproefmetingen — voer je eerste steekproef in." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={stkBrixVerloop} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
@@ -481,7 +481,7 @@ function GrafiekenPage() {
                 })}
               </div>
               {ziektePerWeek.length === 0 ? (
-                <EmptyState msg="Nog geen steekproefmetingen met ziektedruk." />
+                <ChartEmpty msg="Nog geen steekproefmetingen met ziektedruk." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={ziektePerWeek} margin={{ top: 8, right: 12, left: 0, bottom: 30 }}>
@@ -506,7 +506,7 @@ function GrafiekenPage() {
 
             <ChartCard title="Opbrengst voorspeld vs werkelijk (kg)">
               {opbrengstVergelijk.length === 0 ? (
-                <EmptyState msg="Nog geen opbrengstvoorspelling of oogst geregistreerd." />
+                <ChartEmpty msg="Nog geen opbrengstvoorspelling of oogst geregistreerd." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
