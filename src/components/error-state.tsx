@@ -50,7 +50,7 @@ export function ErrorState({
         )}
         {invoerHref && (
           <Link
-            to={invoerHref}
+            to={invoerHref as never}
             className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
           >
             {invoerLabel}
