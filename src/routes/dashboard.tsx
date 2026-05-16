@@ -158,7 +158,7 @@ function Dashboard() {
               Fenologie dit seizoen
             </p>
             {fenMomenten.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nog geen fenologie geregistreerd.</p>
+              <p className="text-sm text-muted-foreground">{SEIZOEN_LEEG_MSG}</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {fenMomenten.map((m) => (
