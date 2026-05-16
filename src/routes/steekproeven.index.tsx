@@ -97,6 +97,10 @@ function SteekproevenPage() {
           </div>
         )}
 
+        {puntenQ.data && puntenQ.data.length > 0 && laatsteMeting.size === 0 && (
+          <EmptyState message={SEIZOEN_LEEG_MSG} />
+        )}
+
         {rasMet.map((ras) => (
           <section key={ras} className="space-y-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
