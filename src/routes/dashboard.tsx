@@ -7,6 +7,7 @@ import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/l
 import { FENOLOGIE_MOMENTEN, OBSERVATIE_TYPES, type Rij } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
+import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { useSeizoen } from "@/lib/seizoen";
 
 export const Route = createFileRoute("/dashboard")({
