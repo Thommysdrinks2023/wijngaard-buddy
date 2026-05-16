@@ -215,9 +215,8 @@ function Dashboard() {
             Rijen met uitval dit seizoen
           </h2>
           {uitvalRijen.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Geen uitval-observaties dit seizoen.
-            </p>
+            <EmptyState message="Geen uitval-observaties dit seizoen." />
+
           ) : (
             <ul className="flex flex-wrap gap-2">
               {uitvalRijen.map((r) => (
