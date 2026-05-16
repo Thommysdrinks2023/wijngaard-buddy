@@ -144,6 +144,20 @@ function Dashboard() {
           <YearSelector />
         </div>
 
+        {(rijenQ.isError || metingenQ.isError || obsQ.isError || fenQ.isError) && (
+          <ErrorState
+            error={rijenQ.error || metingenQ.error || obsQ.error || fenQ.error}
+            onRetry={() => {
+              rijenQ.refetch();
+              metingenQ.refetch();
+              obsQ.refetch();
+              fenQ.refetch();
+            }}
+            invoerHref="/perceelkaart"
+            invoerLabel="Naar perceelkaart"
+          />
+        )}
+
         {/* Seizoen samenvatting */}
         <section className="rounded-2xl border border-border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
