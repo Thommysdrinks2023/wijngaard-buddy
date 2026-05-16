@@ -12,6 +12,7 @@ import {
 } from "@/lib/steekproef";
 import { RAS_OPTIONS } from "@/lib/seed-rijen";
 import { YearSelector } from "@/components/year-selector";
+import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { useSeizoen } from "@/lib/seizoen";
 import { AlertTriangle, Plus, Settings2 } from "lucide-react";
 
