@@ -180,9 +180,8 @@ function Dashboard() {
             Gemiddelde Brix per ras (deze week)
           </h2>
           {brixPerRas.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Nog geen Brix-metingen deze week.
-            </p>
+            <EmptyState />
+
           ) : (
             <div className="space-y-2">
               {brixPerRas.map((b) => {
