@@ -7,6 +7,7 @@ import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/l
 import { FENOLOGIE_MOMENTEN, OBSERVATIE_TYPES, type Rij } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
+import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { useSeizoen } from "@/lib/seizoen";
 
 export const Route = createFileRoute("/dashboard")({
@@ -157,7 +158,7 @@ function Dashboard() {
               Fenologie dit seizoen
             </p>
             {fenMomenten.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nog geen fenologie geregistreerd.</p>
+              <p className="text-sm text-muted-foreground">{SEIZOEN_LEEG_MSG}</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {fenMomenten.map((m) => (
@@ -179,9 +180,8 @@ function Dashboard() {
             Gemiddelde Brix per ras (deze week)
           </h2>
           {brixPerRas.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Nog geen Brix-metingen deze week.
-            </p>
+            <EmptyState />
+
           ) : (
             <div className="space-y-2">
               {brixPerRas.map((b) => {
@@ -215,9 +215,8 @@ function Dashboard() {
             Rijen met uitval dit seizoen
           </h2>
           {uitvalRijen.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Geen uitval-observaties dit seizoen.
-            </p>
+            <EmptyState message="Geen uitval-observaties dit seizoen." />
+
           ) : (
             <ul className="flex flex-wrap gap-2">
               {uitvalRijen.map((r) => (
@@ -241,9 +240,8 @@ function Dashboard() {
             Laatste 10 activiteiten
           </h2>
           {recent.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              Nog geen activiteit dit seizoen.
-            </p>
+            <EmptyState />
+
           ) : (
             <ul className="space-y-2">
               {recent.map((it) => (

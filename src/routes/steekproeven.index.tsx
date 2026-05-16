@@ -12,6 +12,7 @@ import {
 } from "@/lib/steekproef";
 import { RAS_OPTIONS } from "@/lib/seed-rijen";
 import { YearSelector } from "@/components/year-selector";
+import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { useSeizoen } from "@/lib/seizoen";
 import { AlertTriangle, Plus, Settings2 } from "lucide-react";
 
@@ -94,6 +95,10 @@ function SteekproevenPage() {
               <Plus className="h-4 w-4" /> Eerste plant aanwijzen
             </Link>
           </div>
+        )}
+
+        {puntenQ.data && puntenQ.data.length > 0 && laatsteMeting.size === 0 && (
+          <EmptyState message={SEIZOEN_LEEG_MSG} />
         )}
 
         {rasMet.map((ras) => (

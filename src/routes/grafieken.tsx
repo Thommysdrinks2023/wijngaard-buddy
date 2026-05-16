@@ -23,6 +23,7 @@ import { OBSERVATIE_TYPES, type Ras, type Rij } from "@/lib/types";
 import { RAS_OPTIONS } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
+import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { useSeizoen } from "@/lib/seizoen";
 import {
   getOogst,
@@ -78,10 +79,10 @@ const PLANT_PALET = [
   "#0d9488",
 ];
 
-function EmptyState({ msg = "Nog geen data beschikbaar — voer je eerste meting in." }: { msg?: string }) {
+function ChartEmpty({ msg = SEIZOEN_LEEG_MSG }: { msg?: string }) {
   return (
-    <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 text-center text-sm text-muted-foreground">
-      {msg}
+    <div className="flex h-64 items-center justify-center">
+      <EmptyState message={msg} className="w-full" />
     </div>
   );
 }
@@ -341,7 +342,7 @@ function GrafiekenPage() {
           <>
             <ChartCard title="Brix verloop per ras">
               {brixVerloop.length === 0 ? (
-                <EmptyState />
+                <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={brixVerloop} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
@@ -374,7 +375,7 @@ function GrafiekenPage() {
 
             <ChartCard title="Gemiddelde Brix per ras">
               {brixGemPerRas.length === 0 ? (
-                <EmptyState />
+                <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={brixGemPerRas} margin={{ top: 8, right: 12, left: 0, bottom: 40 }}>
@@ -400,7 +401,7 @@ function GrafiekenPage() {
 
             <ChartCard title="Observaties per type">
               {obsPerType.length === 0 ? (
-                <EmptyState />
+                <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -429,7 +430,7 @@ function GrafiekenPage() {
           <>
             <ChartCard title="Steekproef Brix verloop">
               {stkBrixVerloop.length === 0 ? (
-                <EmptyState msg="Nog geen steekproefmetingen — voer je eerste steekproef in." />
+                <ChartEmpty msg="Nog geen steekproefmetingen — voer je eerste steekproef in." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={stkBrixVerloop} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
@@ -480,7 +481,7 @@ function GrafiekenPage() {
                 })}
               </div>
               {ziektePerWeek.length === 0 ? (
-                <EmptyState msg="Nog geen steekproefmetingen met ziektedruk." />
+                <ChartEmpty msg="Nog geen steekproefmetingen met ziektedruk." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={ziektePerWeek} margin={{ top: 8, right: 12, left: 0, bottom: 30 }}>
@@ -505,7 +506,7 @@ function GrafiekenPage() {
 
             <ChartCard title="Opbrengst voorspeld vs werkelijk (kg)">
               {opbrengstVergelijk.length === 0 ? (
-                <EmptyState msg="Nog geen opbrengstvoorspelling of oogst geregistreerd." />
+                <ChartEmpty msg="Nog geen opbrengstvoorspelling of oogst geregistreerd." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
