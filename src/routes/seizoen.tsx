@@ -189,6 +189,7 @@ function SeizoenPage() {
         {/* Fenologie tabel */}
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Fenologie</h2>
+          {fenGrid.size === 0 && <EmptyState message={SEIZOEN_LEEG_MSG} />}
           <div className="rounded-2xl border border-border bg-card p-2">
             <div className="overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-1 text-sm">
