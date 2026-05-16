@@ -29,6 +29,7 @@ import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
 import {
   Dialog,
