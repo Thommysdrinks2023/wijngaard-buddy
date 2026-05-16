@@ -79,10 +79,10 @@ const PLANT_PALET = [
   "#0d9488",
 ];
 
-function EmptyState({ msg = "Nog geen data beschikbaar — voer je eerste meting in." }: { msg?: string }) {
+function ChartEmpty({ msg = SEIZOEN_LEEG_MSG }: { msg?: string }) {
   return (
-    <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 text-center text-sm text-muted-foreground">
-      {msg}
+    <div className="flex h-64 items-center justify-center">
+      <EmptyState message={msg} className="w-full" />
     </div>
   );
 }
