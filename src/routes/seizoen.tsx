@@ -187,6 +187,18 @@ function SeizoenPage() {
           <YearSelector extra={beschikbareJaren} />
         </div>
 
+        {(fenQ.isError || rijenQ.isError) && (
+          <ErrorState
+            error={fenQ.error || rijenQ.error}
+            onRetry={() => {
+              fenQ.refetch();
+              rijenQ.refetch();
+            }}
+            invoerHref="/perceelkaart"
+            invoerLabel="Naar perceelkaart"
+          />
+        )}
+
         {/* Fenologie tabel */}
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Fenologie</h2>
