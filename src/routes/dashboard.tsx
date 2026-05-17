@@ -34,6 +34,34 @@ function Dashboard() {
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
 
+  const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
+  const [showStale, setShowStale] = useState(false);
+  useEffect(() => {
+    const upd = () => setDrempel(getMetingDrempel());
+    window.addEventListener("wg.drempel.changed", upd);
+    return () => window.removeEventListener("wg.drempel.changed", upd);
+  }, []);
+
+  const staleRijen = useMemo(() => {
+    if (!rijenQ.data) return [];
+    const laatste = new Map<string, string>();
+    const consider = (rij: string, datum: string) => {
+      const cur = laatste.get(rij);
+      if (!cur || cur < datum) laatste.set(rij, datum);
+    };
+    metingenQ.data?.forEach((m) => consider(m.rij, m.datum));
+    obsQ.data?.forEach((o) => consider(o.rij, o.datum));
+    const now = new Date();
+    return rijenQ.data
+      .map((r) => {
+        const d = laatste.get(r.id);
+        const days = d ? differenceInDays(now, parseISO(d)) : Infinity;
+        return { rij: r, days, laatste: d };
+      })
+      .filter((x) => x.days > drempel)
+      .sort((a, b) => b.days - a.days);
+  }, [rijenQ.data, metingenQ.data, obsQ.data, drempel]);
+
   const rijenById = useMemo(() => {
     const m = new Map<string, Rij>();
     rijenQ.data?.forEach((r) => m.set(r.id, r));
