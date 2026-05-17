@@ -1,5 +1,5 @@
 import PocketBase from "pocketbase";
-import type { Fenologie, FenologieMoment, Meting, Observatie, Ras, Rij } from "./types";
+import type { Fenologie, FenologieMoment, Meting, NeerslagType, Observatie, Ras, Rij } from "./types";
 import { SEED_RIJEN } from "./seed-rijen";
 
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
@@ -174,6 +174,8 @@ export interface MetingInput {
   notitie?: string;
   fotoFile?: File | null;
   ingevoerd_door: string;
+  temperatuur?: number | null;
+  neerslag?: NeerslagType | null;
 }
 
 export async function createMeting(input: MetingInput): Promise<Meting> {
@@ -221,6 +223,8 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
     zuurgraad: input.zuurgraad ?? null,
     rijpheid_score: input.rijpheid_score as 1 | 2 | 3 | 4 | 5,
     notitie: input.notitie,
+    temperatuur: input.temperatuur ?? null,
+    neerslag: input.neerslag ?? null,
     ingevoerd_door: input.ingevoerd_door,
     created: new Date().toISOString(),
   };

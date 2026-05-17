@@ -23,9 +23,20 @@ export interface Meting {
   rijpheid_score: RijpheidScore;
   notitie?: string;
   foto?: string; // url or empty
+  temperatuur?: number | null;
+  neerslag?: NeerslagType | null;
   ingevoerd_door: string;
   created: string;
 }
+
+export type NeerslagType = "Geen" | "Lichte regen" | "Matige regen" | "Zware regen" | "Onweer";
+export const NEERSLAG_OPTIES: NeerslagType[] = [
+  "Geen",
+  "Lichte regen",
+  "Matige regen",
+  "Zware regen",
+  "Onweer",
+];
 
 export type ObservatieType = "gezond" | "groei" | "ziekte" | "schade" | "uitval" | "anders";
 
