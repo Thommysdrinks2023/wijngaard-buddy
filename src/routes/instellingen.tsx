@@ -4,6 +4,7 @@ import { isPbConfigured, pingPb } from "@/lib/data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { DREMPEL_OPTIES, getMetingDrempel, setMetingDrempel, type DrempelDagen } from "@/lib/app-instellingen";
 
 export const Route = createFileRoute("/instellingen")({
   component: Instellingen,
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/instellingen")({
 function Instellingen() {
   const [invoerder, setInvoerder] = useInvoerder();
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
+  const [drempel, setDrempel] = useState<DrempelDagen>(() => getMetingDrempel());
 
   useEffect(() => {
     if (!isPbConfigured()) {
