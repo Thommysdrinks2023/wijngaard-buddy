@@ -627,3 +627,46 @@ function WerkDialog({
     </Dialog>
   );
 }
+
+function SeizoenNotities({ jaar }: { jaar: number }) {
+  const [tekst, setTekst] = useState("");
+  const [updated, setUpdated] = useState<string | null>(null);
+
+  useEffect(() => {
+    const entry = getSeizoenNotitie(jaar);
+    setTekst(entry?.tekst ?? "");
+    setUpdated(entry?.updated ?? null);
+  }, [jaar]);
+
+  useEffect(() => {
+    const stored = getSeizoenNotitie(jaar);
+    if ((stored?.tekst ?? "") === tekst) return;
+    const t = setTimeout(() => {
+      const saved = setSeizoenNotitie(jaar, tekst);
+      setUpdated(saved.updated);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [tekst, jaar]);
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-lg font-semibold">Seizoensnotities</h2>
+      <p className="text-xs text-muted-foreground">
+        Algemene observaties over seizoen {jaar}: weer, gebeurtenissen, indrukken.
+      </p>
+      <textarea
+        value={tekst}
+        onChange={(e) => setTekst(e.target.value)}
+        rows={6}
+        placeholder="Bijv. natte zomer, late bloei, hagel in juni…"
+        className="w-full rounded-xl border border-input bg-card p-3 text-base"
+      />
+      <p className="text-xs text-muted-foreground">
+        {updated
+          ? `Laatst bijgewerkt: ${format(parseISO(updated), "d MMM yyyy HH:mm", { locale: nl })}`
+          : "Wordt automatisch opgeslagen tijdens typen."}
+      </p>
+    </section>
+  );
+}
+
