@@ -474,6 +474,55 @@ function GrafiekenPage() {
                 </ResponsiveContainer>
               )}
             </ChartCard>
+
+            <ChartCard title="Temperatuur & Brix per dag">
+              {!heeftTemp ? (
+                <ChartEmpty msg="Nog geen temperatuur ingevoerd bij metingen." />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={tempBrixVerloop} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="datum"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => format(parseISO(v), "d MMM", { locale: nl })}
+                    />
+                    <YAxis yAxisId="brix" domain={[0, 30]} tick={{ fontSize: 11 }} />
+                    <YAxis
+                      yAxisId="temp"
+                      orientation="right"
+                      domain={["auto", "auto"]}
+                      tick={{ fontSize: 11 }}
+                      unit="°"
+                    />
+                    <Tooltip
+                      labelFormatter={(v) => format(parseISO(String(v)), "d MMM yyyy", { locale: nl })}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line
+                      yAxisId="brix"
+                      type="monotone"
+                      dataKey="brix"
+                      name="Brix (gem.)"
+                      stroke="#7e22ce"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      connectNulls
+                    />
+                    <Line
+                      yAxisId="temp"
+                      type="monotone"
+                      dataKey="temperatuur"
+                      name="Temperatuur °C"
+                      stroke="#ea580c"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      connectNulls
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </ChartCard>
           </>
         )}
 
