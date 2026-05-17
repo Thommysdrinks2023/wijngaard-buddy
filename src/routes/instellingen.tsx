@@ -49,6 +49,42 @@ function Instellingen() {
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Herinneringen
+          </h2>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">
+              Waarschuw bij rijen zonder meting/observatie na…
+            </span>
+            <div className="grid grid-cols-4 gap-2">
+              {DREMPEL_OPTIES.map((d) => {
+                const active = drempel === d;
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => {
+                      setDrempel(d);
+                      setMetingDrempel(d);
+                    }}
+                    className={`h-11 rounded-xl border text-sm font-semibold transition ${
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-input bg-card text-foreground"
+                    }`}
+                  >
+                    {d} dagen
+                  </button>
+                );
+              })}
+            </div>
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Wordt op het dashboard getoond als oranje banner.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Backend
           </h2>
           <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
