@@ -198,6 +198,39 @@ function GrafiekenPage() {
     })).filter((r) => r.value > 0);
   }, [obsQ.data, jaar]);
 
+  // ============ Temperatuur vs Brix per dag ============
+  const tempBrixVerloop = useMemo(() => {
+    const perDag = new Map<string, { brixSum: number; brixN: number; tempSum: number; tempN: number }>();
+    metingenQ.data?.forEach((m) => {
+      const d = parseISO(m.datum);
+      if (d.getFullYear() !== jaar) return;
+      const key = format(d, "yyyy-MM-dd");
+      const cur = perDag.get(key) ?? { brixSum: 0, brixN: 0, tempSum: 0, tempN: 0 };
+      if (m.brix != null) {
+        cur.brixSum += m.brix;
+        cur.brixN += 1;
+      }
+      if (m.temperatuur != null) {
+        cur.tempSum += m.temperatuur;
+        cur.tempN += 1;
+      }
+      perDag.set(key, cur);
+    });
+    return Array.from(perDag.entries())
+      .filter(([, v]) => v.tempN > 0 || v.brixN > 0)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([datum, v]) => ({
+        datum,
+        brix: v.brixN ? Math.round((v.brixSum / v.brixN) * 10) / 10 : null,
+        temperatuur: v.tempN ? Math.round((v.tempSum / v.tempN) * 10) / 10 : null,
+      }));
+  }, [metingenQ.data, jaar]);
+
+  const heeftTemp = useMemo(
+    () => tempBrixVerloop.some((r) => r.temperatuur != null),
+    [tempBrixVerloop],
+  );
+
   const rasMetData = useMemo(() => {
     const set = new Set<Ras>();
     brixVerloop.forEach((row) => {
