@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { z } from "zod";
 import { createMeting, fetchRijen, isPbConfigured } from "@/lib/data";
+import { NEERSLAG_OPTIES, type NeerslagType } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { RijpheidStars } from "@/components/rijpheid-stars";
@@ -38,6 +39,8 @@ function MetingPage() {
   const [score, setScore] = useState<number>(3);
   const [notitie, setNotitie] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
+  const [temp, setTemp] = useState("");
+  const [neerslag, setNeerslag] = useState<NeerslagType | "">("");
 
   const m = useMutation({
     mutationFn: async () => {
@@ -58,6 +61,8 @@ function MetingPage() {
         notitie,
         fotoFile: foto,
         ingevoerd_door: invoerder,
+        temperatuur: temp ? Number(temp) : null,
+        neerslag: neerslag || null,
       });
     },
     onSuccess: () => {
