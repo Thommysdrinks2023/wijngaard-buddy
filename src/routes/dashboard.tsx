@@ -174,6 +174,52 @@ function Dashboard() {
           <YearSelector />
         </div>
 
+        {staleRijen.length > 0 && (
+          <section className="rounded-2xl border border-warning/40 bg-warning/10 p-4">
+            <button
+              type="button"
+              onClick={() => setShowStale((v) => !v)}
+              className="flex w-full items-start gap-3 text-left"
+            >
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-foreground" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">
+                  ⚠️ {staleRijen.length} {staleRijen.length === 1 ? "rij is" : "rijen zijn"} meer dan {drempel} dagen niet gemeten
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {showStale ? "Verberg lijst" : "Bekijk welke"}
+                </p>
+              </div>
+              <ChevronDown className={`h-5 w-5 transition ${showStale ? "rotate-180" : ""}`} />
+            </button>
+            {showStale && (
+              <ul className="mt-3 space-y-2">
+                {staleRijen.map(({ rij, days, laatste }) => (
+                  <li key={rij.id} className="flex items-center gap-2 rounded-lg bg-card p-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        Rij {rij.rijnummer} · <span className="text-muted-foreground">{rij.ras}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {Number.isFinite(days)
+                          ? `${days} dagen geleden${laatste ? ` (${format(parseISO(laatste), "d MMM", { locale: nl })})` : ""}`
+                          : "Nog nooit gemeten"}
+                      </p>
+                    </div>
+                    <Link
+                      to="/rij/$rijId/meting"
+                      params={{ rijId: rij.id }}
+                      className="h-9 shrink-0 rounded-lg bg-primary px-3 text-sm font-medium leading-9 text-primary-foreground"
+                    >
+                      Meten
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
         {(rijenQ.isError || metingenQ.isError || obsQ.isError || fenQ.isError) && (
           <ErrorState
             error={rijenQ.error || metingenQ.error || obsQ.error || fenQ.error}
