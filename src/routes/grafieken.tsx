@@ -17,6 +17,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  ComposedChart,
 } from "recharts";
 import { fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
 import { OBSERVATIE_TYPES, type Ras, type Rij } from "@/lib/types";
