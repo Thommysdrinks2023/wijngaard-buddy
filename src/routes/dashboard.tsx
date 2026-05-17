@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
@@ -10,6 +10,8 @@ import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
+import { getMetingDrempel } from "@/lib/app-instellingen";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -31,6 +33,34 @@ function Dashboard() {
   const metingenQ = useQuery({ queryKey: ["metingen"], queryFn: () => fetchMetingen() });
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
+
+  const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
+  const [showStale, setShowStale] = useState(false);
+  useEffect(() => {
+    const upd = () => setDrempel(getMetingDrempel());
+    window.addEventListener("wg.drempel.changed", upd);
+    return () => window.removeEventListener("wg.drempel.changed", upd);
+  }, []);
+
+  const staleRijen = useMemo(() => {
+    if (!rijenQ.data) return [];
+    const laatste = new Map<string, string>();
+    const consider = (rij: string, datum: string) => {
+      const cur = laatste.get(rij);
+      if (!cur || cur < datum) laatste.set(rij, datum);
+    };
+    metingenQ.data?.forEach((m) => consider(m.rij, m.datum));
+    obsQ.data?.forEach((o) => consider(o.rij, o.datum));
+    const now = new Date();
+    return rijenQ.data
+      .map((r) => {
+        const d = laatste.get(r.id);
+        const days = d ? differenceInDays(now, parseISO(d)) : Infinity;
+        return { rij: r, days, laatste: d };
+      })
+      .filter((x) => x.days > drempel)
+      .sort((a, b) => b.days - a.days);
+  }, [rijenQ.data, metingenQ.data, obsQ.data, drempel]);
 
   const rijenById = useMemo(() => {
     const m = new Map<string, Rij>();
@@ -143,6 +173,52 @@ function Dashboard() {
           </div>
           <YearSelector />
         </div>
+
+        {staleRijen.length > 0 && (
+          <section className="rounded-2xl border border-warning/40 bg-warning/10 p-4">
+            <button
+              type="button"
+              onClick={() => setShowStale((v) => !v)}
+              className="flex w-full items-start gap-3 text-left"
+            >
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-foreground" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">
+                  ⚠️ {staleRijen.length} {staleRijen.length === 1 ? "rij is" : "rijen zijn"} meer dan {drempel} dagen niet gemeten
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {showStale ? "Verberg lijst" : "Bekijk welke"}
+                </p>
+              </div>
+              <ChevronDown className={`h-5 w-5 transition ${showStale ? "rotate-180" : ""}`} />
+            </button>
+            {showStale && (
+              <ul className="mt-3 space-y-2">
+                {staleRijen.map(({ rij, days, laatste }) => (
+                  <li key={rij.id} className="flex items-center gap-2 rounded-lg bg-card p-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        Rij {rij.rijnummer} · <span className="text-muted-foreground">{rij.ras}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {Number.isFinite(days)
+                          ? `${days} dagen geleden${laatste ? ` (${format(parseISO(laatste), "d MMM", { locale: nl })})` : ""}`
+                          : "Nog nooit gemeten"}
+                      </p>
+                    </div>
+                    <Link
+                      to="/rij/$rijId/meting"
+                      params={{ rijId: rij.id }}
+                      className="h-9 shrink-0 rounded-lg bg-primary px-3 text-sm font-medium leading-9 text-primary-foreground"
+                    >
+                      Meten
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         {(rijenQ.isError || metingenQ.isError || obsQ.isError || fenQ.isError) && (
           <ErrorState

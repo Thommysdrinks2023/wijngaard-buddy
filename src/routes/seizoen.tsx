@@ -31,6 +31,7 @@ import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
+import { getSeizoenNotitie, setSeizoenNotitie } from "@/lib/app-instellingen";
 import {
   Dialog,
   DialogContent,
@@ -341,6 +342,8 @@ function SeizoenPage() {
           </div>
         </section>
 
+        <SeizoenNotities jaar={jaar} />
+
         <div className="flex flex-wrap gap-3 rounded-xl border border-border bg-card p-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="h-4 w-6 rounded bg-success" />
@@ -624,3 +627,46 @@ function WerkDialog({
     </Dialog>
   );
 }
+
+function SeizoenNotities({ jaar }: { jaar: number }) {
+  const [tekst, setTekst] = useState("");
+  const [updated, setUpdated] = useState<string | null>(null);
+
+  useEffect(() => {
+    const entry = getSeizoenNotitie(jaar);
+    setTekst(entry?.tekst ?? "");
+    setUpdated(entry?.updated ?? null);
+  }, [jaar]);
+
+  useEffect(() => {
+    const stored = getSeizoenNotitie(jaar);
+    if ((stored?.tekst ?? "") === tekst) return;
+    const t = setTimeout(() => {
+      const saved = setSeizoenNotitie(jaar, tekst);
+      setUpdated(saved.updated);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [tekst, jaar]);
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-lg font-semibold">Seizoensnotities</h2>
+      <p className="text-xs text-muted-foreground">
+        Algemene observaties over seizoen {jaar}: weer, gebeurtenissen, indrukken.
+      </p>
+      <textarea
+        value={tekst}
+        onChange={(e) => setTekst(e.target.value)}
+        rows={6}
+        placeholder="Bijv. natte zomer, late bloei, hagel in juni…"
+        className="w-full rounded-xl border border-input bg-card p-3 text-base"
+      />
+      <p className="text-xs text-muted-foreground">
+        {updated
+          ? `Laatst bijgewerkt: ${format(parseISO(updated), "d MMM yyyy HH:mm", { locale: nl })}`
+          : "Wordt automatisch opgeslagen tijdens typen."}
+      </p>
+    </section>
+  );
+}
+
