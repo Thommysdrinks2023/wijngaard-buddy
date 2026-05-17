@@ -153,6 +153,39 @@ function MetingPage() {
           />
         </Field>
 
+        <section className="rounded-xl border border-border bg-card p-3 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Weer (optioneel)
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Temperatuur (°C)">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={temp}
+                onChange={(e) => setTemp(e.target.value)}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+                placeholder="—"
+              />
+            </Field>
+            <Field label="Neerslag">
+              <select
+                value={neerslag}
+                onChange={(e) => setNeerslag(e.target.value as NeerslagType | "")}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              >
+                <option value="">—</option>
+                {NEERSLAG_OPTIES.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </section>
+
         {isPbConfigured() ? (
           <Field label="Foto">
             <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-input bg-card text-sm font-medium">
