@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
@@ -10,6 +10,8 @@ import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
+import { getMetingDrempel } from "@/lib/app-instellingen";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
