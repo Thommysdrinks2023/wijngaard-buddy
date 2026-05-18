@@ -48,7 +48,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         content:
           "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
       },
-      { name: "theme-color", content: "#2f5d3a" },
+      { name: "theme-color", content: "#27232a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "Wijngaard" },
