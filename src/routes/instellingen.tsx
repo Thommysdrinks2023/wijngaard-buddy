@@ -3,8 +3,86 @@ import { useEffect, useState } from "react";
 import { isPbConfigured, pingPb } from "@/lib/data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Download } from "lucide-react";
+import { toast } from "sonner";
 import { DREMPEL_OPTIES, getMetingDrempel, setMetingDrempel, type DrempelDagen } from "@/lib/app-instellingen";
+
+function vandaagStr() {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function dumpLocalStorage(): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+    const raw = localStorage.getItem(k) ?? "";
+    try {
+      out[k] = JSON.parse(raw);
+    } catch {
+      out[k] = raw;
+    }
+  }
+  return out;
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function csvEscape(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  const s = typeof v === "string" ? v : JSON.stringify(v);
+  if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function toCsv(data: Record<string, unknown>): string {
+  const lines: string[] = [];
+  for (const [collection, value] of Object.entries(data)) {
+    lines.push(`# ${collection}`);
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
+      const cols = Array.from(
+        value.reduce<Set<string>>((s, row) => {
+          Object.keys(row as object).forEach((k) => s.add(k));
+          return s;
+        }, new Set()),
+      );
+      lines.push(cols.join(","));
+      for (const row of value as Record<string, unknown>[]) {
+        lines.push(cols.map((c) => csvEscape(row[c])).join(","));
+      }
+    } else {
+      lines.push("key,value");
+      lines.push(`${csvEscape(collection)},${csvEscape(value)}`);
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+function downloadJsonBackup() {
+  const data = dumpLocalStorage();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  triggerDownload(blob, `tappenmars-backup-${vandaagStr()}.json`);
+  toast.success("Backup gedownload", { description: "JSON bestand is opgeslagen." });
+}
+
+function downloadCsvBackup() {
+  const data = dumpLocalStorage();
+  const blob = new Blob([toCsv(data)], { type: "text/csv;charset=utf-8" });
+  triggerDownload(blob, `tappenmars-backup-${vandaagStr()}.csv`);
+  toast.success("CSV gedownload", { description: "Te openen in Excel." });
+}
 
 export const Route = createFileRoute("/instellingen")({
   component: Instellingen,
@@ -116,6 +194,33 @@ function Instellingen() {
               te verbinden met je PocketBase backend.
             </p>
           )}
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Backup
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={downloadJsonBackup}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#cac176] bg-[#27232a] px-4 text-sm font-semibold text-[#cac176] transition hover:bg-[#0a0b09]"
+            >
+              <Download className="h-4 w-4" />
+              Download backup
+            </button>
+            <button
+              type="button"
+              onClick={downloadCsvBackup}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#cac176] bg-[#27232a] px-4 text-sm font-semibold text-[#cac176] transition hover:bg-[#0a0b09]"
+            >
+              <Download className="h-4 w-4" />
+              Download CSV
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            JSON voor volledige backup, CSV voor gebruik in Excel.
+          </p>
         </section>
 
         <section className="space-y-2">
