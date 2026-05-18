@@ -55,10 +55,12 @@ function Dashboard() {
     return rijenQ.data
       .map((r) => {
         const d = laatste.get(r.id);
-        const days = d ? differenceInDays(now, parseISO(d)) : Infinity;
+        const days = d ? differenceInDays(now, parseISO(d)) : null;
         return { rij: r, days, laatste: d };
       })
-      .filter((x) => x.days > drempel)
+      .filter((x): x is { rij: Rij; days: number; laatste: string } =>
+        x.days !== null && x.days > drempel,
+      )
       .sort((a, b) => b.days - a.days);
   }, [rijenQ.data, metingenQ.data, obsQ.data, drempel]);
 
