@@ -50,58 +50,67 @@
 }
 
 :root {
-  --radius: 0.875rem;
+  --radius: 0.75rem;
 
-  /* Vineyard palette: deep green + warm light grey */
-  --background: oklch(0.985 0.005 120);
-  --foreground: oklch(0.22 0.04 150);
+  /* De Tappenmars — warm boutique wine palette */
+  --brand-cream: #fbeecc;
+  --brand-gold: #cac176;
+  --brand-olive: #a1a35b;
+  --brand-light-gold: #e2d294;
+  --brand-green-light: #d4e6d3;
+  --brand-green-med: #b6cfb3;
+  --brand-dark: #27232a;
+  --brand-black: #0a0b09;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.04 150);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.04 150);
+  --background: #fbeecc;
+  --foreground: #27232a;
 
-  /* Donkergroen */
-  --primary: oklch(0.36 0.07 152);
-  --primary-foreground: oklch(0.98 0.01 120);
-  --primary-soft: oklch(0.92 0.04 150);
+  --card: #fbeecc;
+  --card-foreground: #27232a;
+  --popover: #fbeecc;
+  --popover-foreground: #27232a;
 
-  --secondary: oklch(0.95 0.01 130);
-  --secondary-foreground: oklch(0.28 0.05 150);
+  /* Primair: donker met goud tekst */
+  --primary: #27232a;
+  --primary-foreground: #cac176;
+  --primary-soft: #e2d294;
 
-  --muted: oklch(0.945 0.008 120);
-  --muted-foreground: oklch(0.48 0.02 150);
+  --secondary: #e2d294;
+  --secondary-foreground: #27232a;
 
-  --accent: oklch(0.88 0.08 95);
-  --accent-foreground: oklch(0.28 0.05 150);
+  --muted: #e2d294;
+  --muted-foreground: #5a5240;
 
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.98 0.01 120);
+  --accent: #cac176;
+  --accent-foreground: #27232a;
 
-  --success: oklch(0.62 0.15 150);
-  --success-foreground: oklch(0.98 0.01 120);
+  --destructive: #a83b2a;
+  --destructive-foreground: #fbeecc;
 
-  --warning: oklch(0.78 0.15 75);
-  --warning-foreground: oklch(0.25 0.05 60);
+  --success: #b6cfb3;
+  --success-foreground: #27232a;
 
-  --border: oklch(0.9 0.01 130);
-  --input: oklch(0.92 0.01 130);
-  --ring: oklch(0.36 0.07 152);
+  --warning: #cac176;
+  --warning-foreground: #27232a;
 
-  --chart-1: oklch(0.36 0.07 152);
-  --chart-2: oklch(0.62 0.15 150);
-  --chart-3: oklch(0.78 0.15 75);
-  --chart-4: oklch(0.55 0.2 27);
-  --chart-5: oklch(0.5 0.05 280);
+  --border: #cac176;
+  --input: #e2d294;
+  --ring: #cac176;
 
-  --sidebar: oklch(0.36 0.07 152);
-  --sidebar-foreground: oklch(0.98 0.01 120);
-  --sidebar-primary: oklch(0.78 0.15 75);
-  --sidebar-primary-foreground: oklch(0.22 0.04 150);
-  --sidebar-accent: oklch(0.45 0.07 152);
-  --sidebar-accent-foreground: oklch(0.98 0.01 120);
-  --sidebar-border: oklch(0.45 0.07 152);
-  --sidebar-ring: oklch(0.78 0.15 75);
+  --chart-1: #cac176;
+  --chart-2: #a1a35b;
+  --chart-3: #b6cfb3;
+  --chart-4: #a83b2a;
+  --chart-5: #27232a;
+
+  --sidebar: #27232a;
+  --sidebar-foreground: #fbeecc;
+  --sidebar-primary: #cac176;
+  --sidebar-primary-foreground: #27232a;
+  --sidebar-accent: #3a3438;
+  --sidebar-accent-foreground: #fbeecc;
+  --sidebar-border: #cac176;
+  --sidebar-ring: #cac176;
 }
 
 .dark {
@@ -141,10 +150,24 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+  }
+  h1, h2, h3, h4 {
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    letter-spacing: -0.01em;
   }
   /* Touch-friendly controls */
   button, [role="button"] {
     touch-action: manipulation;
   }
 }
+
+@layer utilities {
+  .card-tappenmars {
+    background-color: #fbeecc;
+    border: 1px solid rgba(202, 193, 118, 0.35);
+    box-shadow: 0 2px 8px -2px rgba(39, 35, 42, 0.12);
+    border-radius: 0.75rem;
+  }
+}
+
