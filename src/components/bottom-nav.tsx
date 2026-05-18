@@ -14,7 +14,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
+      className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#cac176]/40 bg-[#27232a]"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto flex max-w-screen-md">
@@ -26,7 +26,9 @@ export function BottomNav() {
               <Link
                 to={it.to}
                 className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground"
+                  active
+                    ? "text-[#cac176]"
+                    : "text-[#fbeecc]/60 hover:text-[#e2d294]"
                 }`}
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 2} />
