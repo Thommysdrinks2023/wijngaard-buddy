@@ -141,19 +141,30 @@
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
   html, body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+  }
+  h1, h2, h3, h4 {
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    letter-spacing: -0.01em;
   }
   /* Touch-friendly controls */
   button, [role="button"] {
     touch-action: manipulation;
   }
 }
+
+@layer utilities {
+  .card-tappenmars {
+    background-color: #fbeecc;
+    border: 1px solid rgba(202, 193, 118, 0.35);
+    box-shadow: 0 2px 8px -2px rgba(39, 35, 42, 0.12);
+    border-radius: 0.75rem;
+  }
+}
+
