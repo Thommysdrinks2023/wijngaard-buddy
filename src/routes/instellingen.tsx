@@ -5,7 +5,7 @@ import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { CheckCircle2, XCircle, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
-import { DREMPEL_OPTIES, getMetingDrempel, setMetingDrempel, type DrempelDagen } from "@/lib/app-instellingen";
+import { DREMPEL_OPTIES, getMetingDrempel, setMetingDrempel } from "@/lib/app-instellingen";
 
 function vandaagStr() {
   const d = new Date();
