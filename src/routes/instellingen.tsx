@@ -198,6 +198,33 @@ function Instellingen() {
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Backup
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={downloadJsonBackup}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#cac176] bg-[#27232a] px-4 text-sm font-semibold text-[#cac176] transition hover:bg-[#0a0b09]"
+            >
+              <Download className="h-4 w-4" />
+              Download backup
+            </button>
+            <button
+              type="button"
+              onClick={downloadCsvBackup}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#cac176] bg-[#27232a] px-4 text-sm font-semibold text-[#cac176] transition hover:bg-[#0a0b09]"
+            >
+              <Download className="h-4 w-4" />
+              Download CSV
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            JSON voor volledige backup, CSV voor gebruik in Excel.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Over
           </h2>
           <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
