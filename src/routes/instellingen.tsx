@@ -156,8 +156,26 @@ function Instellingen() {
               })}
             </div>
           </label>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Of kies eigen aantal dagen</span>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={drempel}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (!Number.isFinite(n)) return;
+                const v = Math.max(1, Math.min(365, Math.round(n)));
+                setDrempel(v);
+                setMetingDrempel(v);
+              }}
+              className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+            />
+          </label>
           <p className="text-xs text-muted-foreground">
-            Wordt op het dashboard getoond als oranje banner.
+            Wordt op het dashboard getoond als oranje banner. Rijen zonder enige meting blijven
+            verborgen tot de drempel bereikt is.
           </p>
         </section>
 
