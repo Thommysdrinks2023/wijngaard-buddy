@@ -92,7 +92,7 @@ export const Route = createFileRoute("/instellingen")({
 function Instellingen() {
   const [invoerder, setInvoerder] = useInvoerder();
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
-  const [drempel, setDrempel] = useState<DrempelDagen>(() => getMetingDrempel());
+  const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
 
   useEffect(() => {
     if (!isPbConfigured()) {
