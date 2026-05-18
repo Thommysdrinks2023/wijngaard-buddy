@@ -6,16 +6,17 @@ const LS_NOTITIES = "wg.seizoen_notities";
 export const DREMPEL_OPTIES = [7, 14, 21, 30] as const;
 export type DrempelDagen = (typeof DREMPEL_OPTIES)[number];
 
-export function getMetingDrempel(): DrempelDagen {
+export function getMetingDrempel(): number {
   if (typeof window === "undefined") return 14;
   const raw = localStorage.getItem(LS_DREMPEL);
   const n = Number(raw);
-  if (DREMPEL_OPTIES.includes(n as DrempelDagen)) return n as DrempelDagen;
+  if (Number.isFinite(n) && n >= 1 && n <= 365) return Math.round(n);
   return 14;
 }
-export function setMetingDrempel(d: DrempelDagen) {
+export function setMetingDrempel(d: number) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(LS_DREMPEL, String(d));
+  const v = Math.max(1, Math.min(365, Math.round(d)));
+  localStorage.setItem(LS_DREMPEL, String(v));
   window.dispatchEvent(new CustomEvent("wg.drempel.changed"));
 }
 
