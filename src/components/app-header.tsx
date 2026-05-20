@@ -12,7 +12,7 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
   const router = useRouter();
   return (
     <header
-      className="sticky top-0 z-30 border-b border-[#cac176]/40 bg-[#27232a] text-[#fbeecc]"
+      className="sticky top-0 z-30 border-b border-[#cac176]/40 bg-[#27232a] text-white"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="mx-auto flex h-16 max-w-screen-md items-center gap-2 px-3">
@@ -34,7 +34,7 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
               alt="De Tappenmars"
               className="h-9 w-9 object-contain"
             />
-            <span className="text-base font-semibold tracking-tight text-[#fbeecc]">
+            <span className="text-base font-semibold tracking-tight text-white">
               De Tappenmars
             </span>
           </Link>
@@ -42,11 +42,11 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
         <div className="flex-1 truncate">
           {back && (
             <>
-              <h1 className="truncate text-base font-semibold leading-tight text-[#fbeecc]">
+              <h1 className="truncate text-base font-semibold leading-tight text-white">
                 {title}
               </h1>
               {subtitle && (
-                <p className="truncate text-xs text-[#e2d294]">{subtitle}</p>
+                <p className="truncate text-xs text-[#cac176]">{subtitle}</p>
               )}
             </>
           )}
