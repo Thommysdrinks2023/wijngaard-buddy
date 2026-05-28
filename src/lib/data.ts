@@ -257,7 +257,10 @@ export async function createObservatie(input: ObservatieInput): Promise<Observat
       fd.append("notitie", input.notitie);
       if (input.fotoFile) fd.append("foto", input.fotoFile);
       fd.append("ingevoerd_door", input.ingevoerd_door);
+<<<<<<< HEAD
       fd.append("seizoen", String(new Date(input.datum).getFullYear()));
+=======
+>>>>>>> 8a5308737d5b2d207dcb1d37b45d09c8189a25b0
       const r = await pb.collection("observaties").create(fd);
       return {
         id: r.id,
@@ -338,7 +341,10 @@ export async function createFenologie(input: FenologieInput): Promise<Fenologie>
         ras: input.ras,
         moment: input.moment,
         datum: input.datum,
+<<<<<<< HEAD
         seizoen: new Date(input.datum).getFullYear(),
+=======
+>>>>>>> 8a5308737d5b2d207dcb1d37b45d09c8189a25b0
         notitie: input.notitie ?? "",
         ingevoerd_door: input.ingevoerd_door,
       });
