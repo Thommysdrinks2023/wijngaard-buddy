@@ -1,0 +1,173 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* De Tappenmars — warm boutique wine palette */
+  --brand-cream: #fbeecc;
+  --brand-gold: #cac176;
+  --brand-olive: #a1a35b;
+  --brand-light-gold: #e2d294;
+  --brand-green-light: #d4e6d3;
+  --brand-green-med: #b6cfb3;
+  --brand-dark: #27232a;
+  --brand-black: #0a0b09;
+
+  --background: #b6cfb3;
+  --foreground: #0a0b09;
+
+  --card: #d4e6d3;
+  --card-foreground: #0a0b09;
+  --popover: #d4e6d3;
+  --popover-foreground: #0a0b09;
+
+  /* Primair: donker met witte tekst */
+  --primary: #27232a;
+  --primary-foreground: #ffffff;
+  --primary-soft: #d6e6d5;
+
+  --secondary: #cac176;
+  --secondary-foreground: #27232a;
+
+  --muted: #d6e6d5;
+  --muted-foreground: #5a5240;
+
+  --accent: #cac176;
+  --accent-foreground: #27232a;
+
+  --destructive: #a83b2a;
+  --destructive-foreground: #ffffff;
+
+  --success: #a1a35b;
+  --success-foreground: #ffffff;
+
+  --warning: #cac176;
+  --warning-foreground: #27232a;
+
+  --border: #cac176;
+  --input: #cac176;
+  --ring: #a1a35b;
+
+  --chart-1: #27232a;
+  --chart-2: #a1a35b;
+  --chart-3: #cac176;
+  --chart-4: #a83b2a;
+  --chart-5: #5a5240;
+
+  --sidebar: #27232a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #cac176;
+  --sidebar-primary-foreground: #27232a;
+  --sidebar-accent: #3a3438;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #cac176;
+  --sidebar-ring: #cac176;
+}
+
+.dark {
+  --background: oklch(0.18 0.03 150);
+  --foreground: oklch(0.96 0.01 120);
+  --card: oklch(0.22 0.04 150);
+  --card-foreground: oklch(0.96 0.01 120);
+  --popover: oklch(0.22 0.04 150);
+  --popover-foreground: oklch(0.96 0.01 120);
+  --primary: oklch(0.7 0.12 150);
+  --primary-foreground: oklch(0.18 0.03 150);
+  --primary-soft: oklch(0.3 0.05 150);
+  --secondary: oklch(0.28 0.04 150);
+  --secondary-foreground: oklch(0.96 0.01 120);
+  --muted: oklch(0.26 0.03 150);
+  --muted-foreground: oklch(0.7 0.02 130);
+  --accent: oklch(0.78 0.15 75);
+  --accent-foreground: oklch(0.22 0.04 150);
+  --destructive: oklch(0.65 0.2 27);
+  --destructive-foreground: oklch(0.98 0.01 120);
+  --success: oklch(0.7 0.15 150);
+  --success-foreground: oklch(0.18 0.03 150);
+  --warning: oklch(0.78 0.15 75);
+  --warning-foreground: oklch(0.22 0.04 150);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.7 0.12 150);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+  }
+  h1, h2, h3, h4 {
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    letter-spacing: -0.01em;
+  }
+  /* Touch-friendly controls */
+  button, [role="button"] {
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  .card-tappenmars {
+    background-color: #d4e6d3;
+    border: 1px solid rgba(202, 193, 118, 0.5);
+    box-shadow: 0 2px 8px -2px rgba(10, 11, 9, 0.12);
+    border-radius: 0.75rem;
+  }
+}
+
