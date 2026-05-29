@@ -12,6 +12,7 @@ import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
 import { getMetingDrempel } from "@/lib/app-instellingen";
 import { AlertTriangle, ChevronDown } from "lucide-react";
+import { WeerKaart } from "@/components/weer-kaart";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -175,6 +176,8 @@ function Dashboard() {
           </div>
           <YearSelector />
         </div>
+
+        <WeerKaart />
 
         {staleRijen.length > 0 && (
           <section className="rounded-2xl border border-warning/40 bg-warning/10 p-4">
