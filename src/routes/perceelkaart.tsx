@@ -5,6 +5,7 @@ import { differenceInDays, parseISO } from "date-fns";
 import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
 import { RAS_OPTIONS, type Ras } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
+import { WeerKaart } from "@/components/weer-kaart";
 import { AlertTriangle, HelpCircle } from "lucide-react";
 
 export const Route = createFileRoute("/perceelkaart")({
@@ -162,6 +163,8 @@ function Perceelkaart() {
             Bovenaanzicht · {rijen.length} rijen · hoogte = aantal planten
           </p>
         </div>
+
+        <WeerKaart compact />
 
         <div className="overflow-x-auto rounded-2xl border border-border bg-card p-3">
           <svg
