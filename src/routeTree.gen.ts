@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SeizoenRouteImport } from './routes/seizoen'
 import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as GrafiekenRouteImport } from './routes/grafieken'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -34,6 +35,11 @@ const SeizoenRoute = SeizoenRouteImport.update({
 const PerceelkaartRoute = PerceelkaartRouteImport.update({
   id: '/perceelkaart',
   path: '/perceelkaart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InstellingenRoute = InstellingenRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
+  '/login': typeof LoginRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
+  '/login': typeof LoginRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
+  '/login': typeof LoginRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grafieken'
     | '/instellingen'
+    | '/login'
     | '/perceelkaart'
     | '/seizoen'
     | '/rij/$rijId'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grafieken'
     | '/instellingen'
+    | '/login'
     | '/perceelkaart'
     | '/seizoen'
     | '/steekproeven/beheer'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grafieken'
     | '/instellingen'
+    | '/login'
     | '/perceelkaart'
     | '/seizoen'
     | '/rij/$rijId'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   GrafiekenRoute: typeof GrafiekenRoute
   InstellingenRoute: typeof InstellingenRoute
+  LoginRoute: typeof LoginRoute
   PerceelkaartRoute: typeof PerceelkaartRoute
   SeizoenRoute: typeof SeizoenRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
@@ -246,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/perceelkaart'
       fullPath: '/perceelkaart'
       preLoaderRoute: typeof PerceelkaartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/instellingen': {
@@ -374,6 +394,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   GrafiekenRoute: GrafiekenRoute,
   InstellingenRoute: InstellingenRoute,
+  LoginRoute: LoginRoute,
   PerceelkaartRoute: PerceelkaartRoute,
   SeizoenRoute: SeizoenRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
@@ -385,3 +406,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

@@ -8,6 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { BottomNav } from "@/components/bottom-nav";
+import { SyncStatus } from "@/components/sync-status";
 import { Toaster } from "@/components/ui/sonner";
 import { checkNewYearGreeting, migrateSeizoen } from "@/lib/seizoen";
 
@@ -93,6 +94,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background pb-20">
         <Outlet />
+        <SyncStatus />
         <BottomNav />
       </div>
       <Toaster />

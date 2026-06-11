@@ -1,6 +1,7 @@
 import PocketBase from "pocketbase";
 import type { Fenologie, FenologieMoment, Meting, NeerslagType, Observatie, Ras, Rij } from "./types";
 import { SEED_RIJEN } from "./seed-rijen";
+import { addToSyncQueue, getSyncQueue, removeFromSyncQueue, syncQueueCount } from "./sync";
 
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
 
@@ -30,6 +31,10 @@ export async function pingPb(): Promise<boolean> {
   try {
     await pb.health.check();
     pbStatus = "online";
+    // server is weer bereikbaar: offline aangemaakte records op de achtergrond syncen
+    if (!flushBezig && syncQueueCount() > 0) {
+      void flushSyncQueue();
+    }
     return true;
   } catch {
     pbStatus = "offline";
@@ -89,12 +94,17 @@ export async function fetchRijen(): Promise<Rij[]> {
   if (pb && (await pingPb())) {
     try {
       const records = await pb.collection("rijen").getFullList({ sort: "rijnummer" });
-      return records.map((r) => ({
+      const mapped: Rij[] = records.map((r) => ({
         id: r.id,
         rijnummer: r.rijnummer,
         ras: r.ras,
         aantal_planten: r.aantal_planten,
       }));
+      if (mapped.length > 0) {
+        // cache voor offline gebruik (vervangt lokale seed door echte server-ids)
+        writeLs(LS_RIJEN, mapped);
+        return mapped;
+      }
     } catch {
       // fall through to local
     }
@@ -111,20 +121,34 @@ export async function fetchMetingen(rijId?: string): Promise<Meting[]> {
         sort: "-datum,-created",
         filter,
       });
-      return records.map((r) => ({
+      const mapped: Meting[] = records.map((r) => ({
         id: r.id,
         rij: r.rij,
         plant: r.plant ?? null,
         datum: r.datum,
+        seizoen: r.seizoen || undefined,
         brix: r.brix ?? null,
         ph: r.ph ?? null,
         zuurgraad: r.zuurgraad ?? null,
         rijpheid_score: r.rijpheid_score,
         notitie: r.notitie ?? "",
         foto: r.foto ? pb.files.getURL(r, r.foto) : undefined,
+        temperatuur: r.temperatuur ?? null,
+        neerslag: r.neerslag || null,
         ingevoerd_door: r.ingevoerd_door ?? "",
         created: r.created,
       }));
+      // nog niet gesyncte lokale records meenemen in de weergave
+      const pendingIds = new Set(
+        getSyncQueue().filter((q) => q.soort === "meting").map((q) => q.localId),
+      );
+      const lokaalPending = readLs<Meting[]>(LS_METINGEN, []).filter((m) => pendingIds.has(m.id));
+      const merged = [...mapped, ...lokaalPending.filter((m) => !rijId || m.rij === rijId)];
+      if (!rijId) {
+        // volledige lijst cachen voor offline gebruik
+        writeLs(LS_METINGEN, [...mapped, ...lokaalPending]);
+      }
+      return merged.sort((a, b) => (a.datum < b.datum ? 1 : -1));
     } catch {
       // fall through
     }
@@ -143,17 +167,27 @@ export async function fetchObservaties(rijId?: string): Promise<Observatie[]> {
         sort: "-datum,-created",
         filter,
       });
-      return records.map((r) => ({
+      const mapped: Observatie[] = records.map((r) => ({
         id: r.id,
         rij: r.rij,
         plant: r.plant ?? null,
         datum: r.datum,
+        seizoen: r.seizoen || undefined,
         type: r.type,
         notitie: r.notitie ?? "",
         foto: r.foto ? pb.files.getURL(r, r.foto) : undefined,
         ingevoerd_door: r.ingevoerd_door ?? "",
         created: r.created,
       }));
+      const pendingIds = new Set(
+        getSyncQueue().filter((q) => q.soort === "observatie").map((q) => q.localId),
+      );
+      const lokaalPending = readLs<Observatie[]>(LS_OBS, []).filter((o) => pendingIds.has(o.id));
+      const merged = [...mapped, ...lokaalPending.filter((o) => !rijId || o.rij === rijId)];
+      if (!rijId) {
+        writeLs(LS_OBS, [...mapped, ...lokaalPending]);
+      }
+      return merged.sort((a, b) => (a.datum < b.datum ? 1 : -1));
     } catch {
       // fall through
     }
@@ -195,11 +229,12 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
       fd.append("ingevoerd_door", input.ingevoerd_door);
       fd.append("seizoen", String(new Date(input.datum).getFullYear()));
       const r = await pb.collection("metingen").create(fd);
-      return {
+      const aangemaakt: Meting = {
         id: r.id,
         rij: r.rij,
         plant: r.plant ?? null,
         datum: r.datum,
+        seizoen: r.seizoen || undefined,
         brix: r.brix ?? null,
         ph: r.ph ?? null,
         zuurgraad: r.zuurgraad ?? null,
@@ -209,6 +244,11 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
         ingevoerd_door: r.ingevoerd_door,
         created: r.created,
       };
+      // lokale cache bijwerken zodat het record ook offline zichtbaar is
+      const cache = readLs<Meting[]>(LS_METINGEN, []);
+      cache.push(aangemaakt);
+      writeLs(LS_METINGEN, cache);
+      return aangemaakt;
     } catch {
       // fall through to local
     }
@@ -232,6 +272,22 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
   const all = readLs<Meting[]>(LS_METINGEN, []);
   all.push(meting);
   writeLs(LS_METINGEN, all);
+  // in de wachtrij zetten voor synchronisatie zodra de server bereikbaar is
+  // (foto's kunnen niet offline bewaard worden en gaan dus niet mee)
+  addToSyncQueue("meting", meting.id, {
+    rij: input.rij,
+    plant: input.plant ?? null,
+    datum: input.datum,
+    seizoen: meting.seizoen,
+    brix: input.brix ?? null,
+    ph: input.ph ?? null,
+    zuurgraad: input.zuurgraad ?? null,
+    rijpheid_score: input.rijpheid_score,
+    notitie: input.notitie ?? "",
+    temperatuur: input.temperatuur ?? null,
+    neerslag: input.neerslag ?? null,
+    ingevoerd_door: input.ingevoerd_door,
+  });
   return meting;
 }
 
@@ -257,22 +313,24 @@ export async function createObservatie(input: ObservatieInput): Promise<Observat
       fd.append("notitie", input.notitie);
       if (input.fotoFile) fd.append("foto", input.fotoFile);
       fd.append("ingevoerd_door", input.ingevoerd_door);
-<<<<<<< HEAD
       fd.append("seizoen", String(new Date(input.datum).getFullYear()));
-=======
->>>>>>> 8a5308737d5b2d207dcb1d37b45d09c8189a25b0
       const r = await pb.collection("observaties").create(fd);
-      return {
+      const aangemaakt: Observatie = {
         id: r.id,
         rij: r.rij,
         plant: r.plant ?? null,
         datum: r.datum,
+        seizoen: r.seizoen || undefined,
         type: r.type,
         notitie: r.notitie,
         foto: r.foto ? pb.files.getURL(r, r.foto) : undefined,
         ingevoerd_door: r.ingevoerd_door,
         created: r.created,
       };
+      const cache = readLs<Observatie[]>(LS_OBS, []);
+      cache.push(aangemaakt);
+      writeLs(LS_OBS, cache);
+      return aangemaakt;
     } catch {
       // fall through
     }
@@ -291,6 +349,15 @@ export async function createObservatie(input: ObservatieInput): Promise<Observat
   const all = readLs<Observatie[]>(LS_OBS, []);
   all.push(obs);
   writeLs(LS_OBS, all);
+  addToSyncQueue("observatie", obs.id, {
+    rij: input.rij,
+    plant: input.plant ?? null,
+    datum: input.datum,
+    seizoen: obs.seizoen,
+    type: input.type,
+    notitie: input.notitie,
+    ingevoerd_door: input.ingevoerd_door,
+  });
   return obs;
 }
 
@@ -304,16 +371,28 @@ export async function fetchFenologie(rijId?: string): Promise<Fenologie[]> {
         sort: "-datum,-created",
         filter,
       });
-      return records.map((r) => ({
+      const mapped: Fenologie[] = records.map((r) => ({
         id: r.id,
         rij: r.rij,
         ras: r.ras,
         moment: r.moment,
         datum: r.datum,
+        seizoen: r.seizoen || undefined,
         notitie: r.notitie ?? "",
         ingevoerd_door: r.ingevoerd_door ?? "",
         created: r.created,
       }));
+      const pendingIds = new Set(
+        getSyncQueue().filter((q) => q.soort === "fenologie").map((q) => q.localId),
+      );
+      const lokaalPending = readLs<Fenologie[]>(LS_FENOLOGIE, []).filter((f) =>
+        pendingIds.has(f.id),
+      );
+      const merged = [...mapped, ...lokaalPending.filter((f) => !rijId || f.rij === rijId)];
+      if (!rijId) {
+        writeLs(LS_FENOLOGIE, [...mapped, ...lokaalPending]);
+      }
+      return merged.sort((a, b) => (a.datum < b.datum ? 1 : -1));
     } catch {
       // fall through
     }
@@ -341,23 +420,25 @@ export async function createFenologie(input: FenologieInput): Promise<Fenologie>
         ras: input.ras,
         moment: input.moment,
         datum: input.datum,
-<<<<<<< HEAD
         seizoen: new Date(input.datum).getFullYear(),
-=======
->>>>>>> 8a5308737d5b2d207dcb1d37b45d09c8189a25b0
         notitie: input.notitie ?? "",
         ingevoerd_door: input.ingevoerd_door,
       });
-      return {
+      const aangemaakt: Fenologie = {
         id: r.id,
         rij: r.rij,
         ras: r.ras,
         moment: r.moment,
         datum: r.datum,
+        seizoen: r.seizoen || undefined,
         notitie: r.notitie ?? "",
         ingevoerd_door: r.ingevoerd_door ?? "",
         created: r.created,
       };
+      const cache = readLs<Fenologie[]>(LS_FENOLOGIE, []);
+      cache.push(aangemaakt);
+      writeLs(LS_FENOLOGIE, cache);
+      return aangemaakt;
     } catch {
       // fall through to local
     }
@@ -376,6 +457,15 @@ export async function createFenologie(input: FenologieInput): Promise<Fenologie>
   const all = readLs<Fenologie[]>(LS_FENOLOGIE, []);
   all.push(fen);
   writeLs(LS_FENOLOGIE, all);
+  addToSyncQueue("fenologie", fen.id, {
+    rij: input.rij,
+    ras: input.ras,
+    moment: input.moment,
+    datum: input.datum,
+    seizoen: fen.seizoen,
+    notitie: input.notitie ?? "",
+    ingevoerd_door: input.ingevoerd_door,
+  });
   return fen;
 }
 
@@ -442,6 +532,72 @@ export async function deleteFenologie(id: string): Promise<void> {
     LS_FENOLOGIE,
     all.filter((f) => f.id !== id),
   );
+}
+
+// ============= Offline sync =============
+let flushBezig = false;
+
+function removeLocalRecord(soort: "meting" | "observatie" | "fenologie", localId: string) {
+  const key = soort === "meting" ? LS_METINGEN : soort === "observatie" ? LS_OBS : LS_FENOLOGIE;
+  const all = readLs<Array<{ id: string }>>(key, []);
+  writeLs(
+    key,
+    all.filter((r) => r.id !== localId),
+  );
+}
+
+// Stuurt offline aangemaakte records naar PocketBase.
+// Records met een blijvende fout (bijv. validatie) verdwijnen uit de wachtrij
+// maar blijven lokaal bewaard zodat er geen data verloren gaat.
+export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: number }> {
+  const pb = getPb();
+  const queue = getSyncQueue();
+  if (!pb || queue.length === 0) return { verzonden: 0, mislukt: 0 };
+  if (flushBezig) return { verzonden: 0, mislukt: 0 };
+  flushBezig = true;
+  try {
+    try {
+      await pb.health.check();
+      pbStatus = "online";
+    } catch {
+      pbStatus = "offline";
+      return { verzonden: 0, mislukt: queue.length };
+    }
+    let verzonden = 0;
+    let mislukt = 0;
+    const rijen = readLs<Rij[]>(LS_RIJEN, []);
+    for (const item of queue) {
+      try {
+        const payload = { ...item.payload };
+        // records die offline tegen een seed-rij ("local-12") zijn aangemaakt,
+        // koppelen aan de echte PocketBase-rij via het rijnummer
+        if (typeof payload.rij === "string" && payload.rij.startsWith("local-")) {
+          const nr = Number(payload.rij.slice("local-".length));
+          const match = rijen.find((r) => r.rijnummer === nr && !r.id.startsWith("local-"));
+          if (match) payload.rij = match.id;
+        }
+        const collection =
+          item.soort === "meting"
+            ? "metingen"
+            : item.soort === "observatie"
+              ? "observaties"
+              : "fenologie";
+        await pb.collection(collection).create(payload);
+        removeFromSyncQueue(item.queueId);
+        removeLocalRecord(item.soort, item.localId);
+        verzonden++;
+      } catch (err) {
+        const status = (err as { status?: number }).status ?? 0;
+        if (status >= 400) {
+          removeFromSyncQueue(item.queueId);
+        }
+        mislukt++;
+      }
+    }
+    return { verzonden, mislukt };
+  } finally {
+    flushBezig = false;
+  }
 }
 
 export async function fetchFenologieById(id: string): Promise<Fenologie | null> {

@@ -3,6 +3,12 @@
 .env.local
 .env.*.local
 
+# PocketBase wachtwoorden (nooit committen!)
+pocketbase-accounts.txt
+
+# Lokale PocketBase server + database (nooit committen!)
+pocketbase/
+
 # Logs
 logs
 *.log
