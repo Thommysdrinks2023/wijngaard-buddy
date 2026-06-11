@@ -4,6 +4,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { createFenologie, fetchRijen } from "@/lib/data";
+import { foutenPerVeld, isGeldig, valideerFenologie } from "@/lib/validatie";
 import { FENOLOGIE_MOMENTEN, type FenologieMoment } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
@@ -26,6 +27,7 @@ function FenologiePage() {
   const [moment, setMoment] = useState<FenologieMoment | null>(null);
   const [datum, setDatum] = useState(format(new Date(), "yyyy-MM-dd"));
   const [notitie, setNotitie] = useState("");
+  const [fouten, setFouten] = useState<Record<string, string>>({});
 
   const m = useMutation({
     mutationFn: () => {
@@ -57,6 +59,19 @@ function FenologiePage() {
       else if (!invoerder.trim()) toast.error("Vul je naam in");
       return;
     }
+    const validatie = valideerFenologie({
+      rij: rijId,
+      ras: rij?.ras,
+      moment: moment ?? undefined,
+      datum,
+      ingevoerd_door: invoerder,
+    });
+    if (!isGeldig(validatie)) {
+      setFouten(foutenPerVeld(validatie));
+      toast.error(validatie[0].bericht);
+      return;
+    }
+    setFouten({});
     m.mutate();
   };
 
@@ -108,10 +123,14 @@ function FenologiePage() {
           <input
             type="date"
             value={datum}
-            onChange={(e) => setDatum(e.target.value)}
-            className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+            onChange={(e) => {
+              setDatum(e.target.value);
+              setFouten((f) => ({ ...f, datum: "" }));
+            }}
+            className={`h-12 w-full rounded-xl border bg-card px-3 text-base ${fouten.datum ? "border-destructive" : "border-input"}`}
             required
           />
+          {fouten.datum && <p className="mt-1 text-sm text-destructive">{fouten.datum}</p>}
         </label>
 
         <label className="block">

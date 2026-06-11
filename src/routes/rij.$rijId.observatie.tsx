@@ -9,6 +9,7 @@ import {
   fetchRijen,
   isPbConfigured,
 } from "@/lib/data";
+import { foutenPerVeld, isGeldig, valideerObservatie } from "@/lib/validatie";
 import { OBSERVATIE_TYPES, type ObservatieType } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
@@ -38,6 +39,7 @@ function ObservatiePage() {
   const [type, setType] = useState<ObservatieType>("groei");
   const [notitie, setNotitie] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
+  const [fouten, setFouten] = useState<Record<string, string>>({});
 
   const NEGATIVE_TYPES: ObservatieType[] = ["ziekte", "schade", "uitval"];
 
@@ -82,7 +84,22 @@ function ObservatiePage() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSave) m.mutate();
+          if (!canSave) return;
+          const trimmed = notitie.trim();
+          const validatie = valideerObservatie({
+            rij: rijId,
+            datum,
+            type,
+            notitie: trimmed.length > 0 ? trimmed : "Geen bijzonderheden",
+            ingevoerd_door: invoerder,
+          });
+          if (!isGeldig(validatie)) {
+            setFouten(foutenPerVeld(validatie));
+            toast.error(validatie[0].bericht);
+            return;
+          }
+          setFouten({});
+          m.mutate();
         }}
         className="mx-auto max-w-screen-md space-y-4 px-3 py-4"
       >
@@ -90,10 +107,14 @@ function ObservatiePage() {
           <input
             type="date"
             value={datum}
-            onChange={(e) => setDatum(e.target.value)}
-            className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+            onChange={(e) => {
+              setDatum(e.target.value);
+              setFouten((f) => ({ ...f, datum: "" }));
+            }}
+            className={`h-12 w-full rounded-xl border bg-card px-3 text-base ${fouten.datum ? "border-destructive" : "border-input"}`}
             required
           />
+          {fouten.datum && <p className="mt-1 text-sm text-destructive">{fouten.datum}</p>}
         </Field>
 
         <Field label="Type observatie">

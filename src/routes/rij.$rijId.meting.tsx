@@ -4,7 +4,8 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { z } from "zod";
-import { createMeting, fetchRijen, isPbConfigured } from "@/lib/data";
+import { createMeting, fetchRijen, isPbConfigured, type MetingInput } from "@/lib/data";
+import { foutenPerVeld, isGeldig, valideerMeting } from "@/lib/validatie";
 import { NEERSLAG_OPTIES, type NeerslagType } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
@@ -41,30 +42,25 @@ function MetingPage() {
   const [foto, setFoto] = useState<File | null>(null);
   const [temp, setTemp] = useState("");
   const [neerslag, setNeerslag] = useState<NeerslagType | "">("");
+  const [fouten, setFouten] = useState<Record<string, string>>({});
+
+  const buildInput = (): MetingInput => ({
+    rij: rijId,
+    plant: plant ?? null,
+    datum,
+    brix: brix ? Number(brix) : null,
+    ph: ph ? Number(ph) : null,
+    zuurgraad: zuur ? Number(zuur) : null,
+    rijpheid_score: score,
+    notitie,
+    fotoFile: foto,
+    ingevoerd_door: invoerder,
+    temperatuur: temp ? Number(temp) : null,
+    neerslag: neerslag || null,
+  });
 
   const m = useMutation({
-    mutationFn: async () => {
-      if (!invoerder.trim()) {
-        throw new Error("Vul je naam in bij 'Ingevoerd door'");
-      }
-      if (!datum) {
-        throw new Error("Kies een datum");
-      }
-      return createMeting({
-        rij: rijId,
-        plant: plant ?? null,
-        datum,
-        brix: brix ? Number(brix) : null,
-        ph: ph ? Number(ph) : null,
-        zuurgraad: zuur ? Number(zuur) : null,
-        rijpheid_score: score,
-        notitie,
-        fotoFile: foto,
-        ingevoerd_door: invoerder,
-        temperatuur: temp ? Number(temp) : null,
-        neerslag: neerslag || null,
-      });
-    },
+    mutationFn: async () => createMeting(buildInput()),
     onSuccess: () => {
       toast.success("Meting opgeslagen ✓");
       qc.invalidateQueries({ queryKey: ["metingen"] });
@@ -77,8 +73,24 @@ function MetingPage() {
 
   const handleSave = () => {
     if (m.isPending) return;
+    const validatie = valideerMeting(buildInput());
+    if (!isGeldig(validatie)) {
+      setFouten(foutenPerVeld(validatie));
+      toast.error(validatie[0].bericht);
+      return;
+    }
+    setFouten({});
     m.mutate();
   };
+
+  // veldfout wissen zodra de gebruiker het veld aanpast
+  const wisFout = (veld: string) =>
+    setFouten((f) => {
+      if (!f[veld]) return f;
+      const kopie = { ...f };
+      delete kopie[veld];
+      return kopie;
+    });
 
   return (
     <>
@@ -92,46 +104,58 @@ function MetingPage() {
         }
       />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
-        <Field label="Datum">
+        <Field label="Datum" fout={fouten.datum}>
           <input
             type="date"
             value={datum}
-            onChange={(e) => setDatum(e.target.value)}
-            className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+            onChange={(e) => {
+              setDatum(e.target.value);
+              wisFout("datum");
+            }}
+            className={`h-12 w-full rounded-xl border bg-card px-3 text-base ${fouten.datum ? "border-destructive" : "border-input"}`}
           />
         </Field>
 
         <div className="grid grid-cols-3 gap-3">
-          <Field label="Brix">
+          <Field label="Brix" fout={fouten.brix}>
             <input
               type="number"
               inputMode="decimal"
               step="0.1"
               value={brix}
-              onChange={(e) => setBrix(e.target.value)}
-              className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              onChange={(e) => {
+                setBrix(e.target.value);
+                wisFout("brix");
+              }}
+              className={`h-12 w-full rounded-xl border bg-card px-3 text-base ${fouten.brix ? "border-destructive" : "border-input"}`}
               placeholder="—"
             />
           </Field>
-          <Field label="pH">
+          <Field label="pH" fout={fouten.ph}>
             <input
               type="number"
               inputMode="decimal"
               step="0.01"
               value={ph}
-              onChange={(e) => setPh(e.target.value)}
-              className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              onChange={(e) => {
+                setPh(e.target.value);
+                wisFout("ph");
+              }}
+              className={`h-12 w-full rounded-xl border bg-card px-3 text-base ${fouten.ph ? "border-destructive" : "border-input"}`}
               placeholder="—"
             />
           </Field>
-          <Field label="Zuur (g/L)">
+          <Field label="Zuur (g/L)" fout={fouten.zuurgraad}>
             <input
               type="number"
               inputMode="decimal"
               step="0.1"
               value={zuur}
-              onChange={(e) => setZuur(e.target.value)}
-              className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              onChange={(e) => {
+                setZuur(e.target.value);
+                wisFout("zuurgraad");
+              }}
+              className={`h-12 w-full rounded-xl border bg-card px-3 text-base ${fouten.zuurgraad ? "border-destructive" : "border-input"}`}
               placeholder="—"
             />
           </Field>
@@ -158,14 +182,17 @@ function MetingPage() {
             Weer (optioneel)
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Temperatuur (°C)">
+            <Field label="Temperatuur (°C)" fout={fouten.temperatuur}>
               <input
                 type="number"
                 inputMode="decimal"
                 step="0.1"
                 value={temp}
-                onChange={(e) => setTemp(e.target.value)}
-                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+                onChange={(e) => {
+                  setTemp(e.target.value);
+                  wisFout("temperatuur");
+                }}
+                className={`h-12 w-full rounded-xl border bg-card px-3 text-base ${fouten.temperatuur ? "border-destructive" : "border-input"}`}
                 placeholder="—"
               />
             </Field>
@@ -202,12 +229,15 @@ function MetingPage() {
           </Field>
         ) : null}
 
-        <Field label="Ingevoerd door">
+        <Field label="Ingevoerd door" fout={fouten.ingevoerd_door}>
           <input
             value={invoerder}
-            onChange={(e) => setInvoerder(e.target.value)}
+            onChange={(e) => {
+              setInvoerder(e.target.value);
+              wisFout("ingevoerd_door");
+            }}
             placeholder="Je naam"
-            className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+            className={`h-12 w-full rounded-xl border bg-card px-3 text-base ${fouten.ingevoerd_door ? "border-destructive" : "border-input"}`}
           />
         </Field>
 
@@ -230,11 +260,20 @@ function MetingPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  fout,
+  children,
+}: {
+  label: string;
+  fout?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium text-foreground">{label}</span>
       {children}
+      {fout && <span className="mt-1 block text-sm text-destructive">{fout}</span>}
     </label>
   );
 }

@@ -588,7 +588,10 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
         verzonden++;
       } catch (err) {
         const status = (err as { status?: number }).status ?? 0;
-        if (status >= 400) {
+        // 400 = blijvende validatiefout: uit de wachtrij (lokale kopie blijft).
+        // 401/403 (niet ingelogd) en netwerk-/serverfouten blijven staan voor
+        // een nieuwe poging na inloggen of als de server weer bereikbaar is.
+        if (status === 400 || status === 404) {
           removeFromSyncQueue(item.queueId);
         }
         mislukt++;

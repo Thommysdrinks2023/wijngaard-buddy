@@ -111,29 +111,34 @@ function Perceelkaart() {
   // Maximum length op basis van een "vol" rij (bv. 91 planten) zodat de onderlijn vast ligt
   const FULL_PLANTEN = maxPlanten;
 
-  // Pre-compute rij geometry
-  const rijGeom = rijen.map((r, i, arr) => {
-    const t = N === 1 ? 0.5 : i / (N - 1);
-    const x = MARGIN_X + 8 + t * (innerW - 16);
-    const len = MIN_LEN + (r.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN);
-    // Uitzondering: rij 68 groeit van onderkant omhoog — onderkant gelijk
-    // aan onderkant van buurrij (rij 67), met gat aan de bovenkant.
-    const groeitVanOnder = r.rijnummer === 68;
-    let yTop = innerTop;
-    let yBottom = innerTop + len;
-    if (groeitVanOnder) {
-      const buur = arr[i - 1] ?? arr[i + 1];
-      const buurLen = buur
-        ? MIN_LEN + (buur.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN)
-        : len;
-      yBottom = innerTop + buurLen;
-      yTop = yBottom - len;
-    }
-    return { r, t, x, yTop, yBottom, len, groeitVanOnder };
-  });
+  // Pre-compute rij geometry (gememoized: alleen herberekenen als de rijen wijzigen)
+  const rijGeom = useMemo(
+    () =>
+      rijen.map((r, i, arr) => {
+        const t = N === 1 ? 0.5 : i / (N - 1);
+        const x = MARGIN_X + 8 + t * (innerW - 16);
+        const len = MIN_LEN + (r.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN);
+        // Uitzondering: rij 68 groeit van onderkant omhoog — onderkant gelijk
+        // aan onderkant van buurrij (rij 67), met gat aan de bovenkant.
+        const groeitVanOnder = r.rijnummer === 68;
+        let yTop = innerTop;
+        let yBottom = innerTop + len;
+        if (groeitVanOnder) {
+          const buur = arr[i - 1] ?? arr[i + 1];
+          const buurLen = buur
+            ? MIN_LEN + (buur.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN)
+            : len;
+          yBottom = innerTop + buurLen;
+          yTop = yBottom - len;
+        }
+        return { r, t, x, yTop, yBottom, len, groeitVanOnder };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rijen, N, FULL_PLANTEN],
+  );
 
   // Perceelvorm: rechte bovenrand, diagonale onderrand die de tips volgt
-  const PERCEEL_PATH_2 = (() => {
+  const PERCEEL_PATH_2 = useMemo(() => {
     if (rijGeom.length === 0) return "";
     const leftX = MARGIN_X;
     const rightX = VB_W - MARGIN_X;
@@ -151,7 +156,8 @@ function Perceelkaart() {
       L ${leftX} ${(first.yBottom + 6).toFixed(1)}
       Z
     `;
-  })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rijGeom]);
 
   return (
     <>
@@ -175,14 +181,14 @@ function Perceelkaart() {
             role="img"
             aria-label="Bovenaanzicht wijngaard"
           >
-            <rect x="0" y="0" width={VB_W} height={VB_H} fill="hsl(95 25% 95%)" />
+            <rect x="0" y="0" width={VB_W} height={VB_H} fill="#d4e6d3" />
 
-            {/* Perceel omtrek */}
+            {/* Perceel omtrek — huisstijl: zachtgroen veld met olijf-gouden rand */}
             <path
               d={PERCEEL_PATH_2}
-              fill="#E8F5E9"
-              stroke="#2E7D32"
-              strokeWidth="2"
+              fill="#b6cfb3"
+              stroke="#a1a35b"
+              strokeWidth="2.5"
               strokeDasharray="6 4"
               strokeLinejoin="round"
             />
@@ -204,8 +210,8 @@ function Perceelkaart() {
                   role="button"
                   aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
                 >
-                  {/* Tap target */}
-                  <line x1={x} y1={yTop} x2={x} y2={yBottom} stroke="transparent" strokeWidth="10" />
+                  {/* Tap target — extra breed voor gebruik met handschoenen in het veld */}
+                  <line x1={x} y1={yTop} x2={x} y2={yBottom} stroke="transparent" strokeWidth="18" />
                   {/* Zichtbare rij */}
                   <line
                     x1={x}

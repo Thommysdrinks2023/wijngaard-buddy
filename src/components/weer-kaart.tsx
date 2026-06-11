@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { Droplets, Wind, CloudRain, RefreshCw, CloudOff } from "lucide-react";
-import { fetchWeer, isWeerGeconfigureerd, owmIconUrl } from "@/lib/weer";
+import { Droplets, Wind, CloudRain, RefreshCw, CloudOff, Snowflake } from "lucide-react";
+import {
+  fetchVerwachting,
+  fetchWeer,
+  isVorstRisico,
+  isWeerGeconfigureerd,
+  owmIconUrl,
+} from "@/lib/weer";
 
 // Huisstijl De Tappenmars
 const GROEN = "#b6cfb3";
@@ -22,6 +28,14 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
     staleTime: 10 * 60 * 1000, // 10 min cache
     refetchInterval: 15 * 60 * 1000, // auto-refresh elke 15 min
     retry: 2,
+  });
+
+  const verwachtingQ = useQuery({
+    queryKey: ["weer-verwachting"],
+    queryFn: fetchVerwachting,
+    enabled: geconfigureerd && !compact,
+    staleTime: 30 * 60 * 1000, // 30 min cache
+    retry: 1,
   });
 
   if (!geconfigureerd) {
@@ -117,6 +131,10 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
     ? new Date(dataUpdatedAt).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })
     : null;
 
+  const verwachting = verwachtingQ.data ?? [];
+  const vorstNu = isVorstRisico(data.temperatuur);
+  const vorstKomend = verwachting.some((d) => isVorstRisico(d.tempMin));
+
   return (
     <section
       className="rounded-2xl border p-4"
@@ -177,6 +195,43 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
           waarde={`${data.luchtvochtigheid}%`}
         />
       </div>
+
+      {/* Vorstwaarschuwing — kritiek voor de wijngaard */}
+      {(vorstNu || vorstKomend) && (
+        <div
+          className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold"
+          style={{ backgroundColor: DONKER, color: "#ffffff" }}
+        >
+          <Snowflake className="h-4 w-4 shrink-0" style={{ color: GOUD }} />
+          {vorstNu
+            ? "Vorstwaarschuwing: het is nu rond of onder 2°C"
+            : "Let op: kans op (nacht)vorst de komende dagen"}
+        </div>
+      )}
+
+      {/* 3-daagse verwachting */}
+      {verwachting.length > 0 && (
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          {verwachting.map((dag) => (
+            <div
+              key={dag.datum}
+              className="flex flex-col items-center rounded-xl border px-2 py-2 text-center"
+              style={{ backgroundColor: "rgba(255,255,255,0.35)", borderColor: GOUD, color: DONKER }}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">
+                {dag.dagNaam}
+              </p>
+              <img src={owmIconUrl(dag.icoon)} alt="" className="-my-1 h-9 w-9" />
+              <p className="text-sm font-bold tabular-nums">
+                {dag.tempMax}° <span className="font-normal opacity-60">{dag.tempMin}°</span>
+              </p>
+              <p className="text-[10px] opacity-70">
+                {dag.neerslag > 0 ? `${dag.neerslag} mm` : "droog"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Footer */}
       {bijgewerkt && (

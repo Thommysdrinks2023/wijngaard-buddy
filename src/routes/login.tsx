@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 import { getPb, isPbConfigured, setInvoerder } from "@/lib/data";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
+  head: () => ({ meta: [{ title: "Inloggen — Wijngaard" }] }),
 });
+
+// Huisstijl De Tappenmars
+const GOUD = "#cac176";
+const DONKER = "#27232a";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -56,23 +58,37 @@ function LoginPage() {
     }
   }
 
+  const inputClass =
+    "h-12 w-full rounded-xl border bg-white/95 px-3 text-base text-foreground outline-none focus:ring-2";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="text-4xl mb-2">🍇</div>
-          <CardTitle className="text-2xl">Wijngaard Buddy</CardTitle>
-          <p className="text-sm text-muted-foreground">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div
+        className="w-full max-w-sm overflow-hidden rounded-3xl border-2 shadow-xl"
+        style={{ borderColor: GOUD, backgroundColor: DONKER }}
+      >
+        {/* Kop met logo */}
+        <div className="flex flex-col items-center px-6 pb-5 pt-8 text-center">
+          <img
+            src="/logo-icon.png"
+            alt="De Tappenmars"
+            className="h-20 w-20 object-contain"
+          />
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">
+            De Tappenmars
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: GOUD }}>
             {naamModus ? "Vul je naam in om te beginnen" : "Log in met je account"}
           </p>
-        </CardHeader>
-        <CardContent>
+        </div>
+
+        {/* Formulier op lichte ondergrond */}
+        <div className="rounded-t-3xl bg-card px-6 pb-8 pt-6">
           <form onSubmit={handleInloggen} className="space-y-4">
             {naamModus ? (
-              <div className="space-y-2">
-                <Label htmlFor="naam">Naam</Label>
-                <Input
-                  id="naam"
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-foreground">Naam</span>
+                <input
                   type="text"
                   placeholder="Bijv. Jan de Boer"
                   value={naam}
@@ -81,14 +97,17 @@ function LoginPage() {
                     setFout("");
                   }}
                   autoFocus
+                  className={inputClass}
+                  style={{ borderColor: GOUD }}
                 />
-              </div>
+              </label>
             ) : (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mailadres</Label>
-                  <Input
-                    id="email"
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-foreground">
+                    E-mailadres
+                  </span>
+                  <input
                     type="email"
                     placeholder="naam@tappenmars.nl"
                     value={email}
@@ -97,26 +116,46 @@ function LoginPage() {
                       setFout("");
                     }}
                     autoFocus
+                    autoComplete="username"
+                    className={inputClass}
+                    style={{ borderColor: GOUD }}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wachtwoord">Wachtwoord</Label>
-                  <Input
-                    id="wachtwoord"
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-foreground">
+                    Wachtwoord
+                  </span>
+                  <input
                     type="password"
                     value={wachtwoord}
                     onChange={(e) => {
                       setWachtwoord(e.target.value);
                       setFout("");
                     }}
+                    autoComplete="current-password"
+                    className={inputClass}
+                    style={{ borderColor: GOUD }}
                   />
-                </div>
+                </label>
               </>
             )}
-            {fout && <p className="text-sm text-destructive">{fout}</p>}
-            <Button type="submit" className="w-full" disabled={bezig}>
+
+            {fout && (
+              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {fout}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={bezig}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-60"
+              style={{ backgroundColor: DONKER, color: GOUD }}
+            >
+              {bezig && <Loader2 className="h-5 w-5 animate-spin" />}
               {bezig ? "Bezig met inloggen…" : naamModus ? "Doorgaan" : "Inloggen"}
-            </Button>
+            </button>
+
             {pbActief && (
               <button
                 type="button"
@@ -130,8 +169,8 @@ function LoginPage() {
               </button>
             )}
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

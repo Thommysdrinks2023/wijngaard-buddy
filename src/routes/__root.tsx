@@ -89,6 +89,13 @@ function RootComponent() {
   useEffect(() => {
     migrateSeizoen();
     checkNewYearGreeting();
+    // Service worker: maakt de app offline bruikbaar (alleen in productie,
+    // in dev zou caching de hot-reload in de weg zitten)
+    if (import.meta.env.PROD && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        // offline-caching is een extraatje; fouten niet aan de gebruiker tonen
+      });
+    }
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
