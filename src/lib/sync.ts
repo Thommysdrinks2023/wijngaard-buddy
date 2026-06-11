@@ -8,7 +8,13 @@ export type SyncSoort =
   | "fenologie"
   | "gezondheid"
   | "oogst"
-  | "werkuren";
+  | "werkuren"
+  | "steekproef_plant"
+  | "steekproef_meting"
+  | "werkkalender"
+  | "notitie";
+
+export type SyncActie = "create" | "update" | "delete";
 
 export interface SyncItem {
   queueId: string;
@@ -22,6 +28,12 @@ export interface SyncItem {
   // (voor nieuwere datatypes; oudere items vallen terug op de soort-mapping)
   collection?: string;
   lsKey?: string;
+  // create (standaard), update of delete van een bestaand serverrecord
+  actie?: SyncActie;
+  // bij update/delete: het PocketBase-id van het record
+  remoteId?: string;
+  // bij delete zonder remoteId: PocketBase-filter om records te vinden
+  filter?: string;
 }
 
 const LS_QUEUE = "wg.sync.queue.v1";
@@ -55,7 +67,7 @@ export function addToSyncQueue(
   soort: SyncSoort,
   localId: string,
   payload: Record<string, unknown>,
-  opties?: { collection?: string; lsKey?: string },
+  opties?: { collection?: string; lsKey?: string; actie?: SyncActie; remoteId?: string; filter?: string },
 ) {
   const items = readQueue();
   items.push({
@@ -66,10 +78,41 @@ export function addToSyncQueue(
     aangemaakt: new Date().toISOString(),
     collection: opties?.collection,
     lsKey: opties?.lsKey,
+    actie: opties?.actie,
+    remoteId: opties?.remoteId,
+    filter: opties?.filter,
   });
   writeQueue(items);
 }
 
 export function removeFromSyncQueue(queueId: string) {
   writeQueue(readQueue().filter((i) => i.queueId !== queueId));
+}
+
+// Zoekt een nog niet gesynchroniseerde create voor dit lokale record
+export function findQueuedCreate(localId: string): SyncItem | undefined {
+  return readQueue().find(
+    (i) => i.localId === localId && (i.actie ?? "create") === "create",
+  );
+}
+
+// Werkt de payload van een wachtende create bij (offline bewerken vóór sync)
+export function updateQueuedCreate(localId: string, wijzigingen: Record<string, unknown>): boolean {
+  const items = readQueue();
+  const idx = items.findIndex(
+    (i) => i.localId === localId && (i.actie ?? "create") === "create",
+  );
+  if (idx === -1) return false;
+  items[idx] = { ...items[idx], payload: { ...items[idx].payload, ...wijzigingen } };
+  writeQueue(items);
+  return true;
+}
+
+// Verwijdert alle wachtrij-items voor dit lokale record (offline verwijderen vóór sync)
+export function removeQueuedByLocalId(localId: string): boolean {
+  const items = readQueue();
+  const rest = items.filter((i) => i.localId !== localId);
+  if (rest.length === items.length) return false;
+  writeQueue(rest);
+  return true;
 }

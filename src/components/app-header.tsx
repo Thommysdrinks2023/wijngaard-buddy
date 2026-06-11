@@ -1,5 +1,6 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
+import { VerbindingBadge } from "@/components/verbinding-status";
 
 interface AppHeaderProps {
   title: string;
@@ -51,6 +52,7 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
             </>
           )}
         </div>
+        <VerbindingBadge />
         {right}
       </div>
     </header>

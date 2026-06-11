@@ -1,7 +1,14 @@
 import PocketBase from "pocketbase";
 import type { Fenologie, FenologieMoment, Meting, NeerslagType, Observatie, Ras, Rij } from "./types";
 import { SEED_RIJEN } from "./seed-rijen";
-import { addToSyncQueue, getSyncQueue, removeFromSyncQueue, syncQueueCount } from "./sync";
+import {
+  addToSyncQueue,
+  getSyncQueue,
+  removeFromSyncQueue,
+  removeQueuedByLocalId,
+  syncQueueCount,
+  updateQueuedCreate,
+} from "./sync";
 
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
 
@@ -22,24 +29,56 @@ export function getPbStatus() {
   return pbStatus;
 }
 
+function setPbStatus(nieuw: "online" | "offline") {
+  const veranderd = pbStatus !== nieuw;
+  pbStatus = nieuw;
+  if (veranderd && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("wg.pbstatus.changed"));
+  }
+}
+
 export async function pingPb(): Promise<boolean> {
   const pb = getPb();
   if (!pb) {
-    pbStatus = "offline";
+    setPbStatus("offline");
     return false;
   }
   try {
-    await pb.health.check();
-    pbStatus = "online";
+    // maximaal 3,5s wachten: in het veld zonder bereik mag de app niet blijven hangen
+    await Promise.race([
+      pb.health.check(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3500)),
+    ]);
+    setPbStatus("online");
     // server is weer bereikbaar: offline aangemaakte records op de achtergrond syncen
     if (!flushBezig && syncQueueCount() > 0) {
       void flushSyncQueue();
     }
     return true;
   } catch {
-    pbStatus = "offline";
+    setPbStatus("offline");
     return false;
   }
+}
+
+// Bug-fix eerste keer laden: alle data-functies wachten op één gedeelde ping
+// in plaats van blind de (nog onbekende) status te lezen.
+let pingInFlight: Promise<boolean> | null = null;
+export async function ensureOnline(): Promise<boolean> {
+  if (!getPb()) return false;
+  if (pbStatus === "online") return true;
+  if (pbStatus === "offline") return false;
+  if (!pingInFlight) {
+    pingInFlight = pingPb().finally(() => {
+      pingInFlight = null;
+    });
+  }
+  return pingInFlight;
+}
+
+export function isIngelogd(): boolean {
+  const pb = getPb();
+  return Boolean(pb?.authStore.isValid);
 }
 
 // ---------- localStorage helpers ----------
@@ -114,7 +153,7 @@ export async function fetchRijen(): Promise<Rij[]> {
 
 export async function fetchMetingen(rijId?: string): Promise<Meting[]> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       const filter = rijId ? `rij = "${rijId}"` : "";
       const records = await pb.collection("metingen").getFullList({
@@ -160,7 +199,7 @@ export async function fetchMetingen(rijId?: string): Promise<Meting[]> {
 
 export async function fetchObservaties(rijId?: string): Promise<Observatie[]> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       const filter = rijId ? `rij = "${rijId}"` : "";
       const records = await pb.collection("observaties").getFullList({
@@ -214,7 +253,7 @@ export interface MetingInput {
 
 export async function createMeting(input: MetingInput): Promise<Meting> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       const fd = new FormData();
       fd.append("rij", input.rij);
@@ -303,7 +342,7 @@ export interface ObservatieInput {
 
 export async function createObservatie(input: ObservatieInput): Promise<Observatie> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       const fd = new FormData();
       fd.append("rij", input.rij);
@@ -364,7 +403,7 @@ export async function createObservatie(input: ObservatieInput): Promise<Observat
 // ============= Fenologie =============
 export async function fetchFenologie(rijId?: string): Promise<Fenologie[]> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       const filter = rijId ? `rij = "${rijId}"` : "";
       const records = await pb.collection("fenologie").getFullList({
@@ -413,7 +452,7 @@ export interface FenologieInput {
 
 export async function createFenologie(input: FenologieInput): Promise<Fenologie> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       const r = await pb.collection("fenologie").create({
         rij: input.rij,
@@ -481,7 +520,7 @@ export async function updateFenologie(
   input: FenologieUpdateInput,
 ): Promise<Fenologie> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       const r = await pb.collection("fenologie").update(id, {
         moment: input.moment,
@@ -514,12 +553,24 @@ export async function updateFenologie(
     ingevoerd_door: input.ingevoerd_door,
   };
   writeLs(LS_FENOLOGIE, all);
+  // offline bewerking ook synchroniseren:
+  // - record wacht nog op create → de wachtende payload bijwerken
+  // - record bestaat al op de server → update-actie in de wachtrij
+  const wijzigingen = {
+    moment: input.moment,
+    datum: input.datum,
+    notitie: input.notitie ?? "",
+    ingevoerd_door: input.ingevoerd_door,
+  };
+  if (!updateQueuedCreate(id, wijzigingen)) {
+    addToSyncQueue("fenologie", id, wijzigingen, { actie: "update", remoteId: id });
+  }
   return all[idx];
 }
 
 export async function deleteFenologie(id: string): Promise<void> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       await pb.collection("fenologie").delete(id);
       return;
@@ -532,6 +583,12 @@ export async function deleteFenologie(id: string): Promise<void> {
     LS_FENOLOGIE,
     all.filter((f) => f.id !== id),
   );
+  // offline verwijderen ook synchroniseren:
+  // - record wachtte nog op create → gewoon uit de wachtrij halen
+  // - record bestaat al op de server → delete-actie in de wachtrij
+  if (!removeQueuedByLocalId(id)) {
+    addToSyncQueue("fenologie", id, {}, { actie: "delete", remoteId: id });
+  }
 }
 
 // ============= Offline sync =============
@@ -550,10 +607,13 @@ const SOORT_COLLECTION: Record<string, string> = {
 };
 
 function removeLocalRecord(lsKey: string, localId: string) {
-  const all = readLs<Array<{ id: string }>>(lsKey, []);
+  // defensief: sommige sleutels (werkkalender, notities) bevatten geen
+  // arrays-met-id; daar is lokaal opruimen niet nodig of mogelijk
+  const all = readLs<unknown>(lsKey, []);
+  if (!Array.isArray(all)) return;
   writeLs(
     lsKey,
-    all.filter((r) => r.id !== localId),
+    (all as Array<{ id?: string }>).filter((r) => r.id !== localId),
   );
 }
 
@@ -589,14 +649,35 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
         }
         const collection = item.collection ?? SOORT_COLLECTION[item.soort];
         const lsKey = item.lsKey ?? SOORT_LS_KEY[item.soort];
-        if (!collection || !lsKey) {
+        if (!collection) {
           // onbekend item: verwijderen om een eeuwige wachtrij te voorkomen
           removeFromSyncQueue(item.queueId);
           continue;
         }
-        await pb.collection(collection).create(payload);
-        removeFromSyncQueue(item.queueId);
-        removeLocalRecord(lsKey, item.localId);
+        const actie = item.actie ?? "create";
+        if (actie === "create") {
+          await pb.collection(collection).create(payload);
+          removeFromSyncQueue(item.queueId);
+          if (lsKey) removeLocalRecord(lsKey, item.localId);
+        } else if (actie === "update") {
+          if (item.remoteId) {
+            await pb.collection(collection).update(item.remoteId, payload);
+          }
+          removeFromSyncQueue(item.queueId);
+        } else {
+          // delete: via remoteId, of via filter (bijv. client_id-records)
+          if (item.remoteId) {
+            await pb.collection(collection).delete(item.remoteId);
+          } else if (item.filter) {
+            const gevonden = await pb
+              .collection(collection)
+              .getList(1, 100, { filter: item.filter });
+            for (const record of gevonden.items) {
+              await pb.collection(collection).delete(record.id);
+            }
+          }
+          removeFromSyncQueue(item.queueId);
+        }
         verzonden++;
       } catch (err) {
         const status = (err as { status?: number }).status ?? 0;
@@ -617,7 +698,7 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
 
 export async function fetchFenologieById(id: string): Promise<Fenologie | null> {
   const pb = getPb();
-  if (pb && pbStatus === "online") {
+  if (pb && (await ensureOnline())) {
     try {
       const r = await pb.collection("fenologie").getOne(id);
       return {

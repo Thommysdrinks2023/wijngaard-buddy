@@ -7,7 +7,7 @@ import { fetchRijen } from "@/lib/data";
 import {
   createSteekproefPlant,
   deleteSteekproefPlant,
-  getSteekproefPlanten,
+  fetchSteekproefPlanten,
 } from "@/lib/steekproef";
 import { RAS_OPTIONS } from "@/lib/seed-rijen";
 import type { Ras } from "@/lib/types";
@@ -23,7 +23,7 @@ function BeheerPage() {
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const puntenQ = useQuery({
     queryKey: ["steekproef_planten"],
-    queryFn: async () => getSteekproefPlanten(),
+    queryFn: () => fetchSteekproefPlanten(),
   });
 
   const [naam, setNaam] = useState("");

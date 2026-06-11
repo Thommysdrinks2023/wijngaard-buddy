@@ -4,7 +4,7 @@
 
 import type { RecordModel } from "pocketbase";
 import type { Ras } from "./types";
-import { getPb, getPbStatus } from "./data";
+import { ensureOnline, getPb } from "./data";
 import { addToSyncQueue, getSyncQueue } from "./sync";
 
 // ---------- gedeelde helpers ----------
@@ -37,7 +37,7 @@ interface EntityConfig<T extends { id: string; datum: string }> {
 function maakEntity<T extends { id: string; datum: string }>(cfg: EntityConfig<T>) {
   async function fetchAll(): Promise<T[]> {
     const pb = getPb();
-    if (pb && getPbStatus() === "online") {
+    if (pb && (await ensureOnline())) {
       try {
         const records = await pb.collection(cfg.collection).getFullList({ sort: "-datum,-created" });
         const mapped = records.map((r) => cfg.fromPb(r));
@@ -59,7 +59,7 @@ function maakEntity<T extends { id: string; datum: string }>(cfg: EntityConfig<T
     const pb = getPb();
     const payload = { ...zonderId } as Record<string, unknown>;
     delete payload.created;
-    if (pb && getPbStatus() === "online") {
+    if (pb && (await ensureOnline())) {
       try {
         const r = await pb.collection(cfg.collection).create(payload);
         const aangemaakt = cfg.fromPb(r);

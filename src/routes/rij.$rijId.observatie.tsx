@@ -13,6 +13,7 @@ import { foutenPerVeld, isGeldig, valideerObservatie } from "@/lib/validatie";
 import { OBSERVATIE_TYPES, type ObservatieType } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { useVerbinding } from "@/components/verbinding-status";
 import { Camera, Loader2 } from "lucide-react";
 
 const searchSchema = z.object({
@@ -31,6 +32,7 @@ function ObservatiePage() {
   const router = useRouter();
   const qc = useQueryClient();
   const [invoerder, setInvoerder] = useInvoerder();
+  const verbinding = useVerbinding();
 
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const rij = rijenQ.data?.find((r) => r.id === rijId);
@@ -168,6 +170,13 @@ function ObservatiePage() {
                 className="hidden"
               />
             </label>
+            {foto && (!verbinding.online || !verbinding.ingelogd) && (
+              <p className="mt-1.5 rounded-lg bg-warning/15 px-3 py-2 text-sm text-warning-foreground">
+                ⚠️ {!verbinding.online ? "Geen verbinding" : "Niet ingelogd"} — de foto kan
+                niet offline bewaard worden en gaat verloren. De observatie zelf wordt wél
+                bewaard en later gesynchroniseerd.
+              </p>
+            )}
           </Field>
         ) : null}
 

@@ -17,6 +17,7 @@ import { fetchRijen } from "@/lib/data";
 import { createWerkuur, fetchWerkuren, TAAK_TYPES, type TaakType } from "@/lib/extra-data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
+import { getPerceelOppervlakte } from "@/lib/app-instellingen";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
@@ -118,6 +119,8 @@ function WerkrapportPage() {
     () => Math.round(gefilterd.reduce((acc, w) => acc + w.uren, 0) * 10) / 10,
     [gefilterd],
   );
+  const oppervlakteHa = getPerceelOppervlakte();
+  const urenPerHa = oppervlakteHa > 0 ? Math.round((totaalUren / oppervlakteHa) * 10) / 10 : 0;
 
   const recent = useMemo(() => gefilterd.slice(0, 12), [gefilterd]);
 
@@ -131,7 +134,7 @@ function WerkrapportPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Werkrapport</h1>
             <p className="text-sm text-muted-foreground">
-              {totaalUren} uur geregistreerd in {jaar}
+              {totaalUren} uur in {jaar} · {urenPerHa} uur/ha ({oppervlakteHa} ha)
             </p>
           </div>
           <YearSelector />

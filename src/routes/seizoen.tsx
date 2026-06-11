@@ -21,7 +21,7 @@ import {
   WERK_KOLOMMEN,
   type WerkKolom,
   type WerkEntry,
-  getWerkkalender,
+  fetchWerkkalenderSync,
   upsertWerkEntry,
   deleteWerkEntry,
 } from "@/lib/werkkalender";
@@ -32,7 +32,11 @@ import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
-import { getSeizoenNotitie, setSeizoenNotitie } from "@/lib/app-instellingen";
+import {
+  fetchSeizoenNotities,
+  getSeizoenNotitie,
+  setSeizoenNotitie,
+} from "@/lib/app-instellingen";
 import {
   Dialog,
   DialogContent,
@@ -77,9 +81,13 @@ function SeizoenPage() {
   const [jaar] = useSeizoen();
   const [invoerder, setInvoerderName] = useInvoerder();
 
-  // Werkkalender (localStorage) — bump nonce on changes for re-render
+  // Werkkalender (PB-first met lokale fallback) — nonce bumpt na wijzigingen
   const [werkNonce, setWerkNonce] = useState(0);
-  const werkEntries = useMemo(() => getWerkkalender(), [werkNonce]);
+  const werkQ = useQuery({
+    queryKey: ["werkkalender", werkNonce],
+    queryFn: () => fetchWerkkalenderSync(),
+  });
+  const werkEntries = useMemo(() => werkQ.data ?? [], [werkQ.data]);
 
   const beschikbareJaren = useMemo(() => {
     const set = new Set<number>([huidigJaar]);
@@ -635,12 +643,16 @@ function WerkDialog({
 function SeizoenNotities({ jaar }: { jaar: number }) {
   const [tekst, setTekst] = useState("");
   const [updated, setUpdated] = useState<string | null>(null);
+  // serverkopie ophalen (en lokaal cachen) zodat notities op elk apparaat staan
+  const notitiesQ = useQuery({ queryKey: ["notities"], queryFn: fetchSeizoenNotities });
 
   useEffect(() => {
-    const entry = getSeizoenNotitie(jaar);
+    const entry = notitiesQ.data?.[String(jaar)] ?? getSeizoenNotitie(jaar);
     setTekst(entry?.tekst ?? "");
     setUpdated(entry?.updated ?? null);
-  }, [jaar]);
+    // alleen opnieuw initialiseren bij jaarwissel of als serverdata binnenkomt
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jaar, notitiesQ.data]);
 
   useEffect(() => {
     const stored = getSeizoenNotitie(jaar);

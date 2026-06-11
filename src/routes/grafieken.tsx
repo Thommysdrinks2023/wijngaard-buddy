@@ -28,13 +28,14 @@ import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
 import {
+  fetchSteekproefMetingen,
+  fetchSteekproefPlanten,
   getOogst,
-  getSteekproefMetingen,
-  getSteekproefPlanten,
   ZIEKTEDRUK_KLEUR,
   ZIEKTEDRUK_OPTIES,
   type ZiekteDruk,
 } from "@/lib/steekproef";
+import { fetchOogst } from "@/lib/extra-data";
 
 export const Route = createFileRoute("/grafieken")({
   component: GrafiekenPage,
@@ -95,13 +96,20 @@ function GrafiekenPage() {
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
   const stkPlantenQ = useQuery({
     queryKey: ["steekproef_planten"],
-    queryFn: async () => getSteekproefPlanten(),
+    queryFn: () => fetchSteekproefPlanten(),
   });
   const stkMetingenQ = useQuery({
     queryKey: ["steekproef_metingen"],
-    queryFn: async () => getSteekproefMetingen(),
+    queryFn: () => fetchSteekproefMetingen(),
   });
-  const oogstQ = useQuery({ queryKey: ["oogst"], queryFn: async () => getOogst() });
+  // PB-first; valt terug op de lokale registraties als de server niet bereikbaar is
+  const oogstQ = useQuery({
+    queryKey: ["oogst"],
+    queryFn: async () => {
+      const records = await fetchOogst();
+      return records.length > 0 ? records : getOogst();
+    },
+  });
 
   const rijenById = useMemo(() => {
     const m = new Map<string, Rij>();

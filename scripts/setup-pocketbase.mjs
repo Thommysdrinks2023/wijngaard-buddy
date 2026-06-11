@@ -252,6 +252,73 @@ async function main() {
     listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
   });
 
+  await ensureCollection({
+    name: "steekproef_planten",
+    type: "base",
+    fields: [
+      { name: "client_id", type: "text", required: true },
+      { name: "naam", type: "text" },
+      { name: "ras", type: "select", required: true, maxSelect: 1, values: RAS_VALUES },
+      { name: "rij", type: "text" },
+      { name: "rijnummer", type: "number", onlyInt: true },
+      { name: "plant", type: "number", onlyInt: true },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "steekproef_metingen",
+    type: "base",
+    fields: [
+      { name: "client_id", type: "text", required: true },
+      { name: "plant_client_id", type: "text", required: true },
+      { name: "datum", type: "text", required: true },
+      { name: "seizoen", type: "number", onlyInt: true },
+      { name: "trosaantal", type: "number" },
+      { name: "trosgewicht", type: "number" },
+      { name: "brix", type: "number" },
+      { name: "zuurgraad", type: "number" },
+      { name: "fenologie", type: "text" },
+      { name: "ziektedruk", type: "text" },
+      { name: "bladgroei", type: "text" },
+      { name: "bodem", type: "text" },
+      { name: "biodiversiteit", type: "text" },
+      { name: "waterstress", type: "text" },
+      { name: "opbrengst_kg", type: "number" },
+      { name: "notitie", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "werkkalender",
+    type: "base",
+    fields: [
+      { name: "ras", type: "select", required: true, maxSelect: 1, values: RAS_VALUES },
+      { name: "kolom", type: "text", required: true },
+      { name: "jaar", type: "number", required: true, onlyInt: true },
+      { name: "datum", type: "text" },
+      { name: "notitie", type: "text" },
+      { name: "verwijderd", type: "bool" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "notities",
+    type: "base",
+    fields: [
+      { name: "seizoen", type: "number", required: true, onlyInt: true },
+      { name: "tekst", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
   // 4. rijen seeden
   console.log("Rijen seeden...");
   const bestaande = await api("/api/collections/rijen/records?perPage=1");

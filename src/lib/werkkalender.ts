@@ -1,4 +1,6 @@
 import type { Ras } from "./seed-rijen";
+import { ensureOnline, getPb } from "./data";
+import { addToSyncQueue, getSyncQueue } from "./sync";
 
 export type WerkKolom =
   | "snoei_start"
@@ -64,6 +66,20 @@ export function upsertWerkEntry(entry: WerkEntry) {
   if (idx >= 0) all[idx] = entry;
   else all.push(entry);
   writeAll(all);
+  // sync als append-only logboek: nieuwste record per (ras, kolom, jaar) wint
+  addToSyncQueue(
+    "werkkalender",
+    `wk-${entry.ras}-${entry.kolom}-${entry.jaar}-${Date.now()}`,
+    {
+      ras: entry.ras,
+      kolom: entry.kolom,
+      jaar: entry.jaar,
+      datum: entry.datum,
+      notitie: entry.notitie ?? "",
+      verwijderd: false,
+    },
+    { collection: "werkkalender" },
+  );
 }
 
 export function deleteWerkEntry(ras: Ras, kolom: WerkKolom, jaar: number) {
@@ -71,4 +87,56 @@ export function deleteWerkEntry(ras: Ras, kolom: WerkKolom, jaar: number) {
     (e) => !(e.ras === ras && e.kolom === kolom && e.jaar === jaar),
   );
   writeAll(all);
+  // verwijdering als marker-record in het logboek
+  addToSyncQueue(
+    "werkkalender",
+    `wk-del-${ras}-${kolom}-${jaar}-${Date.now()}`,
+    { ras, kolom, jaar, datum: "", notitie: "", verwijderd: true },
+    { collection: "werkkalender" },
+  );
+}
+
+// PB-first variant: leest het serverlogboek, reduceert naar de actuele
+// stand (nieuwste record per sleutel wint, verwijdermarkers verwijderen),
+// past daarna nog niet gesynchroniseerde lokale wijzigingen toe en cachet.
+export async function fetchWerkkalenderSync(): Promise<WerkEntry[]> {
+  const pb = getPb();
+  if (pb && (await ensureOnline())) {
+    try {
+      const records = await pb.collection("werkkalender").getFullList({ sort: "created" });
+      const stand = new Map<string, WerkEntry>();
+      const verwerk = (r: {
+        ras: Ras;
+        kolom: WerkKolom;
+        jaar: number;
+        datum: string;
+        notitie?: string;
+        verwijderd?: boolean;
+      }) => {
+        const sleutel = `${r.ras}|${r.kolom}|${r.jaar}`;
+        if (r.verwijderd) stand.delete(sleutel);
+        else
+          stand.set(sleutel, {
+            ras: r.ras,
+            kolom: r.kolom,
+            jaar: r.jaar,
+            datum: r.datum,
+            notitie: r.notitie || undefined,
+          });
+      };
+      records.forEach((r) =>
+        verwerk(r as unknown as Parameters<typeof verwerk>[0]),
+      );
+      // lokale wijzigingen die nog in de wachtrij staan, gelden als nieuwste
+      getSyncQueue()
+        .filter((q) => q.soort === "werkkalender")
+        .forEach((q) => verwerk(q.payload as unknown as Parameters<typeof verwerk>[0]));
+      const merged = Array.from(stand.values());
+      writeAll(merged);
+      return merged;
+    } catch {
+      // fall through
+    }
+  }
+  return readAll();
 }

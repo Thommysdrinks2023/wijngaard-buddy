@@ -1,11 +1,47 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { isPbConfigured, pingPb } from "@/lib/data";
+import { getPb, isPbConfigured, pingPb } from "@/lib/data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
-import { CheckCircle2, XCircle, Loader2, Download } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Download,
+  Map,
+  BarChart3,
+  Calendar,
+  ClipboardList,
+  LineChart,
+  HeartPulse,
+  Grape,
+  Clock,
+  TrendingUp,
+  LogIn,
+  Database,
+} from "lucide-react";
 import { toast } from "sonner";
-import { DREMPEL_OPTIES, getMetingDrempel, setMetingDrempel } from "@/lib/app-instellingen";
+import {
+  DREMPEL_OPTIES,
+  getMetingDrempel,
+  getPerceelOppervlakte,
+  setMetingDrempel,
+  setPerceelOppervlakte,
+} from "@/lib/app-instellingen";
+
+// Volledig menu — alle pagina's van de app in logische volgorde
+const MENU = [
+  { to: "/perceelkaart", label: "Perceelkaart", omschrijving: "Bovenaanzicht van alle rijen", icon: Map },
+  { to: "/dashboard", label: "Dashboard", omschrijving: "Overzicht van het seizoen", icon: BarChart3 },
+  { to: "/seizoen", label: "Seizoen", omschrijving: "Fenologie, warmtesom en werkkalender", icon: Calendar },
+  { to: "/steekproeven", label: "Steekproeven", omschrijving: "Vaste meetplanten per ras", icon: ClipboardList },
+  { to: "/gezondheid", label: "Gezondheid", omschrijving: "Vigor, snoeigewicht en uitval", icon: HeartPulse },
+  { to: "/oogst", label: "Oogst", omschrijving: "Opbrengst registreren en vergelijken", icon: Grape },
+  { to: "/werkrapport", label: "Werkrapport", omschrijving: "Uren per taak bijhouden", icon: Clock },
+  { to: "/grafieken", label: "Grafieken", omschrijving: "Vaste analyses per seizoen", icon: LineChart },
+  { to: "/trends", label: "Trends", omschrijving: "Zelf grafieken samenstellen", icon: TrendingUp },
+  { to: "/login", label: "Inloggen", omschrijving: "Account voor synchronisatie", icon: LogIn },
+] as const;
 
 function vandaagStr() {
   const d = new Date();
@@ -84,6 +120,35 @@ function downloadCsvBackup() {
   toast.success("CSV gedownload", { description: "Te openen in Excel." });
 }
 
+// Volledige backup van alle PocketBase-collecties (vereist login)
+async function downloadServerBackup() {
+  const pb = getPb();
+  if (!pb || !(await pingPb())) {
+    toast.error("Server niet bereikbaar", { description: "Probeer het later opnieuw." });
+    return;
+  }
+  if (!pb.authStore.isValid) {
+    toast.error("Log eerst in", { description: "Serverdata downloaden vereist een account." });
+    return;
+  }
+  const collecties = [
+    "rijen", "metingen", "observaties", "fenologie", "gezondheid",
+    "oogst", "werkuren", "steekproef_planten", "steekproef_metingen",
+    "werkkalender", "notities",
+  ];
+  const data: Record<string, unknown> = { geexporteerd: new Date().toISOString() };
+  for (const c of collecties) {
+    try {
+      data[c] = await pb.collection(c).getFullList();
+    } catch {
+      data[c] = "kon niet worden opgehaald";
+    }
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  triggerDownload(blob, `tappenmars-server-backup-${vandaagStr()}.json`);
+  toast.success("Serverbackup gedownload", { description: "Alle collecties als JSON." });
+}
+
 export const Route = createFileRoute("/instellingen")({
   component: Instellingen,
   head: () => ({ meta: [{ title: "Instellingen — Wijngaard" }] }),
@@ -93,6 +158,7 @@ function Instellingen() {
   const [invoerder, setInvoerder] = useInvoerder();
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
+  const [oppervlakte, setOppervlakte] = useState<string>(() => String(getPerceelOppervlakte()));
 
   useEffect(() => {
     if (!isPbConfigured()) {
@@ -107,8 +173,43 @@ function Instellingen() {
       <AppHeader title="Instellingen" />
       <div className="mx-auto max-w-screen-md space-y-6 px-3 py-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Instellingen</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Meer</h1>
+          <p className="text-sm text-muted-foreground">Alle onderdelen en instellingen</p>
         </div>
+
+        {/* Volledig menu */}
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Menu
+          </h2>
+          <ul className="space-y-1.5">
+            {MENU.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition active:scale-[0.99]"
+                  >
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: "#27232a" }}
+                    >
+                      <Icon className="h-5 w-5" style={{ color: "#cac176" }} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">{item.label}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {item.omschrijving}
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground">→</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -181,6 +282,31 @@ function Instellingen() {
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Perceel
+          </h2>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Oppervlakte (hectare)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min={0.01}
+              value={oppervlakte}
+              onChange={(e) => {
+                setOppervlakte(e.target.value);
+                const n = Number(e.target.value);
+                if (Number.isFinite(n) && n > 0) setPerceelOppervlakte(n);
+              }}
+              className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+            />
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Gebruikt voor uren per hectare in het werkrapport.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Backend
           </h2>
           <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
@@ -235,9 +361,19 @@ function Instellingen() {
               <Download className="h-4 w-4" />
               Download CSV
             </button>
+            <button
+              type="button"
+              onClick={() => void downloadServerBackup()}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#cac176] bg-[#27232a] px-4 text-sm font-semibold text-[#cac176] transition hover:bg-[#0a0b09] sm:col-span-2"
+            >
+              <Database className="h-4 w-4" />
+              Download serverdata (alle collecties)
+            </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            JSON voor volledige backup, CSV voor gebruik in Excel.
+            JSON/CSV exporteert de lokale gegevens van dit apparaat. Serverdata exporteert
+            álle collecties uit PocketBase (vereist login). De laptop maakt daarnaast elke
+            avond om 20:00 automatisch een volledige backup.
           </p>
         </section>
 

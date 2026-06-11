@@ -5,8 +5,8 @@ import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AppHeader } from "@/components/app-header";
 import {
-  getSteekproefPlanten,
-  getSteekproefMetingen,
+  fetchSteekproefPlanten,
+  fetchSteekproefMetingen,
   type SteekproefMeting,
   type SteekproefPlant,
 } from "@/lib/steekproef";
@@ -31,11 +31,11 @@ function SteekproevenPage() {
   const [jaar] = useSeizoen();
   const puntenQ = useQuery({
     queryKey: ["steekproef_planten"],
-    queryFn: async () => getSteekproefPlanten(),
+    queryFn: () => fetchSteekproefPlanten(),
   });
   const metingenQ = useQuery({
     queryKey: ["steekproef_metingen"],
-    queryFn: async () => getSteekproefMetingen(),
+    queryFn: () => fetchSteekproefMetingen(),
   });
 
   const laatsteMeting = useMemo(() => {
