@@ -198,6 +198,60 @@ async function main() {
     listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
   });
 
+  await ensureCollection({
+    name: "gezondheid",
+    type: "base",
+    fields: [
+      rijRelatie,
+      { name: "datum", type: "text", required: true },
+      { name: "seizoen", type: "number", onlyInt: true },
+      { name: "vigor", type: "number", required: true, onlyInt: true, min: 1, max: 5 },
+      { name: "snoeigewicht", type: "number" },
+      { name: "dode_planten", type: "number", onlyInt: true },
+      { name: "korte_scheuten", type: "number" },
+      { name: "notitie", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "oogst",
+    type: "base",
+    fields: [
+      { ...rijRelatie, required: false },
+      { name: "ras", type: "select", required: true, maxSelect: 1, values: RAS_VALUES },
+      { name: "datum", type: "text", required: true },
+      { name: "seizoen", type: "number", onlyInt: true },
+      { name: "kg", type: "number", required: true },
+      { name: "notitie", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "werkuren",
+    type: "base",
+    fields: [
+      { name: "datum", type: "text", required: true },
+      { name: "seizoen", type: "number", onlyInt: true },
+      {
+        name: "taak", type: "select", required: true, maxSelect: 1,
+        values: ["Snoeien", "Uitbreken", "Aanbinden", "Spuiten", "Maaien", "Bodembewerking", "Oogsten", "Overig"],
+      },
+      { ...rijRelatie, required: false },
+      { name: "ras", type: "select", maxSelect: 1, values: RAS_VALUES },
+      { name: "uren", type: "number", required: true },
+      { name: "notitie", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
   // 4. rijen seeden
   console.log("Rijen seeden...");
   const bestaande = await api("/api/collections/rijen/records?perPage=1");

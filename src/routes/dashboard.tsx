@@ -11,8 +11,9 @@ import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
 import { getMetingDrempel } from "@/lib/app-instellingen";
-import { AlertTriangle, ChevronDown } from "lucide-react";
+import { AlertTriangle, ChevronDown, Clock, Grape, HeartPulse, TrendingUp } from "lucide-react";
 import { WeerKaart } from "@/components/weer-kaart";
+import { fetchGezondheid } from "@/lib/extra-data";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -34,6 +35,7 @@ function Dashboard() {
   const metingenQ = useQuery({ queryKey: ["metingen"], queryFn: () => fetchMetingen() });
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
+  const gezQ = useQuery({ queryKey: ["gezondheid"], queryFn: fetchGezondheid });
 
   const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
   const [showStale, setShowStale] = useState(false);
@@ -103,6 +105,28 @@ function Dashboard() {
       .map(([ras, v]) => ({ ras, avg: v.sum / v.n, n: v.n }))
       .sort((a, b) => b.avg - a.avg);
   }, [metingenSeizoen, rijenById]);
+
+  // Gezondheid: gemiddelde vigor per ras (laatste registratie per rij, dit seizoen)
+  const gezondheidPerRas = useMemo(() => {
+    const laatstePerRij = new Map<string, { vigor: number; datum: string }>();
+    (gezQ.data ?? []).forEach((g) => {
+      if (jaarOf(g) !== jaar) return;
+      const cur = laatstePerRij.get(g.rij);
+      if (!cur || cur.datum < g.datum) laatstePerRij.set(g.rij, { vigor: g.vigor, datum: g.datum });
+    });
+    const acc = new Map<string, { sum: number; n: number }>();
+    laatstePerRij.forEach((v, rijId) => {
+      const r = rijenById.get(rijId);
+      if (!r) return;
+      const cur = acc.get(r.ras) ?? { sum: 0, n: 0 };
+      cur.sum += v.vigor;
+      cur.n += 1;
+      acc.set(r.ras, cur);
+    });
+    return Array.from(acc.entries())
+      .map(([ras, v]) => ({ ras, avg: v.sum / v.n, n: v.n }))
+      .sort((a, b) => a.avg - b.avg);
+  }, [gezQ.data, jaar, rijenById]);
 
   // Rijen with uitval observations dit seizoen
   const uitvalRijen = useMemo(() => {
@@ -178,6 +202,65 @@ function Dashboard() {
         </div>
 
         <WeerKaart />
+
+        {/* Snelkoppelingen naar registratiepagina's */}
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { to: "/gezondheid", label: "Gezondheid", icon: HeartPulse },
+            { to: "/oogst", label: "Oogst", icon: Grape },
+            { to: "/werkrapport", label: "Werk", icon: Clock },
+            { to: "/trends", label: "Trends", icon: TrendingUp },
+          ].map((s) => {
+            const Icon = s.icon;
+            return (
+              <Link
+                key={s.to}
+                to={s.to}
+                className="flex h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border text-xs font-semibold transition active:scale-[0.97]"
+                style={{ backgroundColor: "#27232a", borderColor: "#cac176", color: "#cac176" }}
+              >
+                <Icon className="h-5 w-5" />
+                {s.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Gezondheid per ras */}
+        {gezondheidPerRas.length > 0 && (
+          <section className="rounded-2xl border border-border bg-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Gezondheid per ras
+              </h2>
+              <Link to="/gezondheid" className="text-xs text-muted-foreground underline">
+                Alles bekijken
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {gezondheidPerRas.map((g) => {
+                const pct = (g.avg / 5) * 100;
+                const kleur = g.avg >= 4 ? "#a1a35b" : g.avg >= 3 ? "#cac176" : "#a83b2a";
+                return (
+                  <div key={g.ras}>
+                    <div className="mb-1 flex items-baseline justify-between text-sm">
+                      <span className="font-medium">{g.ras}</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        vigor {g.avg.toFixed(1)}/5 · {g.n} {g.n === 1 ? "rij" : "rijen"}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, backgroundColor: kleur }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {staleRijen.length > 0 && (
           <section className="rounded-2xl border border-warning/40 bg-warning/10 p-4">

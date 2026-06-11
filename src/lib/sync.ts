@@ -2,7 +2,13 @@
 // Records die offline worden aangemaakt komen in deze wachtrij en worden
 // naar PocketBase gestuurd zodra de server weer bereikbaar is.
 
-export type SyncSoort = "meting" | "observatie" | "fenologie";
+export type SyncSoort =
+  | "meting"
+  | "observatie"
+  | "fenologie"
+  | "gezondheid"
+  | "oogst"
+  | "werkuren";
 
 export interface SyncItem {
   queueId: string;
@@ -12,6 +18,10 @@ export interface SyncItem {
   // JSON-serialiseerbare invoer (foto's kunnen niet offline in de wachtrij)
   payload: Record<string, unknown>;
   aangemaakt: string;
+  // optioneel: expliciete PocketBase-collectie en localStorage-sleutel
+  // (voor nieuwere datatypes; oudere items vallen terug op de soort-mapping)
+  collection?: string;
+  lsKey?: string;
 }
 
 const LS_QUEUE = "wg.sync.queue.v1";
@@ -45,6 +55,7 @@ export function addToSyncQueue(
   soort: SyncSoort,
   localId: string,
   payload: Record<string, unknown>,
+  opties?: { collection?: string; lsKey?: string },
 ) {
   const items = readQueue();
   items.push({
@@ -53,6 +64,8 @@ export function addToSyncQueue(
     localId,
     payload,
     aangemaakt: new Date().toISOString(),
+    collection: opties?.collection,
+    lsKey: opties?.lsKey,
   });
   writeQueue(items);
 }

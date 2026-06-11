@@ -537,11 +537,22 @@ export async function deleteFenologie(id: string): Promise<void> {
 // ============= Offline sync =============
 let flushBezig = false;
 
-function removeLocalRecord(soort: "meting" | "observatie" | "fenologie", localId: string) {
-  const key = soort === "meting" ? LS_METINGEN : soort === "observatie" ? LS_OBS : LS_FENOLOGIE;
-  const all = readLs<Array<{ id: string }>>(key, []);
+const SOORT_LS_KEY: Record<string, string> = {
+  meting: LS_METINGEN,
+  observatie: LS_OBS,
+  fenologie: LS_FENOLOGIE,
+};
+
+const SOORT_COLLECTION: Record<string, string> = {
+  meting: "metingen",
+  observatie: "observaties",
+  fenologie: "fenologie",
+};
+
+function removeLocalRecord(lsKey: string, localId: string) {
+  const all = readLs<Array<{ id: string }>>(lsKey, []);
   writeLs(
-    key,
+    lsKey,
     all.filter((r) => r.id !== localId),
   );
 }
@@ -576,15 +587,16 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
           const match = rijen.find((r) => r.rijnummer === nr && !r.id.startsWith("local-"));
           if (match) payload.rij = match.id;
         }
-        const collection =
-          item.soort === "meting"
-            ? "metingen"
-            : item.soort === "observatie"
-              ? "observaties"
-              : "fenologie";
+        const collection = item.collection ?? SOORT_COLLECTION[item.soort];
+        const lsKey = item.lsKey ?? SOORT_LS_KEY[item.soort];
+        if (!collection || !lsKey) {
+          // onbekend item: verwijderen om een eeuwige wachtrij te voorkomen
+          removeFromSyncQueue(item.queueId);
+          continue;
+        }
         await pb.collection(collection).create(payload);
         removeFromSyncQueue(item.queueId);
-        removeLocalRecord(item.soort, item.localId);
+        removeLocalRecord(lsKey, item.localId);
         verzonden++;
       } catch (err) {
         const status = (err as { status?: number }).status ?? 0;

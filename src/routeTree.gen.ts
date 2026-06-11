@@ -9,11 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WerkrapportRouteImport } from './routes/werkrapport'
+import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as SeizoenRouteImport } from './routes/seizoen'
 import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
+import { Route as OogstRouteImport } from './routes/oogst'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as GrafiekenRouteImport } from './routes/grafieken'
+import { Route as GezondheidRouteImport } from './routes/gezondheid'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SteekproevenIndexRouteImport } from './routes/steekproeven.index'
@@ -27,6 +31,16 @@ import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
 import { Route as RijRijIdFenologieRouteImport } from './routes/rij.$rijId.fenologie'
 import { Route as FenologieFenIdBewerkenRouteImport } from './routes/fenologie.$fenId.bewerken'
 
+const WerkrapportRoute = WerkrapportRouteImport.update({
+  id: '/werkrapport',
+  path: '/werkrapport',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrendsRoute = TrendsRouteImport.update({
+  id: '/trends',
+  path: '/trends',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SeizoenRoute = SeizoenRouteImport.update({
   id: '/seizoen',
   path: '/seizoen',
@@ -35,6 +49,11 @@ const SeizoenRoute = SeizoenRouteImport.update({
 const PerceelkaartRoute = PerceelkaartRouteImport.update({
   id: '/perceelkaart',
   path: '/perceelkaart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OogstRoute = OogstRouteImport.update({
+  id: '/oogst',
+  path: '/oogst',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -50,6 +69,11 @@ const InstellingenRoute = InstellingenRouteImport.update({
 const GrafiekenRoute = GrafiekenRouteImport.update({
   id: '/grafieken',
   path: '/grafieken',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GezondheidRoute = GezondheidRouteImport.update({
+  id: '/gezondheid',
+  path: '/gezondheid',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -117,11 +141,15 @@ const FenologieFenIdBewerkenRoute = FenologieFenIdBewerkenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
   '/login': typeof LoginRoute
+  '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
+  '/trends': typeof TrendsRoute
+  '/werkrapport': typeof WerkrapportRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
@@ -136,11 +164,15 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
   '/login': typeof LoginRoute
+  '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
+  '/trends': typeof TrendsRoute
+  '/werkrapport': typeof WerkrapportRoute
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/steekproeven': typeof SteekproevenIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
@@ -155,11 +187,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
   '/login': typeof LoginRoute
+  '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/seizoen': typeof SeizoenRoute
+  '/trends': typeof TrendsRoute
+  '/werkrapport': typeof WerkrapportRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
@@ -176,11 +212,15 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/gezondheid'
     | '/grafieken'
     | '/instellingen'
     | '/login'
+    | '/oogst'
     | '/perceelkaart'
     | '/seizoen'
+    | '/trends'
+    | '/werkrapport'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
     | '/steekproeven/'
@@ -195,11 +235,15 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/gezondheid'
     | '/grafieken'
     | '/instellingen'
     | '/login'
+    | '/oogst'
     | '/perceelkaart'
     | '/seizoen'
+    | '/trends'
+    | '/werkrapport'
     | '/steekproeven/beheer'
     | '/steekproeven'
     | '/fenologie/$fenId/bewerken'
@@ -213,11 +257,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/gezondheid'
     | '/grafieken'
     | '/instellingen'
     | '/login'
+    | '/oogst'
     | '/perceelkaart'
     | '/seizoen'
+    | '/trends'
+    | '/werkrapport'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
     | '/steekproeven/'
@@ -233,11 +281,15 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  GezondheidRoute: typeof GezondheidRoute
   GrafiekenRoute: typeof GrafiekenRoute
   InstellingenRoute: typeof InstellingenRoute
   LoginRoute: typeof LoginRoute
+  OogstRoute: typeof OogstRoute
   PerceelkaartRoute: typeof PerceelkaartRoute
   SeizoenRoute: typeof SeizoenRoute
+  TrendsRoute: typeof TrendsRoute
+  WerkrapportRoute: typeof WerkrapportRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
   SteekproevenBeheerRoute: typeof SteekproevenBeheerRoute
   SteekproevenIndexRoute: typeof SteekproevenIndexRoute
@@ -247,6 +299,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/werkrapport': {
+      id: '/werkrapport'
+      path: '/werkrapport'
+      fullPath: '/werkrapport'
+      preLoaderRoute: typeof WerkrapportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trends': {
+      id: '/trends'
+      path: '/trends'
+      fullPath: '/trends'
+      preLoaderRoute: typeof TrendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/seizoen': {
       id: '/seizoen'
       path: '/seizoen'
@@ -259,6 +325,13 @@ declare module '@tanstack/react-router' {
       path: '/perceelkaart'
       fullPath: '/perceelkaart'
       preLoaderRoute: typeof PerceelkaartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oogst': {
+      id: '/oogst'
+      path: '/oogst'
+      fullPath: '/oogst'
+      preLoaderRoute: typeof OogstRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -280,6 +353,13 @@ declare module '@tanstack/react-router' {
       path: '/grafieken'
       fullPath: '/grafieken'
       preLoaderRoute: typeof GrafiekenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gezondheid': {
+      id: '/gezondheid'
+      path: '/gezondheid'
+      fullPath: '/gezondheid'
+      preLoaderRoute: typeof GezondheidRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -392,11 +472,15 @@ const RijRijIdRouteWithChildren = RijRijIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  GezondheidRoute: GezondheidRoute,
   GrafiekenRoute: GrafiekenRoute,
   InstellingenRoute: InstellingenRoute,
   LoginRoute: LoginRoute,
+  OogstRoute: OogstRoute,
   PerceelkaartRoute: PerceelkaartRoute,
   SeizoenRoute: SeizoenRoute,
+  TrendsRoute: TrendsRoute,
+  WerkrapportRoute: WerkrapportRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
   SteekproevenBeheerRoute: SteekproevenBeheerRoute,
   SteekproevenIndexRoute: SteekproevenIndexRoute,

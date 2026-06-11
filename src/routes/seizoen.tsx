@@ -27,6 +27,7 @@ import {
 } from "@/lib/werkkalender";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { GddKaart } from "@/components/gdd-kaart";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -199,6 +200,9 @@ function SeizoenPage() {
             invoerLabel="Naar perceelkaart"
           />
         )}
+
+        {/* Warmtesom — context bij de fenologie */}
+        <GddKaart jaar={jaar} />
 
         {/* Fenologie tabel */}
         <section className="space-y-2">

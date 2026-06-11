@@ -34,6 +34,19 @@ function RijDetail() {
   const observaties = (obsQ.data ?? []).slice(0, 5);
   const fenologie = (fenQ.data ?? []).slice(0, 10);
 
+  // Foto-tijdlijn: alle foto's van metingen en observaties, nieuwste eerst
+  const fotos = [
+    ...(metingenQ.data ?? [])
+      .filter((m) => m.foto)
+      .map((m) => ({ id: `m-${m.id}`, url: m.foto!, datum: m.datum, label: "Meting" })),
+    ...(obsQ.data ?? [])
+      .filter((o) => o.foto)
+      .map((o) => {
+        const t = OBSERVATIE_TYPES.find((x) => x.value === o.type);
+        return { id: `o-${o.id}`, url: o.foto!, datum: o.datum, label: t?.label ?? "Observatie" };
+      }),
+  ].sort((a, b) => (a.datum < b.datum ? 1 : -1));
+
   return (
     <>
       <AppHeader
@@ -79,6 +92,36 @@ function RijDetail() {
             Fenologie
           </Link>
         </div>
+
+        {/* Foto-tijdlijn */}
+        {fotos.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              📷 Foto's ({fotos.length})
+            </h2>
+            <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1">
+              {fotos.map((f) => (
+                <a
+                  key={f.id}
+                  href={f.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 overflow-hidden rounded-xl border border-border bg-card"
+                >
+                  <img
+                    src={f.url}
+                    alt={f.label}
+                    loading="lazy"
+                    className="h-28 w-28 object-cover"
+                  />
+                  <p className="px-2 py-1 text-center text-[10px] text-muted-foreground">
+                    {f.label} · {format(parseISO(f.datum), "d MMM", { locale: nl })}
+                  </p>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
