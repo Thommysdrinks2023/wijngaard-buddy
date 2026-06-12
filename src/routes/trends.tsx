@@ -20,6 +20,7 @@ import { useSeizoen } from "@/lib/seizoen";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { type Rij } from "@/lib/types";
 import { Download } from "lucide-react";
 
@@ -210,12 +211,20 @@ function TrendsPage() {
           <YearSelector />
         </div>
 
+        {metingenQ.isError && (
+          <ErrorState error={metingenQ.error} onRetry={() => metingenQ.refetch()} />
+        )}
+
         {/* Samenstellen */}
         <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Y-as (meetwaarde)</span>
-              <select value={metric} onChange={(e) => setMetric(e.target.value as MetricKey)} className={veldClass}>
+              <select
+                value={metric}
+                onChange={(e) => setMetric(e.target.value as MetricKey)}
+                className={veldClass}
+              >
                 {METRICS.map((m) => (
                   <option key={m.key} value={m.key}>
                     {m.label}
@@ -225,7 +234,11 @@ function TrendsPage() {
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">X-as (periode)</span>
-              <select value={xAs} onChange={(e) => setXAs(e.target.value as XKey)} className={veldClass}>
+              <select
+                value={xAs}
+                onChange={(e) => setXAs(e.target.value as XKey)}
+                className={veldClass}
+              >
                 {X_OPTIES.map((x) => (
                   <option key={x.key} value={x.key}>
                     {x.label}
@@ -267,7 +280,11 @@ function TrendsPage() {
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium">Rij A</span>
-                <select value={rijA} onChange={(e) => setRijA(e.target.value)} className={veldClass}>
+                <select
+                  value={rijA}
+                  onChange={(e) => setRijA(e.target.value)}
+                  className={veldClass}
+                >
                   <option value="">Kies rij…</option>
                   {(rijenQ.data ?? []).map((r) => (
                     <option key={r.id} value={r.id}>
@@ -278,7 +295,11 @@ function TrendsPage() {
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium">Rij B (optioneel)</span>
-                <select value={rijB} onChange={(e) => setRijB(e.target.value)} className={veldClass}>
+                <select
+                  value={rijB}
+                  onChange={(e) => setRijB(e.target.value)}
+                  className={veldClass}
+                >
                   <option value="">—</option>
                   {(rijenQ.data ?? []).map((r) => (
                     <option key={r.id} value={r.id}>

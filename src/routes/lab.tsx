@@ -44,8 +44,7 @@ function LabPage() {
   const [fouten, setFouten] = useState<Record<string, string>>({});
 
   const num = (sleutel: string) => (waarden[sleutel] ? Number(waarden[sleutel]) : null);
-  const setWaarde = (sleutel: string, v: string) =>
-    setWaarden((w) => ({ ...w, [sleutel]: v }));
+  const setWaarde = (sleutel: string, v: string) => setWaarden((w) => ({ ...w, [sleutel]: v }));
 
   const m = useMutation({
     mutationFn: async () =>
@@ -79,7 +78,8 @@ function LabPage() {
     if (m.isPending) return;
     const nieuweFouten: Record<string, string> = {};
     if (!datum) nieuweFouten.datum = "Datum is verplicht";
-    else if (new Date(datum) > new Date()) nieuweFouten.datum = "Datum kan niet in de toekomst liggen";
+    else if (new Date(datum) > new Date())
+      nieuweFouten.datum = "Datum kan niet in de toekomst liggen";
     const ph = num("ph");
     if (ph != null && (ph < 0 || ph > 14)) nieuweFouten.ph = "pH moet tussen 0 en 14 liggen";
     if (!invoerder.trim()) nieuweFouten.ingevoerd_door = "Invoerder is verplicht";
@@ -111,7 +111,8 @@ function LabPage() {
     { sleutel: "nh4", label: "NH₄ (mg/L)" },
     { sleutel: "nopa", label: "NOPA (mg/L)" },
   ];
-  const actieveVelden = soort === "Bodemanalyse" ? bodemVelden : soort === "Sapanalyse" ? sapVelden : [];
+  const actieveVelden =
+    soort === "Bodemanalyse" ? bodemVelden : soort === "Sapanalyse" ? sapVelden : [];
 
   return (
     <>
@@ -159,7 +160,9 @@ function LabPage() {
               }}
               className={`${veldClass} ${fouten.datum ? "border-destructive" : ""}`}
             />
-            {fouten.datum && <span className="mt-1 block text-sm text-destructive">{fouten.datum}</span>}
+            {fouten.datum && (
+              <span className="mt-1 block text-sm text-destructive">{fouten.datum}</span>
+            )}
           </label>
 
           {actieveVelden.length > 0 && (
@@ -218,7 +221,12 @@ function LabPage() {
 
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Notitie</span>
-            <input value={notitie} onChange={(e) => setNotitie(e.target.value)} className={veldClass} placeholder="Optioneel…" />
+            <input
+              value={notitie}
+              onChange={(e) => setNotitie(e.target.value)}
+              className={veldClass}
+              placeholder="Optioneel…"
+            />
           </label>
 
           <label className="block">
@@ -248,9 +256,7 @@ function LabPage() {
           </button>
         </section>
 
-        {labQ.isError && (
-          <ErrorState error={labQ.error} onRetry={() => labQ.refetch()} />
-        )}
+        {labQ.isError && <ErrorState error={labQ.error} onRetry={() => labQ.refetch()} />}
 
         {/* Overzicht per seizoen */}
         <section>

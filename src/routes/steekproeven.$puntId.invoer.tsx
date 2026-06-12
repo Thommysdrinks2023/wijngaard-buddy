@@ -127,7 +127,10 @@ function InvoerPage() {
           label="Fenologie moment"
           value={fenologie}
           onChange={setFenologie}
-          options={FENOLOGIE_MOMENTEN.map((f) => ({ value: f.value, label: `${f.emoji} ${f.value}` }))}
+          options={FENOLOGIE_MOMENTEN.map((f) => ({
+            value: f.value,
+            label: `${f.emoji} ${f.value}`,
+          }))}
         />
         <ChipPicker
           label="Ziektedruk"

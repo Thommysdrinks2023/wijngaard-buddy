@@ -11,11 +11,7 @@ import {
   fetchRijen,
   updateFenologie,
 } from "@/lib/data";
-import {
-  FENOLOGIE_MOMENTEN,
-  type Fenologie,
-  type FenologieMoment,
-} from "@/lib/types";
+import { FENOLOGIE_MOMENTEN, type Fenologie, type FenologieMoment } from "@/lib/types";
 import { RAS_OPTIONS, type Ras } from "@/lib/seed-rijen";
 import {
   WERK_KOLOMMEN,
@@ -32,11 +28,7 @@ import { YearSelector } from "@/components/year-selector";
 import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
-import {
-  fetchSeizoenNotities,
-  getSeizoenNotitie,
-  setSeizoenNotitie,
-} from "@/lib/app-instellingen";
+import { fetchSeizoenNotities, getSeizoenNotitie, setSeizoenNotitie } from "@/lib/app-instellingen";
 import {
   Dialog,
   DialogContent,
@@ -123,9 +115,7 @@ function SeizoenPage() {
 
   const werkGrid = useMemo(() => {
     const map = new Map<string, WerkEntry>();
-    werkEntries
-      .filter((e) => e.jaar === jaar)
-      .forEach((e) => map.set(`${e.ras}|${e.kolom}`, e));
+    werkEntries.filter((e) => e.jaar === jaar).forEach((e) => map.set(`${e.ras}|${e.kolom}`, e));
     return map;
   }, [werkEntries, jaar]);
 
@@ -250,9 +240,7 @@ function SeizoenPage() {
                           <td key={m.value} className="px-1 py-1">
                             <button
                               type="button"
-                              onClick={() =>
-                                setFenCell({ ras, moment: m.value, existing: entry })
-                              }
+                              onClick={() => setFenCell({ ras, moment: m.value, existing: entry })}
                               className={`flex h-12 min-w-[70px] w-full items-center justify-center rounded-lg px-2 text-center text-xs font-semibold transition active:scale-[0.97] ${
                                 filled
                                   ? "bg-success text-success-foreground"
@@ -264,9 +252,7 @@ function SeizoenPage() {
                                   : `${ras} — ${m.value}: nog niet ingevuld`
                               }
                             >
-                              {entry
-                                ? format(parseISO(entry.datum), "d MMM", { locale: nl })
-                                : "+"}
+                              {entry ? format(parseISO(entry.datum), "d MMM", { locale: nl }) : "+"}
                             </button>
                           </td>
                         );
@@ -285,9 +271,7 @@ function SeizoenPage() {
         {/* Werkkalender tabel */}
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Werkkalender</h2>
-          <p className="text-xs text-muted-foreground">
-            Snoei, loofwerk en oogst per ras.
-          </p>
+          <p className="text-xs text-muted-foreground">Snoei, loofwerk en oogst per ras.</p>
           <div className="rounded-2xl border border-border bg-card p-2">
             <div className="overflow-x-auto">
               <table className="min-w-full border-separate border-spacing-1 text-sm">
@@ -322,9 +306,7 @@ function SeizoenPage() {
                           <td key={k.value} className="px-1 py-1">
                             <button
                               type="button"
-                              onClick={() =>
-                                setWerkCell({ ras, kolom: k.value, existing: entry })
-                              }
+                              onClick={() => setWerkCell({ ras, kolom: k.value, existing: entry })}
                               className={`flex h-12 min-w-[80px] w-full items-center justify-center rounded-lg px-2 text-center text-xs font-semibold transition active:scale-[0.97] ${
                                 filled
                                   ? "bg-success text-success-foreground"
@@ -336,9 +318,7 @@ function SeizoenPage() {
                                   : `${ras} — ${k.label}: nog niet ingevuld`
                               }
                             >
-                              {entry
-                                ? format(parseISO(entry.datum), "d MMM", { locale: nl })
-                                : "+"}
+                              {entry ? format(parseISO(entry.datum), "d MMM", { locale: nl }) : "+"}
                             </button>
                           </td>
                         );
@@ -384,9 +364,7 @@ function SeizoenPage() {
             existing: fenCell.existing,
           })
         }
-        onDelete={() =>
-          fenCell?.existing && fenDelMut.mutate(fenCell.existing.id)
-        }
+        onDelete={() => fenCell?.existing && fenDelMut.mutate(fenCell.existing.id)}
         saving={fenMut.isPending}
         deleting={fenDelMut.isPending}
       />
@@ -574,9 +552,7 @@ function WerkDialog({
             {kolomInfo?.emoji} {kolomInfo?.label} — {cell?.ras}
           </DialogTitle>
           <DialogDescription>
-            {cell?.existing
-              ? `Bewerk werkkalender ${jaar}.`
-              : `Leg de datum vast voor ${jaar}.`}
+            {cell?.existing ? `Bewerk werkkalender ${jaar}.` : `Leg de datum vast voor ${jaar}.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -650,8 +626,6 @@ function SeizoenNotities({ jaar }: { jaar: number }) {
     const entry = notitiesQ.data?.[String(jaar)] ?? getSeizoenNotitie(jaar);
     setTekst(entry?.tekst ?? "");
     setUpdated(entry?.updated ?? null);
-    // alleen opnieuw initialiseren bij jaarwissel of als serverdata binnenkomt
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jaar, notitiesQ.data]);
 
   useEffect(() => {
@@ -685,4 +659,3 @@ function SeizoenNotities({ jaar }: { jaar: number }) {
     </section>
   );
 }
-

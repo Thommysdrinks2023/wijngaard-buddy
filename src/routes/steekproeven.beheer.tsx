@@ -115,9 +115,7 @@ function BeheerPage() {
               ))}
             </select>
           </Field>
-          <Field
-            label={`Plantnummer${huidigeRij ? ` (1-${huidigeRij.aantal_planten})` : ""}`}
-          >
+          <Field label={`Plantnummer${huidigeRij ? ` (1-${huidigeRij.aantal_planten})` : ""}`}>
             <input
               type="number"
               inputMode="numeric"

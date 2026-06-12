@@ -33,6 +33,7 @@ import {
   getOogst,
   ZIEKTEDRUK_KLEUR,
   ZIEKTEDRUK_OPTIES,
+  type SteekproefPlant,
   type ZiekteDruk,
 } from "@/lib/steekproef";
 import { fetchOogst } from "@/lib/extra-data";
@@ -208,7 +209,10 @@ function GrafiekenPage() {
 
   // ============ Temperatuur vs Brix per dag ============
   const tempBrixVerloop = useMemo(() => {
-    const perDag = new Map<string, { brixSum: number; brixN: number; tempSum: number; tempN: number }>();
+    const perDag = new Map<
+      string,
+      { brixSum: number; brixN: number; tempSum: number; tempN: number }
+    >();
     metingenQ.data?.forEach((m) => {
       const d = parseISO(m.datum);
       if (d.getFullYear() !== jaar) return;
@@ -251,7 +255,7 @@ function GrafiekenPage() {
 
   // ============ Grafiek 4: Steekproef Brix verloop per plant ============
   const stkPlantById = useMemo(() => {
-    const m = new Map<string, NonNullable<typeof stkPlantenQ.data>[number]>();
+    const m = new Map<string, SteekproefPlant>();
     stkPlantenQ.data?.forEach((p) => m.set(p.id, p));
     return m;
   }, [stkPlantenQ.data]);
@@ -366,9 +370,21 @@ function GrafiekenPage() {
           <YearSelector extra={beschikbareJaren} />
         </div>
 
-        {(rijenQ.isError || metingenQ.isError || obsQ.isError || stkPlantenQ.isError || stkMetingenQ.isError || oogstQ.isError) && (
+        {(rijenQ.isError ||
+          metingenQ.isError ||
+          obsQ.isError ||
+          stkPlantenQ.isError ||
+          stkMetingenQ.isError ||
+          oogstQ.isError) && (
           <ErrorState
-            error={rijenQ.error || metingenQ.error || obsQ.error || stkPlantenQ.error || stkMetingenQ.error || oogstQ.error}
+            error={
+              rijenQ.error ||
+              metingenQ.error ||
+              obsQ.error ||
+              stkPlantenQ.error ||
+              stkMetingenQ.error ||
+              oogstQ.error
+            }
             onRetry={() => {
               rijenQ.refetch();
               metingenQ.refetch();
@@ -413,7 +429,9 @@ function GrafiekenPage() {
                     />
                     <YAxis domain={[0, 30]} tick={{ fontSize: 11 }} />
                     <Tooltip
-                      labelFormatter={(v) => format(parseISO(String(v)), "d MMM yyyy", { locale: nl })}
+                      labelFormatter={(v) =>
+                        format(parseISO(String(v)), "d MMM yyyy", { locale: nl })
+                      }
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     {rasMetData.map((ras) => (
@@ -437,7 +455,10 @@ function GrafiekenPage() {
                 <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={brixGemPerRas} margin={{ top: 8, right: 12, left: 0, bottom: 40 }}>
+                  <BarChart
+                    data={brixGemPerRas}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 40 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="ras"
@@ -488,7 +509,10 @@ function GrafiekenPage() {
                 <ChartEmpty msg="Nog geen temperatuur ingevoerd bij metingen." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={tempBrixVerloop} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <ComposedChart
+                    data={tempBrixVerloop}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="datum"
@@ -504,7 +528,9 @@ function GrafiekenPage() {
                       unit="°"
                     />
                     <Tooltip
-                      labelFormatter={(v) => format(parseISO(String(v)), "d MMM yyyy", { locale: nl })}
+                      labelFormatter={(v) =>
+                        format(parseISO(String(v)), "d MMM yyyy", { locale: nl })
+                      }
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Line
@@ -541,7 +567,10 @@ function GrafiekenPage() {
                 <ChartEmpty msg="Nog geen steekproefmetingen — voer je eerste steekproef in." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stkBrixVerloop} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <LineChart
+                    data={stkBrixVerloop}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="datum"
@@ -550,7 +579,9 @@ function GrafiekenPage() {
                     />
                     <YAxis domain={[0, 30]} tick={{ fontSize: 11 }} />
                     <Tooltip
-                      labelFormatter={(v) => format(parseISO(String(v)), "d MMM yyyy", { locale: nl })}
+                      labelFormatter={(v) =>
+                        format(parseISO(String(v)), "d MMM yyyy", { locale: nl })
+                      }
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     {stkPlantNamen.map((naam, i) => (
@@ -592,7 +623,10 @@ function GrafiekenPage() {
                 <ChartEmpty msg="Nog geen steekproefmetingen met ziektedruk." />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ziektePerWeek} margin={{ top: 8, right: 12, left: 0, bottom: 30 }}>
+                  <BarChart
+                    data={ziektePerWeek}
+                    margin={{ top: 8, right: 12, left: 0, bottom: 30 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="week"

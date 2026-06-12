@@ -12,7 +12,8 @@ export const Route = createFileRoute("/qr")({
 });
 
 // QR-inhoud per rij: apparaat-onafhankelijk via het rijnummer
-export function qrInhoud(rijnummer: number): string {
+// (de scanner op /scan herkent dit patroon: WG-RIJ-<nummer>)
+function qrInhoud(rijnummer: number): string {
   return `WG-RIJ-${rijnummer}`;
 }
 
@@ -57,8 +58,8 @@ function QrPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">QR-codes</h1>
             <p className="text-sm text-muted-foreground">
-              Print dit vel, lamineer de codes en hang ze aan de rijpalen. Scannen
-              opent direct de juiste rij.
+              Print dit vel, lamineer de codes en hang ze aan de rijpalen. Scannen opent direct de
+              juiste rij.
             </p>
           </div>
         </div>

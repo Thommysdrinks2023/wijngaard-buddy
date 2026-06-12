@@ -26,29 +26,16 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
             <ChevronLeft className="h-6 w-6" />
           </button>
         ) : (
-          <Link
-            to="/perceelkaart"
-            className="flex h-12 items-center gap-2 px-1"
-          >
-            <img
-              src="/logo-icon.png"
-              alt="De Tappenmars"
-              className="h-9 w-9 object-contain"
-            />
-            <span className="text-base font-semibold tracking-tight text-white">
-              De Tappenmars
-            </span>
+          <Link to="/perceelkaart" className="flex h-12 items-center gap-2 px-1">
+            <img src="/logo-icon.png" alt="De Tappenmars" className="h-9 w-9 object-contain" />
+            <span className="text-base font-semibold tracking-tight text-white">De Tappenmars</span>
           </Link>
         )}
         <div className="flex-1 truncate">
           {back && (
             <>
-              <h1 className="truncate text-base font-semibold leading-tight text-white">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="truncate text-xs text-[#cac176]">{subtitle}</p>
-              )}
+              <h1 className="truncate text-base font-semibold leading-tight text-white">{title}</h1>
+              {subtitle && <p className="truncate text-xs text-[#cac176]">{subtitle}</p>}
             </>
           )}
         </div>

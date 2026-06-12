@@ -52,7 +52,14 @@ export const Route = createFileRoute("/werkrapport")({
 
 // Huisstijl-palet voor het taartdiagram
 const TAART_KLEUREN = [
-  "#27232a", "#cac176", "#a1a35b", "#b6cfb3", "#e2d294", "#5a5240", "#7e22ce", "#a83b2a",
+  "#27232a",
+  "#cac176",
+  "#a1a35b",
+  "#b6cfb3",
+  "#e2d294",
+  "#5a5240",
+  "#7e22ce",
+  "#a83b2a",
 ];
 
 function jaarOf(item: { seizoen?: number; datum: string }): number {
@@ -314,7 +321,11 @@ function WerkrapportPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Rij (optioneel)</span>
-              <select value={rijId} onChange={(e) => setRijId(e.target.value)} className={veldClass}>
+              <select
+                value={rijId}
+                onChange={(e) => setRijId(e.target.value)}
+                className={veldClass}
+              >
                 <option value="">Hele wijngaard</option>
                 {(rijenQ.data ?? []).map((r) => (
                   <option key={r.id} value={r.id}>
@@ -376,7 +387,12 @@ function WerkrapportPage() {
           </div>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Notitie</span>
-            <input value={notitie} onChange={(e) => setNotitie(e.target.value)} className={veldClass} placeholder="Optioneel…" />
+            <input
+              value={notitie}
+              onChange={(e) => setNotitie(e.target.value)}
+              className={veldClass}
+              placeholder="Optioneel…"
+            />
           </label>
           <button
             type="button"
@@ -476,7 +492,9 @@ function WerkrapportPage() {
                   </Pie>
                   <Tooltip
                     formatter={(v: number) =>
-                      uurloon > 0 ? [`${v} uur · €${Math.round(v * uurloon)}`, "Duur"] : [`${v} uur`, "Duur"]
+                      uurloon > 0
+                        ? [`${v} uur · €${Math.round(v * uurloon)}`, "Duur"]
+                        : [`${v} uur`, "Duur"]
                     }
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -498,7 +516,10 @@ function WerkrapportPage() {
               {recent.map((w) => {
                 const r = w.rij ? rijenById.get(w.rij) : undefined;
                 return (
-                  <li key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+                  <li
+                    key={w.id}
+                    className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
+                  >
                     <div>
                       <p className="text-sm font-semibold">
                         {w.taak} · {w.uren} uur

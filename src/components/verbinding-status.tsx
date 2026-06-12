@@ -15,8 +15,7 @@ export function useVerbinding(): Verbinding {
 
   useEffect(() => {
     if (!isPbConfigured()) return;
-    const update = () =>
-      setStaat({ online: getPbStatus() === "online", ingelogd: isIngelogd() });
+    const update = () => setStaat({ online: getPbStatus() === "online", ingelogd: isIngelogd() });
 
     update();
     void pingPb().then(update);

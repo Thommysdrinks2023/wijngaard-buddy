@@ -8,9 +8,7 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-2xl font-bold text-foreground">Er ging iets mis</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {error.message || "Onbekende fout."}
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{error.message || "Onbekende fout."}</p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
             onClick={() => {

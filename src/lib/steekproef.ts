@@ -1,12 +1,9 @@
 import type { RecordModel } from "pocketbase";
 import type { FenologieMoment, Ras } from "./types";
 import { ensureOnline, getPb } from "./data";
-import {
-  addToSyncQueue,
-  getSyncQueue,
-  removeFromSyncQueue,
-  removeQueuedByLocalId,
-} from "./sync";
+import { addToSyncQueue, getSyncQueue, removeFromSyncQueue, removeQueuedByLocalId } from "./sync";
+import { logAudit } from "./audit";
+import { naarPrullenbak } from "./prullenbak";
 
 // ============= Types =============
 export type ZiekteDruk = "Geen" | "Licht" | "Matig" | "Zwaar";
@@ -73,22 +70,7 @@ const LS_PUNTEN = "wg.steekproef_planten.v1";
 const LS_METINGEN = "wg.steekproef_metingen.v1";
 const LS_OOGST = "wg.oogst.v1";
 
-function readLs<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function writeLs<T>(key: string, val: T) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(val));
-}
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
+import { readLs, uid, writeLs } from "./opslag";
 
 // ============= Planten =============
 export function getSteekproefPlanten(): SteekproefPlant[] {
@@ -152,6 +134,17 @@ export function createSteekproefPlant(
 }
 
 export function deleteSteekproefPlant(id: string) {
+  // snapshot (plant + metingen) voor de prullenbak
+  const plant = getSteekproefPlanten().find((p) => p.id === id);
+  const plantMetingen = getSteekproefMetingen(id);
+  if (plant) {
+    naarPrullenbak(
+      "Steekproefplant",
+      `${plant.naam} · rij ${plant.rijnummer} · ${plant.ras} (${plantMetingen.length} metingen)`,
+      { plant: { ...plant }, metingen: plantMetingen },
+    );
+    logAudit("verwijderd", "steekproef_planten", `${plant.naam} rij ${plant.rijnummer}`, plant);
+  }
   const all = getSteekproefPlanten().filter((p) => p.id !== id);
   writeLs(LS_PUNTEN, all);
   // Cascade: verwijder bijbehorende metingen
@@ -164,17 +157,81 @@ export function deleteSteekproefPlant(id: string) {
     .forEach((q) => removeFromSyncQueue(q.queueId));
   if (!stondNogInWachtrij) {
     // plant stond al op de server: daar ook verwijderen (op client_id)
-    addToSyncQueue("steekproef_plant", `del-${id}`, {}, {
-      collection: "steekproef_planten",
-      actie: "delete",
-      filter: `client_id='${id}'`,
-    });
-    addToSyncQueue("steekproef_meting", `del-metingen-${id}`, {}, {
-      collection: "steekproef_metingen",
-      actie: "delete",
-      filter: `plant_client_id='${id}'`,
-    });
+    addToSyncQueue(
+      "steekproef_plant",
+      `del-${id}`,
+      {},
+      {
+        collection: "steekproef_planten",
+        actie: "delete",
+        filter: `client_id='${id}'`,
+      },
+    );
+    addToSyncQueue(
+      "steekproef_meting",
+      `del-metingen-${id}`,
+      {},
+      {
+        collection: "steekproef_metingen",
+        actie: "delete",
+        filter: `plant_client_id='${id}'`,
+      },
+    );
   }
+}
+
+// Zet een verwijderde plant (incl. metingen) terug met de originele id's,
+// zodat alle verwijzingen blijven kloppen — gebruikt door de prullenbak.
+export function herstelSteekproefPlant(plant: SteekproefPlant, metingen: SteekproefMeting[]) {
+  const planten = getSteekproefPlanten();
+  if (!planten.some((p) => p.id === plant.id)) {
+    planten.push(plant);
+    writeLs(LS_PUNTEN, planten);
+    addToSyncQueue(
+      "steekproef_plant",
+      plant.id,
+      {
+        client_id: plant.id,
+        naam: plant.naam,
+        ras: plant.ras,
+        rij: plant.rij,
+        rijnummer: plant.rijnummer,
+        plant: plant.plant,
+      },
+      { collection: "steekproef_planten", lsKey: LS_PUNTEN },
+    );
+  }
+  const alleMetingen = readLs<SteekproefMeting[]>(LS_METINGEN, []);
+  for (const m of metingen) {
+    if (alleMetingen.some((x) => x.id === m.id)) continue;
+    alleMetingen.push(m);
+    addToSyncQueue(
+      "steekproef_meting",
+      m.id,
+      {
+        client_id: m.id,
+        plant_client_id: m.plantId,
+        datum: m.datum,
+        seizoen: m.seizoen,
+        trosaantal: m.trosaantal ?? null,
+        trosgewicht: m.trosgewicht ?? null,
+        brix: m.brix ?? null,
+        zuurgraad: m.zuurgraad ?? null,
+        fenologie: m.fenologie ?? "",
+        ziektedruk: m.ziektedruk ?? "",
+        bladgroei: m.bladgroei ?? "",
+        bodem: m.bodem ?? "",
+        biodiversiteit: m.biodiversiteit ?? "",
+        waterstress: m.waterstress ?? "",
+        opbrengst_kg: m.opbrengst_kg ?? null,
+        notitie: m.notitie ?? "",
+        ingevoerd_door: m.ingevoerd_door,
+      },
+      { collection: "steekproef_metingen", lsKey: LS_METINGEN },
+    );
+  }
+  writeLs(LS_METINGEN, alleMetingen);
+  logAudit("teruggezet", "steekproef_planten", `${plant.naam} rij ${plant.rijnummer}`);
 }
 
 // ============= Metingen =============

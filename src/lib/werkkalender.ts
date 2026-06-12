@@ -48,14 +48,8 @@ export function getWerkkalender(): WerkEntry[] {
   return readAll();
 }
 
-export function getWerkEntry(
-  ras: Ras,
-  kolom: WerkKolom,
-  jaar: number,
-): WerkEntry | undefined {
-  return readAll().find(
-    (e) => e.ras === ras && e.kolom === kolom && e.jaar === jaar,
-  );
+export function getWerkEntry(ras: Ras, kolom: WerkKolom, jaar: number): WerkEntry | undefined {
+  return readAll().find((e) => e.ras === ras && e.kolom === kolom && e.jaar === jaar);
 }
 
 export function upsertWerkEntry(entry: WerkEntry) {
@@ -83,9 +77,7 @@ export function upsertWerkEntry(entry: WerkEntry) {
 }
 
 export function deleteWerkEntry(ras: Ras, kolom: WerkKolom, jaar: number) {
-  const all = readAll().filter(
-    (e) => !(e.ras === ras && e.kolom === kolom && e.jaar === jaar),
-  );
+  const all = readAll().filter((e) => !(e.ras === ras && e.kolom === kolom && e.jaar === jaar));
   writeAll(all);
   // verwijdering als marker-record in het logboek
   addToSyncQueue(
@@ -124,9 +116,7 @@ export async function fetchWerkkalenderSync(): Promise<WerkEntry[]> {
             notitie: r.notitie || undefined,
           });
       };
-      records.forEach((r) =>
-        verwerk(r as unknown as Parameters<typeof verwerk>[0]),
-      );
+      records.forEach((r) => verwerk(r as unknown as Parameters<typeof verwerk>[0]));
       // lokale wijzigingen die nog in de wachtrij staan, gelden als nieuwste
       getSyncQueue()
         .filter((q) => q.soort === "werkkalender")

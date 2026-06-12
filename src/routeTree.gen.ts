@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ZoekenRouteImport } from './routes/zoeken'
 import { Route as WerkrapportRouteImport } from './routes/werkrapport'
 import { Route as TrendsRouteImport } from './routes/trends'
+import { Route as SnelRouteImport } from './routes/snel'
 import { Route as SeizoenRouteImport } from './routes/seizoen'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RapportRouteImport } from './routes/rapport'
 import { Route as QrRouteImport } from './routes/qr'
+import { Route as PrullenbakRouteImport } from './routes/prullenbak'
 import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
 import { Route as OogstRouteImport } from './routes/oogst'
 import { Route as LoginRouteImport } from './routes/login'
@@ -52,6 +54,11 @@ const TrendsRoute = TrendsRouteImport.update({
   path: '/trends',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SnelRoute = SnelRouteImport.update({
+  id: '/snel',
+  path: '/snel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SeizoenRoute = SeizoenRouteImport.update({
   id: '/seizoen',
   path: '/seizoen',
@@ -70,6 +77,11 @@ const RapportRoute = RapportRouteImport.update({
 const QrRoute = QrRouteImport.update({
   id: '/qr',
   path: '/qr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrullenbakRoute = PrullenbakRouteImport.update({
+  id: '/prullenbak',
+  path: '/prullenbak',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PerceelkaartRoute = PerceelkaartRouteImport.update({
@@ -185,10 +197,12 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/prullenbak': typeof PrullenbakRoute
   '/qr': typeof QrRoute
   '/rapport': typeof RapportRoute
   '/scan': typeof ScanRoute
   '/seizoen': typeof SeizoenRoute
+  '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
   '/zoeken': typeof ZoekenRoute
@@ -214,10 +228,12 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/prullenbak': typeof PrullenbakRoute
   '/qr': typeof QrRoute
   '/rapport': typeof RapportRoute
   '/scan': typeof ScanRoute
   '/seizoen': typeof SeizoenRoute
+  '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
   '/zoeken': typeof ZoekenRoute
@@ -243,10 +259,12 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/prullenbak': typeof PrullenbakRoute
   '/qr': typeof QrRoute
   '/rapport': typeof RapportRoute
   '/scan': typeof ScanRoute
   '/seizoen': typeof SeizoenRoute
+  '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
   '/zoeken': typeof ZoekenRoute
@@ -274,10 +292,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/oogst'
     | '/perceelkaart'
+    | '/prullenbak'
     | '/qr'
     | '/rapport'
     | '/scan'
     | '/seizoen'
+    | '/snel'
     | '/trends'
     | '/werkrapport'
     | '/zoeken'
@@ -303,10 +323,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/oogst'
     | '/perceelkaart'
+    | '/prullenbak'
     | '/qr'
     | '/rapport'
     | '/scan'
     | '/seizoen'
+    | '/snel'
     | '/trends'
     | '/werkrapport'
     | '/zoeken'
@@ -331,10 +353,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/oogst'
     | '/perceelkaart'
+    | '/prullenbak'
     | '/qr'
     | '/rapport'
     | '/scan'
     | '/seizoen'
+    | '/snel'
     | '/trends'
     | '/werkrapport'
     | '/zoeken'
@@ -361,10 +385,12 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OogstRoute: typeof OogstRoute
   PerceelkaartRoute: typeof PerceelkaartRoute
+  PrullenbakRoute: typeof PrullenbakRoute
   QrRoute: typeof QrRoute
   RapportRoute: typeof RapportRoute
   ScanRoute: typeof ScanRoute
   SeizoenRoute: typeof SeizoenRoute
+  SnelRoute: typeof SnelRoute
   TrendsRoute: typeof TrendsRoute
   WerkrapportRoute: typeof WerkrapportRoute
   ZoekenRoute: typeof ZoekenRoute
@@ -398,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrendsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/snel': {
+      id: '/snel'
+      path: '/snel'
+      fullPath: '/snel'
+      preLoaderRoute: typeof SnelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/seizoen': {
       id: '/seizoen'
       path: '/seizoen'
@@ -424,6 +457,13 @@ declare module '@tanstack/react-router' {
       path: '/qr'
       fullPath: '/qr'
       preLoaderRoute: typeof QrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prullenbak': {
+      id: '/prullenbak'
+      path: '/prullenbak'
+      fullPath: '/prullenbak'
+      preLoaderRoute: typeof PrullenbakRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/perceelkaart': {
@@ -600,10 +640,12 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OogstRoute: OogstRoute,
   PerceelkaartRoute: PerceelkaartRoute,
+  PrullenbakRoute: PrullenbakRoute,
   QrRoute: QrRoute,
   RapportRoute: RapportRoute,
   ScanRoute: ScanRoute,
   SeizoenRoute: SeizoenRoute,
+  SnelRoute: SnelRoute,
   TrendsRoute: TrendsRoute,
   WerkrapportRoute: WerkrapportRoute,
   ZoekenRoute: ZoekenRoute,

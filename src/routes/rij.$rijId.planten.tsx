@@ -120,54 +120,51 @@ function PlantenPage() {
                   Elk groepje is een inline-flex blok dat als geheel wrapt,
                   zodat palen nooit midden in een groep terechtkomen. */}
               <div className="flex flex-wrap items-center gap-y-3">
-                {Array.from(
-                  { length: Math.ceil(plantStatuses.length / 5) },
-                  (_, groupIdx) => {
-                    const group = plantStatuses.slice(groupIdx * 5, groupIdx * 5 + 5);
-                    const isLastGroup = groupIdx === Math.ceil(plantStatuses.length / 5) - 1;
-                    return (
-                      <div key={groupIdx} className="flex items-center">
-                        <div className="flex items-center gap-1.5">
-                          {group.map((p) => {
-                            const info = STATUS_INFO[p.status];
-                            return (
-                              <button
-                                key={p.nr}
-                                onClick={() => setOpenPlant(p.nr)}
-                                aria-label={`Plant ${p.nr} – ${info.label}`}
-                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[11px] font-bold shadow-sm ring-2 ring-card transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                                style={{ backgroundColor: info.color }}
+                {Array.from({ length: Math.ceil(plantStatuses.length / 5) }, (_, groupIdx) => {
+                  const group = plantStatuses.slice(groupIdx * 5, groupIdx * 5 + 5);
+                  const isLastGroup = groupIdx === Math.ceil(plantStatuses.length / 5) - 1;
+                  return (
+                    <div key={groupIdx} className="flex items-center">
+                      <div className="flex items-center gap-1.5">
+                        {group.map((p) => {
+                          const info = STATUS_INFO[p.status];
+                          return (
+                            <button
+                              key={p.nr}
+                              onClick={() => setOpenPlant(p.nr)}
+                              aria-label={`Plant ${p.nr} – ${info.label}`}
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[11px] font-bold shadow-sm ring-2 ring-card transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                              style={{ backgroundColor: info.color }}
+                            >
+                              <span
+                                className={
+                                  p.status === "geel"
+                                    ? "text-foreground/80"
+                                    : "text-white drop-shadow-sm"
+                                }
                               >
-                                <span
-                                  className={
-                                    p.status === "geel"
-                                      ? "text-foreground/80"
-                                      : "text-white drop-shadow-sm"
-                                  }
-                                >
-                                  {p.nr}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {!isLastGroup && (
-                          <div
-                            aria-hidden
-                            title="Paal"
-                            className="mx-2 shrink-0 rounded-sm"
-                            style={{
-                              width: 8,
-                              height: 52,
-                              backgroundColor: "#9E9E9E",
-                              boxShadow: "inset -1px 0 0 rgba(0,0,0,0.15)",
-                            }}
-                          />
-                        )}
+                                {p.nr}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
-                    );
-                  }
-                )}
+                      {!isLastGroup && (
+                        <div
+                          aria-hidden
+                          title="Paal"
+                          className="mx-2 shrink-0 rounded-sm"
+                          style={{
+                            width: 8,
+                            height: 52,
+                            backgroundColor: "#9E9E9E",
+                            boxShadow: "inset -1px 0 0 rgba(0,0,0,0.15)",
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
             <p className="mt-2 text-center text-xs text-muted-foreground">
@@ -182,10 +179,7 @@ function PlantenPage() {
       </div>
 
       {/* Bottom sheet */}
-      <Drawer
-        open={openPlant != null}
-        onOpenChange={(o) => !o && setOpenPlant(null)}
-      >
+      <Drawer open={openPlant != null} onOpenChange={(o) => !o && setOpenPlant(null)}>
         <DrawerContent>
           {openInfo && rij && (
             <>
@@ -220,9 +214,7 @@ function PlantenPage() {
                     style={{ backgroundColor: STATUS_INFO[openInfo.status].color }}
                   />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold">
-                      {STATUS_INFO[openInfo.status].label}
-                    </p>
+                    <p className="text-sm font-semibold">{STATUS_INFO[openInfo.status].label}</p>
                     <p className="text-xs text-muted-foreground">
                       {STATUS_INFO[openInfo.status].description}
                     </p>
@@ -251,9 +243,7 @@ function PlantenPage() {
                           })}
                         </span>
                       </div>
-                      <p className="text-sm text-foreground">
-                        {openInfo.latest.label}
-                      </p>
+                      <p className="text-sm text-foreground">{openInfo.latest.label}</p>
                     </div>
                   ) : (
                     <p className="rounded-xl border border-dashed border-border p-3 text-center text-sm text-muted-foreground">

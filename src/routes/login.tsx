@@ -73,14 +73,8 @@ function LoginPage() {
       >
         {/* Kop met logo */}
         <div className="flex flex-col items-center px-6 pb-5 pt-8 text-center">
-          <img
-            src="/logo-icon.png"
-            alt="De Tappenmars"
-            className="h-20 w-20 object-contain"
-          />
-          <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">
-            De Tappenmars
-          </h1>
+          <img src="/logo-icon.png" alt="De Tappenmars" className="h-20 w-20 object-contain" />
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">De Tappenmars</h1>
           <p className="mt-1 text-sm" style={{ color: GOUD }}>
             {naamModus ? "Vul je naam in om te beginnen" : "Log in met je account"}
           </p>
@@ -93,8 +87,8 @@ function LoginPage() {
               <label className="block">
                 {pbActief && (
                   <p className="mb-3 rounded-lg bg-warning/15 px-3 py-2 text-xs text-warning-foreground">
-                    ⚠️ Zonder account blijft je invoer alleen op dit apparaat staan
-                    totdat je inlogt. Log in zodra je weer verbinding hebt.
+                    ⚠️ Zonder account blijft je invoer alleen op dit apparaat staan totdat je
+                    inlogt. Log in zodra je weer verbinding hebt.
                   </p>
                 )}
                 <span className="mb-1.5 block text-sm font-medium text-foreground">Naam</span>

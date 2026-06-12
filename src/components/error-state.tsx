@@ -34,9 +34,7 @@ export function ErrorState({
       <AlertCircle className="h-6 w-6 text-destructive" />
       <div>
         <p className="text-sm font-medium text-destructive">{message}</p>
-        {detail && (
-          <p className="mt-1 text-xs text-muted-foreground break-words">{detail}</p>
-        )}
+        {detail && <p className="mt-1 text-xs text-muted-foreground break-words">{detail}</p>}
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
         {onRetry && (

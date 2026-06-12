@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
@@ -220,9 +220,7 @@ function GezondheidPage() {
       const recentGem = gem(groep.recent);
       const ervoorGem = gem(groep.ervoor);
       if (recentGem < ervoorGem - 0.4) {
-        lijst.push(
-          `${ras}: vigor daalt (${ervoorGem.toFixed(1)} → ${recentGem.toFixed(1)})`,
-        );
+        lijst.push(`${ras}: vigor daalt (${ervoorGem.toFixed(1)} → ${recentGem.toFixed(1)})`);
       }
     });
     ziektedrukPerRas.forEach((z) => {
@@ -267,12 +265,20 @@ function GezondheidPage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Gezondheid</h1>
-            <p className="text-sm text-muted-foreground">
-              Vigor, snoeigewicht en uitval per rij
-            </p>
+            <p className="text-sm text-muted-foreground">Vigor, snoeigewicht en uitval per rij</p>
           </div>
           <YearSelector />
         </div>
+
+        {/* afbakening met steekproeven, zodat nieuwe medewerkers het verschil snappen */}
+        <p className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          💡 Hier registreer je de gezondheid <strong>per rij</strong> (overzicht). Gedetailleerde
+          metingen aan vaste planten — incl. ziektedruk — doe je bij{" "}
+          <Link to="/steekproeven" className="font-semibold underline">
+            Steekproeven
+          </Link>
+          ; de ziektedruk verschijnt dan hieronder automatisch.
+        </p>
 
         {gezQ.isError && <ErrorState error={gezQ.error} onRetry={() => gezQ.refetch()} />}
 
@@ -340,7 +346,9 @@ function GezondheidPage() {
                   </option>
                 ))}
               </select>
-              {fouten.rij && <span className="mt-1 block text-sm text-destructive">{fouten.rij}</span>}
+              {fouten.rij && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.rij}</span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Datum</span>
@@ -436,7 +444,12 @@ function GezondheidPage() {
 
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Notitie</span>
-            <input value={notitie} onChange={(e) => setNotitie(e.target.value)} className={veldClass} placeholder="Optioneel…" />
+            <input
+              value={notitie}
+              onChange={(e) => setNotitie(e.target.value)}
+              className={veldClass}
+              placeholder="Optioneel…"
+            />
           </label>
 
           <label className="block">

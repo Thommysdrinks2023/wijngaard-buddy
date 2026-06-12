@@ -4,11 +4,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { z } from "zod";
-import {
-  createObservatie,
-  fetchRijen,
-  isPbConfigured,
-} from "@/lib/data";
+import { createObservatie, fetchRijen, isPbConfigured } from "@/lib/data";
 import { foutenPerVeld, isGeldig, valideerObservatie } from "@/lib/validatie";
 import { OBSERVATIE_TYPES, type ObservatieType } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
@@ -68,8 +64,7 @@ function ObservatiePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const showSoftWarning =
-    notitie.trim().length === 0 && NEGATIVE_TYPES.includes(type);
+  const showSoftWarning = notitie.trim().length === 0 && NEGATIVE_TYPES.includes(type);
 
   const canSave = invoerder.trim().length > 0 && !m.isPending;
 
@@ -78,11 +73,7 @@ function ObservatiePage() {
       <AppHeader
         back
         title={plant ? `Observatie plant ${plant}` : "Nieuwe observatie"}
-        subtitle={
-          rij
-            ? `Rij ${rij.rijnummer} · ${rij.ras}${plant ? ` · plant ${plant}` : ""}`
-            : ""
-        }
+        subtitle={rij ? `Rij ${rij.rijnummer} · ${rij.ras}${plant ? ` · plant ${plant}` : ""}` : ""}
       />
       <form
         onSubmit={(e) => {
@@ -186,8 +177,8 @@ function ObservatiePage() {
             </label>
             {foto && (!verbinding.online || !verbinding.ingelogd) && (
               <p className="mt-1.5 rounded-lg bg-warning/15 px-3 py-2 text-sm text-warning-foreground">
-                📷 {!verbinding.online ? "Geen verbinding" : "Niet ingelogd"} — de foto wordt
-                lokaal bewaard en automatisch meegestuurd zodra de verbinding terug is.
+                📷 {!verbinding.online ? "Geen verbinding" : "Niet ingelogd"} — de foto wordt lokaal
+                bewaard en automatisch meegestuurd zodra de verbinding terug is.
               </p>
             )}
           </Field>

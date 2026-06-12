@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { WeerKaart } from "@/components/weer-kaart";
 import { fetchGezondheid, fetchOogst } from "@/lib/extra-data";
+import { formatGetal } from "@/lib/utils";
 import { fetchSteekproefMetingen, fetchSteekproefPlanten } from "@/lib/steekproef";
 
 export const Route = createFileRoute("/dashboard")({
@@ -82,8 +83,9 @@ function Dashboard() {
         const days = d ? differenceInDays(now, parseISO(d)) : null;
         return { rij: r, days, laatste: d };
       })
-      .filter((x): x is { rij: Rij; days: number; laatste: string } =>
-        x.days !== null && x.days > drempel,
+      .filter(
+        (x): x is { rij: Rij; days: number; laatste: string } =>
+          x.days !== null && x.days > drempel,
       )
       .sort((a, b) => b.days - a.days);
   }, [rijenQ.data, metingenQ.data, obsQ.data, drempel]);
@@ -183,8 +185,20 @@ function Dashboard() {
       if (v.druk === "Matig" || v.druk === "Zwaar")
         lijst.push(`${ras}: ${v.druk.toLowerCase()}e ziektedruk`);
     });
+    // rassen die al te lang geen meting hebben (gaten in de data)
+    const laatstePerRas = new Map<string, string>();
+    (metingenQ.data ?? []).forEach((m) => {
+      const r = rijenById.get(m.rij);
+      if (!r) return;
+      const cur = laatstePerRas.get(r.ras);
+      if (!cur || cur < m.datum) laatstePerRas.set(r.ras, m.datum);
+    });
+    laatstePerRas.forEach((laatste, ras) => {
+      const dagen = Math.floor((nu - new Date(laatste).getTime()) / DAG);
+      if (dagen > drempel) lijst.push(`${ras}: ${dagen} dagen geen meting`);
+    });
     return lijst;
-  }, [gezQ.data, stkPlantenQ.data, stkMetingenQ.data, rijenById, jaar]);
+  }, [gezQ.data, stkPlantenQ.data, stkMetingenQ.data, metingenQ.data, rijenById, jaar, drempel]);
 
   // Seizoensvergelijking: dit jaar vs vorig jaar
   const vergelijking = useMemo(() => {
@@ -195,11 +209,11 @@ function Dashboard() {
         brix.length > 0
           ? Math.round((brix.reduce((acc, x) => acc + (x.brix ?? 0), 0) / brix.length) * 10) / 10
           : null;
-      const oogstKg = Math.round(
-        (oogstDashQ.data ?? [])
-          .filter((o) => o.seizoen === j)
-          .reduce((acc, o) => acc + o.kg, 0) * 10,
-      ) / 10;
+      const oogstKg =
+        Math.round(
+          (oogstDashQ.data ?? []).filter((o) => o.seizoen === j).reduce((acc, o) => acc + o.kg, 0) *
+            10,
+        ) / 10;
       return { metingen: m.length, gemBrix, oogstKg };
     };
     return { dit: telVoor(jaar), vorig: telVoor(jaar - 1) };
@@ -261,9 +275,7 @@ function Dashboard() {
         rijLabel: r ? `Rij ${r.rijnummer} · ${r.ras}` : "Rij",
       });
     });
-    return items
-      .sort((a, b) => (a.datum < b.datum ? 1 : -1))
-      .slice(0, 10);
+    return items.sort((a, b) => (a.datum < b.datum ? 1 : -1)).slice(0, 10);
   }, [metingenSeizoen, obsSeizoen, rijenById]);
 
   return (
@@ -344,7 +356,8 @@ function Dashboard() {
                 {
                   label: "Gem. Brix",
                   dit: vergelijking.dit.gemBrix != null ? String(vergelijking.dit.gemBrix) : "—",
-                  vorig: vergelijking.vorig.gemBrix != null ? String(vergelijking.vorig.gemBrix) : "—",
+                  vorig:
+                    vergelijking.vorig.gemBrix != null ? String(vergelijking.vorig.gemBrix) : "—",
                 },
                 {
                   label: "Oogst (kg)",
@@ -384,7 +397,7 @@ function Dashboard() {
                     <div className="mb-1 flex items-baseline justify-between text-sm">
                       <span className="font-medium">{g.ras}</span>
                       <span className="tabular-nums text-muted-foreground">
-                        vigor {g.avg.toFixed(1)}/5 · {g.n} {g.n === 1 ? "rij" : "rijen"}
+                        vigor {formatGetal(g.avg)}/5 · {g.n} {g.n === 1 ? "rij" : "rijen"}
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -410,7 +423,8 @@ function Dashboard() {
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-foreground" />
               <div className="flex-1">
                 <p className="text-sm font-semibold text-foreground">
-                  ⚠️ {staleRijen.length} {staleRijen.length === 1 ? "rij is" : "rijen zijn"} meer dan {drempel} dagen niet gemeten
+                  ⚠️ {staleRijen.length} {staleRijen.length === 1 ? "rij is" : "rijen zijn"} meer
+                  dan {drempel} dagen niet gemeten
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {showStale ? "Verberg lijst" : "Bekijk welke"}
@@ -424,7 +438,8 @@ function Dashboard() {
                   <li key={rij.id} className="flex items-center gap-2 rounded-lg bg-card p-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
-                        Rij {rij.rijnummer} · <span className="text-muted-foreground">{rij.ras}</span>
+                        Rij {rij.rijnummer} ·{" "}
+                        <span className="text-muted-foreground">{rij.ras}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {Number.isFinite(days)
@@ -498,7 +513,6 @@ function Dashboard() {
           </h2>
           {brixPerRas.length === 0 ? (
             <EmptyState />
-
           ) : (
             <div className="space-y-2">
               {brixPerRas.map((b) => {
@@ -508,7 +522,7 @@ function Dashboard() {
                     <div className="mb-1.5 flex items-baseline justify-between">
                       <span className="font-medium">{b.ras}</span>
                       <span className="text-lg font-bold tabular-nums text-primary">
-                        {b.avg.toFixed(1)}
+                        {formatGetal(b.avg)}
                         <span className="ml-1 text-xs font-normal text-muted-foreground">
                           °Bx · {b.n}×
                         </span>
@@ -533,7 +547,6 @@ function Dashboard() {
           </h2>
           {uitvalRijen.length === 0 ? (
             <EmptyState message="Geen uitval-observaties dit seizoen." />
-
           ) : (
             <ul className="flex flex-wrap gap-2">
               {uitvalRijen.map((r) => (
@@ -558,7 +571,6 @@ function Dashboard() {
           </h2>
           {recent.length === 0 ? (
             <EmptyState />
-
           ) : (
             <ul className="space-y-2">
               {recent.map((it) => (

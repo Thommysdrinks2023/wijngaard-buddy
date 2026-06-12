@@ -144,11 +144,18 @@ function ScanPage() {
         </div>
 
         {scannerBeschikbaar ? (
-          <section className="overflow-hidden rounded-2xl border-2" style={{ borderColor: "#cac176" }}>
+          <section
+            className="overflow-hidden rounded-2xl border-2"
+            style={{ borderColor: "#cac176" }}
+          >
             {scannerActief ? (
               <div className="relative">
-                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                <video ref={videoRef} className="h-72 w-full bg-black object-cover" playsInline muted />
+                <video
+                  ref={videoRef}
+                  className="h-72 w-full bg-black object-cover"
+                  playsInline
+                  muted
+                />
                 <button
                   type="button"
                   onClick={() => setScannerActief(false)}
@@ -171,8 +178,8 @@ function ScanPage() {
           </section>
         ) : scannerBeschikbaar === false ? (
           <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-            QR-scannen via de camera werkt in deze browser niet (alleen Chrome op
-            Android ondersteunt dit). Gebruik het rijnummer hieronder — net zo snel.
+            QR-scannen via de camera werkt in deze browser niet (alleen Chrome op Android
+            ondersteunt dit). Gebruik het rijnummer hieronder — net zo snel.
           </p>
         ) : null}
 

@@ -36,9 +36,7 @@ function RijDetail() {
   const huidigeIndex = gesorteerd.findIndex((r) => r.id === rijId);
   const vorigeRij = huidigeIndex > 0 ? gesorteerd[huidigeIndex - 1] : null;
   const volgendeRij =
-    huidigeIndex >= 0 && huidigeIndex < gesorteerd.length - 1
-      ? gesorteerd[huidigeIndex + 1]
-      : null;
+    huidigeIndex >= 0 && huidigeIndex < gesorteerd.length - 1 ? gesorteerd[huidigeIndex + 1] : null;
   const metingen = (metingenQ.data ?? []).slice(0, 5);
   const observaties = (obsQ.data ?? []).slice(0, 5);
   const fenologie = (fenQ.data ?? []).slice(0, 10);
@@ -175,10 +173,7 @@ function RijDetail() {
           ) : (
             <ul className="space-y-2">
               {metingen.map((m) => (
-                <li
-                  key={m.id}
-                  className="rounded-xl border border-border bg-card p-3"
-                >
+                <li key={m.id} className="rounded-xl border border-border bg-card p-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
                       {format(parseISO(m.datum), "d MMM yyyy", { locale: nl })}
@@ -193,9 +188,7 @@ function RijDetail() {
                       <span className="ml-auto text-xs">— {m.ingevoerd_door}</span>
                     )}
                   </div>
-                  {m.notitie && (
-                    <p className="mt-1 text-sm">{m.notitie}</p>
-                  )}
+                  {m.notitie && <p className="mt-1 text-sm">{m.notitie}</p>}
                 </li>
               ))}
             </ul>
@@ -215,10 +208,7 @@ function RijDetail() {
               {observaties.map((o) => {
                 const t = OBSERVATIE_TYPES.find((x) => x.value === o.type);
                 return (
-                  <li
-                    key={o.id}
-                    className="rounded-xl border border-border bg-card p-3"
-                  >
+                  <li key={o.id} className="rounded-xl border border-border bg-card p-3">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold">
                         {t?.emoji} {t?.label ?? o.type}
@@ -229,9 +219,7 @@ function RijDetail() {
                     </div>
                     {o.notitie && <p className="mt-1 text-sm">{o.notitie}</p>}
                     {o.ingevoerd_door && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        — {o.ingevoerd_door}
-                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">— {o.ingevoerd_door}</p>
                     )}
                   </li>
                 );

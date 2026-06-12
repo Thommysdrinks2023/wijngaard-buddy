@@ -64,7 +64,11 @@ export async function fetchGdd(jaar: number): Promise<GddPunt[]> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Open-Meteo fout: ${res.status}`);
   const d = (await res.json()) as {
-    daily?: { time: string[]; temperature_2m_max: (number | null)[]; temperature_2m_min: (number | null)[] };
+    daily?: {
+      time: string[];
+      temperature_2m_max: (number | null)[];
+      temperature_2m_min: (number | null)[];
+    };
   };
   if (!d.daily) return [];
 
@@ -85,7 +89,10 @@ export async function fetchGdd(jaar: number): Promise<GddPunt[]> {
 
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem(cacheKey, JSON.stringify({ bijgewerkt: vandaag, punten } satisfies CacheVorm));
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({ bijgewerkt: vandaag, punten } satisfies CacheVorm),
+      );
     } catch {
       // opslag vol — geen ramp
     }

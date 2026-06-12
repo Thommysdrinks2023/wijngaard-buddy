@@ -3,13 +3,13 @@
 // Fase 2: eigen weerstation (vervang fetchWeer met een eigen endpoint)
 
 export interface WeerData {
-  temperatuur: number;       // °C
+  temperatuur: number; // °C
   gevoelstemperatuur: number;
-  luchtvochtigheid: number;  // %
-  neerslag1u: number;        // mm afgelopen uur (0 als geen)
-  windsnelheid: number;      // m/s
-  omschrijving: string;      // bijv. "lichte regen"
-  icoon: string;             // OWM icon code, bijv. "10d"
+  luchtvochtigheid: number; // %
+  neerslag1u: number; // mm afgelopen uur (0 als geen)
+  windsnelheid: number; // m/s
+  omschrijving: string; // bijv. "lichte regen"
+  icoon: string; // OWM icon code, bijv. "10d"
   stad: string;
   tijdstip: Date;
   bron: "openweathermap" | "weerstation";
@@ -25,7 +25,9 @@ export function isWeerGeconfigureerd(): boolean {
 
 export async function fetchWeer(): Promise<WeerData> {
   if (!OWM_KEY || !LAT || !LON) {
-    throw new Error("Weerconfiguratie ontbreekt. Stel VITE_OWM_API_KEY, VITE_WEER_LAT en VITE_WEER_LON in.");
+    throw new Error(
+      "Weerconfiguratie ontbreekt. Stel VITE_OWM_API_KEY, VITE_WEER_LAT en VITE_WEER_LON in.",
+    );
   }
 
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${LAT}&lon=${LON}&appid=${OWM_KEY}&units=metric&lang=nl`;
@@ -80,7 +82,10 @@ export async function fetchVerwachting(): Promise<DagVerwachting[]> {
   const d = (await res.json()) as { list: ForecastItem[] };
 
   const vandaag = new Date().toISOString().slice(0, 10);
-  const perDag = new Map<string, { min: number; max: number; regen: number; iconen: Map<string, string> }>();
+  const perDag = new Map<
+    string,
+    { min: number; max: number; regen: number; iconen: Map<string, string> }
+  >();
   for (const item of d.list) {
     const datum = item.dt_txt.slice(0, 10);
     if (datum === vandaag) continue;

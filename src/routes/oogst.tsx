@@ -5,11 +5,7 @@ import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
 import { fetchRijen } from "@/lib/data";
-import {
-  createOogstRecord,
-  fetchOogst,
-  VERWACHTE_KG_PER_PLANT,
-} from "@/lib/extra-data";
+import { createOogstRecord, fetchOogst, VERWACHTE_KG_PER_PLANT } from "@/lib/extra-data";
 import { foutenPerVeld, isGeldig, valideerOogst } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
@@ -139,10 +135,7 @@ function OogstPage() {
     () => Math.round(perRas.reduce((acc, x) => acc + x.geoogst, 0) * 10) / 10,
     [perRas],
   );
-  const totaalVerwacht = useMemo(
-    () => perRas.reduce((acc, x) => acc + x.verwacht, 0),
-    [perRas],
-  );
+  const totaalVerwacht = useMemo(() => perRas.reduce((acc, x) => acc + x.verwacht, 0), [perRas]);
   const oppervlakteHa = getPerceelOppervlakte();
   const kgPerHa = oppervlakteHa > 0 ? Math.round(totaalGeoogst / oppervlakteHa) : 0;
 
@@ -171,7 +164,10 @@ function OogstPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#cac176" }}>
+              <p
+                className="text-xs font-semibold uppercase tracking-wide"
+                style={{ color: "#cac176" }}
+              >
                 Totaal geoogst {jaar}
               </p>
               <p className="mt-1 text-3xl font-bold tabular-nums text-white">
@@ -179,8 +175,10 @@ function OogstPage() {
               </p>
               {totaalVerwacht > 0 && (
                 <p className="text-xs text-white/70">
-                  van ± {totaalVerwacht} kg verwacht ({Math.round((totaalGeoogst / totaalVerwacht) * 100)}%)
-                  {" · "}{kgPerHa} kg/ha ({oppervlakteHa} ha)
+                  van ± {totaalVerwacht} kg verwacht (
+                  {Math.round((totaalGeoogst / totaalVerwacht) * 100)}%)
+                  {" · "}
+                  {kgPerHa} kg/ha ({oppervlakteHa} ha)
                 </p>
               )}
             </div>
@@ -211,7 +209,9 @@ function OogstPage() {
                   </option>
                 ))}
               </select>
-              {fouten.rij && <span className="mt-1 block text-sm text-destructive">{fouten.rij}</span>}
+              {fouten.rij && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.rij}</span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Gewicht (kg)</span>
@@ -227,7 +227,9 @@ function OogstPage() {
                 className={`${veldClass} ${fouten.kg ? "border-destructive" : ""}`}
                 placeholder="bijv. 12.5"
               />
-              {fouten.kg && <span className="mt-1 block text-sm text-destructive">{fouten.kg}</span>}
+              {fouten.kg && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.kg}</span>
+              )}
             </label>
           </div>
           {gekozenRij && (
@@ -269,7 +271,12 @@ function OogstPage() {
           </div>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Notitie</span>
-            <input value={notitie} onChange={(e) => setNotitie(e.target.value)} className={veldClass} placeholder="Optioneel…" />
+            <input
+              value={notitie}
+              onChange={(e) => setNotitie(e.target.value)}
+              className={veldClass}
+              placeholder="Optioneel…"
+            />
           </label>
           <button
             type="button"
@@ -352,7 +359,10 @@ function OogstPage() {
               {recent.map((o) => {
                 const r = o.rij ? rijenById.get(o.rij) : undefined;
                 return (
-                  <li key={o.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+                  <li
+                    key={o.id}
+                    className="flex items-center justify-between rounded-xl border border-border bg-card p-3"
+                  >
                     <div>
                       <p className="text-sm font-semibold">
                         {o.kg} kg · {o.ras}

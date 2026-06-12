@@ -12,9 +12,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstalleerBanner } from "@/components/installeer-banner";
+import { Onboarding } from "@/components/onboarding";
 import { SyncStatus } from "@/components/sync-status";
 import { Toaster } from "@/components/ui/sonner";
-import { ruimOudeCacheOp } from "@/lib/app-instellingen";
+import { pasWeergaveToe, ruimOudeCacheOp } from "@/lib/app-instellingen";
+import { ruimPrullenbakOp } from "@/lib/prullenbak";
 import { checkNewYearGreeting, migrateSeizoen } from "@/lib/seizoen";
 
 import appCss from "../styles.css?url";
@@ -51,15 +53,17 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { charSet: "utf-8" },
       {
         name: "viewport",
-        content:
-          "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+        content: "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
       },
       { name: "theme-color", content: "#27232a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "Wijngaard" },
       { title: "Wijngaard — Veld-app" },
-      { name: "description", content: "Mobiele veld-app voor metingen en observaties per wijngaardrij." },
+      {
+        name: "description",
+        content: "Mobiele veld-app voor metingen en observaties per wijngaardrij.",
+      },
       { property: "og:title", content: "Wijngaard" },
       { property: "og:description", content: "Veld-app voor de wijngaard" },
       { property: "og:type", content: "website" },
@@ -106,10 +110,19 @@ function RootComponent() {
     }
   }, [location.pathname, navigate]);
 
+  // "Ongedaan maken" en prullenbak-herstel verversen alle queries
+  useEffect(() => {
+    const ververs = () => queryClient.invalidateQueries();
+    window.addEventListener("wg.data.changed", ververs);
+    return () => window.removeEventListener("wg.data.changed", ververs);
+  }, [queryClient]);
+
   useEffect(() => {
     migrateSeizoen();
     checkNewYearGreeting();
     ruimOudeCacheOp();
+    ruimPrullenbakOp();
+    pasWeergaveToe();
     // Service worker: maakt de app offline bruikbaar (alleen in productie,
     // in dev zou caching de hot-reload in de weg zitten)
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
@@ -124,6 +137,7 @@ function RootComponent() {
         <Outlet />
         <SyncStatus />
         <InstalleerBanner />
+        <Onboarding />
         <BottomNav />
       </div>
       <Toaster />

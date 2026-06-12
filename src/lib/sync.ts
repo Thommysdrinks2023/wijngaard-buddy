@@ -14,7 +14,8 @@ export type SyncSoort =
   | "werkkalender"
   | "notitie"
   | "lab"
-  | "rij_locatie";
+  | "rij_locatie"
+  | "audit";
 
 export type SyncActie = "create" | "update" | "delete";
 
@@ -69,7 +70,13 @@ export function addToSyncQueue(
   soort: SyncSoort,
   localId: string,
   payload: Record<string, unknown>,
-  opties?: { collection?: string; lsKey?: string; actie?: SyncActie; remoteId?: string; filter?: string },
+  opties?: {
+    collection?: string;
+    lsKey?: string;
+    actie?: SyncActie;
+    remoteId?: string;
+    filter?: string;
+  },
 ) {
   const items = readQueue();
   items.push({
@@ -93,17 +100,13 @@ export function removeFromSyncQueue(queueId: string) {
 
 // Zoekt een nog niet gesynchroniseerde create voor dit lokale record
 export function findQueuedCreate(localId: string): SyncItem | undefined {
-  return readQueue().find(
-    (i) => i.localId === localId && (i.actie ?? "create") === "create",
-  );
+  return readQueue().find((i) => i.localId === localId && (i.actie ?? "create") === "create");
 }
 
 // Werkt de payload van een wachtende create bij (offline bewerken vóór sync)
 export function updateQueuedCreate(localId: string, wijzigingen: Record<string, unknown>): boolean {
   const items = readQueue();
-  const idx = items.findIndex(
-    (i) => i.localId === localId && (i.actie ?? "create") === "create",
-  );
+  const idx = items.findIndex((i) => i.localId === localId && (i.actie ?? "create") === "create");
   if (idx === -1) return false;
   items[idx] = { ...items[idx], payload: { ...items[idx].payload, ...wijzigingen } };
   writeQueue(items);
@@ -117,4 +120,52 @@ export function removeQueuedByLocalId(localId: string): boolean {
   if (rest.length === items.length) return false;
   writeQueue(rest);
   return true;
+}
+
+// ---------- blijvend mislukte sync-items ----------
+// Records die de server weigert (bijv. validatiefout) verdwijnen uit de
+// wachtrij maar worden hier geregistreerd zodat de gebruiker het kan zien.
+const LS_FOUTEN = "wg.sync.fouten.v1";
+
+export interface SyncFout {
+  tijd: string;
+  soort: SyncSoort;
+  actie: SyncActie;
+  status: number;
+  bericht: string;
+  samenvatting: string;
+}
+
+export function registreerSyncFout(item: SyncItem, status: number, bericht: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(LS_FOUTEN);
+    const fouten = raw ? (JSON.parse(raw) as SyncFout[]) : [];
+    fouten.push({
+      tijd: new Date().toISOString(),
+      soort: item.soort,
+      actie: item.actie ?? "create",
+      status,
+      bericht: bericht.slice(0, 200),
+      samenvatting: JSON.stringify(item.payload).slice(0, 150),
+    });
+    localStorage.setItem(LS_FOUTEN, JSON.stringify(fouten.slice(-20)));
+  } catch {
+    // registratie is best effort
+  }
+}
+
+export function getSyncFouten(): SyncFout[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LS_FOUTEN);
+    return raw ? (JSON.parse(raw) as SyncFout[]).slice().reverse() : [];
+  } catch {
+    return [];
+  }
+}
+
+export function wisSyncFouten() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(LS_FOUTEN);
 }

@@ -24,6 +24,11 @@ import {
   ScanLine,
   QrCode,
   FileText,
+  Zap,
+  Trash2,
+  Search as SearchIcon,
+  Sun,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -31,28 +36,116 @@ import {
   getMetingDrempel,
   getPerceelOppervlakte,
   getUurloon,
+  getWeergave,
   setMetingDrempel,
   setPerceelOppervlakte,
   setUurloon,
+  setWeergave,
+  type Weergave,
 } from "@/lib/app-instellingen";
+import { getSyncFouten, wisSyncFouten } from "@/lib/sync";
+import { getAuditLog } from "@/lib/audit";
 
-// Volledig menu — alle pagina's van de app in logische volgorde
-const MENU = [
-  { to: "/perceelkaart", label: "Perceelkaart", omschrijving: "Bovenaanzicht van alle rijen", icon: Map },
-  { to: "/dashboard", label: "Dashboard", omschrijving: "Overzicht van het seizoen", icon: BarChart3 },
-  { to: "/seizoen", label: "Seizoen", omschrijving: "Fenologie, warmtesom en werkkalender", icon: Calendar },
-  { to: "/steekproeven", label: "Steekproeven", omschrijving: "Vaste meetplanten per ras", icon: ClipboardList },
-  { to: "/gezondheid", label: "Gezondheid", omschrijving: "Vigor, snoeigewicht en uitval", icon: HeartPulse },
-  { to: "/oogst", label: "Oogst", omschrijving: "Opbrengst registreren en vergelijken", icon: Grape },
-  { to: "/werkrapport", label: "Werkrapport", omschrijving: "Uren per taak bijhouden", icon: Clock },
-  { to: "/lab", label: "Lab", omschrijving: "Bodem- en sapanalyses + rapporten", icon: FlaskConical },
-  { to: "/kaart", label: "GPS-kaart", omschrijving: "Echte kaart met rijlocaties", icon: MapPinned },
-  { to: "/scan", label: "QR scannen", omschrijving: "Scan een rijcode in het veld", icon: ScanLine },
-  { to: "/qr", label: "QR-codes printen", omschrijving: "A4-vel met codes voor de rijpalen", icon: QrCode },
-  { to: "/grafieken", label: "Grafieken", omschrijving: "Vaste analyses per seizoen", icon: LineChart },
-  { to: "/trends", label: "Trends", omschrijving: "Zelf grafieken samenstellen", icon: TrendingUp },
-  { to: "/rapport", label: "Seizoensrapport", omschrijving: "Afdrukken of opslaan als PDF", icon: FileText },
-  { to: "/login", label: "Inloggen", omschrijving: "Account voor synchronisatie", icon: LogIn },
+// Volledig menu, gegroepeerd: Veld (registreren), Analyse (bekijken), Beheer
+const MENU_GROEPEN = [
+  {
+    kop: "🌿 In het veld",
+    items: [
+      {
+        to: "/perceelkaart",
+        label: "Perceelkaart",
+        omschrijving: "Bovenaanzicht van alle rijen",
+        icon: Map,
+      },
+      { to: "/snel", label: "Snelle meting", omschrijving: "Brix invoeren in 3 tikken", icon: Zap },
+      {
+        to: "/scan",
+        label: "QR scannen",
+        omschrijving: "Scan een rijcode bij de paal",
+        icon: ScanLine,
+      },
+      {
+        to: "/steekproeven",
+        label: "Steekproeven",
+        omschrijving: "Vaste meetplanten per ras",
+        icon: ClipboardList,
+      },
+      {
+        to: "/gezondheid",
+        label: "Gezondheid",
+        omschrijving: "Vigor, snoeigewicht en uitval",
+        icon: HeartPulse,
+      },
+      { to: "/oogst", label: "Oogst", omschrijving: "Opbrengst registreren", icon: Grape },
+      {
+        to: "/werkrapport",
+        label: "Werkrapport",
+        omschrijving: "Uren en spuitregistratie",
+        icon: Clock,
+      },
+      { to: "/lab", label: "Lab", omschrijving: "Bodem- en sapanalyses", icon: FlaskConical },
+    ],
+  },
+  {
+    kop: "📊 Analyse",
+    items: [
+      {
+        to: "/dashboard",
+        label: "Dashboard",
+        omschrijving: "Overzicht van het seizoen",
+        icon: BarChart3,
+      },
+      {
+        to: "/seizoen",
+        label: "Seizoen",
+        omschrijving: "Fenologie, warmtesom, werkkalender",
+        icon: Calendar,
+      },
+      {
+        to: "/grafieken",
+        label: "Grafieken",
+        omschrijving: "Vaste analyses per seizoen",
+        icon: LineChart,
+      },
+      {
+        to: "/trends",
+        label: "Trends",
+        omschrijving: "Zelf grafieken samenstellen",
+        icon: TrendingUp,
+      },
+      {
+        to: "/zoeken",
+        label: "Zoeken",
+        omschrijving: "Vind elke registratie terug",
+        icon: SearchIcon,
+      },
+      {
+        to: "/rapport",
+        label: "Seizoensrapport",
+        omschrijving: "Afdrukken of opslaan als PDF",
+        icon: FileText,
+      },
+    ],
+  },
+  {
+    kop: "⚙️ Beheer",
+    items: [
+      { to: "/kaart", label: "GPS-kaart", omschrijving: "Rijlocaties vastleggen", icon: MapPinned },
+      {
+        to: "/qr",
+        label: "QR-codes printen",
+        omschrijving: "A4-vel voor de rijpalen",
+        icon: QrCode,
+      },
+      {
+        to: "/prullenbak",
+        label: "Prullenbak",
+        omschrijving: "Verwijderde records terugzetten",
+        icon: Trash2,
+      },
+      { to: "/login", label: "Inloggen", omschrijving: "Account voor synchronisatie", icon: LogIn },
+    ],
+  },
 ] as const;
 
 function vandaagStr() {
@@ -98,7 +191,12 @@ function toCsv(data: Record<string, unknown>): string {
   const lines: string[] = [];
   for (const [collection, value] of Object.entries(data)) {
     lines.push(`# ${collection}`);
-    if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
+    if (
+      Array.isArray(value) &&
+      value.length > 0 &&
+      typeof value[0] === "object" &&
+      value[0] !== null
+    ) {
       const cols = Array.from(
         value.reduce<Set<string>>((s, row) => {
           Object.keys(row as object).forEach((k) => s.add(k));
@@ -144,9 +242,17 @@ async function downloadServerBackup() {
     return;
   }
   const collecties = [
-    "rijen", "metingen", "observaties", "fenologie", "gezondheid",
-    "oogst", "werkuren", "steekproef_planten", "steekproef_metingen",
-    "werkkalender", "notities",
+    "rijen",
+    "metingen",
+    "observaties",
+    "fenologie",
+    "gezondheid",
+    "oogst",
+    "werkuren",
+    "steekproef_planten",
+    "steekproef_metingen",
+    "werkkalender",
+    "notities",
   ];
   const data: Record<string, unknown> = { geexporteerd: new Date().toISOString() };
   for (const c of collecties) {
@@ -173,6 +279,15 @@ function Instellingen() {
   const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
   const [oppervlakte, setOppervlakte] = useState<string>(() => String(getPerceelOppervlakte()));
   const [uurloon, setUurloonState] = useState<string>(() => String(getUurloon() || ""));
+  const [weergave, setWeergaveState] = useState<Weergave>(() => getWeergave());
+  const [syncFouten, setSyncFouten] = useState(() => getSyncFouten());
+  const [toonAudit, setToonAudit] = useState(false);
+
+  const wijzigWeergave = (deel: Partial<Weergave>) => {
+    const nieuw = { ...weergave, ...deel };
+    setWeergaveState(nieuw);
+    setWeergave(nieuw);
+  };
 
   useEffect(() => {
     if (!isPbConfigured()) {
@@ -191,39 +306,41 @@ function Instellingen() {
           <p className="text-sm text-muted-foreground">Alle onderdelen en instellingen</p>
         </div>
 
-        {/* Volledig menu */}
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Menu
-          </h2>
-          <ul className="space-y-1.5">
-            {MENU.map((item) => {
-              const Icon = item.icon;
-              return (
-                <li key={item.to}>
-                  <Link
-                    to={item.to}
-                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition active:scale-[0.99]"
-                  >
-                    <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: "#27232a" }}
+        {/* Volledig menu, gegroepeerd */}
+        {MENU_GROEPEN.map((groep) => (
+          <section key={groep.kop} className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              {groep.kop}
+            </h2>
+            <ul className="space-y-1.5">
+              {groep.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.to}>
+                    <Link
+                      to={item.to}
+                      className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition active:scale-[0.99]"
                     >
-                      <Icon className="h-5 w-5" style={{ color: "#cac176" }} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold">{item.label}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {item.omschrijving}
+                      <span
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: "#27232a" }}
+                      >
+                        <Icon className="h-5 w-5" style={{ color: "#cac176" }} />
                       </span>
-                    </span>
-                    <span className="text-muted-foreground">→</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">{item.label}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {item.omschrijving}
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground">→</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -339,6 +456,115 @@ function Instellingen() {
           </p>
         </section>
 
+        {/* Weergave: zonlicht-modus voor in het veld */}
+        <section className="space-y-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <Sun className="h-4 w-4" /> Weergave
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => wijzigWeergave({ hoogContrast: !weergave.hoogContrast })}
+              className={`h-14 rounded-xl border-2 text-sm font-semibold ${
+                weergave.hoogContrast
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card"
+              }`}
+            >
+              ☀️ Zonlicht-modus
+              <span className="block text-[11px] font-normal opacity-70">
+                {weergave.hoogContrast ? "aan" : "uit"} · zwart/geel
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => wijzigWeergave({ groteTekst: !weergave.groteTekst })}
+              className={`h-14 rounded-xl border-2 text-sm font-semibold ${
+                weergave.groteTekst
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card"
+              }`}
+            >
+              🔍 Grotere tekst
+              <span className="block text-[11px] font-normal opacity-70">
+                {weergave.groteTekst ? "aan" : "uit"} · +15%
+              </span>
+            </button>
+          </div>
+        </section>
+
+        {/* Sync-problemen: records die de server blijvend weigerde */}
+        {syncFouten.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-destructive">
+              ⚠ Sync-problemen ({syncFouten.length})
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Deze records weigerde de server (bijv. door een validatiefout). Ze staan nog wél op
+              dit apparaat, maar syncen niet. Voer ze zo nodig opnieuw in.
+            </p>
+            <ul className="space-y-1.5">
+              {syncFouten.map((f, i) => (
+                <li
+                  key={i}
+                  className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs"
+                >
+                  <p className="font-semibold">
+                    {f.soort} ({f.actie}) · fout {f.status} ·{" "}
+                    {new Date(f.tijd).toLocaleString("nl-NL")}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">{f.bericht}</p>
+                  <p className="mt-0.5 break-all text-muted-foreground/70">{f.samenvatting}</p>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => {
+                wisSyncFouten();
+                setSyncFouten([]);
+              }}
+              className="h-11 w-full rounded-xl border border-border bg-card text-sm font-medium"
+            >
+              Lijst wissen
+            </button>
+          </section>
+        )}
+
+        {/* Audit-log: wie deed wat */}
+        <section className="space-y-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <History className="h-4 w-4" /> Logboek
+          </h2>
+          <button
+            type="button"
+            onClick={() => setToonAudit((v) => !v)}
+            className="h-12 w-full rounded-xl border border-border bg-card text-sm font-medium"
+          >
+            {toonAudit ? "Logboek verbergen" : "Logboek bekijken (wie deed wat)"}
+          </button>
+          {toonAudit && (
+            <ul className="max-h-80 space-y-1 overflow-y-auto rounded-xl border border-border bg-card p-2">
+              {getAuditLog().length === 0 ? (
+                <li className="p-2 text-sm text-muted-foreground">
+                  Nog geen acties geregistreerd.
+                </li>
+              ) : (
+                getAuditLog()
+                  .slice(0, 50)
+                  .map((r, i) => (
+                    <li key={i} className="rounded-lg bg-muted/40 px-2 py-1.5 text-xs">
+                      <span className="font-semibold">{r.gebruiker}</span> heeft{" "}
+                      <span className="font-semibold">{r.collectie}</span> {r.actie} ·{" "}
+                      {new Date(r.tijd).toLocaleString("nl-NL")}
+                      <span className="block truncate text-muted-foreground">{r.samenvatting}</span>
+                    </li>
+                  ))
+              )}
+            </ul>
+          )}
+        </section>
+
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Backend
@@ -356,8 +582,8 @@ function Instellingen() {
                 {status === "online"
                   ? "PocketBase verbonden"
                   : status === "offline" && isPbConfigured()
-                  ? "PocketBase niet bereikbaar"
-                  : "Lokale modus"}
+                    ? "PocketBase niet bereikbaar"
+                    : "Lokale modus"}
               </p>
               <p className="text-xs text-muted-foreground">
                 {status === "online"
@@ -368,8 +594,9 @@ function Instellingen() {
           </div>
           {!isPbConfigured() && (
             <p className="text-xs text-muted-foreground">
-              Stel <code className="rounded bg-muted px-1.5 py-0.5 text-xs">VITE_POCKETBASE_URL</code> in om
-              te verbinden met je PocketBase backend.
+              Stel{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">VITE_POCKETBASE_URL</code> in
+              om te verbinden met je PocketBase backend.
             </p>
           )}
           {isIngelogd() && (
@@ -419,9 +646,9 @@ function Instellingen() {
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            JSON/CSV exporteert de lokale gegevens van dit apparaat. Serverdata exporteert
-            álle collecties uit PocketBase (vereist login). De laptop maakt daarnaast elke
-            avond om 20:00 automatisch een volledige backup.
+            JSON/CSV exporteert de lokale gegevens van dit apparaat. Serverdata exporteert álle
+            collecties uit PocketBase (vereist login). De laptop maakt daarnaast elke avond om 20:00
+            automatisch een volledige backup.
           </p>
         </section>
 

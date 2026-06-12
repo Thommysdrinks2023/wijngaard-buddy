@@ -26,9 +26,7 @@ export function BottomNav() {
               <Link
                 to={it.to}
                 className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-                  active
-                    ? "text-[#cac176]"
-                    : "text-white/60 hover:text-[#cac176]"
+                  active ? "text-[#cac176]" : "text-white/60 hover:text-[#cac176]"
                 }`}
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 2} />

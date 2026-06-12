@@ -142,17 +142,15 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
     >
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <h2
-          className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: DONKER }}
-        >
+        <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: DONKER }}>
           Huidig weer · {data.stad}
         </h2>
         <button
           type="button"
           onClick={() => refetch()}
           title="Ververs weerdata"
-          className="opacity-60 transition-opacity hover:opacity-100"
+          aria-label="Ververs weerdata"
+          className="flex h-11 w-11 items-center justify-center opacity-60 transition-opacity hover:opacity-100"
         >
           <RefreshCw className="h-4 w-4" />
         </button>
@@ -216,7 +214,11 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
             <div
               key={dag.datum}
               className="flex flex-col items-center rounded-xl border px-2 py-2 text-center"
-              style={{ backgroundColor: "rgba(255,255,255,0.35)", borderColor: GOUD, color: DONKER }}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.35)",
+                borderColor: GOUD,
+                color: DONKER,
+              }}
             >
               <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">
                 {dag.dagNaam}

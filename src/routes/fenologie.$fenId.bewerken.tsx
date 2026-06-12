@@ -2,12 +2,7 @@ import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  deleteFenologie,
-  fetchFenologieById,
-  fetchRijen,
-  updateFenologie,
-} from "@/lib/data";
+import { deleteFenologie, fetchFenologieById, fetchRijen, updateFenologie } from "@/lib/data";
 import { FENOLOGIE_MOMENTEN, type FenologieMoment } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
@@ -106,9 +101,7 @@ function FenologieBewerkenPage() {
       <>
         <AppHeader back title="Fenologie bewerken" />
         <div className="mx-auto max-w-screen-md space-y-3 px-3 py-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            Fenologie-regel niet gevonden.
-          </p>
+          <p className="text-sm text-muted-foreground">Fenologie-regel niet gevonden.</p>
           <Link to="/seizoen" className="text-sm font-medium text-primary underline">
             Terug naar seizoen
           </Link>
@@ -143,9 +136,7 @@ function FenologieBewerkenPage() {
                 >
                   <span className="text-2xl">{opt.emoji}</span>
                   <div className="flex flex-col">
-                    <span className="text-base font-semibold leading-tight">
-                      {opt.value}
-                    </span>
+                    <span className="text-base font-semibold leading-tight">{opt.value}</span>
                     <span
                       className={`text-xs leading-tight ${
                         active ? "text-primary-foreground/80" : "text-muted-foreground"
@@ -185,9 +176,7 @@ function FenologieBewerkenPage() {
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-foreground">
-            Ingevoerd door
-          </span>
+          <span className="mb-1.5 block text-sm font-medium text-foreground">Ingevoerd door</span>
           <input
             value={invoerder}
             onChange={(e) => setInvoerder(e.target.value)}

@@ -1,15 +1,27 @@
 import PocketBase from "pocketbase";
-import type { Fenologie, FenologieMoment, Meting, NeerslagType, Observatie, Ras, Rij } from "./types";
+import type {
+  Fenologie,
+  FenologieMoment,
+  Meting,
+  NeerslagType,
+  Observatie,
+  Ras,
+  Rij,
+} from "./types";
 import { SEED_RIJEN } from "./seed-rijen";
 import {
   addToSyncQueue,
   getSyncQueue,
+  registreerSyncFout,
   removeFromSyncQueue,
   removeQueuedByLocalId,
   syncQueueCount,
   updateQueuedCreate,
 } from "./sync";
 import { deleteOfflineFoto, getOfflineFoto, saveOfflineFoto } from "./foto-opslag";
+import { naarPrullenbak, verwijderUitPrullenbak } from "./prullenbak";
+import { logAudit } from "./audit";
+import { toast } from "sonner";
 
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
 
@@ -89,23 +101,7 @@ const LS_OBS = "wg.observaties.v1";
 const LS_FENOLOGIE = "wg.fenologie.v1";
 const LS_NAME = "wg.invoerder.v1";
 
-function readLs<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function writeLs<T>(key: string, val: T) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(val));
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
+import { readLs, uid, writeLs } from "./opslag";
 
 export function getInvoerder(): string {
   return readLs<string>(LS_NAME, "");
@@ -180,7 +176,9 @@ export async function fetchMetingen(rijId?: string): Promise<Meting[]> {
       }));
       // nog niet gesyncte lokale records meenemen in de weergave
       const pendingIds = new Set(
-        getSyncQueue().filter((q) => q.soort === "meting").map((q) => q.localId),
+        getSyncQueue()
+          .filter((q) => q.soort === "meting")
+          .map((q) => q.localId),
       );
       const lokaalPending = readLs<Meting[]>(LS_METINGEN, []).filter((m) => pendingIds.has(m.id));
       const merged = [...mapped, ...lokaalPending.filter((m) => !rijId || m.rij === rijId)];
@@ -220,7 +218,9 @@ export async function fetchObservaties(rijId?: string): Promise<Observatie[]> {
         created: r.created,
       }));
       const pendingIds = new Set(
-        getSyncQueue().filter((q) => q.soort === "observatie").map((q) => q.localId),
+        getSyncQueue()
+          .filter((q) => q.soort === "observatie")
+          .map((q) => q.localId),
       );
       const lokaalPending = readLs<Observatie[]>(LS_OBS, []).filter((o) => pendingIds.has(o.id));
       const merged = [...mapped, ...lokaalPending.filter((o) => !rijId || o.rij === rijId)];
@@ -253,6 +253,11 @@ export interface MetingInput {
 }
 
 export async function createMeting(input: MetingInput): Promise<Meting> {
+  logAudit(
+    "aangemaakt",
+    "metingen",
+    `Meting ${input.datum}${input.brix != null ? ` · brix ${input.brix}` : ""} · rijpheid ${input.rijpheid_score}/5`,
+  );
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
@@ -346,6 +351,11 @@ export interface ObservatieInput {
 }
 
 export async function createObservatie(input: ObservatieInput): Promise<Observatie> {
+  logAudit(
+    "aangemaakt",
+    "observaties",
+    `${input.type} · ${input.datum} · ${input.notitie.slice(0, 60)}`,
+  );
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
@@ -431,7 +441,9 @@ export async function fetchFenologie(rijId?: string): Promise<Fenologie[]> {
         created: r.created,
       }));
       const pendingIds = new Set(
-        getSyncQueue().filter((q) => q.soort === "fenologie").map((q) => q.localId),
+        getSyncQueue()
+          .filter((q) => q.soort === "fenologie")
+          .map((q) => q.localId),
       );
       const lokaalPending = readLs<Fenologie[]>(LS_FENOLOGIE, []).filter((f) =>
         pendingIds.has(f.id),
@@ -460,6 +472,7 @@ export interface FenologieInput {
 }
 
 export async function createFenologie(input: FenologieInput): Promise<Fenologie> {
+  logAudit("aangemaakt", "fenologie", `${input.moment} · ${input.ras} · ${input.datum}`);
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
@@ -524,10 +537,9 @@ export interface FenologieUpdateInput {
   ingevoerd_door: string;
 }
 
-export async function updateFenologie(
-  id: string,
-  input: FenologieUpdateInput,
-): Promise<Fenologie> {
+export async function updateFenologie(id: string, input: FenologieUpdateInput): Promise<Fenologie> {
+  const oude = readLs<Fenologie[]>(LS_FENOLOGIE, []).find((f) => f.id === id);
+  logAudit("gewijzigd", "fenologie", `${input.moment} · ${input.datum}`, oude);
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
@@ -577,7 +589,50 @@ export async function updateFenologie(
   return all[idx];
 }
 
+// Pagina's kunnen hierop luisteren om hun gegevens te verversen
+// (gebruikt door "Ongedaan maken" in de prullenbak-flow)
+export function meldDataGewijzigd() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("wg.data.changed"));
+  }
+}
+
 export async function deleteFenologie(id: string): Promise<void> {
+  // snapshot voor de prullenbak + ongedaan maken
+  const huidige = readLs<Fenologie[]>(LS_FENOLOGIE, []).find((f) => f.id === id);
+  if (huidige) {
+    const prullenbakId = naarPrullenbak(
+      "Fenologie",
+      `${huidige.moment} · ${huidige.ras} · ${huidige.datum}`,
+      { ...huidige },
+    );
+    logAudit(
+      "verwijderd",
+      "fenologie",
+      `${huidige.moment} ${huidige.ras} ${huidige.datum}`,
+      huidige,
+    );
+    toast("Fenologie verwijderd", {
+      duration: 5000,
+      action: {
+        label: "Ongedaan maken",
+        onClick: () => {
+          void createFenologie({
+            rij: huidige.rij,
+            ras: huidige.ras,
+            moment: huidige.moment,
+            datum: huidige.datum,
+            notitie: huidige.notitie,
+            ingevoerd_door: huidige.ingevoerd_door,
+          }).then(() => {
+            verwijderUitPrullenbak(prullenbakId);
+            logAudit("teruggezet", "fenologie", `${huidige.moment} ${huidige.ras}`);
+            meldDataGewijzigd();
+          });
+        },
+      },
+    });
+  }
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
@@ -685,6 +740,20 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
           if (heeftOfflineFoto) void deleteOfflineFoto(item.localId);
         } else if (actie === "update") {
           if (item.remoteId) {
+            // conflictdetectie: is het record ondertussen door een ander
+            // apparaat gewijzigd? Laatste schrijver wint, maar wel melden.
+            try {
+              const huidig = await pb.collection(collection).getOne(item.remoteId);
+              const serverGewijzigd = huidig["updated"] as string | undefined;
+              if (serverGewijzigd && new Date(serverGewijzigd) > new Date(item.aangemaakt)) {
+                toast.warning(
+                  "Let op: een record was ondertussen op een ander apparaat gewijzigd. Jouw versie is nu leidend.",
+                  { duration: 8000 },
+                );
+              }
+            } catch {
+              // record bestaat niet meer of niet leesbaar — update-call hieronder handelt dat af
+            }
             await pb.collection(collection).update(item.remoteId, payload);
           }
           removeFromSyncQueue(item.queueId);
@@ -710,6 +779,15 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
         // een nieuwe poging na inloggen of als de server weer bereikbaar is.
         if (status === 400 || status === 404) {
           removeFromSyncQueue(item.queueId);
+          // niet stil laten verdwijnen: registreren en melden
+          const bericht = (err as { message?: string }).message ?? "Onbekende fout";
+          registreerSyncFout(item, status, bericht);
+          if (item.soort !== "audit") {
+            toast.error(
+              `Eén record (${item.soort}) kon niet gesynchroniseerd worden en blijft alleen lokaal. Zie instellingen → Sync-problemen.`,
+              { duration: 8000 },
+            );
+          }
         }
         mislukt++;
       }

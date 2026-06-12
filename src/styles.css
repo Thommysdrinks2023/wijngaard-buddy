@@ -49,6 +49,44 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Toetsenbord-navigatie: altijd een zichtbare focusring */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Zonlicht-modus: maximaal contrast (zwart/wit/geel) voor in het veld */
+.hoog-contrast {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #111111;
+  --card-foreground: #ffffff;
+  --popover: #111111;
+  --popover-foreground: #ffffff;
+  --primary: #ffd400;
+  --primary-foreground: #000000;
+  --primary-soft: #222222;
+  --secondary: #ffd400;
+  --secondary-foreground: #000000;
+  --muted: #1a1a1a;
+  --muted-foreground: #e0e0e0;
+  --accent: #ffd400;
+  --accent-foreground: #000000;
+  --destructive: #ff5544;
+  --destructive-foreground: #000000;
+  --success: #44dd66;
+  --warning: #ffd400;
+  --warning-foreground: #000000;
+  --border: #ffffff;
+  --input: #ffffff;
+  --ring: #ffd400;
+}
+
+/* Grotere tekst voor leesbaarheid in het veld */
+.grote-tekst {
+  font-size: 115%;
+}
+
 :root {
   --radius: 0.75rem;
 
@@ -144,7 +182,8 @@
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-tap-highlight-color: transparent;
@@ -152,12 +191,16 @@
   body {
     font-family: ui-serif, Georgia, "Times New Roman", serif;
   }
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: ui-serif, Georgia, "Times New Roman", serif;
     letter-spacing: -0.01em;
   }
   /* Touch-friendly controls */
-  button, [role="button"] {
+  button,
+  [role="button"] {
     touch-action: manipulation;
   }
 }
@@ -170,4 +213,3 @@
     border-radius: 0.75rem;
   }
 }
-

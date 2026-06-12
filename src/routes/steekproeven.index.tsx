@@ -22,13 +22,18 @@ export const Route = createFileRoute("/steekproeven/")({
   head: () => ({
     meta: [
       { title: "Steekproeven — Wijngaard" },
-      { name: "description", content: "Vaste steekproefplanten per ras voor seizoensvergelijking." },
+      {
+        name: "description",
+        content: "Vaste steekproefplanten per ras voor seizoensvergelijking.",
+      },
     ],
   }),
 });
 
 function SteekproevenPage() {
   const [jaar] = useSeizoen();
+  // afbakening: steekproeven = detailmetingen aan vaste planten;
+  // het rij-overzicht (vigor, uitval) zit op /gezondheid
   const puntenQ = useQuery({
     queryKey: ["steekproef_planten"],
     queryFn: () => fetchSteekproefPlanten(),
@@ -70,7 +75,11 @@ function SteekproevenPage() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Steekproeven</h1>
             <p className="text-sm text-muted-foreground">
-              Vaste meetplanten per ras voor consistente seizoensvergelijking.
+              Detailmetingen aan vaste planten (incl. ziektedruk). Het rij-overzicht vind je bij{" "}
+              <Link to="/gezondheid" className="font-medium underline">
+                Gezondheid
+              </Link>
+              .
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -98,9 +107,7 @@ function SteekproevenPage() {
 
         {puntenQ.data && puntenQ.data.length === 0 && (
           <div className="rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Nog geen steekproefplanten aangewezen.
-            </p>
+            <p className="text-sm text-muted-foreground">Nog geen steekproefplanten aangewezen.</p>
             <Link
               to="/steekproeven/beheer"
               className="mt-3 inline-flex h-11 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
@@ -122,9 +129,7 @@ function SteekproevenPage() {
             <ul className="space-y-2">
               {perRas.get(ras)!.map((p) => {
                 const m = laatsteMeting.get(p.id);
-                const dagen = m
-                  ? differenceInCalendarDays(new Date(), parseISO(m.datum))
-                  : null;
+                const dagen = m ? differenceInCalendarDays(new Date(), parseISO(m.datum)) : null;
                 const stale = dagen == null || dagen > 14;
                 return (
                   <li key={p.id}>
@@ -165,8 +170,7 @@ function SteekproevenPage() {
                             )}
                             {m.fenologie && (
                               <span>
-                                <span className="text-muted-foreground">Fase:</span>{" "}
-                                {m.fenologie}
+                                <span className="text-muted-foreground">Fase:</span> {m.fenologie}
                               </span>
                             )}
                           </div>

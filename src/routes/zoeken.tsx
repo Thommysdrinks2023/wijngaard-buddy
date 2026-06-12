@@ -28,8 +28,18 @@ interface ZoekResultaat {
 }
 
 const MAANDEN = [
-  "januari", "februari", "maart", "april", "mei", "juni",
-  "juli", "augustus", "september", "oktober", "november", "december",
+  "januari",
+  "februari",
+  "maart",
+  "april",
+  "mei",
+  "juni",
+  "juli",
+  "augustus",
+  "september",
+  "oktober",
+  "november",
+  "december",
 ];
 
 function ZoekenPage() {
@@ -77,9 +87,12 @@ function ZoekenPage() {
           m.ph != null ? `pH ${m.ph}` : null,
           `rijpheid ${m.rijpheid_score}/5`,
           m.notitie || null,
-        ].filter(Boolean).join(" · "),
+        ]
+          .filter(Boolean)
+          .join(" · "),
         rijId: m.rij,
-        zoektekst: `meting brix ph ${rijTekst(m.rij)} ${datumTekst(m.datum)} ${m.notitie ?? ""}`.toLowerCase(),
+        zoektekst:
+          `meting brix ph ${rijTekst(m.rij)} ${datumTekst(m.datum)} ${m.notitie ?? ""}`.toLowerCase(),
       });
     });
     obsQ.data?.forEach((o) => {
@@ -93,7 +106,8 @@ function ZoekenPage() {
         titel: r ? `${t?.label ?? o.type} · rij ${r.rijnummer} · ${r.ras}` : (t?.label ?? o.type),
         detail: o.notitie,
         rijId: o.rij,
-        zoektekst: `observatie ${o.type} ${t?.label ?? ""} ${rijTekst(o.rij)} ${datumTekst(o.datum)} ${o.notitie}`.toLowerCase(),
+        zoektekst:
+          `observatie ${o.type} ${t?.label ?? ""} ${rijTekst(o.rij)} ${datumTekst(o.datum)} ${o.notitie}`.toLowerCase(),
       });
     });
     fenQ.data?.forEach((f) => {
@@ -105,7 +119,8 @@ function ZoekenPage() {
         titel: `${f.moment} · ${f.ras}`,
         detail: f.notitie ?? "",
         rijId: f.rij,
-        zoektekst: `fenologie ${f.moment} ${f.ras} ${rijTekst(f.rij)} ${datumTekst(f.datum)} ${f.notitie ?? ""}`.toLowerCase(),
+        zoektekst:
+          `fenologie ${f.moment} ${f.ras} ${rijTekst(f.rij)} ${datumTekst(f.datum)} ${f.notitie ?? ""}`.toLowerCase(),
       });
     });
     oogstQ.data?.forEach((o) => {
@@ -117,7 +132,8 @@ function ZoekenPage() {
         titel: `Oogst ${o.kg} kg · ${o.ras}`,
         detail: o.notitie ?? "",
         rijId: o.rij ?? undefined,
-        zoektekst: `oogst ${o.ras} ${o.kg} ${rijTekst(o.rij)} ${datumTekst(o.datum)} ${o.notitie ?? ""}`.toLowerCase(),
+        zoektekst:
+          `oogst ${o.ras} ${o.kg} ${rijTekst(o.rij)} ${datumTekst(o.datum)} ${o.notitie ?? ""}`.toLowerCase(),
       });
     });
     gezQ.data?.forEach((g) => {
@@ -130,7 +146,8 @@ function ZoekenPage() {
         titel: r ? `Gezondheid · rij ${r.rijnummer} · ${r.ras}` : "Gezondheid",
         detail: `vigor ${g.vigor}/5${g.notitie ? ` · ${g.notitie}` : ""}`,
         rijId: g.rij,
-        zoektekst: `gezondheid vigor ${rijTekst(g.rij)} ${datumTekst(g.datum)} ${g.notitie ?? ""}`.toLowerCase(),
+        zoektekst:
+          `gezondheid vigor ${rijTekst(g.rij)} ${datumTekst(g.datum)} ${g.notitie ?? ""}`.toLowerCase(),
       });
     });
     urenQ.data?.forEach((w) => {
@@ -142,7 +159,8 @@ function ZoekenPage() {
         titel: `${w.taak} · ${w.uren} uur`,
         detail: [w.middel || null, w.notitie || null].filter(Boolean).join(" · "),
         rijId: w.rij ?? undefined,
-        zoektekst: `werk ${w.taak} ${w.middel ?? ""} ${w.ras ?? ""} ${rijTekst(w.rij)} ${datumTekst(w.datum)} ${w.notitie ?? ""}`.toLowerCase(),
+        zoektekst:
+          `werk ${w.taak} ${w.middel ?? ""} ${w.ras ?? ""} ${rijTekst(w.rij)} ${datumTekst(w.datum)} ${w.notitie ?? ""}`.toLowerCase(),
       });
     });
     return uit.sort((a, b) => (a.datum < b.datum ? 1 : -1));
@@ -154,8 +172,7 @@ function ZoekenPage() {
     return alles.filter((r) => woorden.every((w) => r.zoektekst.includes(w))).slice(0, 50);
   }, [alles, term]);
 
-  const aanHetLaden =
-    metingenQ.isLoading || obsQ.isLoading || fenQ.isLoading || rijenQ.isLoading;
+  const aanHetLaden = metingenQ.isLoading || obsQ.isLoading || fenQ.isLoading || rijenQ.isLoading;
 
   return (
     <>
@@ -177,10 +194,18 @@ function ZoekenPage() {
         {term.trim() === "" ? (
           <div className="space-y-2 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">Zoektips</p>
-            <p>• <strong>rij 12</strong> — alles van één rij (nieuwste eerst)</p>
-            <p>• <strong>ziekte juni</strong> — ziekte-observaties uit juni</p>
-            <p>• <strong>Chardonnay oogst</strong> — oogsten van één ras</p>
-            <p>• <strong>zwavel</strong> — spuitregistraties met dat middel</p>
+            <p>
+              • <strong>rij 12</strong> — alles van één rij (nieuwste eerst)
+            </p>
+            <p>
+              • <strong>ziekte juni</strong> — ziekte-observaties uit juni
+            </p>
+            <p>
+              • <strong>Chardonnay oogst</strong> — oogsten van één ras
+            </p>
+            <p>
+              • <strong>zwavel</strong> — spuitregistraties met dat middel
+            </p>
           </div>
         ) : aanHetLaden ? (
           <p className="text-sm text-muted-foreground">Gegevens laden…</p>
@@ -189,7 +214,10 @@ function ZoekenPage() {
         ) : (
           <>
             <p className="text-xs text-muted-foreground">
-              {resultaten.length === 50 ? "Eerste 50 resultaten" : `${resultaten.length} resultaten`} — nieuwste eerst
+              {resultaten.length === 50
+                ? "Eerste 50 resultaten"
+                : `${resultaten.length} resultaten`}{" "}
+              — nieuwste eerst
             </p>
             <ul className="space-y-2">
               {resultaten.map((r) => {

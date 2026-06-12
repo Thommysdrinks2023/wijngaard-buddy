@@ -59,7 +59,9 @@ export function GddKaart({ jaar }: { jaar: number }) {
             </p>
             <p className="text-3xl font-bold tabular-nums" style={{ color: DONKER }}>
               {gddQ.isLoading ? "…" : totaal}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">°C·dagen (basis 10°C)</span>
+              <span className="ml-1 text-sm font-normal text-muted-foreground">
+                °C·dagen (basis 10°C)
+              </span>
             </p>
           </div>
           <div

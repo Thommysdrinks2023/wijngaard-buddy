@@ -3,13 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
+import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
 import {
-  fetchFenologie,
-  fetchMetingen,
-  fetchObservaties,
-  fetchRijen,
-} from "@/lib/data";
-import { fetchGezondheid, fetchOogst, fetchWerkuren, VERWACHTE_KG_PER_PLANT } from "@/lib/extra-data";
+  fetchGezondheid,
+  fetchOogst,
+  fetchWerkuren,
+  VERWACHTE_KG_PER_PLANT,
+} from "@/lib/extra-data";
 import { fetchGdd, huidigeGdd, isGddBeschikbaar } from "@/lib/gdd";
 import { getPerceelOppervlakte, getUurloon } from "@/lib/app-instellingen";
 import { useSeizoen } from "@/lib/seizoen";
@@ -88,7 +88,12 @@ function RapportPage() {
     >();
     rijenQ.data?.forEach((r) => {
       const cur = rassen.get(r.ras) ?? {
-        planten: 0, metingen: 0, gemBrix: null, oogstKg: 0, verwachtKg: 0, gemVigor: null,
+        planten: 0,
+        metingen: 0,
+        gemBrix: null,
+        oogstKg: 0,
+        verwachtKg: 0,
+        gemVigor: null,
       };
       cur.planten += r.aantal_planten;
       cur.verwachtKg = Math.round(cur.planten * VERWACHTE_KG_PER_PLANT);
@@ -213,7 +218,9 @@ function RapportPage() {
               { label: "Warmtesom", waarde: gddTotaal > 0 ? `${gddTotaal} GDD` : "—" },
             ].map((s) => (
               <div key={s.label} className="rounded-lg p-2" style={{ backgroundColor: "#d4e6d3" }}>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">{s.label}</p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  {s.label}
+                </p>
                 <p className="text-base font-bold tabular-nums">{s.waarde}</p>
               </div>
             ))}
@@ -316,7 +323,8 @@ function RapportPage() {
                 <tr>
                   <td className={`${tdStijl} font-bold`}>Totaal</td>
                   <td className={`${tdStijl} font-bold`}>
-                    {totaalUren} ({oppervlakte > 0 ? Math.round((totaalUren / oppervlakte) * 10) / 10 : 0}/ha)
+                    {totaalUren} (
+                    {oppervlakte > 0 ? Math.round((totaalUren / oppervlakte) * 10) / 10 : 0}/ha)
                   </td>
                   {uurloon > 0 && (
                     <td className={`${tdStijl} font-bold`}>€{Math.round(totaalUren * uurloon)}</td>
@@ -328,7 +336,8 @@ function RapportPage() {
         </section>
 
         <p className="pb-4 text-center text-[10px] text-muted-foreground">
-          Wijngaard Buddy · De Tappenmars · {format(new Date(), "d MMMM yyyy HH:mm", { locale: nl })}
+          Wijngaard Buddy · De Tappenmars ·{" "}
+          {format(new Date(), "d MMMM yyyy HH:mm", { locale: nl })}
         </p>
       </div>
     </>

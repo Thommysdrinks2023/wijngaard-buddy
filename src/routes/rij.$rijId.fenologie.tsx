@@ -50,8 +50,7 @@ function FenologiePage() {
     onError: (e: Error) => toast.error(e.message ?? "Opslaan mislukt"),
   });
 
-  const canSave =
-    invoerder.trim().length > 0 && moment !== null && !m.isPending;
+  const canSave = invoerder.trim().length > 0 && moment !== null && !m.isPending;
 
   const handleSave = () => {
     if (!canSave) {
@@ -101,9 +100,7 @@ function FenologiePage() {
                 >
                   <span className="text-2xl">{opt.emoji}</span>
                   <div className="flex flex-col">
-                    <span className="text-base font-semibold leading-tight">
-                      {opt.value}
-                    </span>
+                    <span className="text-base font-semibold leading-tight">{opt.value}</span>
                     <span
                       className={`text-xs leading-tight ${
                         active ? "text-primary-foreground/80" : "text-muted-foreground"

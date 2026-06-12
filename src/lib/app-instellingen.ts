@@ -90,6 +90,38 @@ export async function fetchSeizoenNotities(): Promise<Record<string, SeizoenNoti
   return notitiesAll();
 }
 
+// ============= Weergave (zonlicht-modus) =============
+const LS_WEERGAVE = "wg.instellingen.weergave.v1";
+
+export interface Weergave {
+  hoogContrast: boolean;
+  groteTekst: boolean;
+}
+
+export function getWeergave(): Weergave {
+  if (typeof window === "undefined") return { hoogContrast: false, groteTekst: false };
+  try {
+    const raw = localStorage.getItem(LS_WEERGAVE);
+    return raw ? (JSON.parse(raw) as Weergave) : { hoogContrast: false, groteTekst: false };
+  } catch {
+    return { hoogContrast: false, groteTekst: false };
+  }
+}
+
+export function setWeergave(weergave: Weergave) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(LS_WEERGAVE, JSON.stringify(weergave));
+  pasWeergaveToe();
+}
+
+// Zet de CSS-klassen op <html>; draait bij app-start en bij wijziging
+export function pasWeergaveToe() {
+  if (typeof document === "undefined") return;
+  const w = getWeergave();
+  document.documentElement.classList.toggle("hoog-contrast", w.hoogContrast);
+  document.documentElement.classList.toggle("grote-tekst", w.groteTekst);
+}
+
 // ============= Cache-opruiming =============
 // Verwijdert verouderde cache-sleutels (bijv. GDD-data van oude seizoenen)
 // zodat localStorage niet volloopt. Draait één keer per app-start.

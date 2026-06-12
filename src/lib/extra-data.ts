@@ -6,24 +6,9 @@ import type { RecordModel } from "pocketbase";
 import type { Ras } from "./types";
 import { ensureOnline, getPb } from "./data";
 import { addToSyncQueue, getSyncQueue } from "./sync";
+import { logAudit } from "./audit";
 
-// ---------- gedeelde helpers ----------
-function readLs<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function writeLs<T>(key: string, val: T) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(val));
-}
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
+import { readLs, uid, writeLs } from "./opslag";
 
 interface EntityConfig<T extends { id: string; datum: string }> {
   collection: string;
@@ -39,10 +24,14 @@ function maakEntity<T extends { id: string; datum: string }>(cfg: EntityConfig<T
     const pb = getPb();
     if (pb && (await ensureOnline())) {
       try {
-        const records = await pb.collection(cfg.collection).getFullList({ sort: "-datum,-created" });
+        const records = await pb
+          .collection(cfg.collection)
+          .getFullList({ sort: "-datum,-created" });
         const mapped = records.map((r) => cfg.fromPb(r));
         const pendingIds = new Set(
-          getSyncQueue().filter((q) => q.soort === cfg.soort).map((q) => q.localId),
+          getSyncQueue()
+            .filter((q) => q.soort === cfg.soort)
+            .map((q) => q.localId),
         );
         const lokaalPending = readLs<T[]>(cfg.lsKey, []).filter((x) => pendingIds.has(x.id));
         const merged = [...mapped, ...lokaalPending];
@@ -59,6 +48,11 @@ function maakEntity<T extends { id: string; datum: string }>(cfg: EntityConfig<T
     const pb = getPb();
     const payload = { ...zonderId } as Record<string, unknown>;
     delete payload.created;
+    logAudit(
+      "aangemaakt",
+      cfg.collection,
+      `${cfg.collection}: ${String(payload.datum ?? "")} ${JSON.stringify(payload).slice(0, 80)}`,
+    );
     if (pb && (await ensureOnline())) {
       try {
         const r = await pb.collection(cfg.collection).create(payload);
@@ -238,24 +232,7 @@ const labEntity = maakEntity<LabResultaat>({
   collection: "lab",
   lsKey: "wg.lab.v1",
   soort: "lab",
-  fromPb: (r) => ({
-    id: r.id,
-    datum: r["datum"],
-    seizoen: r["seizoen"] || undefined,
-    soort: r["soort"],
-    ph: r["ph"] ?? null,
-    organische_stof: r["organische_stof"] ?? null,
-    n: r["n"] ?? null,
-    p: r["p"] ?? null,
-    k: r["k"] ?? null,
-    yan: r["yan"] ?? null,
-    nh4: r["nh4"] ?? null,
-    nopa: r["nopa"] ?? null,
-    notitie: r["notitie"] ?? "",
-    bestand: r["bestand"] ? getPb()!.files.getURL(r, r["bestand"]) : undefined,
-    ingevoerd_door: r["ingevoerd_door"] ?? "",
-    created: r["created"],
-  }),
+  fromPb: (r) => labEntityFromPb(r),
 });
 
 export const fetchLab = labEntity.fetchAll;

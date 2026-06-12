@@ -61,7 +61,7 @@ export function computePlantStatus(
   rijId: string,
   plantNr: number,
   metingen: Meting[],
-  observaties: Observatie[]
+  observaties: Observatie[],
 ): PlantStatusInfo {
   const rijMetingen = metingen.filter((m) => m.rij === rijId);
   const rijObs = observaties.filter((o) => o.rij === rijId);

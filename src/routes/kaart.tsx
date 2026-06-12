@@ -6,11 +6,7 @@ import { toast } from "sonner";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchRijen } from "@/lib/data";
-import {
-  createRijLocatie,
-  fetchRijLocaties,
-  nieuwsteLocaties,
-} from "@/lib/extra-data";
+import { createRijLocatie, fetchRijLocaties, nieuwsteLocaties } from "@/lib/extra-data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { ErrorState } from "@/components/error-state";
@@ -46,10 +42,7 @@ function KaartPage() {
 
   const [gekozenRij, setGekozenRij] = useState("");
 
-  const locatiePerRij = useMemo(
-    () => nieuwsteLocaties(locatiesQ.data ?? []),
-    [locatiesQ.data],
-  );
+  const locatiePerRij = useMemo(() => nieuwsteLocaties(locatiesQ.data ?? []), [locatiesQ.data]);
 
   // Kaart initialiseren (alleen in de browser — Leaflet kan niet op de server)
   useEffect(() => {
@@ -157,8 +150,9 @@ function KaartPage() {
           reject(new Error("GPS niet beschikbaar op dit apparaat"));
           return;
         }
-        navigator.geolocation.getCurrentPosition(resolve, () =>
-          reject(new Error("Locatie ophalen mislukt — staat GPS aan?")),
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          () => reject(new Error("Locatie ophalen mislukt — staat GPS aan?")),
           { enableHighAccuracy: true, timeout: 10000 },
         );
       });
@@ -223,8 +217,8 @@ function KaartPage() {
             <MapPin className="h-4 w-4" /> Rijlocatie vastleggen
           </h2>
           <p className="text-xs text-muted-foreground">
-            Ga bij de rijpaal staan, kies de rij en druk op vastleggen. Opnieuw
-            vastleggen overschrijft de oude locatie.
+            Ga bij de rijpaal staan, kies de rij en druk op vastleggen. Opnieuw vastleggen
+            overschrijft de oude locatie.
           </p>
           <div className="flex gap-2">
             <select

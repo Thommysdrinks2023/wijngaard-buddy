@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { differenceInDays, parseISO } from "date-fns";
@@ -46,7 +46,10 @@ function Perceelkaart() {
       }
     });
     obsQ.data?.forEach((o) => {
-      if ((o.type === "ziekte" || o.type === "schade") && differenceInDays(now, parseISO(o.datum)) < 7) {
+      if (
+        (o.type === "ziekte" || o.type === "schade") &&
+        differenceInDays(now, parseISO(o.datum)) < 7
+      ) {
         const cur = map.get(o.rij) ?? { recentMeting: false, recentZiekteSchade: false };
         cur.recentZiekteSchade = true;
         map.set(o.rij, cur);
@@ -67,7 +70,9 @@ function Perceelkaart() {
         if (f.moment === "Knopbreek" && parseISO(f.datum).getFullYear() === huidigJaar) {
           knopbreekRijen.add(f.rij);
         }
-      } catch {}
+      } catch {
+        // ongeldige datum overslaan
+      }
     });
     rijenQ.data?.forEach((r) => {
       if (!knopbreekRijen.has(r.id)) set.add(r.id);
@@ -77,13 +82,10 @@ function Perceelkaart() {
 
   const rijen = useMemo(
     () => [...(rijenQ.data ?? [])].sort((a, b) => a.rijnummer - b.rijnummer),
-    [rijenQ.data]
+    [rijenQ.data],
   );
 
-  const maxPlanten = useMemo(
-    () => Math.max(1, ...rijen.map((r) => r.aantal_planten)),
-    [rijen]
-  );
+  const maxPlanten = useMemo(() => Math.max(1, ...rijen.map((r) => r.aantal_planten)), [rijen]);
 
   // SVG canvas
   const VB_W = 800;
@@ -147,7 +149,9 @@ function Perceelkaart() {
     const last = rijGeom[rijGeom.length - 1];
     // Volg tips van rechts naar links
     const reversed = [...rijGeom].reverse();
-    const tipsPath = reversed.map((g) => `L ${g.x.toFixed(1)} ${(g.yBottom + 6).toFixed(1)}`).join(" ");
+    const tipsPath = reversed
+      .map((g) => `L ${g.x.toFixed(1)} ${(g.yBottom + 6).toFixed(1)}`)
+      .join(" ");
     return `
       M ${leftX} ${topY}
       L ${rightX} ${topY}
@@ -171,6 +175,14 @@ function Perceelkaart() {
         </div>
 
         <WeerKaart compact />
+
+        <Link
+          to="/snel"
+          className="flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold active:scale-[0.99]"
+          style={{ backgroundColor: "#27232a", color: "#cac176" }}
+        >
+          ⚡ Snelle meting — Brix in 3 tikken
+        </Link>
 
         <div className="overflow-x-auto rounded-2xl border border-border bg-card p-3">
           <svg
@@ -211,7 +223,14 @@ function Perceelkaart() {
                   aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
                 >
                   {/* Tap target — extra breed voor gebruik met handschoenen in het veld */}
-                  <line x1={x} y1={yTop} x2={x} y2={yBottom} stroke="transparent" strokeWidth="18" />
+                  <line
+                    x1={x}
+                    y1={yTop}
+                    x2={x}
+                    y2={yBottom}
+                    stroke="transparent"
+                    strokeWidth="18"
+                  />
                   {/* Zichtbare rij */}
                   <line
                     x1={x}
@@ -224,14 +243,37 @@ function Perceelkaart() {
                   />
                   {/* Status indicator aan de tip (onderkant) */}
                   {rec?.recentZiekteSchade && (
-                    <circle cx={x} cy={yBottom} r="4" fill="hsl(var(--warning, 38 92% 50%))" stroke="white" strokeWidth="1.5" />
+                    <circle
+                      cx={x}
+                      cy={yBottom}
+                      r="4"
+                      fill="hsl(var(--warning, 38 92% 50%))"
+                      stroke="white"
+                      strokeWidth="1.5"
+                    />
                   )}
                   {!rec?.recentZiekteSchade && rec?.recentMeting && (
-                    <circle cx={x} cy={yBottom} r="3.5" fill="hsl(142 71% 45%)" stroke="white" strokeWidth="1.5" />
+                    <circle
+                      cx={x}
+                      cy={yBottom}
+                      r="3.5"
+                      fill="hsl(142 71% 45%)"
+                      stroke="white"
+                      strokeWidth="1.5"
+                    />
                   )}
-                  {!rec?.recentZiekteSchade && !rec?.recentMeting && ontbrekendKnopbreek.has(r.id) && (
-                    <circle cx={x} cy={yBottom} r="3.5" fill="hsl(0 0% 70%)" stroke="white" strokeWidth="1.5" />
-                  )}
+                  {!rec?.recentZiekteSchade &&
+                    !rec?.recentMeting &&
+                    ontbrekendKnopbreek.has(r.id) && (
+                      <circle
+                        cx={x}
+                        cy={yBottom}
+                        r="3.5"
+                        fill="hsl(0 0% 70%)"
+                        stroke="white"
+                        strokeWidth="1.5"
+                      />
+                    )}
                   {/* Rijnummer boven de bovenrand */}
                   {showLabel && (
                     <text
@@ -251,10 +293,24 @@ function Perceelkaart() {
 
             {/* Kompas */}
             <g transform={`translate(${VB_W - 50}, 40)`}>
-              <circle r="22" fill="white" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.9" />
+              <circle
+                r="22"
+                fill="white"
+                stroke="hsl(var(--border))"
+                strokeWidth="1"
+                opacity="0.9"
+              />
               <polygon points="0,-16 5,4 0,0 -5,4" fill="hsl(0 70% 45%)" />
               <polygon points="0,16 5,-4 0,0 -5,-4" fill="hsl(0 0% 50%)" />
-              <text y="-24" textAnchor="middle" fontSize="9" fontWeight="600" fill="hsl(var(--foreground))">N</text>
+              <text
+                y="-24"
+                textAnchor="middle"
+                fontSize="9"
+                fontWeight="600"
+                fill="hsl(var(--foreground))"
+              >
+                N
+              </text>
             </g>
           </svg>
           <p className="mt-1 text-center text-[10px] uppercase tracking-wider text-muted-foreground">

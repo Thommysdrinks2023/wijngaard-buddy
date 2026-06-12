@@ -13,7 +13,9 @@ import crypto from "node:crypto";
 
 const [baseUrl, adminEmail, adminPass] = process.argv.slice(2);
 if (!baseUrl || !adminEmail || !adminPass) {
-  console.error("Gebruik: node scripts/setup-pocketbase.mjs <url> <admin-email> <admin-wachtwoord>");
+  console.error(
+    "Gebruik: node scripts/setup-pocketbase.mjs <url> <admin-email> <admin-wachtwoord>",
+  );
   process.exit(1);
 }
 const base = baseUrl.replace(/\/+$/, "");
@@ -21,24 +23,85 @@ const base = baseUrl.replace(/\/+$/, "");
 const AUTH_RULE = "@request.auth.id != ''";
 
 const SEED_RIJEN = [
-  [1, "Muscaris", 10], [2, "Muscaris", 15], [3, "Muscaris", 20], [4, "Muscaris", 25], [5, "Muscaris", 30],
-  [6, "Souveginier Gris", 34], [7, "Souveginier Gris", 39], [8, "Souveginier Gris", 43], [9, "Souveginier Gris", 49],
-  [10, "Souveginier Gris", 49], [11, "Souveginier Gris", 49], [12, "Souveginier Gris", 50], [13, "Souveginier Gris", 50],
-  [14, "Souveginier Gris", 50], [15, "Souveginier Gris", 56], [16, "Souveginier Gris", 58], [17, "Souveginier Gris", 59],
-  [18, "Souveginier Gris", 60], [19, "Souveginier Gris", 61], [20, "Souveginier Gris", 63], [21, "Souveginier Gris", 63],
-  [22, "Johanniter", 64], [23, "Johanniter", 66], [24, "Johanniter", 67], [25, "Johanniter", 68], [26, "Johanniter", 70],
-  [27, "Johanniter", 72], [28, "Johanniter", 74], [29, "Johanniter", 75], [30, "Johanniter", 75], [31, "Johanniter", 77],
-  [32, "Johanniter", 79], [33, "Johanniter", 81], [34, "Johanniter", 82], [35, "Johanniter", 83], [36, "Johanniter", 84],
-  [37, "Johanniter", 85], [38, "Johanniter", 85], [39, "Johanniter", 86], [40, "Johanniter", 87],
-  [41, "Regent", 88], [42, "Regent", 88], [43, "Regent", 89], [44, "Regent", 89], [46, "Regent", 90], [47, "Regent", 90],
-  [45, "Pinot Noir", 90], [65, "Pinot Noir", 87], [68, "Pinot Noir", 36],
-  [48, "Chardonnay", 90], [49, "Chardonnay", 91], [50, "Chardonnay", 91], [51, "Chardonnay", 91], [52, "Chardonnay", 91],
-  [53, "Chardonnay", 91], [54, "Chardonnay", 90], [55, "Chardonnay", 90], [56, "Chardonnay", 90],
-  [57, "Pinotin", 90], [58, "Pinotin", 90], [59, "Pinotin", 89], [60, "Pinotin", 89], [61, "Pinotin", 89],
-  [62, "Pinotin", 88], [63, "Pinotin", 88], [64, "Pinotin", 87], [66, "Pinotin", 87], [67, "Pinotin", 87],
+  [1, "Muscaris", 10],
+  [2, "Muscaris", 15],
+  [3, "Muscaris", 20],
+  [4, "Muscaris", 25],
+  [5, "Muscaris", 30],
+  [6, "Souveginier Gris", 34],
+  [7, "Souveginier Gris", 39],
+  [8, "Souveginier Gris", 43],
+  [9, "Souveginier Gris", 49],
+  [10, "Souveginier Gris", 49],
+  [11, "Souveginier Gris", 49],
+  [12, "Souveginier Gris", 50],
+  [13, "Souveginier Gris", 50],
+  [14, "Souveginier Gris", 50],
+  [15, "Souveginier Gris", 56],
+  [16, "Souveginier Gris", 58],
+  [17, "Souveginier Gris", 59],
+  [18, "Souveginier Gris", 60],
+  [19, "Souveginier Gris", 61],
+  [20, "Souveginier Gris", 63],
+  [21, "Souveginier Gris", 63],
+  [22, "Johanniter", 64],
+  [23, "Johanniter", 66],
+  [24, "Johanniter", 67],
+  [25, "Johanniter", 68],
+  [26, "Johanniter", 70],
+  [27, "Johanniter", 72],
+  [28, "Johanniter", 74],
+  [29, "Johanniter", 75],
+  [30, "Johanniter", 75],
+  [31, "Johanniter", 77],
+  [32, "Johanniter", 79],
+  [33, "Johanniter", 81],
+  [34, "Johanniter", 82],
+  [35, "Johanniter", 83],
+  [36, "Johanniter", 84],
+  [37, "Johanniter", 85],
+  [38, "Johanniter", 85],
+  [39, "Johanniter", 86],
+  [40, "Johanniter", 87],
+  [41, "Regent", 88],
+  [42, "Regent", 88],
+  [43, "Regent", 89],
+  [44, "Regent", 89],
+  [46, "Regent", 90],
+  [47, "Regent", 90],
+  [45, "Pinot Noir", 90],
+  [65, "Pinot Noir", 87],
+  [68, "Pinot Noir", 36],
+  [48, "Chardonnay", 90],
+  [49, "Chardonnay", 91],
+  [50, "Chardonnay", 91],
+  [51, "Chardonnay", 91],
+  [52, "Chardonnay", 91],
+  [53, "Chardonnay", 91],
+  [54, "Chardonnay", 90],
+  [55, "Chardonnay", 90],
+  [56, "Chardonnay", 90],
+  [57, "Pinotin", 90],
+  [58, "Pinotin", 90],
+  [59, "Pinotin", 89],
+  [60, "Pinotin", 89],
+  [61, "Pinotin", 89],
+  [62, "Pinotin", 88],
+  [63, "Pinotin", 88],
+  [64, "Pinotin", 87],
+  [66, "Pinotin", 87],
+  [67, "Pinotin", 87],
 ];
 
-const RAS_VALUES = ["Muscaris", "Souveginier Gris", "Johanniter", "Regent", "Pinot Noir", "Chardonnay", "Pinotin"];
+const RAS_VALUES = [
+  "Muscaris",
+  "Souveginier Gris",
+  "Johanniter",
+  "Regent",
+  "Pinot Noir",
+  "Chardonnay",
+  "Pinotin",
+];
 const OBSERVATIE_TYPES = ["gezond", "groei", "ziekte", "schade", "uitval", "anders"];
 const FENOLOGIE_MOMENTEN = ["Knopbreek", "Bloei", "Zetting", "Véraison", "Oogstrijp"];
 const NEERSLAG = ["Geen", "Lichte regen", "Matige regen", "Zware regen", "Onweer"];
@@ -62,7 +125,11 @@ async function api(path, { method = "GET", body, token = adminToken, form } = {}
   });
   const text = await res.text();
   let json = null;
-  try { json = text ? JSON.parse(text) : null; } catch { /* leeg */ }
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    /* leeg */
+  }
   if (!res.ok) {
     const err = new Error(`${method} ${path} -> ${res.status}: ${text.slice(0, 400)}`);
     err.status = res.status;
@@ -88,7 +155,9 @@ async function ensureVelden(collectionNaam, velden) {
     method: "PATCH",
     body: { fields: [...col.fields, ...nieuwe] },
   });
-  console.log(`  + ${nieuwe.length} veld(en) toegevoegd aan "${collectionNaam}": ${nieuwe.map((v) => v.name).join(", ")}`);
+  console.log(
+    `  + ${nieuwe.length} veld(en) toegevoegd aan "${collectionNaam}": ${nieuwe.map((v) => v.name).join(", ")}`,
+  );
 }
 
 async function ensureCollection(def) {
@@ -121,13 +190,17 @@ async function main() {
   // 2. admin login (PocketBase 0.23+; valt terug op oudere admin-endpoint)
   try {
     const auth = await api("/api/collections/_superusers/auth-with-password", {
-      method: "POST", token: "", body: { identity: adminEmail, password: adminPass },
+      method: "POST",
+      token: "",
+      body: { identity: adminEmail, password: adminPass },
     });
     adminToken = auth.token;
   } catch (e) {
     if (e.status !== 404) throw e;
     const auth = await api("/api/admins/auth-with-password", {
-      method: "POST", token: "", body: { identity: adminEmail, password: adminPass },
+      method: "POST",
+      token: "",
+      body: { identity: adminEmail, password: adminPass },
     });
     adminToken = auth.token;
   }
@@ -144,15 +217,26 @@ async function main() {
       { name: "aantal_planten", type: "number", onlyInt: true },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   const rijRelatie = {
-    name: "rij", type: "relation", required: true,
-    collectionId: rijenCol.id, cascadeDelete: false, maxSelect: 1,
+    name: "rij",
+    type: "relation",
+    required: true,
+    collectionId: rijenCol.id,
+    cascadeDelete: false,
+    maxSelect: 1,
   };
   const fotoVeld = {
-    name: "foto", type: "file", maxSelect: 1, maxSize: 10485760,
+    name: "foto",
+    type: "file",
+    maxSelect: 1,
+    maxSize: 10485760,
     mimeTypes: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"],
   };
 
@@ -175,7 +259,11 @@ async function main() {
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -192,7 +280,11 @@ async function main() {
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -208,7 +300,11 @@ async function main() {
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -226,7 +322,11 @@ async function main() {
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -242,7 +342,11 @@ async function main() {
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -252,8 +356,20 @@ async function main() {
       { name: "datum", type: "text", required: true },
       { name: "seizoen", type: "number", onlyInt: true },
       {
-        name: "taak", type: "select", required: true, maxSelect: 1,
-        values: ["Snoeien", "Uitbreken", "Aanbinden", "Spuiten", "Maaien", "Bodembewerking", "Oogsten", "Overig"],
+        name: "taak",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: [
+          "Snoeien",
+          "Uitbreken",
+          "Aanbinden",
+          "Spuiten",
+          "Maaien",
+          "Bodembewerking",
+          "Oogsten",
+          "Overig",
+        ],
       },
       { ...rijRelatie, required: false },
       { name: "ras", type: "select", maxSelect: 1, values: RAS_VALUES },
@@ -262,14 +378,23 @@ async function main() {
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   // Spuitregistratie (wettelijk verplicht voor gewasbescherming in NL)
   await ensureVelden("werkuren", [
     { name: "middel", type: "text" },
     { name: "dosering", type: "number" },
-    { name: "dosering_eenheid", type: "select", maxSelect: 1, values: ["ml/L", "g/L", "kg/ha", "L/ha"] },
+    {
+      name: "dosering_eenheid",
+      type: "select",
+      maxSelect: 1,
+      values: ["ml/L", "g/L", "kg/ha", "L/ha"],
+    },
     { name: "reden", type: "select", maxSelect: 1, values: ["Preventief", "Curatief"] },
     { name: "wachttijd_dagen", type: "number", onlyInt: true },
   ]);
@@ -286,7 +411,11 @@ async function main() {
       { name: "plant", type: "number", onlyInt: true },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -312,7 +441,11 @@ async function main() {
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -327,7 +460,11 @@ async function main() {
       { name: "verwijderd", type: "bool" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -338,7 +475,11 @@ async function main() {
       { name: "tekst", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -347,7 +488,13 @@ async function main() {
     fields: [
       { name: "datum", type: "text", required: true },
       { name: "seizoen", type: "number", onlyInt: true },
-      { name: "soort", type: "select", required: true, maxSelect: 1, values: ["Bodemanalyse", "Sapanalyse", "Anders"] },
+      {
+        name: "soort",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: ["Bodemanalyse", "Sapanalyse", "Anders"],
+      },
       { name: "ph", type: "number" },
       { name: "organische_stof", type: "number" },
       { name: "n", type: "number" },
@@ -358,13 +505,20 @@ async function main() {
       { name: "nopa", type: "number" },
       { name: "notitie", type: "text" },
       {
-        name: "bestand", type: "file", maxSelect: 1, maxSize: 20971520,
+        name: "bestand",
+        type: "file",
+        maxSelect: 1,
+        maxSize: 20971520,
         mimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"],
       },
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   await ensureCollection({
@@ -378,14 +532,40 @@ async function main() {
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "audit_log",
+    type: "base",
+    fields: [
+      { name: "tijd", type: "text", required: true },
+      { name: "gebruiker", type: "text" },
+      { name: "actie", type: "text", required: true },
+      { name: "collectie", type: "text", required: true },
+      { name: "samenvatting", type: "text" },
+      { name: "oude_waarde", type: "text" },
+      ...autodateFields(),
+    ],
+    // audit-log: iedereen mag schrijven/lezen, niemand mag wijzigen of wissen
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: null,
+    deleteRule: null,
   });
 
   // 4. rijen seeden
   console.log("Rijen seeden...");
   const bestaande = await api("/api/collections/rijen/records?perPage=1");
   if (bestaande.totalItems > 0) {
-    console.log(`  ✓ rijen-collectie bevat al ${bestaande.totalItems} records, seeden overgeslagen`);
+    console.log(
+      `  ✓ rijen-collectie bevat al ${bestaande.totalItems} records, seeden overgeslagen`,
+    );
   } else {
     for (const [rijnummer, ras, aantal_planten] of SEED_RIJEN) {
       await api("/api/collections/rijen/records", {
@@ -440,9 +620,13 @@ async function main() {
   if (accounts.length > 0) {
     const test = accounts[0];
     const userAuth = await api("/api/collections/users/auth-with-password", {
-      method: "POST", token: "", body: { identity: test.email, password: test.wachtwoord },
+      method: "POST",
+      token: "",
+      body: { identity: test.email, password: test.wachtwoord },
     });
-    const eersteRij = await api("/api/collections/rijen/records?perPage=1", { token: userAuth.token });
+    const eersteRij = await api("/api/collections/rijen/records?perPage=1", {
+      token: userAuth.token,
+    });
     const testRecord = await api("/api/collections/metingen/records", {
       method: "POST",
       token: userAuth.token,
@@ -456,7 +640,8 @@ async function main() {
       },
     });
     await api(`/api/collections/metingen/records/${testRecord.id}`, {
-      method: "DELETE", token: userAuth.token,
+      method: "DELETE",
+      token: userAuth.token,
     });
     console.log(`  ✓ testmeting aangemaakt en verwijderd als ${test.email}`);
   }
