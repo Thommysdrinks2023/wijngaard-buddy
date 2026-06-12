@@ -178,6 +178,18 @@ export const TAAK_TYPES = [
 ] as const;
 export type TaakType = (typeof TAAK_TYPES)[number];
 
+export type DoseringEenheid = "ml/L" | "g/L" | "kg/ha" | "L/ha";
+export const DOSERING_EENHEDEN: DoseringEenheid[] = ["ml/L", "g/L", "kg/ha", "L/ha"];
+export type SpuitReden = "Preventief" | "Curatief";
+
+// Veelgebruikte middelen in de (biologische) wijnbouw — vrij veld blijft mogelijk
+export const MIDDEL_SUGGESTIES = [
+  "Zwavel (spuitzwavel)",
+  "Koper (koperoxychloride)",
+  "Bicarbonaat (kaliumbicarbonaat)",
+  "Plantversterker (algenextract)",
+];
+
 export interface Werkuur {
   id: string;
   datum: string;
@@ -188,6 +200,12 @@ export interface Werkuur {
   uren: number;
   notitie?: string;
   ingevoerd_door: string;
+  // spuitregistratie (alleen bij taak "Spuiten"; wettelijk verplicht in NL)
+  middel?: string;
+  dosering?: number | null;
+  dosering_eenheid?: DoseringEenheid | null;
+  reden?: SpuitReden | null;
+  wachttijd_dagen?: number | null;
   created: string;
 }
 
@@ -347,6 +365,11 @@ const werkurenEntity = maakEntity<Werkuur>({
     uren: r["uren"],
     notitie: r["notitie"] ?? "",
     ingevoerd_door: r["ingevoerd_door"] ?? "",
+    middel: r["middel"] ?? "",
+    dosering: r["dosering"] ?? null,
+    dosering_eenheid: r["dosering_eenheid"] || null,
+    reden: r["reden"] || null,
+    wachttijd_dagen: r["wachttijd_dagen"] ?? null,
     created: r["created"],
   }),
 });

@@ -78,6 +78,19 @@ function autodateFields() {
   ];
 }
 
+// Voegt ontbrekende velden toe aan een bestaande collectie (schema-migratie)
+async function ensureVelden(collectionNaam, velden) {
+  const col = await api(`/api/collections/${collectionNaam}`);
+  const bestaande = new Set(col.fields.map((f) => f.name));
+  const nieuwe = velden.filter((v) => !bestaande.has(v.name));
+  if (nieuwe.length === 0) return;
+  await api(`/api/collections/${col.id}`, {
+    method: "PATCH",
+    body: { fields: [...col.fields, ...nieuwe] },
+  });
+  console.log(`  + ${nieuwe.length} veld(en) toegevoegd aan "${collectionNaam}": ${nieuwe.map((v) => v.name).join(", ")}`);
+}
+
 async function ensureCollection(def) {
   try {
     const bestaand = await api(`/api/collections/${def.name}`);
@@ -251,6 +264,15 @@ async function main() {
     ],
     listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
   });
+
+  // Spuitregistratie (wettelijk verplicht voor gewasbescherming in NL)
+  await ensureVelden("werkuren", [
+    { name: "middel", type: "text" },
+    { name: "dosering", type: "number" },
+    { name: "dosering_eenheid", type: "select", maxSelect: 1, values: ["ml/L", "g/L", "kg/ha", "L/ha"] },
+    { name: "reden", type: "select", maxSelect: 1, values: ["Preventief", "Curatief"] },
+    { name: "wachttijd_dagen", type: "number", onlyInt: true },
+  ]);
 
   await ensureCollection({
     name: "steekproef_planten",

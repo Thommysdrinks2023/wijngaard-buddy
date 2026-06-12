@@ -18,7 +18,16 @@ import {
   Legend,
 } from "recharts";
 import { fetchRijen } from "@/lib/data";
-import { createWerkuur, fetchWerkuren, TAAK_TYPES, type TaakType } from "@/lib/extra-data";
+import {
+  createWerkuur,
+  fetchWerkuren,
+  DOSERING_EENHEDEN,
+  MIDDEL_SUGGESTIES,
+  TAAK_TYPES,
+  type DoseringEenheid,
+  type SpuitReden,
+  type TaakType,
+} from "@/lib/extra-data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
 import { getPerceelOppervlakte, getUurloon } from "@/lib/app-instellingen";
@@ -64,6 +73,12 @@ function WerkrapportPage() {
   const [datum, setDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [notitie, setNotitie] = useState("");
   const [fouten, setFouten] = useState<Record<string, string>>({});
+  // spuitregistratie (alleen bij taak "Spuiten")
+  const [middel, setMiddel] = useState("");
+  const [dosering, setDosering] = useState("");
+  const [doseringEenheid, setDoseringEenheid] = useState<DoseringEenheid>("g/L");
+  const [reden, setReden] = useState<SpuitReden>("Preventief");
+  const [wachttijd, setWachttijd] = useState("");
 
   const wisFout = (veld: string) =>
     setFouten((f) => {
@@ -83,6 +98,8 @@ function WerkrapportPage() {
     return m;
   }, [rijenQ.data]);
 
+  const isSpuiten = taak === "Spuiten";
+
   const m = useMutation({
     mutationFn: async () => {
       const rij = rijId ? rijenById.get(rijId) : undefined;
@@ -95,6 +112,11 @@ function WerkrapportPage() {
         uren: Number(uren),
         notitie,
         ingevoerd_door: invoerder,
+        middel: isSpuiten ? middel.trim() : "",
+        dosering: isSpuiten && dosering ? Number(dosering) : null,
+        dosering_eenheid: isSpuiten && dosering ? doseringEenheid : null,
+        reden: isSpuiten ? reden : null,
+        wachttijd_dagen: isSpuiten && wachttijd ? Number(wachttijd) : null,
       });
     },
     onSuccess: () => {
@@ -114,6 +136,10 @@ function WerkrapportPage() {
       uren: uren ? Number(uren) : undefined,
       ingevoerd_door: invoerder,
     });
+    // spuitregistratie: middel is verplicht (wettelijke registratieplicht)
+    if (isSpuiten && !middel.trim()) {
+      validatie.push({ veld: "middel", bericht: "Middelnaam is verplicht bij spuiten" });
+    }
     if (!isGeldig(validatie)) {
       setFouten(foutenPerVeld(validatie));
       toast.error(validatie[0].bericht);
@@ -200,6 +226,91 @@ function WerkrapportPage() {
               </button>
             ))}
           </div>
+          {/* Spuitregistratie — wettelijk verplichte velden */}
+          {isSpuiten && (
+            <div
+              className="space-y-3 rounded-xl border-2 p-3"
+              style={{ borderColor: "#cac176", backgroundColor: "rgba(202,193,118,0.08)" }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                🧴 Spuitregistratie (verplicht voor gewasbescherming)
+              </p>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Middel</span>
+                <input
+                  list="middel-suggesties"
+                  value={middel}
+                  onChange={(e) => {
+                    setMiddel(e.target.value);
+                    wisFout("middel");
+                  }}
+                  className={`${veldClass} ${fouten.middel ? "border-destructive" : ""}`}
+                  placeholder="Bijv. spuitzwavel…"
+                />
+                <datalist id="middel-suggesties">
+                  {MIDDEL_SUGGESTIES.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+                {fouten.middel && (
+                  <span className="mt-1 block text-sm text-destructive">{fouten.middel}</span>
+                )}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium">Dosering</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    value={dosering}
+                    onChange={(e) => setDosering(e.target.value)}
+                    className={veldClass}
+                    placeholder="—"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium">Eenheid</span>
+                  <select
+                    value={doseringEenheid}
+                    onChange={(e) => setDoseringEenheid(e.target.value as DoseringEenheid)}
+                    className={veldClass}
+                  >
+                    {DOSERING_EENHEDEN.map((e2) => (
+                      <option key={e2} value={e2}>
+                        {e2}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium">Reden</span>
+                  <select
+                    value={reden}
+                    onChange={(e) => setReden(e.target.value as SpuitReden)}
+                    className={veldClass}
+                  >
+                    <option value="Preventief">Preventief</option>
+                    <option value="Curatief">Curatief</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium">Wachttijd (dagen)</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={wachttijd}
+                    onChange={(e) => setWachttijd(e.target.value)}
+                    className={veldClass}
+                    placeholder="—"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Rij (optioneel)</span>
@@ -396,6 +507,14 @@ function WerkrapportPage() {
                         {r ? `Rij ${r.rijnummer} · ${r.ras}` : w.ras || "Hele wijngaard"}
                         {w.ingevoerd_door ? ` · ${w.ingevoerd_door}` : ""}
                       </p>
+                      {w.middel && (
+                        <p className="text-xs text-muted-foreground">
+                          🧴 {w.middel}
+                          {w.dosering ? ` · ${w.dosering} ${w.dosering_eenheid ?? ""}` : ""}
+                          {w.reden ? ` · ${w.reden.toLowerCase()}` : ""}
+                          {w.wachttijd_dagen ? ` · wachttijd ${w.wachttijd_dagen} dgn` : ""}
+                        </p>
+                      )}
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {format(parseISO(w.datum), "d MMM", { locale: nl })}

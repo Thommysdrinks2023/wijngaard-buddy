@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ZoekenRouteImport } from './routes/zoeken'
 import { Route as WerkrapportRouteImport } from './routes/werkrapport'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as SeizoenRouteImport } from './routes/seizoen'
@@ -36,6 +37,11 @@ import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
 import { Route as RijRijIdFenologieRouteImport } from './routes/rij.$rijId.fenologie'
 import { Route as FenologieFenIdBewerkenRouteImport } from './routes/fenologie.$fenId.bewerken'
 
+const ZoekenRoute = ZoekenRouteImport.update({
+  id: '/zoeken',
+  path: '/zoeken',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WerkrapportRoute = WerkrapportRouteImport.update({
   id: '/werkrapport',
   path: '/werkrapport',
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/seizoen': typeof SeizoenRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
+  '/zoeken': typeof ZoekenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
@@ -213,6 +220,7 @@ export interface FileRoutesByTo {
   '/seizoen': typeof SeizoenRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
+  '/zoeken': typeof ZoekenRoute
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/steekproeven': typeof SteekproevenIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/seizoen': typeof SeizoenRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
+  '/zoeken': typeof ZoekenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/seizoen'
     | '/trends'
     | '/werkrapport'
+    | '/zoeken'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
     | '/steekproeven/'
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/seizoen'
     | '/trends'
     | '/werkrapport'
+    | '/zoeken'
     | '/steekproeven/beheer'
     | '/steekproeven'
     | '/fenologie/$fenId/bewerken'
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/seizoen'
     | '/trends'
     | '/werkrapport'
+    | '/zoeken'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
     | '/steekproeven/'
@@ -355,6 +367,7 @@ export interface RootRouteChildren {
   SeizoenRoute: typeof SeizoenRoute
   TrendsRoute: typeof TrendsRoute
   WerkrapportRoute: typeof WerkrapportRoute
+  ZoekenRoute: typeof ZoekenRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
   SteekproevenBeheerRoute: typeof SteekproevenBeheerRoute
   SteekproevenIndexRoute: typeof SteekproevenIndexRoute
@@ -364,6 +377,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/zoeken': {
+      id: '/zoeken'
+      path: '/zoeken'
+      fullPath: '/zoeken'
+      preLoaderRoute: typeof ZoekenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/werkrapport': {
       id: '/werkrapport'
       path: '/werkrapport'
@@ -586,6 +606,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeizoenRoute: SeizoenRoute,
   TrendsRoute: TrendsRoute,
   WerkrapportRoute: WerkrapportRoute,
+  ZoekenRoute: ZoekenRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
   SteekproevenBeheerRoute: SteekproevenBeheerRoute,
   SteekproevenIndexRoute: SteekproevenIndexRoute,

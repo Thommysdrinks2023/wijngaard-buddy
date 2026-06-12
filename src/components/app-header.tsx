@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Search } from "lucide-react";
 import { VerbindingBadge } from "@/components/verbinding-status";
 
 interface AppHeaderProps {
@@ -52,6 +52,13 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
             </>
           )}
         </div>
+        <Link
+          to="/zoeken"
+          aria-label="Zoeken in alle registraties"
+          className="flex h-12 w-10 items-center justify-center text-[#cac176]"
+        >
+          <Search className="h-5 w-5" />
+        </Link>
         <VerbindingBadge />
         {right}
       </div>
