@@ -104,7 +104,7 @@ const LS_NAME = "wg.invoerder.v1";
 import { readLs, uid, writeLs } from "./opslag";
 
 export function getInvoerder(): string {
-  return readLs<string>(LS_NAME, "");
+  return readLs<string>(LS_NAME, "invoerder1@tappenmars.nl");
 }
 export function setInvoerder(naam: string) {
   writeLs(LS_NAME, naam);

@@ -4,10 +4,7 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Scripts,
-  useLocation,
-  useNavigate,
 } from "@tanstack/react-router";
-import { isIngelogd, isPbConfigured } from "@/lib/data";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { BottomNav } from "@/components/bottom-nav";
@@ -95,20 +92,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  // Verplichte login: zonder account (of expliciete offline-keuze) geen toegang.
-  // Voorkomt stille datasilo's op apparaten die nooit zijn ingelogd.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!isPbConfigured()) return;
-    if (location.pathname === "/login") return;
-    const offlineKeuze = localStorage.getItem("wg.offline.keuze.v1") === "1";
-    if (!isIngelogd() && !offlineKeuze) {
-      navigate({ to: "/login" });
-    }
-  }, [location.pathname, navigate]);
 
   // "Ongedaan maken" en prullenbak-herstel verversen alle queries
   useEffect(() => {

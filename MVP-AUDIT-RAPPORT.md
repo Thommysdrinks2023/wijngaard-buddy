@@ -21,7 +21,7 @@
 | Work Report | 7 | 9 | **Wettelijke spuitregistratie** (middel/dosering/reden/wachttijd), kosten, taart |
 | Custom Trends | 7 | 7 | ErrorState toegevoegd |
 | Foto's | 7 | 9 | **Compressie naar 1600px (80-90% kleiner)** + offline-opslag bestond al |
-| Login/Auth | 5 | 8 | **Verplicht**: redirect zonder account, naam in header, uitloggen, bewuste offline-keuze |
+| Login/Auth | 5 | 7 | Optioneel (bewuste keuze: app moet altijd direct openen in het veld); naam in header, uitloggen, welkomstscherm |
 | Offline mode | 8 | 9 | Sync-fouten zichtbaar + melding, conflictwaarschuwing, audit-log offline-safe |
 | Data export | 6 | 7 | Bestond al; prullenbak + audit-log erbij als vangnet |
 | Navigatie | 7 | 9 | **Zoekfunctie overal bereikbaar**, menu gegroepeerd (Veld/Analyse/Beheer), onboarding |
@@ -29,7 +29,8 @@
 
 ## Nieuw in deze ronde
 
-- **Verplichte login** met expliciete (gewaarschuwde) offline-keuze — geen stille datasilo's
+- **Login optioneel** (de verplichte variant sloot gebruikers buiten en is teruggedraaid);
+  de "Niet ingelogd"-badge in de header waarschuwt zichtbaar op elk scherm
 - **Zoekfunctie** (/zoeken): rijnummer, ras, type, datum, vrije tekst, middelnaam
 - **Spuitregistratie** volgens NL-registratieplicht
 - **Prullenbak** (30 dagen) + "Ongedaan maken" (5 sec) bij verwijderen

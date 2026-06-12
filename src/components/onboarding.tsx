@@ -5,18 +5,21 @@ const LS_GEZIEN = "wg.onboarding.gezien.v1";
 
 const STAPPEN = [
   {
-    emoji: "🍇",
+    logo: true,
+    emoji: "",
     titel: "Welkom bij Wijngaard Buddy",
     tekst:
       "De veld-app van De Tappenmars. Alles wat je in de wijngaard registreert — metingen, observaties, oogst — staat veilig op één plek en werkt ook zonder bereik.",
   },
   {
+    logo: false,
     emoji: "🗺️",
     titel: "Zo werkt het",
     tekst:
       "De perceelkaart is je startpunt: tik op een rij en je ziet alles van die rij. Daar registreer je metingen en observaties. Gekleurde stippen tonen wat aandacht nodig heeft.",
   },
   {
+    logo: false,
     emoji: "🧪",
     titel: "Begin met een meting",
     tekst:
@@ -49,7 +52,15 @@ export function Onboarding() {
         className="w-full max-w-sm rounded-3xl border-2 p-6 text-center"
         style={{ backgroundColor: "#27232a", borderColor: "#cac176" }}
       >
-        <div className="text-5xl">{huidige.emoji}</div>
+        {huidige.logo ? (
+          <img
+            src="/logo-icon.png"
+            alt="De Tappenmars"
+            className="mx-auto h-24 w-24 object-contain"
+          />
+        ) : (
+          <div className="text-5xl">{huidige.emoji}</div>
+        )}
         <h2 className="mt-3 text-xl font-bold text-white">{huidige.titel}</h2>
         <p className="mt-2 text-sm leading-relaxed text-white/80">{huidige.tekst}</p>
 
@@ -67,12 +78,12 @@ export function Onboarding() {
         <div className="mt-5 space-y-2">
           {laatste ? (
             <Link
-              to="/perceelkaart"
+              to="/dashboard"
               onClick={sluit}
               className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold"
               style={{ backgroundColor: "#cac176", color: "#27232a" }}
             >
-              Naar de perceelkaart
+              Naar het dashboard
             </Link>
           ) : (
             <button
