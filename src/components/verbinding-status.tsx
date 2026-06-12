@@ -68,14 +68,17 @@ export function VerbindingBadge() {
     );
   }
 
+  const record = getPb()?.authStore.record as { name?: string; email?: string } | null;
+  const naam = record?.name || record?.email?.split("@")[0] || "Online";
+
   return (
     <span
-      className="flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold"
+      className="flex h-8 max-w-32 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold"
       style={{ backgroundColor: "rgba(202,193,118,0.18)", color: "#cac176" }}
-      title="Verbonden met de server en ingelogd"
+      title={`Verbonden en ingelogd als ${naam}`}
     >
-      <Wifi className="h-3.5 w-3.5" />
-      Online
+      <Wifi className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{naam}</span>
     </span>
   );
 }

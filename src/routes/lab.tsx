@@ -12,6 +12,7 @@ import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useVerbinding } from "@/components/verbinding-status";
+import { comprimeerFoto } from "@/lib/foto-compressie";
 import { FlaskConical, FileText, Loader2, Paperclip } from "lucide-react";
 
 export const Route = createFileRoute("/lab")({
@@ -194,7 +195,16 @@ function LabPage() {
               <input
                 type="file"
                 accept="application/pdf,image/*"
-                onChange={(e) => setBestand(e.target.files?.[0] ?? null)}
+                onChange={async (e) => {
+                  const gekozen = e.target.files?.[0] ?? null;
+                  if (!gekozen) {
+                    setBestand(null);
+                    return;
+                  }
+                  // foto's verkleinen; PDF's blijven ongemoeid
+                  const res = await comprimeerFoto(gekozen);
+                  setBestand(res.file);
+                }}
                 className="hidden"
               />
             </label>

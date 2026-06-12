@@ -36,6 +36,9 @@ function LoginPage() {
         return;
       }
       setInvoerder(trimmed);
+      // expliciete keuze om zonder account te werken (data blijft dan lokaal
+      // tot er wordt ingelogd) — bewust, geen stille fallback
+      localStorage.setItem("wg.offline.keuze.v1", "1");
       navigate({ to: "/" });
       return;
     }
@@ -50,6 +53,7 @@ function LoginPage() {
       const auth = await pb.collection("users").authWithPassword(email.trim(), wachtwoord);
       const record = auth.record as { name?: string };
       setInvoerder(record.name || email.trim().split("@")[0]);
+      localStorage.removeItem("wg.offline.keuze.v1");
       navigate({ to: "/" });
     } catch {
       setFout("Inloggen mislukt. Controleer je e-mailadres en wachtwoord.");
@@ -87,6 +91,12 @@ function LoginPage() {
           <form onSubmit={handleInloggen} className="space-y-4">
             {naamModus ? (
               <label className="block">
+                {pbActief && (
+                  <p className="mb-3 rounded-lg bg-warning/15 px-3 py-2 text-xs text-warning-foreground">
+                    ⚠️ Zonder account blijft je invoer alleen op dit apparaat staan
+                    totdat je inlogt. Log in zodra je weer verbinding hebt.
+                  </p>
+                )}
                 <span className="mb-1.5 block text-sm font-medium text-foreground">Naam</span>
                 <input
                   type="text"

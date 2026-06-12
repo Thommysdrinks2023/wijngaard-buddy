@@ -205,7 +205,7 @@ function Perceelkaart() {
                 <g
                   key={r.id}
                   className="cursor-pointer focus:outline-none"
-                  onClick={() => navigate({ to: "/rij/$rijId/planten", params: { rijId: r.id } })}
+                  onClick={() => navigate({ to: "/rij/$rijId", params: { rijId: r.id } })}
                   tabIndex={0}
                   role="button"
                   aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
@@ -258,7 +258,7 @@ function Perceelkaart() {
             </g>
           </svg>
           <p className="mt-1 text-center text-[10px] uppercase tracking-wider text-muted-foreground">
-            Tik op een rij om de planten te bekijken
+            Tik op een rij voor metingen, observaties en planten
           </p>
         </div>
 

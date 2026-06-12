@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { getPb, isPbConfigured, pingPb } from "@/lib/data";
+import { getPb, isIngelogd, isPbConfigured, pingPb } from "@/lib/data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import {
@@ -167,6 +167,7 @@ export const Route = createFileRoute("/instellingen")({
 });
 
 function Instellingen() {
+  const navigate = useNavigate();
   const [invoerder, setInvoerder] = useInvoerder();
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
@@ -370,6 +371,20 @@ function Instellingen() {
               Stel <code className="rounded bg-muted px-1.5 py-0.5 text-xs">VITE_POCKETBASE_URL</code> in om
               te verbinden met je PocketBase backend.
             </p>
+          )}
+          {isIngelogd() && (
+            <button
+              type="button"
+              onClick={() => {
+                getPb()?.authStore.clear();
+                localStorage.removeItem("wg.offline.keuze.v1");
+                toast.success("Uitgelogd");
+                navigate({ to: "/login" });
+              }}
+              className="h-12 w-full rounded-xl border border-border bg-card text-sm font-semibold text-destructive"
+            >
+              Uitloggen
+            </button>
           )}
         </section>
 

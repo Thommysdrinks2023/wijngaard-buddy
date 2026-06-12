@@ -11,6 +11,7 @@ import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { RijpheidStars } from "@/components/rijpheid-stars";
 import { useVerbinding } from "@/components/verbinding-status";
+import { comprimeerFoto } from "@/lib/foto-compressie";
 import { Camera, Loader2 } from "lucide-react";
 
 const searchSchema = z.object({
@@ -224,7 +225,20 @@ function MetingPage() {
                 type="file"
                 accept="image/*"
                 capture="environment"
-                onChange={(e) => setFoto(e.target.files?.[0] ?? null)}
+                onChange={async (e) => {
+                  const gekozen = e.target.files?.[0] ?? null;
+                  if (!gekozen) {
+                    setFoto(null);
+                    return;
+                  }
+                  const res = await comprimeerFoto(gekozen);
+                  setFoto(res.file);
+                  if (res.gecomprimeerdKb < res.origineelKb) {
+                    toast.success(
+                      `Foto verkleind: ${res.origineelKb} kB → ${res.gecomprimeerdKb} kB`,
+                    );
+                  }
+                }}
                 className="hidden"
               />
             </label>

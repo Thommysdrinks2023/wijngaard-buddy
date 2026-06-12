@@ -6,7 +6,7 @@ import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/l
 import { FENOLOGIE_MOMENTEN, OBSERVATIE_TYPES } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { RijpheidStars } from "@/components/rijpheid-stars";
-import { FlaskConical, Eye, Sprout, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, FlaskConical, Eye, Sprout, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/rij/$rijId/")({
   component: RijDetail,
@@ -30,6 +30,15 @@ function RijDetail() {
   });
 
   const rij = rijenQ.data?.find((r) => r.id === rijId);
+
+  // Vorige/volgende rij — in het veld loop je rij voor rij
+  const gesorteerd = [...(rijenQ.data ?? [])].sort((a, b) => a.rijnummer - b.rijnummer);
+  const huidigeIndex = gesorteerd.findIndex((r) => r.id === rijId);
+  const vorigeRij = huidigeIndex > 0 ? gesorteerd[huidigeIndex - 1] : null;
+  const volgendeRij =
+    huidigeIndex >= 0 && huidigeIndex < gesorteerd.length - 1
+      ? gesorteerd[huidigeIndex + 1]
+      : null;
   const metingen = (metingenQ.data ?? []).slice(0, 5);
   const observaties = (obsQ.data ?? []).slice(0, 5);
   const fenologie = (fenQ.data ?? []).slice(0, 10);
@@ -55,6 +64,38 @@ function RijDetail() {
         subtitle={rij ? `${rij.ras} · ${rij.aantal_planten} planten` : ""}
       />
       <div className="mx-auto max-w-screen-md px-3 py-4 space-y-5">
+        {/* Vorige/volgende rij */}
+        <div className="flex items-center gap-2">
+          {vorigeRij ? (
+            <Link
+              to="/rij/$rijId"
+              params={{ rijId: vorigeRij.id }}
+              className="flex h-12 flex-1 items-center justify-center gap-1 rounded-xl border border-border bg-card text-sm font-semibold active:scale-[0.98]"
+            >
+              <ChevronLeft className="h-4 w-4" /> Rij {vorigeRij.rijnummer}
+            </Link>
+          ) : (
+            <span className="h-12 flex-1" />
+          )}
+          <span
+            className="flex h-12 items-center rounded-xl px-4 text-sm font-bold"
+            style={{ backgroundColor: "#27232a", color: "#cac176" }}
+          >
+            Rij {rij?.rijnummer ?? "…"}
+          </span>
+          {volgendeRij ? (
+            <Link
+              to="/rij/$rijId"
+              params={{ rijId: volgendeRij.id }}
+              className="flex h-12 flex-1 items-center justify-center gap-1 rounded-xl border border-border bg-card text-sm font-semibold active:scale-[0.98]"
+            >
+              Rij {volgendeRij.rijnummer} <ChevronRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span className="h-12 flex-1" />
+          )}
+        </div>
+
         {/* Plant view link */}
         <Link
           to="/rij/$rijId/planten"
