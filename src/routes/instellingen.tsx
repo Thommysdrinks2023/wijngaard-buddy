@@ -25,8 +25,10 @@ import {
   DREMPEL_OPTIES,
   getMetingDrempel,
   getPerceelOppervlakte,
+  getUurloon,
   setMetingDrempel,
   setPerceelOppervlakte,
+  setUurloon,
 } from "@/lib/app-instellingen";
 
 // Volledig menu — alle pagina's van de app in logische volgorde
@@ -159,6 +161,7 @@ function Instellingen() {
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
   const [oppervlakte, setOppervlakte] = useState<string>(() => String(getPerceelOppervlakte()));
+  const [uurloon, setUurloonState] = useState<string>(() => String(getUurloon() || ""));
 
   useEffect(() => {
     if (!isPbConfigured()) {
@@ -302,6 +305,26 @@ function Instellingen() {
           </label>
           <p className="text-xs text-muted-foreground">
             Gebruikt voor uren per hectare in het werkrapport.
+          </p>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Uurloon (€, optioneel)</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.5"
+              min={0}
+              value={uurloon}
+              onChange={(e) => {
+                setUurloonState(e.target.value);
+                const n = Number(e.target.value);
+                setUurloon(Number.isFinite(n) && n >= 0 ? n : 0);
+              }}
+              placeholder="Leeg = geen kostenberekening"
+              className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+            />
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Met een uurloon toont het werkrapport ook de kosten per taak en per seizoen.
           </p>
         </section>
 

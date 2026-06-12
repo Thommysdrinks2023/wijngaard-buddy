@@ -10,8 +10,20 @@ import {
   fetchOogst,
   VERWACHTE_KG_PER_PLANT,
 } from "@/lib/extra-data";
+import { foutenPerVeld, isGeldig, valideerOogst } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
+import { getPerceelOppervlakte } from "@/lib/app-instellingen";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
@@ -39,6 +51,15 @@ function OogstPage() {
   const [kg, setKg] = useState("");
   const [datum, setDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [notitie, setNotitie] = useState("");
+  const [fouten, setFouten] = useState<Record<string, string>>({});
+
+  const wisFout = (veld: string) =>
+    setFouten((f) => {
+      if (!f[veld]) return f;
+      const kopie = { ...f };
+      delete kopie[veld];
+      return kopie;
+    });
 
   const rijenById = useMemo(() => {
     const m = new Map<string, Rij>();
@@ -51,17 +72,12 @@ function OogstPage() {
   const m = useMutation({
     mutationFn: async () => {
       if (!gekozenRij) throw new Error("Kies een rij");
-      const gewicht = Number(kg);
-      if (!kg || Number.isNaN(gewicht) || gewicht <= 0)
-        throw new Error("Vul een geldig gewicht in (kg)");
-      if (gewicht > 5000) throw new Error("Gewicht lijkt onrealistisch hoog");
-      if (!invoerder.trim()) throw new Error("Vul je naam in");
       return createOogstRecord({
         rij: gekozenRij.id,
         ras: gekozenRij.ras,
         datum,
         seizoen: new Date(datum).getFullYear(),
-        kg: gewicht,
+        kg: Number(kg),
         notitie,
         ingevoerd_door: invoerder,
       });
@@ -74,6 +90,23 @@ function OogstPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const handleSave = () => {
+    if (m.isPending) return;
+    const validatie = valideerOogst({
+      rij: rijId || null,
+      datum,
+      kg: kg ? Number(kg) : undefined,
+      ingevoerd_door: invoerder,
+    });
+    if (!isGeldig(validatie)) {
+      setFouten(foutenPerVeld(validatie));
+      toast.error(validatie[0].bericht);
+      return;
+    }
+    setFouten({});
+    m.mutate();
+  };
 
   const seizoenOogst = useMemo(
     () => (oogstQ.data ?? []).filter((o) => o.seizoen === jaar),
@@ -109,6 +142,8 @@ function OogstPage() {
     () => perRas.reduce((acc, x) => acc + x.verwacht, 0),
     [perRas],
   );
+  const oppervlakteHa = getPerceelOppervlakte();
+  const kgPerHa = oppervlakteHa > 0 ? Math.round(totaalGeoogst / oppervlakteHa) : 0;
 
   const recent = useMemo(() => seizoenOogst.slice(0, 10), [seizoenOogst]);
 
@@ -142,6 +177,7 @@ function OogstPage() {
               {totaalVerwacht > 0 && (
                 <p className="text-xs text-white/70">
                   van ± {totaalVerwacht} kg verwacht ({Math.round((totaalGeoogst / totaalVerwacht) * 100)}%)
+                  {" · "}{kgPerHa} kg/ha ({oppervlakteHa} ha)
                 </p>
               )}
             </div>
@@ -157,7 +193,14 @@ function OogstPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Rij</span>
-              <select value={rijId} onChange={(e) => setRijId(e.target.value)} className={veldClass}>
+              <select
+                value={rijId}
+                onChange={(e) => {
+                  setRijId(e.target.value);
+                  wisFout("rij");
+                }}
+                className={`${veldClass} ${fouten.rij ? "border-destructive" : ""}`}
+              >
                 <option value="">Kies rij…</option>
                 {(rijenQ.data ?? []).map((r) => (
                   <option key={r.id} value={r.id}>
@@ -165,6 +208,7 @@ function OogstPage() {
                   </option>
                 ))}
               </select>
+              {fouten.rij && <span className="mt-1 block text-sm text-destructive">{fouten.rij}</span>}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Gewicht (kg)</span>
@@ -173,10 +217,14 @@ function OogstPage() {
                 inputMode="decimal"
                 step="0.1"
                 value={kg}
-                onChange={(e) => setKg(e.target.value)}
-                className={veldClass}
+                onChange={(e) => {
+                  setKg(e.target.value);
+                  wisFout("kg");
+                }}
+                className={`${veldClass} ${fouten.kg ? "border-destructive" : ""}`}
                 placeholder="bijv. 12.5"
               />
+              {fouten.kg && <span className="mt-1 block text-sm text-destructive">{fouten.kg}</span>}
             </label>
           </div>
           {gekozenRij && (
@@ -187,11 +235,33 @@ function OogstPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Datum</span>
-              <input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} className={veldClass} />
+              <input
+                type="date"
+                value={datum}
+                onChange={(e) => {
+                  setDatum(e.target.value);
+                  wisFout("datum");
+                }}
+                className={`${veldClass} ${fouten.datum ? "border-destructive" : ""}`}
+              />
+              {fouten.datum && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.datum}</span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Ingevoerd door</span>
-              <input value={invoerder} onChange={(e) => setInvoerder(e.target.value)} className={veldClass} placeholder="Je naam" />
+              <input
+                value={invoerder}
+                onChange={(e) => {
+                  setInvoerder(e.target.value);
+                  wisFout("ingevoerd_door");
+                }}
+                className={`${veldClass} ${fouten.ingevoerd_door ? "border-destructive" : ""}`}
+                placeholder="Je naam"
+              />
+              {fouten.ingevoerd_door && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.ingevoerd_door}</span>
+              )}
             </label>
           </div>
           <label className="block">
@@ -200,7 +270,7 @@ function OogstPage() {
           </label>
           <button
             type="button"
-            onClick={() => m.mutate()}
+            onClick={handleSave}
             disabled={m.isPending}
             className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-semibold text-primary-foreground disabled:opacity-50"
           >
@@ -241,6 +311,31 @@ function OogstPage() {
             </div>
           )}
         </section>
+
+        {/* Grafiek: geoogst vs verwacht per ras */}
+        {perRas.length > 0 && (
+          <section className="rounded-2xl border border-border bg-card p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Oogst vs. verwachting per ras
+            </h2>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={perRas} layout="vertical" margin={{ left: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#cac17655" />
+                  <XAxis type="number" fontSize={11} unit=" kg" />
+                  <YAxis type="category" dataKey="ras" fontSize={11} width={95} />
+                  <Tooltip formatter={(v: number) => [`${v} kg`]} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="geoogst" name="Geoogst" fill="#cac176" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="verwacht" name="Verwacht" fill="#27232a" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Inclusief oogsten die via de steekproevenpagina zijn geregistreerd.
+            </p>
+          </section>
+        )}
 
         {/* Recente registraties */}
         <section>

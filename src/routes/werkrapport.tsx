@@ -12,12 +12,17 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 import { fetchRijen } from "@/lib/data";
 import { createWerkuur, fetchWerkuren, TAAK_TYPES, type TaakType } from "@/lib/extra-data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
-import { getPerceelOppervlakte } from "@/lib/app-instellingen";
+import { getPerceelOppervlakte, getUurloon } from "@/lib/app-instellingen";
+import { foutenPerVeld, isGeldig, valideerWerkuur } from "@/lib/validatie";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
@@ -34,6 +39,11 @@ export const Route = createFileRoute("/werkrapport")({
     ],
   }),
 });
+
+// Huisstijl-palet voor het taartdiagram
+const TAART_KLEUREN = [
+  "#27232a", "#cac176", "#a1a35b", "#b6cfb3", "#e2d294", "#5a5240", "#7e22ce", "#a83b2a",
+];
 
 function jaarOf(item: { seizoen?: number; datum: string }): number {
   return item.seizoen ?? parseISO(item.datum).getFullYear();
@@ -52,6 +62,15 @@ function WerkrapportPage() {
   const [uren, setUren] = useState("");
   const [datum, setDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [notitie, setNotitie] = useState("");
+  const [fouten, setFouten] = useState<Record<string, string>>({});
+
+  const wisFout = (veld: string) =>
+    setFouten((f) => {
+      if (!f[veld]) return f;
+      const kopie = { ...f };
+      delete kopie[veld];
+      return kopie;
+    });
 
   // filters voor het overzicht
   const [filterRas, setFilterRas] = useState<Ras | "">("");
@@ -65,10 +84,6 @@ function WerkrapportPage() {
 
   const m = useMutation({
     mutationFn: async () => {
-      const u = Number(uren);
-      if (!uren || Number.isNaN(u) || u <= 0) throw new Error("Vul een geldig aantal uren in");
-      if (u > 24) throw new Error("Meer dan 24 uur op één dag kan niet");
-      if (!invoerder.trim()) throw new Error("Vul je naam in");
       const rij = rijId ? rijenById.get(rijId) : undefined;
       return createWerkuur({
         datum,
@@ -76,7 +91,7 @@ function WerkrapportPage() {
         taak,
         rij: rijId || null,
         ras: rij?.ras ?? null,
-        uren: u,
+        uren: Number(uren),
         notitie,
         ingevoerd_door: invoerder,
       });
@@ -89,6 +104,23 @@ function WerkrapportPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const handleSave = () => {
+    if (m.isPending) return;
+    const validatie = valideerWerkuur({
+      taak,
+      datum,
+      uren: uren ? Number(uren) : undefined,
+      ingevoerd_door: invoerder,
+    });
+    if (!isGeldig(validatie)) {
+      setFouten(foutenPerVeld(validatie));
+      toast.error(validatie[0].bericht);
+      return;
+    }
+    setFouten({});
+    m.mutate();
+  };
 
   const seizoenUren = useMemo(
     () => (urenQ.data ?? []).filter((w) => jaarOf(w) === jaar),
@@ -121,6 +153,9 @@ function WerkrapportPage() {
   );
   const oppervlakteHa = getPerceelOppervlakte();
   const urenPerHa = oppervlakteHa > 0 ? Math.round((totaalUren / oppervlakteHa) * 10) / 10 : 0;
+  // kosten alleen tonen als er een uurloon is ingesteld (instellingen)
+  const uurloon = getUurloon();
+  const totaalKosten = Math.round(totaalUren * uurloon);
 
   const recent = useMemo(() => gefilterd.slice(0, 12), [gefilterd]);
 
@@ -135,6 +170,7 @@ function WerkrapportPage() {
             <h1 className="text-2xl font-bold tracking-tight">Werkrapport</h1>
             <p className="text-sm text-muted-foreground">
               {totaalUren} uur in {jaar} · {urenPerHa} uur/ha ({oppervlakteHa} ha)
+              {uurloon > 0 && ` · €${totaalKosten} (à €${uurloon}/u)`}
             </p>
           </div>
           <YearSelector />
@@ -180,20 +216,48 @@ function WerkrapportPage() {
                 inputMode="decimal"
                 step="0.5"
                 value={uren}
-                onChange={(e) => setUren(e.target.value)}
-                className={veldClass}
+                onChange={(e) => {
+                  setUren(e.target.value);
+                  wisFout("uren");
+                }}
+                className={`${veldClass} ${fouten.uren ? "border-destructive" : ""}`}
                 placeholder="bijv. 2.5"
               />
+              {fouten.uren && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.uren}</span>
+              )}
             </label>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Datum</span>
-              <input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} className={veldClass} />
+              <input
+                type="date"
+                value={datum}
+                onChange={(e) => {
+                  setDatum(e.target.value);
+                  wisFout("datum");
+                }}
+                className={`${veldClass} ${fouten.datum ? "border-destructive" : ""}`}
+              />
+              {fouten.datum && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.datum}</span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Ingevoerd door</span>
-              <input value={invoerder} onChange={(e) => setInvoerder(e.target.value)} className={veldClass} placeholder="Je naam" />
+              <input
+                value={invoerder}
+                onChange={(e) => {
+                  setInvoerder(e.target.value);
+                  wisFout("ingevoerd_door");
+                }}
+                className={`${veldClass} ${fouten.ingevoerd_door ? "border-destructive" : ""}`}
+                placeholder="Je naam"
+              />
+              {fouten.ingevoerd_door && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.ingevoerd_door}</span>
+              )}
             </label>
           </div>
           <label className="block">
@@ -202,7 +266,7 @@ function WerkrapportPage() {
           </label>
           <button
             type="button"
-            onClick={() => m.mutate()}
+            onClick={handleSave}
             disabled={m.isPending}
             className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-semibold text-primary-foreground disabled:opacity-50"
           >
@@ -272,6 +336,41 @@ function WerkrapportPage() {
             </div>
           )}
         </section>
+
+        {/* Tijdverdeling per taaktype (taart) */}
+        {perTaak.length > 1 && (
+          <section className="rounded-2xl border border-border bg-card p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Tijdverdeling {uurloon > 0 ? "en kosten " : ""}per taak
+            </h2>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={perTaak}
+                    dataKey="uren"
+                    nameKey="taak"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    label={({ name, percent }) => `${name} ${Math.round((percent ?? 0) * 100)}%`}
+                    fontSize={11}
+                  >
+                    {perTaak.map((t, i) => (
+                      <Cell key={t.taak} fill={TAART_KLEUREN[i % TAART_KLEUREN.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(v: number) =>
+                      uurloon > 0 ? [`${v} uur · €${Math.round(v * uurloon)}`, "Duur"] : [`${v} uur`, "Duur"]
+                    }
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        )}
 
         {/* Recente registraties */}
         <section>

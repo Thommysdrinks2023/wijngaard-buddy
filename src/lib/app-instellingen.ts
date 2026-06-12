@@ -90,6 +90,21 @@ export async function fetchSeizoenNotities(): Promise<Record<string, SeizoenNoti
   return notitiesAll();
 }
 
+// ============= Uurloon (optioneel, voor kostenberekening) =============
+const LS_UURLOON = "wg.instellingen.uurloon.v1";
+
+export function getUurloon(): number {
+  if (typeof window === "undefined") return 0;
+  const n = Number(localStorage.getItem(LS_UURLOON));
+  if (Number.isFinite(n) && n >= 0 && n <= 1000) return n;
+  return 0; // 0 = kostenberekening uit
+}
+export function setUurloon(euroPerUur: number) {
+  if (typeof window === "undefined") return;
+  const v = Math.max(0, Math.min(1000, euroPerUur));
+  localStorage.setItem(LS_UURLOON, String(v));
+}
+
 // ============= Perceeloppervlakte =============
 export function getPerceelOppervlakte(): number {
   if (typeof window === "undefined") return 1.5;

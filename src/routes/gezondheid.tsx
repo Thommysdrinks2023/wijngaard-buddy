@@ -16,13 +16,20 @@ import {
 } from "recharts";
 import { fetchRijen } from "@/lib/data";
 import { createGezondheid, fetchGezondheid, type Gezondheid } from "@/lib/extra-data";
+import { foutenPerVeld, isGeldig, valideerGezondheid } from "@/lib/validatie";
+import {
+  fetchSteekproefMetingen,
+  fetchSteekproefPlanten,
+  ZIEKTEDRUK_KLEUR,
+  type ZiekteDruk,
+} from "@/lib/steekproef";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
 import { type Ras, type Rij } from "@/lib/types";
-import { HeartPulse, Loader2 } from "lucide-react";
+import { AlertTriangle, HeartPulse, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/gezondheid")({
   component: GezondheidPage,
@@ -54,6 +61,14 @@ function GezondheidPage() {
   const [invoerder, setInvoerder] = useInvoerder();
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const gezQ = useQuery({ queryKey: ["gezondheid"], queryFn: fetchGezondheid });
+  const stkPlantenQ = useQuery({
+    queryKey: ["steekproef_planten"],
+    queryFn: () => fetchSteekproefPlanten(),
+  });
+  const stkMetingenQ = useQuery({
+    queryKey: ["steekproef_metingen"],
+    queryFn: () => fetchSteekproefMetingen(),
+  });
 
   // formulier
   const [rijId, setRijId] = useState("");
@@ -63,6 +78,15 @@ function GezondheidPage() {
   const [dodePlanten, setDodePlanten] = useState("");
   const [korteScheuten, setKorteScheuten] = useState("");
   const [notitie, setNotitie] = useState("");
+  const [fouten, setFouten] = useState<Record<string, string>>({});
+
+  const wisFout = (veld: string) =>
+    setFouten((f) => {
+      if (!f[veld]) return f;
+      const kopie = { ...f };
+      delete kopie[veld];
+      return kopie;
+    });
 
   const rijenById = useMemo(() => {
     const m = new Map<string, Rij>();
@@ -70,25 +94,20 @@ function GezondheidPage() {
     return m;
   }, [rijenQ.data]);
 
+  const buildInput = () => ({
+    rij: rijId,
+    datum,
+    seizoen: new Date(datum).getFullYear(),
+    vigor,
+    snoeigewicht: snoeigewicht ? Number(snoeigewicht) : null,
+    dode_planten: dodePlanten ? Number(dodePlanten) : null,
+    korte_scheuten: korteScheuten ? Number(korteScheuten) : null,
+    notitie,
+    ingevoerd_door: invoerder,
+  });
+
   const m = useMutation({
-    mutationFn: async () => {
-      if (!rijId) throw new Error("Kies een rij");
-      if (!invoerder.trim()) throw new Error("Vul je naam in");
-      const pct = korteScheuten ? Number(korteScheuten) : null;
-      if (pct != null && (pct < 0 || pct > 100))
-        throw new Error("Korte scheuten moet tussen 0 en 100% liggen");
-      return createGezondheid({
-        rij: rijId,
-        datum,
-        seizoen: new Date(datum).getFullYear(),
-        vigor,
-        snoeigewicht: snoeigewicht ? Number(snoeigewicht) : null,
-        dode_planten: dodePlanten ? Number(dodePlanten) : null,
-        korte_scheuten: pct,
-        notitie,
-        ingevoerd_door: invoerder,
-      });
-    },
+    mutationFn: async () => createGezondheid(buildInput()),
     onSuccess: () => {
       toast.success("Gezondheid geregistreerd ✓");
       qc.invalidateQueries({ queryKey: ["gezondheid"] });
@@ -99,6 +118,18 @@ function GezondheidPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const handleSave = () => {
+    if (m.isPending) return;
+    const validatie = valideerGezondheid(buildInput());
+    if (!isGeldig(validatie)) {
+      setFouten(foutenPerVeld(validatie));
+      toast.error(validatie[0].bericht);
+      return;
+    }
+    setFouten({});
+    m.mutate();
+  };
 
   const seizoenData = useMemo(
     () => (gezQ.data ?? []).filter((g) => jaarOf(g) === jaar),
@@ -141,7 +172,90 @@ function GezondheidPage() {
     return Array.from(s);
   }, [seizoenData, rijenById]);
 
+  const alleRassen = useMemo(() => {
+    const s = new Set<Ras>();
+    (gezQ.data ?? []).forEach((g) => {
+      const r = rijenById.get(g.rij);
+      if (r) s.add(r.ras);
+    });
+    return Array.from(s);
+  }, [gezQ.data, rijenById]);
+
   const recent = useMemo(() => seizoenData.slice(0, 10), [seizoenData]);
+
+  // Ziektedruk per ras: nieuwste steekproefmeting met ziektedruk dit seizoen
+  const ziektedrukPerRas = useMemo(() => {
+    const plantRas = new Map<string, Ras>();
+    stkPlantenQ.data?.forEach((p) => plantRas.set(p.id, p.ras));
+    const nieuwste = new Map<Ras, { druk: ZiekteDruk; datum: string }>();
+    stkMetingenQ.data?.forEach((m) => {
+      if (m.seizoen !== jaar || !m.ziektedruk) return;
+      const ras = plantRas.get(m.plantId);
+      if (!ras) return;
+      const cur = nieuwste.get(ras);
+      if (!cur || cur.datum < m.datum) nieuwste.set(ras, { druk: m.ziektedruk, datum: m.datum });
+    });
+    return Array.from(nieuwste.entries()).map(([ras, v]) => ({ ras, ...v }));
+  }, [stkPlantenQ.data, stkMetingenQ.data, jaar]);
+
+  // Waarschuwingen: dalende vigor (laatste 30 dgn vs 30-60 dgn ervoor) en hoge ziektedruk
+  const waarschuwingen = useMemo(() => {
+    const lijst: string[] = [];
+    const nu = Date.now();
+    const DAG = 24 * 60 * 60 * 1000;
+    const perRas = new Map<Ras, { recent: number[]; ervoor: number[] }>();
+    (gezQ.data ?? []).forEach((g) => {
+      const r = rijenById.get(g.rij);
+      if (!r) return;
+      const leeftijd = nu - new Date(g.datum).getTime();
+      const groep = perRas.get(r.ras) ?? { recent: [], ervoor: [] };
+      if (leeftijd <= 30 * DAG) groep.recent.push(g.vigor);
+      else if (leeftijd <= 60 * DAG) groep.ervoor.push(g.vigor);
+      perRas.set(r.ras, groep);
+    });
+    perRas.forEach((groep, ras) => {
+      if (groep.recent.length === 0 || groep.ervoor.length === 0) return;
+      const gem = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
+      const recentGem = gem(groep.recent);
+      const ervoorGem = gem(groep.ervoor);
+      if (recentGem < ervoorGem - 0.4) {
+        lijst.push(
+          `${ras}: vigor daalt (${ervoorGem.toFixed(1)} → ${recentGem.toFixed(1)})`,
+        );
+      }
+    });
+    ziektedrukPerRas.forEach((z) => {
+      if (z.druk === "Matig" || z.druk === "Zwaar") {
+        lijst.push(`${z.ras}: ${z.druk.toLowerCase()}e ziektedruk in steekproef`);
+      }
+    });
+    return lijst;
+  }, [gezQ.data, rijenById, ziektedrukPerRas]);
+
+  // Meerjarenvergelijking: gemiddelde vigor per seizoen per ras
+  const seizoensChart = useMemo(() => {
+    const perSeizoenRas = new Map<number, Map<Ras, { sum: number; n: number }>>();
+    (gezQ.data ?? []).forEach((g) => {
+      const r = rijenById.get(g.rij);
+      if (!r) return;
+      const s = jaarOf(g);
+      const rasMap = perSeizoenRas.get(s) ?? new Map();
+      const cur = rasMap.get(r.ras) ?? { sum: 0, n: 0 };
+      cur.sum += g.vigor;
+      cur.n += 1;
+      rasMap.set(r.ras, cur);
+      perSeizoenRas.set(s, rasMap);
+    });
+    return Array.from(perSeizoenRas.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([s, rasMap]) => {
+        const punt: Record<string, number | string> = { seizoen: String(s) };
+        rasMap.forEach((v, ras) => {
+          punt[ras] = Math.round((v.sum / v.n) * 10) / 10;
+        });
+        return punt;
+      });
+  }, [gezQ.data, rijenById]);
 
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
@@ -159,6 +273,46 @@ function GezondheidPage() {
           <YearSelector />
         </div>
 
+        {/* Waarschuwingen bij dalende gezondheid of hoge ziektedruk */}
+        {waarschuwingen.length > 0 && (
+          <section className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+            <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Aandachtspunten
+            </p>
+            <ul className="space-y-1">
+              {waarschuwingen.map((w) => (
+                <li key={w} className="text-sm text-destructive">
+                  • {w}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Ziektedruk per ras (uit steekproeven) */}
+        {ziektedrukPerRas.length > 0 && (
+          <section className="rounded-2xl border border-border bg-card p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Ziektedruk per ras ({jaar}, uit steekproeven)
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {ziektedrukPerRas.map((z) => (
+                <span
+                  key={z.ras}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-sm font-medium"
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: ZIEKTEDRUK_KLEUR[z.druk] }}
+                  />
+                  {z.ras}: {z.druk}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Registratieformulier */}
         <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -168,7 +322,14 @@ function GezondheidPage() {
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Rij</span>
-              <select value={rijId} onChange={(e) => setRijId(e.target.value)} className={veldClass}>
+              <select
+                value={rijId}
+                onChange={(e) => {
+                  setRijId(e.target.value);
+                  wisFout("rij");
+                }}
+                className={`${veldClass} ${fouten.rij ? "border-destructive" : ""}`}
+              >
                 <option value="">Kies rij…</option>
                 {(rijenQ.data ?? []).map((r) => (
                   <option key={r.id} value={r.id}>
@@ -176,10 +337,22 @@ function GezondheidPage() {
                   </option>
                 ))}
               </select>
+              {fouten.rij && <span className="mt-1 block text-sm text-destructive">{fouten.rij}</span>}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Datum</span>
-              <input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} className={veldClass} />
+              <input
+                type="date"
+                value={datum}
+                onChange={(e) => {
+                  setDatum(e.target.value);
+                  wisFout("datum");
+                }}
+                className={`${veldClass} ${fouten.datum ? "border-destructive" : ""}`}
+              />
+              {fouten.datum && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.datum}</span>
+              )}
             </label>
           </div>
 
@@ -207,15 +380,54 @@ function GezondheidPage() {
           <div className="grid grid-cols-3 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Snoeigewicht (g)</span>
-              <input type="number" inputMode="decimal" value={snoeigewicht} onChange={(e) => setSnoeigewicht(e.target.value)} className={veldClass} placeholder="—" />
+              <input
+                type="number"
+                inputMode="decimal"
+                value={snoeigewicht}
+                onChange={(e) => {
+                  setSnoeigewicht(e.target.value);
+                  wisFout("snoeigewicht");
+                }}
+                className={`${veldClass} ${fouten.snoeigewicht ? "border-destructive" : ""}`}
+                placeholder="—"
+              />
+              {fouten.snoeigewicht && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.snoeigewicht}</span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Dode planten</span>
-              <input type="number" inputMode="numeric" value={dodePlanten} onChange={(e) => setDodePlanten(e.target.value)} className={veldClass} placeholder="—" />
+              <input
+                type="number"
+                inputMode="numeric"
+                value={dodePlanten}
+                onChange={(e) => {
+                  setDodePlanten(e.target.value);
+                  wisFout("dode_planten");
+                }}
+                className={`${veldClass} ${fouten.dode_planten ? "border-destructive" : ""}`}
+                placeholder="—"
+              />
+              {fouten.dode_planten && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.dode_planten}</span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Korte scheuten (%)</span>
-              <input type="number" inputMode="numeric" value={korteScheuten} onChange={(e) => setKorteScheuten(e.target.value)} className={veldClass} placeholder="—" />
+              <input
+                type="number"
+                inputMode="numeric"
+                value={korteScheuten}
+                onChange={(e) => {
+                  setKorteScheuten(e.target.value);
+                  wisFout("korte_scheuten");
+                }}
+                className={`${veldClass} ${fouten.korte_scheuten ? "border-destructive" : ""}`}
+                placeholder="—"
+              />
+              {fouten.korte_scheuten && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.korte_scheuten}</span>
+              )}
             </label>
           </div>
 
@@ -226,12 +438,23 @@ function GezondheidPage() {
 
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Ingevoerd door</span>
-            <input value={invoerder} onChange={(e) => setInvoerder(e.target.value)} className={veldClass} placeholder="Je naam" />
+            <input
+              value={invoerder}
+              onChange={(e) => {
+                setInvoerder(e.target.value);
+                wisFout("ingevoerd_door");
+              }}
+              className={`${veldClass} ${fouten.ingevoerd_door ? "border-destructive" : ""}`}
+              placeholder="Je naam"
+            />
+            {fouten.ingevoerd_door && (
+              <span className="mt-1 block text-sm text-destructive">{fouten.ingevoerd_door}</span>
+            )}
           </label>
 
           <button
             type="button"
-            onClick={() => m.mutate()}
+            onClick={handleSave}
             disabled={m.isPending}
             className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-semibold text-primary-foreground disabled:opacity-50"
           >
@@ -272,6 +495,37 @@ function GezondheidPage() {
             </div>
           )}
         </section>
+
+        {/* Meerjarenvergelijking */}
+        {seizoensChart.length > 1 && (
+          <section className="rounded-2xl border border-border bg-card p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Gezondheid per seizoen (alle jaren)
+            </h2>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={seizoensChart}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#cac17655" />
+                  <XAxis dataKey="seizoen" fontSize={12} />
+                  <YAxis domain={[1, 5]} fontSize={12} />
+                  <Tooltip />
+                  <Legend />
+                  {alleRassen.map((ras) => (
+                    <Line
+                      key={ras}
+                      type="monotone"
+                      dataKey={ras}
+                      stroke={RAS_KLEUR[ras] ?? "#27232a"}
+                      strokeWidth={2.5}
+                      dot={{ r: 5 }}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        )}
 
         {/* Recente registraties */}
         <section>

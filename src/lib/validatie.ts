@@ -75,6 +75,79 @@ export function valideerFenologie(input: Partial<FenologieInput>): ValidatieFout
   return fouten;
 }
 
+export interface GezondheidValidatieInput {
+  rij?: string;
+  datum?: string;
+  vigor?: number;
+  snoeigewicht?: number | null;
+  dode_planten?: number | null;
+  korte_scheuten?: number | null;
+  ingevoerd_door?: string;
+}
+
+export function valideerGezondheid(input: GezondheidValidatieInput): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+
+  if (!input.rij) fouten.push({ veld: "rij", bericht: "Kies een rij" });
+  checkDatum(input.datum, fouten);
+  if (input.vigor == null || input.vigor < 1 || input.vigor > 5)
+    fouten.push({ veld: "vigor", bericht: "Vigor moet tussen 1 en 5 zijn" });
+  if (input.snoeigewicht != null && (input.snoeigewicht < 0 || input.snoeigewicht > 5000))
+    fouten.push({ veld: "snoeigewicht", bericht: "Snoeigewicht moet tussen 0 en 5000 g liggen" });
+  if (input.dode_planten != null && (input.dode_planten < 0 || input.dode_planten > 100))
+    fouten.push({ veld: "dode_planten", bericht: "Dode planten moet tussen 0 en 100 liggen" });
+  if (input.korte_scheuten != null && (input.korte_scheuten < 0 || input.korte_scheuten > 100))
+    fouten.push({ veld: "korte_scheuten", bericht: "Korte scheuten moet tussen 0 en 100% liggen" });
+  if (!input.ingevoerd_door?.trim())
+    fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
+
+  return fouten;
+}
+
+export interface OogstValidatieInput {
+  rij?: string | null;
+  datum?: string;
+  kg?: number;
+  ingevoerd_door?: string;
+}
+
+export function valideerOogst(input: OogstValidatieInput): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+
+  if (!input.rij) fouten.push({ veld: "rij", bericht: "Kies een rij" });
+  checkDatum(input.datum, fouten);
+  if (input.kg == null || Number.isNaN(input.kg) || input.kg <= 0)
+    fouten.push({ veld: "kg", bericht: "Vul een geldig gewicht in (kg)" });
+  else if (input.kg > 5000)
+    fouten.push({ veld: "kg", bericht: "Gewicht lijkt onrealistisch hoog (max 5000 kg)" });
+  if (!input.ingevoerd_door?.trim())
+    fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
+
+  return fouten;
+}
+
+export interface WerkuurValidatieInput {
+  taak?: string;
+  datum?: string;
+  uren?: number;
+  ingevoerd_door?: string;
+}
+
+export function valideerWerkuur(input: WerkuurValidatieInput): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+
+  if (!input.taak) fouten.push({ veld: "taak", bericht: "Kies een taaktype" });
+  checkDatum(input.datum, fouten);
+  if (input.uren == null || Number.isNaN(input.uren) || input.uren <= 0)
+    fouten.push({ veld: "uren", bericht: "Vul een geldig aantal uren in" });
+  else if (input.uren > 24)
+    fouten.push({ veld: "uren", bericht: "Meer dan 24 uur op één dag kan niet" });
+  if (!input.ingevoerd_door?.trim())
+    fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
+
+  return fouten;
+}
+
 export function isGeldig(fouten: ValidatieFout[]): boolean {
   return fouten.length === 0;
 }
