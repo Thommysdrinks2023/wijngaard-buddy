@@ -12,9 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WerkrapportRouteImport } from './routes/werkrapport'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as SeizoenRouteImport } from './routes/seizoen'
+import { Route as ScanRouteImport } from './routes/scan'
+import { Route as RapportRouteImport } from './routes/rapport'
+import { Route as QrRouteImport } from './routes/qr'
 import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
 import { Route as OogstRouteImport } from './routes/oogst'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LabRouteImport } from './routes/lab'
+import { Route as KaartRouteImport } from './routes/kaart'
 import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as GrafiekenRouteImport } from './routes/grafieken'
 import { Route as GezondheidRouteImport } from './routes/gezondheid'
@@ -46,6 +51,21 @@ const SeizoenRoute = SeizoenRouteImport.update({
   path: '/seizoen',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RapportRoute = RapportRouteImport.update({
+  id: '/rapport',
+  path: '/rapport',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrRoute = QrRouteImport.update({
+  id: '/qr',
+  path: '/qr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PerceelkaartRoute = PerceelkaartRouteImport.update({
   id: '/perceelkaart',
   path: '/perceelkaart',
@@ -59,6 +79,16 @@ const OogstRoute = OogstRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabRoute = LabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KaartRoute = KaartRouteImport.update({
+  id: '/kaart',
+  path: '/kaart',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InstellingenRoute = InstellingenRouteImport.update({
@@ -144,9 +174,14 @@ export interface FileRoutesByFullPath {
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
+  '/kaart': typeof KaartRoute
+  '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/qr': typeof QrRoute
+  '/rapport': typeof RapportRoute
+  '/scan': typeof ScanRoute
   '/seizoen': typeof SeizoenRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
@@ -167,9 +202,14 @@ export interface FileRoutesByTo {
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
+  '/kaart': typeof KaartRoute
+  '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/qr': typeof QrRoute
+  '/rapport': typeof RapportRoute
+  '/scan': typeof ScanRoute
   '/seizoen': typeof SeizoenRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
@@ -190,9 +230,14 @@ export interface FileRoutesById {
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
+  '/kaart': typeof KaartRoute
+  '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
+  '/qr': typeof QrRoute
+  '/rapport': typeof RapportRoute
+  '/scan': typeof ScanRoute
   '/seizoen': typeof SeizoenRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
@@ -215,9 +260,14 @@ export interface FileRouteTypes {
     | '/gezondheid'
     | '/grafieken'
     | '/instellingen'
+    | '/kaart'
+    | '/lab'
     | '/login'
     | '/oogst'
     | '/perceelkaart'
+    | '/qr'
+    | '/rapport'
+    | '/scan'
     | '/seizoen'
     | '/trends'
     | '/werkrapport'
@@ -238,9 +288,14 @@ export interface FileRouteTypes {
     | '/gezondheid'
     | '/grafieken'
     | '/instellingen'
+    | '/kaart'
+    | '/lab'
     | '/login'
     | '/oogst'
     | '/perceelkaart'
+    | '/qr'
+    | '/rapport'
+    | '/scan'
     | '/seizoen'
     | '/trends'
     | '/werkrapport'
@@ -260,9 +315,14 @@ export interface FileRouteTypes {
     | '/gezondheid'
     | '/grafieken'
     | '/instellingen'
+    | '/kaart'
+    | '/lab'
     | '/login'
     | '/oogst'
     | '/perceelkaart'
+    | '/qr'
+    | '/rapport'
+    | '/scan'
     | '/seizoen'
     | '/trends'
     | '/werkrapport'
@@ -284,9 +344,14 @@ export interface RootRouteChildren {
   GezondheidRoute: typeof GezondheidRoute
   GrafiekenRoute: typeof GrafiekenRoute
   InstellingenRoute: typeof InstellingenRoute
+  KaartRoute: typeof KaartRoute
+  LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
   OogstRoute: typeof OogstRoute
   PerceelkaartRoute: typeof PerceelkaartRoute
+  QrRoute: typeof QrRoute
+  RapportRoute: typeof RapportRoute
+  ScanRoute: typeof ScanRoute
   SeizoenRoute: typeof SeizoenRoute
   TrendsRoute: typeof TrendsRoute
   WerkrapportRoute: typeof WerkrapportRoute
@@ -320,6 +385,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SeizoenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rapport': {
+      id: '/rapport'
+      path: '/rapport'
+      fullPath: '/rapport'
+      preLoaderRoute: typeof RapportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr': {
+      id: '/qr'
+      path: '/qr'
+      fullPath: '/qr'
+      preLoaderRoute: typeof QrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/perceelkaart': {
       id: '/perceelkaart'
       path: '/perceelkaart'
@@ -339,6 +425,20 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lab': {
+      id: '/lab'
+      path: '/lab'
+      fullPath: '/lab'
+      preLoaderRoute: typeof LabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kaart': {
+      id: '/kaart'
+      path: '/kaart'
+      fullPath: '/kaart'
+      preLoaderRoute: typeof KaartRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/instellingen': {
@@ -475,9 +575,14 @@ const rootRouteChildren: RootRouteChildren = {
   GezondheidRoute: GezondheidRoute,
   GrafiekenRoute: GrafiekenRoute,
   InstellingenRoute: InstellingenRoute,
+  KaartRoute: KaartRoute,
+  LabRoute: LabRoute,
   LoginRoute: LoginRoute,
   OogstRoute: OogstRoute,
   PerceelkaartRoute: PerceelkaartRoute,
+  QrRoute: QrRoute,
+  RapportRoute: RapportRoute,
+  ScanRoute: ScanRoute,
   SeizoenRoute: SeizoenRoute,
   TrendsRoute: TrendsRoute,
   WerkrapportRoute: WerkrapportRoute,

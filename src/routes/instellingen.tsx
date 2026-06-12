@@ -19,6 +19,11 @@ import {
   TrendingUp,
   LogIn,
   Database,
+  FlaskConical,
+  MapPinned,
+  ScanLine,
+  QrCode,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,8 +45,13 @@ const MENU = [
   { to: "/gezondheid", label: "Gezondheid", omschrijving: "Vigor, snoeigewicht en uitval", icon: HeartPulse },
   { to: "/oogst", label: "Oogst", omschrijving: "Opbrengst registreren en vergelijken", icon: Grape },
   { to: "/werkrapport", label: "Werkrapport", omschrijving: "Uren per taak bijhouden", icon: Clock },
+  { to: "/lab", label: "Lab", omschrijving: "Bodem- en sapanalyses + rapporten", icon: FlaskConical },
+  { to: "/kaart", label: "GPS-kaart", omschrijving: "Echte kaart met rijlocaties", icon: MapPinned },
+  { to: "/scan", label: "QR scannen", omschrijving: "Scan een rijcode in het veld", icon: ScanLine },
+  { to: "/qr", label: "QR-codes printen", omschrijving: "A4-vel met codes voor de rijpalen", icon: QrCode },
   { to: "/grafieken", label: "Grafieken", omschrijving: "Vaste analyses per seizoen", icon: LineChart },
   { to: "/trends", label: "Trends", omschrijving: "Zelf grafieken samenstellen", icon: TrendingUp },
+  { to: "/rapport", label: "Seizoensrapport", omschrijving: "Afdrukken of opslaan als PDF", icon: FileText },
   { to: "/login", label: "Inloggen", omschrijving: "Account voor synchronisatie", icon: LogIn },
 ] as const;
 

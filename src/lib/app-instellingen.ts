@@ -90,6 +90,27 @@ export async function fetchSeizoenNotities(): Promise<Record<string, SeizoenNoti
   return notitiesAll();
 }
 
+// ============= Cache-opruiming =============
+// Verwijdert verouderde cache-sleutels (bijv. GDD-data van oude seizoenen)
+// zodat localStorage niet volloopt. Draait één keer per app-start.
+export function ruimOudeCacheOp() {
+  if (typeof window === "undefined") return;
+  try {
+    const huidigJaar = new Date().getFullYear();
+    const teVerwijderen: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const sleutel = localStorage.key(i);
+      if (!sleutel) continue;
+      // GDD-caches ouder dan 2 seizoenen kunnen weg (worden zo nodig opnieuw opgehaald)
+      const gdd = /^wg\.gdd\.(\d{4})\.v1$/.exec(sleutel);
+      if (gdd && Number(gdd[1]) < huidigJaar - 2) teVerwijderen.push(sleutel);
+    }
+    teVerwijderen.forEach((s) => localStorage.removeItem(s));
+  } catch {
+    // opruimen is best effort
+  }
+}
+
 // ============= Uurloon (optioneel, voor kostenberekening) =============
 const LS_UURLOON = "wg.instellingen.uurloon.v1";
 

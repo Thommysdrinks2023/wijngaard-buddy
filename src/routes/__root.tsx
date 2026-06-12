@@ -8,8 +8,10 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { BottomNav } from "@/components/bottom-nav";
+import { InstalleerBanner } from "@/components/installeer-banner";
 import { SyncStatus } from "@/components/sync-status";
 import { Toaster } from "@/components/ui/sonner";
+import { ruimOudeCacheOp } from "@/lib/app-instellingen";
 import { checkNewYearGreeting, migrateSeizoen } from "@/lib/seizoen";
 
 import appCss from "../styles.css?url";
@@ -89,6 +91,7 @@ function RootComponent() {
   useEffect(() => {
     migrateSeizoen();
     checkNewYearGreeting();
+    ruimOudeCacheOp();
     // Service worker: maakt de app offline bruikbaar (alleen in productie,
     // in dev zou caching de hot-reload in de weg zitten)
     if (import.meta.env.PROD && "serviceWorker" in navigator) {
@@ -102,6 +105,7 @@ function RootComponent() {
       <div className="min-h-screen bg-background pb-20">
         <Outlet />
         <SyncStatus />
+        <InstalleerBanner />
         <BottomNav />
       </div>
       <Toaster />

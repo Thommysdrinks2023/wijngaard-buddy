@@ -28,7 +28,7 @@ function uid() {
 interface EntityConfig<T extends { id: string; datum: string }> {
   collection: string;
   lsKey: string;
-  soort: "gezondheid" | "oogst" | "werkuren";
+  soort: "gezondheid" | "oogst" | "werkuren" | "lab" | "rij_locatie";
   fromPb: (r: RecordModel) => T;
 }
 
@@ -189,6 +189,148 @@ export interface Werkuur {
   notitie?: string;
   ingevoerd_door: string;
   created: string;
+}
+
+// ============= Lab-resultaten =============
+export type LabSoort = "Bodemanalyse" | "Sapanalyse" | "Anders";
+export const LAB_SOORTEN: LabSoort[] = ["Bodemanalyse", "Sapanalyse", "Anders"];
+
+export interface LabResultaat {
+  id: string;
+  datum: string;
+  seizoen?: number;
+  soort: LabSoort;
+  // bodemanalyse
+  ph?: number | null;
+  organische_stof?: number | null; // %
+  n?: number | null; // stikstof
+  p?: number | null; // fosfor
+  k?: number | null; // kalium
+  // sapanalyse
+  yan?: number | null;
+  nh4?: number | null;
+  nopa?: number | null;
+  notitie?: string;
+  bestand?: string; // url van geüpload rapport (pdf/foto)
+  ingevoerd_door: string;
+  created: string;
+}
+
+const labEntity = maakEntity<LabResultaat>({
+  collection: "lab",
+  lsKey: "wg.lab.v1",
+  soort: "lab",
+  fromPb: (r) => ({
+    id: r.id,
+    datum: r["datum"],
+    seizoen: r["seizoen"] || undefined,
+    soort: r["soort"],
+    ph: r["ph"] ?? null,
+    organische_stof: r["organische_stof"] ?? null,
+    n: r["n"] ?? null,
+    p: r["p"] ?? null,
+    k: r["k"] ?? null,
+    yan: r["yan"] ?? null,
+    nh4: r["nh4"] ?? null,
+    nopa: r["nopa"] ?? null,
+    notitie: r["notitie"] ?? "",
+    bestand: r["bestand"] ? getPb()!.files.getURL(r, r["bestand"]) : undefined,
+    ingevoerd_door: r["ingevoerd_door"] ?? "",
+    created: r["created"],
+  }),
+});
+
+export const fetchLab = labEntity.fetchAll;
+
+// Aanmaken met optioneel rapportbestand (pdf/foto). Bestanden kunnen alleen
+// met verbinding worden geüpload; offline wordt het record zonder bestand
+// bewaard en gesynchroniseerd.
+export async function createLab(
+  input: Omit<LabResultaat, "id" | "created" | "bestand"> & { bestandFile?: File | null },
+): Promise<LabResultaat> {
+  const pb = getPb();
+  const { bestandFile, ...rest } = input;
+  if (bestandFile && pb && (await ensureOnline())) {
+    try {
+      const fd = new FormData();
+      for (const [sleutel, waarde] of Object.entries(rest)) {
+        if (waarde === null || waarde === undefined || waarde === "") continue;
+        fd.append(sleutel, typeof waarde === "string" ? waarde : String(waarde));
+      }
+      fd.append("bestand", bestandFile);
+      const r = await pb.collection("lab").create(fd);
+      const aangemaakt = labEntityFromPb(r);
+      const cache = readLs<LabResultaat[]>("wg.lab.v1", []);
+      cache.push(aangemaakt);
+      writeLs("wg.lab.v1", cache);
+      return aangemaakt;
+    } catch {
+      // fall through naar gewone create zonder bestand
+    }
+  }
+  return labEntity.create(rest);
+}
+
+// hulpfunctie zodat de FormData-route dezelfde mapping gebruikt
+function labEntityFromPb(r: RecordModel): LabResultaat {
+  return {
+    id: r.id,
+    datum: r["datum"],
+    seizoen: r["seizoen"] || undefined,
+    soort: r["soort"],
+    ph: r["ph"] ?? null,
+    organische_stof: r["organische_stof"] ?? null,
+    n: r["n"] ?? null,
+    p: r["p"] ?? null,
+    k: r["k"] ?? null,
+    yan: r["yan"] ?? null,
+    nh4: r["nh4"] ?? null,
+    nopa: r["nopa"] ?? null,
+    notitie: r["notitie"] ?? "",
+    bestand: r["bestand"] ? getPb()!.files.getURL(r, r["bestand"]) : undefined,
+    ingevoerd_door: r["ingevoerd_door"] ?? "",
+    created: r["created"],
+  };
+}
+
+// ============= GPS-locaties per rij =============
+// Op rijnummer (apparaat-onafhankelijk); nieuwste registratie per rij geldt.
+export interface RijLocatie {
+  id: string;
+  rijnummer: number;
+  lat: number;
+  lon: number;
+  datum: string;
+  ingevoerd_door?: string;
+  created: string;
+}
+
+const rijLocatieEntity = maakEntity<RijLocatie>({
+  collection: "rij_locaties",
+  lsKey: "wg.rij_locaties.v1",
+  soort: "rij_locatie",
+  fromPb: (r) => ({
+    id: r.id,
+    rijnummer: r["rijnummer"],
+    lat: r["lat"],
+    lon: r["lon"],
+    datum: r["datum"],
+    ingevoerd_door: r["ingevoerd_door"] ?? "",
+    created: r["created"],
+  }),
+});
+
+export const fetchRijLocaties = rijLocatieEntity.fetchAll;
+export const createRijLocatie = rijLocatieEntity.create;
+
+// Nieuwste locatie per rijnummer
+export function nieuwsteLocaties(locaties: RijLocatie[]): Map<number, RijLocatie> {
+  const map = new Map<number, RijLocatie>();
+  for (const l of locaties) {
+    const cur = map.get(l.rijnummer);
+    if (!cur || cur.created < l.created) map.set(l.rijnummer, l);
+  }
+  return map;
 }
 
 const werkurenEntity = maakEntity<Werkuur>({

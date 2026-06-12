@@ -11,9 +11,21 @@ import { EmptyState, SEIZOEN_LEEG_MSG } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useSeizoen } from "@/lib/seizoen";
 import { getMetingDrempel } from "@/lib/app-instellingen";
-import { AlertTriangle, ChevronDown, Clock, Grape, HeartPulse, TrendingUp } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Clock,
+  FileText,
+  FlaskConical,
+  Grape,
+  HeartPulse,
+  Map as MapIcon,
+  ScanLine,
+  TrendingUp,
+} from "lucide-react";
 import { WeerKaart } from "@/components/weer-kaart";
-import { fetchGezondheid } from "@/lib/extra-data";
+import { fetchGezondheid, fetchOogst } from "@/lib/extra-data";
+import { fetchSteekproefMetingen, fetchSteekproefPlanten } from "@/lib/steekproef";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -36,6 +48,15 @@ function Dashboard() {
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
   const gezQ = useQuery({ queryKey: ["gezondheid"], queryFn: fetchGezondheid });
+  const oogstDashQ = useQuery({ queryKey: ["oogst-records"], queryFn: fetchOogst });
+  const stkPlantenQ = useQuery({
+    queryKey: ["steekproef_planten"],
+    queryFn: () => fetchSteekproefPlanten(),
+  });
+  const stkMetingenQ = useQuery({
+    queryKey: ["steekproef_metingen"],
+    queryFn: () => fetchSteekproefMetingen(),
+  });
 
   const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
   const [showStale, setShowStale] = useState(false);
@@ -128,6 +149,62 @@ function Dashboard() {
       .sort((a, b) => a.avg - b.avg);
   }, [gezQ.data, jaar, rijenById]);
 
+  // Waarschuwingen: dalende vigor + hoge ziektedruk (compacte dashboard-variant)
+  const gezondheidsWaarschuwingen = useMemo(() => {
+    const lijst: string[] = [];
+    const nu = Date.now();
+    const DAG = 24 * 60 * 60 * 1000;
+    const perRas = new Map<string, { recent: number[]; ervoor: number[] }>();
+    (gezQ.data ?? []).forEach((g) => {
+      const r = rijenById.get(g.rij);
+      if (!r) return;
+      const leeftijd = nu - new Date(g.datum).getTime();
+      const groep = perRas.get(r.ras) ?? { recent: [], ervoor: [] };
+      if (leeftijd <= 30 * DAG) groep.recent.push(g.vigor);
+      else if (leeftijd <= 60 * DAG) groep.ervoor.push(g.vigor);
+      perRas.set(r.ras, groep);
+    });
+    perRas.forEach((groep, ras) => {
+      if (groep.recent.length === 0 || groep.ervoor.length === 0) return;
+      const gem = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
+      if (gem(groep.recent) < gem(groep.ervoor) - 0.4) lijst.push(`${ras}: gezondheid daalt`);
+    });
+    const plantRas = new Map<string, string>();
+    stkPlantenQ.data?.forEach((p) => plantRas.set(p.id, p.ras));
+    const nieuwste = new Map<string, { druk: string; datum: string }>();
+    stkMetingenQ.data?.forEach((m) => {
+      if (m.seizoen !== jaar || !m.ziektedruk) return;
+      const ras = plantRas.get(m.plantId);
+      if (!ras) return;
+      const cur = nieuwste.get(ras);
+      if (!cur || cur.datum < m.datum) nieuwste.set(ras, { druk: m.ziektedruk, datum: m.datum });
+    });
+    nieuwste.forEach((v, ras) => {
+      if (v.druk === "Matig" || v.druk === "Zwaar")
+        lijst.push(`${ras}: ${v.druk.toLowerCase()}e ziektedruk`);
+    });
+    return lijst;
+  }, [gezQ.data, stkPlantenQ.data, stkMetingenQ.data, rijenById, jaar]);
+
+  // Seizoensvergelijking: dit jaar vs vorig jaar
+  const vergelijking = useMemo(() => {
+    const telVoor = (j: number) => {
+      const m = (metingenQ.data ?? []).filter((x) => jaarOf(x) === j);
+      const brix = m.filter((x) => x.brix != null);
+      const gemBrix =
+        brix.length > 0
+          ? Math.round((brix.reduce((acc, x) => acc + (x.brix ?? 0), 0) / brix.length) * 10) / 10
+          : null;
+      const oogstKg = Math.round(
+        (oogstDashQ.data ?? [])
+          .filter((o) => o.seizoen === j)
+          .reduce((acc, o) => acc + o.kg, 0) * 10,
+      ) / 10;
+      return { metingen: m.length, gemBrix, oogstKg };
+    };
+    return { dit: telVoor(jaar), vorig: telVoor(jaar - 1) };
+  }, [metingenQ.data, oogstDashQ.data, jaar]);
+
   // Rijen with uitval observations dit seizoen
   const uitvalRijen = useMemo(() => {
     const ids = new Set<string>();
@@ -210,6 +287,10 @@ function Dashboard() {
             { to: "/oogst", label: "Oogst", icon: Grape },
             { to: "/werkrapport", label: "Werk", icon: Clock },
             { to: "/trends", label: "Trends", icon: TrendingUp },
+            { to: "/scan", label: "Scan QR", icon: ScanLine },
+            { to: "/kaart", label: "GPS-kaart", icon: MapIcon },
+            { to: "/lab", label: "Lab", icon: FlaskConical },
+            { to: "/rapport", label: "Rapport", icon: FileText },
           ].map((s) => {
             const Icon = s.icon;
             return (
@@ -225,6 +306,63 @@ function Dashboard() {
             );
           })}
         </div>
+
+        {/* Gezondheidswaarschuwingen */}
+        {gezondheidsWaarschuwingen.length > 0 && (
+          <Link
+            to="/gezondheid"
+            className="block rounded-2xl border border-destructive/40 bg-destructive/10 p-4"
+          >
+            <p className="mb-1 flex items-center gap-2 text-sm font-semibold">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Aandachtspunten gezondheid
+            </p>
+            <ul className="space-y-0.5">
+              {gezondheidsWaarschuwingen.map((w) => (
+                <li key={w} className="text-sm text-destructive">
+                  • {w}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-xs text-muted-foreground">Tik voor details →</p>
+          </Link>
+        )}
+
+        {/* Seizoensvergelijking */}
+        {(vergelijking.vorig.metingen > 0 || vergelijking.vorig.oogstKg > 0) && (
+          <section className="rounded-2xl border border-border bg-card p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              {jaar} vs. {jaar - 1}
+            </h2>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {[
+                {
+                  label: "Metingen",
+                  dit: String(vergelijking.dit.metingen),
+                  vorig: String(vergelijking.vorig.metingen),
+                },
+                {
+                  label: "Gem. Brix",
+                  dit: vergelijking.dit.gemBrix != null ? String(vergelijking.dit.gemBrix) : "—",
+                  vorig: vergelijking.vorig.gemBrix != null ? String(vergelijking.vorig.gemBrix) : "—",
+                },
+                {
+                  label: "Oogst (kg)",
+                  dit: String(vergelijking.dit.oogstKg || "—"),
+                  vorig: String(vergelijking.vorig.oogstKg || "—"),
+                },
+              ].map((s) => (
+                <div key={s.label} className="rounded-xl bg-muted/40 px-2 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {s.label}
+                  </p>
+                  <p className="text-lg font-bold tabular-nums">{s.dit}</p>
+                  <p className="text-xs text-muted-foreground">vorig jaar: {s.vorig}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Gezondheid per ras */}
         {gezondheidPerRas.length > 0 && (

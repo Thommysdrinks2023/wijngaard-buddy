@@ -27,6 +27,7 @@ import {
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { type Ras, type Rij } from "@/lib/types";
 import { Grape, Loader2 } from "lucide-react";
 
@@ -160,6 +161,8 @@ function OogstPage() {
           </div>
           <YearSelector />
         </div>
+
+        {oogstQ.isError && <ErrorState error={oogstQ.error} onRetry={() => oogstQ.refetch()} />}
 
         {/* Seizoenstotaal */}
         <section

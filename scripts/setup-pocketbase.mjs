@@ -319,6 +319,46 @@ async function main() {
     listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
   });
 
+  await ensureCollection({
+    name: "lab",
+    type: "base",
+    fields: [
+      { name: "datum", type: "text", required: true },
+      { name: "seizoen", type: "number", onlyInt: true },
+      { name: "soort", type: "select", required: true, maxSelect: 1, values: ["Bodemanalyse", "Sapanalyse", "Anders"] },
+      { name: "ph", type: "number" },
+      { name: "organische_stof", type: "number" },
+      { name: "n", type: "number" },
+      { name: "p", type: "number" },
+      { name: "k", type: "number" },
+      { name: "yan", type: "number" },
+      { name: "nh4", type: "number" },
+      { name: "nopa", type: "number" },
+      { name: "notitie", type: "text" },
+      {
+        name: "bestand", type: "file", maxSelect: 1, maxSize: 20971520,
+        mimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"],
+      },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "rij_locaties",
+    type: "base",
+    fields: [
+      { name: "rijnummer", type: "number", required: true, onlyInt: true },
+      { name: "lat", type: "number", required: true },
+      { name: "lon", type: "number", required: true },
+      { name: "datum", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE, viewRule: AUTH_RULE, createRule: AUTH_RULE, updateRule: AUTH_RULE, deleteRule: AUTH_RULE,
+  });
+
   // 4. rijen seeden
   console.log("Rijen seeden...");
   const bestaande = await api("/api/collections/rijen/records?perPage=1");

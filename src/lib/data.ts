@@ -9,6 +9,7 @@ import {
   syncQueueCount,
   updateQueuedCreate,
 } from "./sync";
+import { deleteOfflineFoto, getOfflineFoto, saveOfflineFoto } from "./foto-opslag";
 
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
 
@@ -311,8 +312,11 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
   const all = readLs<Meting[]>(LS_METINGEN, []);
   all.push(meting);
   writeLs(LS_METINGEN, all);
-  // in de wachtrij zetten voor synchronisatie zodra de server bereikbaar is
-  // (foto's kunnen niet offline bewaard worden en gaan dus niet mee)
+  // in de wachtrij zetten voor synchronisatie zodra de server bereikbaar is;
+  // een eventuele foto gaat naar IndexedDB en wordt bij de sync meegestuurd
+  if (input.fotoFile) {
+    void saveOfflineFoto(meting.id, input.fotoFile);
+  }
   addToSyncQueue("meting", meting.id, {
     rij: input.rij,
     plant: input.plant ?? null,
@@ -326,6 +330,7 @@ export async function createMeting(input: MetingInput): Promise<Meting> {
     temperatuur: input.temperatuur ?? null,
     neerslag: input.neerslag ?? null,
     ingevoerd_door: input.ingevoerd_door,
+    __fotoOffline: Boolean(input.fotoFile),
   });
   return meting;
 }
@@ -388,6 +393,9 @@ export async function createObservatie(input: ObservatieInput): Promise<Observat
   const all = readLs<Observatie[]>(LS_OBS, []);
   all.push(obs);
   writeLs(LS_OBS, all);
+  if (input.fotoFile) {
+    void saveOfflineFoto(obs.id, input.fotoFile);
+  }
   addToSyncQueue("observatie", obs.id, {
     rij: input.rij,
     plant: input.plant ?? null,
@@ -396,6 +404,7 @@ export async function createObservatie(input: ObservatieInput): Promise<Observat
     type: input.type,
     notitie: input.notitie,
     ingevoerd_door: input.ingevoerd_door,
+    __fotoOffline: Boolean(input.fotoFile),
   });
   return obs;
 }
@@ -656,9 +665,24 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
         }
         const actie = item.actie ?? "create";
         if (actie === "create") {
-          await pb.collection(collection).create(payload);
+          const heeftOfflineFoto = payload.__fotoOffline === true;
+          delete payload.__fotoOffline;
+          let body: Record<string, unknown> | FormData = payload;
+          if (heeftOfflineFoto) {
+            // foto uit IndexedDB ophalen en als multipart meesturen
+            const foto = await getOfflineFoto(item.localId);
+            const fd = new FormData();
+            for (const [sleutel, waarde] of Object.entries(payload)) {
+              if (waarde === null || waarde === undefined || waarde === "") continue;
+              fd.append(sleutel, typeof waarde === "string" ? waarde : String(waarde));
+            }
+            if (foto) fd.append("foto", foto);
+            body = fd;
+          }
+          await pb.collection(collection).create(body);
           removeFromSyncQueue(item.queueId);
           if (lsKey) removeLocalRecord(lsKey, item.localId);
+          if (heeftOfflineFoto) void deleteOfflineFoto(item.localId);
         } else if (actie === "update") {
           if (item.remoteId) {
             await pb.collection(collection).update(item.remoteId, payload);

@@ -28,6 +28,7 @@ import { useSeizoen } from "@/lib/seizoen";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { type Ras, type Rij } from "@/lib/types";
 import { AlertTriangle, HeartPulse, Loader2 } from "lucide-react";
 
@@ -272,6 +273,8 @@ function GezondheidPage() {
           </div>
           <YearSelector />
         </div>
+
+        {gezQ.isError && <ErrorState error={gezQ.error} onRetry={() => gezQ.refetch()} />}
 
         {/* Waarschuwingen bij dalende gezondheid of hoge ziektedruk */}
         {waarschuwingen.length > 0 && (

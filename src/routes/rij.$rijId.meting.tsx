@@ -230,9 +230,8 @@ function MetingPage() {
             </label>
             {foto && (!verbinding.online || !verbinding.ingelogd) && (
               <p className="mt-1.5 rounded-lg bg-warning/15 px-3 py-2 text-sm text-warning-foreground">
-                ⚠️ {!verbinding.online ? "Geen verbinding" : "Niet ingelogd"} — de foto kan
-                niet offline bewaard worden en gaat verloren. De meting zelf wordt wél
-                bewaard en later gesynchroniseerd.
+                📷 {!verbinding.online ? "Geen verbinding" : "Niet ingelogd"} — de foto wordt
+                lokaal bewaard en automatisch meegestuurd zodra de verbinding terug is.
               </p>
             )}
           </Field>

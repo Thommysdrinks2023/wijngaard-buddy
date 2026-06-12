@@ -12,7 +12,9 @@ export type SyncSoort =
   | "steekproef_plant"
   | "steekproef_meting"
   | "werkkalender"
-  | "notitie";
+  | "notitie"
+  | "lab"
+  | "rij_locatie";
 
 export type SyncActie = "create" | "update" | "delete";
 

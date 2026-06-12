@@ -26,6 +26,7 @@ import { foutenPerVeld, isGeldig, valideerWerkuur } from "@/lib/validatie";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { RAS_OPTIONS } from "@/lib/seed-rijen";
 import { type Ras, type Rij } from "@/lib/types";
 import { Clock, Loader2 } from "lucide-react";
@@ -175,6 +176,8 @@ function WerkrapportPage() {
           </div>
           <YearSelector />
         </div>
+
+        {urenQ.isError && <ErrorState error={urenQ.error} onRetry={() => urenQ.refetch()} />}
 
         {/* Registratie */}
         <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
