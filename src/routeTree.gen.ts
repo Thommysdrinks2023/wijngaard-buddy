@@ -27,6 +27,7 @@ import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as GrafiekenRouteImport } from './routes/grafieken'
 import { Route as GezondheidRouteImport } from './routes/gezondheid'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AssistentRouteImport } from './routes/assistent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SteekproevenIndexRouteImport } from './routes/steekproeven.index'
 import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.beheer'
@@ -129,6 +130,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssistentRoute = AssistentRouteImport.update({
+  id: '/assistent',
+  path: '/assistent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -188,6 +194,7 @@ const FenologieFenIdBewerkenRoute = FenologieFenIdBewerkenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assistent': typeof AssistentRoute
   '/dashboard': typeof DashboardRoute
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
@@ -219,6 +226,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assistent': typeof AssistentRoute
   '/dashboard': typeof DashboardRoute
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
@@ -250,6 +258,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/assistent': typeof AssistentRoute
   '/dashboard': typeof DashboardRoute
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/assistent'
     | '/dashboard'
     | '/gezondheid'
     | '/grafieken'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assistent'
     | '/dashboard'
     | '/gezondheid'
     | '/grafieken'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/assistent'
     | '/dashboard'
     | '/gezondheid'
     | '/grafieken'
@@ -376,6 +388,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AssistentRoute: typeof AssistentRoute
   DashboardRoute: typeof DashboardRoute
   GezondheidRoute: typeof GezondheidRoute
   GrafiekenRoute: typeof GrafiekenRoute
@@ -529,6 +542,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assistent': {
+      id: '/assistent'
+      path: '/assistent'
+      fullPath: '/assistent'
+      preLoaderRoute: typeof AssistentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -631,6 +651,7 @@ const RijRijIdRouteWithChildren = RijRijIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AssistentRoute: AssistentRoute,
   DashboardRoute: DashboardRoute,
   GezondheidRoute: GezondheidRoute,
   GrafiekenRoute: GrafiekenRoute,

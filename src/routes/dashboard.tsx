@@ -21,6 +21,7 @@ import {
   HeartPulse,
   Map as MapIcon,
   ScanLine,
+  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { WeerKaart } from "@/components/weer-kaart";
@@ -299,6 +300,7 @@ function Dashboard() {
             { to: "/oogst", label: "Oogst", icon: Grape },
             { to: "/werkrapport", label: "Werk", icon: Clock },
             { to: "/trends", label: "Trends", icon: TrendingUp },
+            { to: "/assistent", label: "Assistent", icon: Sparkles },
             { to: "/scan", label: "Scan QR", icon: ScanLine },
             { to: "/kaart", label: "GPS-kaart", icon: MapIcon },
             { to: "/lab", label: "Lab", icon: FlaskConical },

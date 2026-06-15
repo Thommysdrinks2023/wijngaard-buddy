@@ -540,6 +540,23 @@ async function main() {
   });
 
   await ensureCollection({
+    name: "ai_gesprekken",
+    type: "base",
+    fields: [
+      { name: "client_id", type: "text", required: true },
+      { name: "titel", type: "text" },
+      { name: "berichten", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
     name: "audit_log",
     type: "base",
     fields: [

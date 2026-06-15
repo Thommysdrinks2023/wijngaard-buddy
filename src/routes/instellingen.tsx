@@ -29,6 +29,7 @@ import {
   Search as SearchIcon,
   Sun,
   History,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -89,6 +90,12 @@ const MENU_GROEPEN = [
   {
     kop: "📊 Analyse",
     items: [
+      {
+        to: "/assistent",
+        label: "AI-assistent",
+        omschrijving: "Vraag advies met je actuele data",
+        icon: Sparkles,
+      },
       {
         to: "/dashboard",
         label: "Dashboard",
