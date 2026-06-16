@@ -9,7 +9,6 @@ import {
 } from "@/lib/assistent";
 import { bewaarGesprek, nieuwGesprek, type Gesprek } from "@/lib/ai-gesprekken";
 import { AppHeader } from "@/components/app-header";
-import { useVerbinding } from "@/components/verbinding-status";
 import { ChevronDown, Loader2, Send, Sparkles, WifiOff } from "lucide-react";
 
 export const Route = createFileRoute("/assistent")({
@@ -35,21 +34,33 @@ const VOORBEELDVRAGEN = [
 ];
 
 function AssistentPage() {
-  const verbinding = useVerbinding();
   const beschikbaar = isAssistentBeschikbaar();
   const [gesprek, setGesprek] = useState<Gesprek>(() => nieuwGesprek());
   const [invoer, setInvoer] = useState("");
   const [bezig, setBezig] = useState(false);
   const [bronnen, setBronnen] = useState<string[]>([]);
   const [bronnenOpen, setBronnenOpen] = useState(false);
+  // reactieve internetstatus — wijzigt direct als de verbinding wegvalt of terugkomt
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
   const bodemRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const aan = () => setOnline(true);
+    const uit = () => setOnline(false);
+    window.addEventListener("online", aan);
+    window.addEventListener("offline", uit);
+    return () => {
+      window.removeEventListener("online", aan);
+      window.removeEventListener("offline", uit);
+    };
+  }, []);
 
   // automatisch naar beneden scrollen bij nieuw bericht
   useEffect(() => {
     bodemRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [gesprek.berichten, bezig]);
-
-  const online = typeof navigator === "undefined" ? true : navigator.onLine;
 
   async function verstuur(vraag: string) {
     const tekst = vraag.trim();

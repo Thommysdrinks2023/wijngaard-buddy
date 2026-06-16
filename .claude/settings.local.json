@@ -35,7 +35,8 @@
       "Bash(curl -s -m 8 -o /dev/null -w \"127.0.0.1:60056 -> HTTP %{http_code}\\\\n\" http://127.0.0.1:60056/perceelkaart)",
       "PowerShell(schtasks /create /tn \"Wijngaard PocketBase Backup\" /tr \"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \\\\\"C:\\\\Users\\\\Gebruiker\\\\Documents\\\\Tappenmars\\\\Wijngaard\\\\wijngaard-buddy-main\\\\scripts\\\\backup-pocketbase.ps1\\\\\"\" /sc daily /st 20:00 /f; schtasks /query /tn \"Wijngaard PocketBase Backup\")",
       "Bash(curl -s -m 15 -o /dev/null -w \"/dashboard -> %{http_code}\\\\n\" \"http://localhost:4173/dashboard\")",
-      "Bash(curl -s -m 15 -o /dev/null -w \"/perceelkaart -> %{http_code}\\\\n\" \"http://localhost:4173/perceelkaart\")"
+      "Bash(curl -s -m 15 -o /dev/null -w \"/perceelkaart -> %{http_code}\\\\n\" \"http://localhost:4173/perceelkaart\")",
+      "Bash(node -e ' *)"
     ]
   }
 }
