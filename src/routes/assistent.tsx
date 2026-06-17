@@ -9,6 +9,7 @@ import {
 } from "@/lib/assistent";
 import { bewaarGesprek, nieuwGesprek, type Gesprek } from "@/lib/ai-gesprekken";
 import { AppHeader } from "@/components/app-header";
+import { useWijngaardConfig } from "@/lib/use-wijngaard-config";
 import { ChevronDown, Loader2, Send, Sparkles, WifiOff } from "lucide-react";
 
 export const Route = createFileRoute("/assistent")({
@@ -34,6 +35,7 @@ const VOORBEELDVRAGEN = [
 ];
 
 function AssistentPage() {
+  const { naam } = useWijngaardConfig();
   const beschikbaar = isAssistentBeschikbaar();
   const [gesprek, setGesprek] = useState<Gesprek>(() => nieuwGesprek());
   const [invoer, setInvoer] = useState("");
@@ -98,7 +100,7 @@ function AssistentPage() {
       <AppHeader
         back
         title="Wijngaard Assistent"
-        subtitle="De Tappenmars"
+        subtitle={naam}
         right={
           <button
             type="button"

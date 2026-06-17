@@ -2,6 +2,7 @@
 
 import { ensureOnline, getPb } from "./data";
 import { addToSyncQueue, getSyncQueue } from "./sync";
+import { getWijngaardConfig, setWijngaardConfig, STANDAARD_CONFIG } from "./wijngaard-config";
 
 const LS_DREMPEL = "wg.instellingen.meting_drempel.v1";
 const LS_NOTITIES = "wg.seizoen_notities";
@@ -159,14 +160,22 @@ export function setUurloon(euroPerUur: number) {
 }
 
 // ============= Perceeloppervlakte =============
+// Leeft nu in de centrale wijngaard-configuratie (wijngaard-config.ts).
+// Deze functies blijven bestaan voor terugwaartse compatibiliteit en lezen/
+// schrijven de oude localStorage-sleutel als die nog bestaat (migratie), maar
+// de waarheid is de config.
 export function getPerceelOppervlakte(): number {
-  if (typeof window === "undefined") return 1.5;
-  const n = Number(localStorage.getItem(LS_OPPERVLAKTE));
-  if (Number.isFinite(n) && n > 0 && n < 1000) return n;
-  return 1.5; // hectare — De Tappenmars
+  if (typeof window === "undefined") return STANDAARD_CONFIG.oppervlakteHa;
+  // eenmalige migratie van de oude losse sleutel naar de config
+  const oud = Number(localStorage.getItem(LS_OPPERVLAKTE));
+  if (Number.isFinite(oud) && oud > 0 && oud < 1000) {
+    localStorage.removeItem(LS_OPPERVLAKTE);
+    setWijngaardConfig({ oppervlakteHa: oud });
+    return oud;
+  }
+  return getWijngaardConfig().oppervlakteHa;
 }
 export function setPerceelOppervlakte(ha: number) {
-  if (typeof window === "undefined") return;
   const v = Math.max(0.01, Math.min(1000, ha));
-  localStorage.setItem(LS_OPPERVLAKTE, String(v));
+  setWijngaardConfig({ oppervlakteHa: v });
 }

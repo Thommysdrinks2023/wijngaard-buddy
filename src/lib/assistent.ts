@@ -12,6 +12,7 @@ import { fetchOogst } from "./extra-data";
 import { fetchSteekproefMetingen, fetchSteekproefPlanten } from "./steekproef";
 import { fetchWeer, fetchVerwachting } from "./weer";
 import { fetchGdd, huidigeGdd, isGddBeschikbaar } from "./gdd";
+import { getWijngaardConfig } from "./wijngaard-config";
 import { OBSERVATIE_TYPES, type Ras } from "./types";
 
 const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
@@ -27,16 +28,18 @@ export interface ChatBericht {
   tekst: string;
 }
 
-// Stabiele systeemprompt — verandert nooit, dus geschikt voor prompt caching.
-const SYSTEEM_PROMPT = `Je bent de Wijngaard Assistent van De Tappenmars in Den Ham.
-Je kent de wijngaard: 1.5 hectare, 70 rijen, 7 rassen:
-- Muscaris (rij 1-5), Souvignier Gris (6-21), Johanniter (22-40)
-- Regent (41-44,46-47), Pinot Noir (45,65,68)
-- Chardonnay (48-56), Pinotin (57-64,66-67)
-Je krijgt actuele data mee bij elke vraag.
+// Stabiele systeemprompt — opgebouwd uit de wijngaard-configuratie.
+// Per wijngaard constant, dus nog steeds geschikt voor prompt caching.
+// De concrete rijen/rassen krijgt de assistent mee via de context bij elke vraag.
+function bouwSysteemPrompt(): string {
+  const cfg = getWijngaardConfig();
+  return `Je bent de Wijngaard Assistent van ${cfg.naam} in ${cfg.plaats}.
+De wijngaard is ${cfg.oppervlakteHa} hectare. De rijen, rassen en plantaantallen
+krijg je mee in de actuele data bij elke vraag.
 Geef praktisch, concreet advies in het Nederlands.
 Denk mee als een ervaren wijnboer.
 Wees kort en to-the-point.`;
+}
 
 export interface ContextResultaat {
   // compacte tekst die als context naar het model gaat
@@ -230,7 +233,7 @@ export async function vraagAssistent(
       // systeemprompt in twee blokken: het stabiele deel wordt gecachet,
       // de wisselende wijngaard-context staat erna (buiten de cache)
       system: [
-        { type: "text", text: SYSTEEM_PROMPT, cache_control: { type: "ephemeral" } },
+        { type: "text", text: bouwSysteemPrompt(), cache_control: { type: "ephemeral" } },
         { type: "text", text: `ACTUELE WIJNGAARD-DATA:\n\n${contextTekst}` },
       ],
       messages: berichten.map((b) => ({ role: b.rol, content: b.tekst })),

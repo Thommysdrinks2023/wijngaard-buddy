@@ -16,19 +16,18 @@ export interface WeerData {
 }
 
 const OWM_KEY = import.meta.env.VITE_OWM_API_KEY as string | undefined;
-const LAT = import.meta.env.VITE_WEER_LAT as string | undefined;
-const LON = import.meta.env.VITE_WEER_LON as string | undefined;
+// lat/lon komen uit de wijngaard-configuratie (die op .env terugvalt)
+import { getWijngaardConfig } from "./wijngaard-config";
 
 export function isWeerGeconfigureerd(): boolean {
-  return Boolean(OWM_KEY && LAT && LON);
+  return Boolean(OWM_KEY);
 }
 
 export async function fetchWeer(): Promise<WeerData> {
-  if (!OWM_KEY || !LAT || !LON) {
-    throw new Error(
-      "Weerconfiguratie ontbreekt. Stel VITE_OWM_API_KEY, VITE_WEER_LAT en VITE_WEER_LON in.",
-    );
+  if (!OWM_KEY) {
+    throw new Error("Weerconfiguratie ontbreekt. Stel VITE_OWM_API_KEY in.");
   }
+  const { lat: LAT, lon: LON } = getWijngaardConfig();
 
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${LAT}&lon=${LON}&appid=${OWM_KEY}&units=metric&lang=nl`;
   const res = await fetch(url);
@@ -73,9 +72,10 @@ interface ForecastItem {
 // Gebruikt het gratis 5-daagse/3-uurs forecast endpoint van OpenWeatherMap
 // en vat het samen tot een dag-overzicht voor de komende 3 dagen.
 export async function fetchVerwachting(): Promise<DagVerwachting[]> {
-  if (!OWM_KEY || !LAT || !LON) {
+  if (!OWM_KEY) {
     throw new Error("Weerconfiguratie ontbreekt.");
   }
+  const { lat: LAT, lon: LON } = getWijngaardConfig();
   const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${LAT}&lon=${LON}&appid=${OWM_KEY}&units=metric&lang=nl`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`OpenWeatherMap fout: ${res.status}`);

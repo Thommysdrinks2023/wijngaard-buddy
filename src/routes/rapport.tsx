@@ -12,6 +12,7 @@ import {
 } from "@/lib/extra-data";
 import { fetchGdd, huidigeGdd, isGddBeschikbaar } from "@/lib/gdd";
 import { getPerceelOppervlakte, getUurloon } from "@/lib/app-instellingen";
+import { getWijngaardConfig } from "@/lib/wijngaard-config";
 import { useSeizoen } from "@/lib/seizoen";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
@@ -158,6 +159,7 @@ function RapportPage() {
   const totaalUren = Math.round(uren.reduce((acc, w) => acc + w.uren, 0) * 10) / 10;
   const gddTotaal = Math.round(huidigeGdd(gddQ.data ?? []));
   const oppervlakte = getPerceelOppervlakte();
+  const wijngaard = getWijngaardConfig();
   const uurloon = getUurloon();
 
   const thStijl = "border border-[#cac176] bg-[#d4e6d3] px-2 py-1.5 text-left font-semibold";
@@ -200,11 +202,11 @@ function RapportPage() {
             <img src="/logo-icon.png" alt="" className="h-14 w-14 object-contain" />
             <div>
               <h2 className="text-xl font-bold" style={{ color: "#27232a" }}>
-                De Tappenmars — Seizoensrapport {jaar}
+                {wijngaard.naam} — Seizoensrapport {jaar}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Den Ham · {oppervlakte} ha · {rijenQ.data?.length ?? 0} rijen · gegenereerd{" "}
-                {format(new Date(), "d MMMM yyyy", { locale: nl })}
+                {wijngaard.plaats} · {oppervlakte} ha · {rijenQ.data?.length ?? 0} rijen ·
+                gegenereerd {format(new Date(), "d MMMM yyyy", { locale: nl })}
               </p>
             </div>
           </div>
@@ -336,7 +338,7 @@ function RapportPage() {
         </section>
 
         <p className="pb-4 text-center text-[10px] text-muted-foreground">
-          Wijngaard Buddy · De Tappenmars ·{" "}
+          Wijngaard Buddy · {wijngaard.naam} ·{" "}
           {format(new Date(), "d MMMM yyyy HH:mm", { locale: nl })}
         </p>
       </div>

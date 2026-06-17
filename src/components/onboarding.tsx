@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { getWijngaardConfig } from "@/lib/wijngaard-config";
 
 const LS_GEZIEN = "wg.onboarding.gezien.v1";
 
@@ -8,8 +9,7 @@ const STAPPEN = [
     logo: true,
     emoji: "",
     titel: "Welkom bij Wijngaard Buddy",
-    tekst:
-      "De veld-app van De Tappenmars. Alles wat je in de wijngaard registreert — metingen, observaties, oogst — staat veilig op één plek en werkt ook zonder bereik.",
+    tekst: `De veld-app van ${getWijngaardConfig().naam}. Alles wat je in de wijngaard registreert — metingen, observaties, oogst — staat veilig op één plek en werkt ook zonder bereik.`,
   },
   {
     logo: false,
@@ -55,7 +55,7 @@ export function Onboarding() {
         {huidige.logo ? (
           <img
             src="/logo-icon.png"
-            alt="De Tappenmars"
+            alt={getWijngaardConfig().naam}
             className="mx-auto h-24 w-24 object-contain"
           />
         ) : (

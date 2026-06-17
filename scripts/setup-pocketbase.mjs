@@ -576,6 +576,62 @@ async function main() {
     deleteRule: null,
   });
 
+  // 3b. Wijngaard-instellingen (vineyard_settings) + eerste configuratie
+  await ensureCollection({
+    name: "vineyard_settings",
+    type: "base",
+    fields: [
+      { name: "naam", type: "text", required: true },
+      { name: "plaats", type: "text" },
+      { name: "lat", type: "number" },
+      { name: "lon", type: "number" },
+      { name: "oppervlakte_ha", type: "number" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+  // eerste configuratie = De Tappenmars (alleen aanmaken als er nog geen is)
+  const reedsConfig = await api("/api/collections/vineyard_settings/records?perPage=1");
+  if (reedsConfig.totalItems === 0) {
+    await api("/api/collections/vineyard_settings/records", {
+      method: "POST",
+      body: {
+        naam: "De Tappenmars",
+        plaats: "Den Ham",
+        lat: 52.47291998204718,
+        lon: 6.484049217459633,
+        oppervlakte_ha: 1.5,
+      },
+    });
+    console.log("  + eerste wijngaard-configuratie (De Tappenmars) aangemaakt");
+  }
+
+  // 3c. Multi-tenant voorbereiding: vineyard_id op alle datacollecties.
+  // Puur schema-voorbereiding (niet geactiveerd in de UI). Default-tenant = "tappenmars".
+  const TENANT_COLLECTIES = [
+    "rijen",
+    "metingen",
+    "observaties",
+    "fenologie",
+    "gezondheid",
+    "oogst",
+    "werkuren",
+    "steekproef_planten",
+    "steekproef_metingen",
+    "werkkalender",
+    "notities",
+    "lab",
+    "rij_locaties",
+    "ai_gesprekken",
+  ];
+  for (const naam of TENANT_COLLECTIES) {
+    await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);
+  }
+
   // 4. rijen seeden
   console.log("Rijen seeden...");
   const bestaande = await api("/api/collections/rijen/records?perPage=1");

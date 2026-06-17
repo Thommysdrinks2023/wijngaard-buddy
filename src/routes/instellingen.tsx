@@ -44,6 +44,7 @@ import {
   setWeergave,
   type Weergave,
 } from "@/lib/app-instellingen";
+import { getWijngaardConfig, setWijngaardConfig } from "@/lib/wijngaard-config";
 import { getSyncFouten, wisSyncFouten } from "@/lib/sync";
 import { getAuditLog } from "@/lib/audit";
 
@@ -223,17 +224,29 @@ function toCsv(data: Record<string, unknown>): string {
   return lines.join("\n");
 }
 
+// bestandsnaam-slug op basis van de wijngaardnaam (bijv. "de-tappenmars")
+function wijngaardSlug(): string {
+  return (
+    getWijngaardConfig()
+      .naam.toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "wijngaard"
+  );
+}
+
 function downloadJsonBackup() {
   const data = dumpLocalStorage();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  triggerDownload(blob, `tappenmars-backup-${vandaagStr()}.json`);
+  triggerDownload(blob, `${wijngaardSlug()}-backup-${vandaagStr()}.json`);
   toast.success("Backup gedownload", { description: "JSON bestand is opgeslagen." });
 }
 
 function downloadCsvBackup() {
   const data = dumpLocalStorage();
   const blob = new Blob([toCsv(data)], { type: "text/csv;charset=utf-8" });
-  triggerDownload(blob, `tappenmars-backup-${vandaagStr()}.csv`);
+  triggerDownload(blob, `${wijngaardSlug()}-backup-${vandaagStr()}.csv`);
   toast.success("CSV gedownload", { description: "Te openen in Excel." });
 }
 
@@ -270,7 +283,7 @@ async function downloadServerBackup() {
     }
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  triggerDownload(blob, `tappenmars-server-backup-${vandaagStr()}.json`);
+  triggerDownload(blob, `${wijngaardSlug()}-server-backup-${vandaagStr()}.json`);
   toast.success("Serverbackup gedownload", { description: "Alle collecties als JSON." });
 }
 
@@ -285,6 +298,11 @@ function Instellingen() {
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
   const [oppervlakte, setOppervlakte] = useState<string>(() => String(getPerceelOppervlakte()));
+  const [wijngaard, setWijngaardState] = useState(() => getWijngaardConfig());
+  const wijzigWijngaard = (deel: Partial<ReturnType<typeof getWijngaardConfig>>) => {
+    setWijngaardState((w) => ({ ...w, ...deel }));
+    setWijngaardConfig(deel);
+  };
   const [uurloon, setUurloonState] = useState<string>(() => String(getUurloon() || ""));
   const [weergave, setWeergaveState] = useState<Weergave>(() => getWeergave());
   const [syncFouten, setSyncFouten] = useState(() => getSyncFouten());
@@ -415,6 +433,66 @@ function Instellingen() {
           <p className="text-xs text-muted-foreground">
             Wordt op het dashboard getoond als oranje banner. Rijen zonder enige meting blijven
             verborgen tot de drempel bereikt is.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Wijngaard
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Naam</span>
+              <input
+                type="text"
+                value={wijngaard.naam}
+                onChange={(e) => wijzigWijngaard({ naam: e.target.value })}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Plaats</span>
+              <input
+                type="text"
+                value={wijngaard.plaats}
+                onChange={(e) => wijzigWijngaard({ plaats: e.target.value })}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Breedtegraad (lat)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.0001"
+                value={wijngaard.lat}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (Number.isFinite(n)) wijzigWijngaard({ lat: n });
+                }}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Lengtegraad (lon)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.0001"
+                value={wijngaard.lon}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (Number.isFinite(n)) wijzigWijngaard({ lon: n });
+                }}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              />
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Naam verschijnt in de app en rapporten. De locatie bepaalt weer, warmtesom (GDD) en het
+            kaartmiddelpunt.
           </p>
         </section>
 

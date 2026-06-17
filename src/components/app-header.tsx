@@ -1,6 +1,7 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { ChevronLeft, Search } from "lucide-react";
 import { VerbindingBadge } from "@/components/verbinding-status";
+import { useWijngaardConfig } from "@/lib/use-wijngaard-config";
 
 interface AppHeaderProps {
   title: string;
@@ -11,6 +12,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
   const router = useRouter();
+  const { naam } = useWijngaardConfig();
   return (
     <header
       className="sticky top-0 z-30 border-b border-[#cac176]/40 bg-[#27232a] text-white"
@@ -27,8 +29,8 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
           </button>
         ) : (
           <Link to="/perceelkaart" className="flex h-12 items-center gap-2 px-1">
-            <img src="/logo-icon.png" alt="De Tappenmars" className="h-9 w-9 object-contain" />
-            <span className="text-base font-semibold tracking-tight text-white">De Tappenmars</span>
+            <img src="/logo-icon.png" alt={naam} className="h-9 w-9 object-contain" />
+            <span className="text-base font-semibold tracking-tight text-white">{naam}</span>
           </Link>
         )}
         <div className="flex-1 truncate">

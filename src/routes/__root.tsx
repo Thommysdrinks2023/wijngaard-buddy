@@ -13,6 +13,7 @@ import { Onboarding } from "@/components/onboarding";
 import { SyncStatus } from "@/components/sync-status";
 import { Toaster } from "@/components/ui/sonner";
 import { pasWeergaveToe, ruimOudeCacheOp } from "@/lib/app-instellingen";
+import { laadConfigVanServer } from "@/lib/wijngaard-config";
 import { ruimPrullenbakOp } from "@/lib/prullenbak";
 import { checkNewYearGreeting, migrateSeizoen } from "@/lib/seizoen";
 
@@ -106,6 +107,8 @@ function RootComponent() {
     ruimOudeCacheOp();
     ruimPrullenbakOp();
     pasWeergaveToe();
+    // wijngaard-configuratie van de server halen (indien ingelogd) en lokaal cachen
+    void laadConfigVanServer();
     // Service worker: maakt de app offline bruikbaar (alleen in productie,
     // in dev zou caching de hot-reload in de weg zitten)
     if (import.meta.env.PROD && "serviceWorker" in navigator) {

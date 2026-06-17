@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { getPb, isPbConfigured, setInvoerder } from "@/lib/data";
+import { useWijngaardConfig } from "@/lib/use-wijngaard-config";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -14,6 +15,7 @@ const DONKER = "#27232a";
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { naam: wijngaardNaam } = useWijngaardConfig();
   // PocketBase-login wanneer een server is geconfigureerd, anders alleen naam
   const pbActief = isPbConfigured();
   const [offlineModus, setOfflineModus] = useState(false);
@@ -73,8 +75,8 @@ function LoginPage() {
       >
         {/* Kop met logo */}
         <div className="flex flex-col items-center px-6 pb-5 pt-8 text-center">
-          <img src="/logo-icon.png" alt="De Tappenmars" className="h-20 w-20 object-contain" />
-          <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">De Tappenmars</h1>
+          <img src="/logo-icon.png" alt={wijngaardNaam} className="h-20 w-20 object-contain" />
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">{wijngaardNaam}</h1>
           <p className="mt-1 text-sm" style={{ color: GOUD }}>
             {naamModus ? "Vul je naam in om te beginnen" : "Log in met je account"}
           </p>

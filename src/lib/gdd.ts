@@ -4,9 +4,9 @@
 // van Open-Meteo (gratis, geen API-key nodig); resultaat wordt per dag
 // gecachet in localStorage zodat we de API niet onnodig belasten.
 
+import { getWijngaardConfig } from "./wijngaard-config";
+
 const BASIS_TEMPERATUUR = 10;
-const LAT = import.meta.env.VITE_WEER_LAT as string | undefined;
-const LON = import.meta.env.VITE_WEER_LON as string | undefined;
 
 export interface GddPunt {
   datum: string; // yyyy-MM-dd
@@ -14,8 +14,10 @@ export interface GddPunt {
   cumulatief: number; // sinds 1 april
 }
 
+// GDD gebruikt Open-Meteo (geen sleutel nodig) en de lat/lon uit de config —
+// die altijd een waarde heeft, dus de warmtesom is altijd beschikbaar.
 export function isGddBeschikbaar(): boolean {
-  return Boolean(LAT && LON);
+  return true;
 }
 
 function seizoenStart(jaar: number): string {
@@ -33,7 +35,7 @@ interface CacheVorm {
 }
 
 export async function fetchGdd(jaar: number): Promise<GddPunt[]> {
-  if (!LAT || !LON) throw new Error("GPS-locatie ontbreekt (VITE_WEER_LAT/LON).");
+  const { lat: LAT, lon: LON } = getWijngaardConfig();
 
   const start = seizoenStart(jaar);
   const eind = seizoenEind(jaar);

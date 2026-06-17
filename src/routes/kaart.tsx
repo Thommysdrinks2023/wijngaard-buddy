@@ -8,6 +8,7 @@ import "leaflet/dist/leaflet.css";
 import { fetchRijen } from "@/lib/data";
 import { createRijLocatie, fetchRijLocaties, nieuwsteLocaties } from "@/lib/extra-data";
 import { useInvoerder } from "@/lib/use-invoerder";
+import { getWijngaardConfig } from "@/lib/wijngaard-config";
 import { AppHeader } from "@/components/app-header";
 import { ErrorState } from "@/components/error-state";
 import { Crosshair, Loader2, MapPin, Satellite } from "lucide-react";
@@ -21,9 +22,6 @@ export const Route = createFileRoute("/kaart")({
     ],
   }),
 });
-
-// Middelpunt van De Tappenmars (Den Ham)
-const WIJNGAARD_CENTRUM: [number, number] = [52.47291998204718, 6.484049217459633];
 
 function KaartPage() {
   const qc = useQueryClient();
@@ -53,8 +51,10 @@ function KaartPage() {
       if (gestopt || !kaartDivRef.current) return;
       lRef.current = L;
 
+      // middelpunt uit de wijngaard-configuratie (lat/lon)
+      const cfg = getWijngaardConfig();
       const kaart = L.map(kaartDivRef.current, { zoomControl: true }).setView(
-        WIJNGAARD_CENTRUM,
+        [cfg.lat, cfg.lon],
         17,
       );
       const straat = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
