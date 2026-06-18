@@ -159,14 +159,14 @@ function OogstPage() {
 
         {/* Seizoenstotaal */}
         <section
-          className="rounded-2xl border p-4"
-          style={{ backgroundColor: "#27232a", borderColor: "#cac176" }}
+          className="rounded-xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+          style={{ backgroundColor: "var(--nav)" }}
         >
           <div className="flex items-center justify-between">
             <div>
               <p
                 className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: "#cac176" }}
+                style={{ color: "var(--accent-gold)" }}
               >
                 Totaal geoogst {jaar}
               </p>
@@ -182,7 +182,7 @@ function OogstPage() {
                 </p>
               )}
             </div>
-            <Grape className="h-12 w-12" style={{ color: "#cac176" }} />
+            <Grape className="h-12 w-12" style={{ color: "var(--accent-gold)" }} />
           </div>
         </section>
 
@@ -312,7 +312,7 @@ function OogstPage() {
                     <div className="h-2.5 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full rounded-full"
-                        style={{ width: `${pct}%`, backgroundColor: "#cac176" }}
+                        style={{ width: `${pct}%`, backgroundColor: "#4a8c5c" }}
                       />
                     </div>
                   </div>
@@ -331,13 +331,13 @@ function OogstPage() {
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={perRas} layout="vertical" margin={{ left: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#cac17655" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                   <XAxis type="number" fontSize={11} unit=" kg" />
                   <YAxis type="category" dataKey="ras" fontSize={11} width={95} />
                   <Tooltip formatter={(v: number) => [`${v} kg`]} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="geoogst" name="Geoogst" fill="#cac176" radius={[0, 6, 6, 0]} />
-                  <Bar dataKey="verwacht" name="Verwacht" fill="#27232a" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="geoogst" name="Geoogst" fill="#4a8c5c" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="verwacht" name="Verwacht" fill="#6b7a6b" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

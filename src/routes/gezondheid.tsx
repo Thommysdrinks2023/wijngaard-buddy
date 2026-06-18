@@ -490,7 +490,7 @@ function GezondheidPage() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#cac17655" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                   <XAxis dataKey="maand" fontSize={12} />
                   <YAxis domain={[1, 5]} fontSize={12} />
                   <Tooltip />
@@ -500,7 +500,7 @@ function GezondheidPage() {
                       key={ras}
                       type="monotone"
                       dataKey={ras}
-                      stroke={RAS_KLEUR[ras] ?? "#27232a"}
+                      stroke={RAS_KLEUR[ras] ?? "#4a8c5c"}
                       strokeWidth={2.5}
                       dot={{ r: 4 }}
                       connectNulls
@@ -521,7 +521,7 @@ function GezondheidPage() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={seizoensChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#cac17655" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                   <XAxis dataKey="seizoen" fontSize={12} />
                   <YAxis domain={[1, 5]} fontSize={12} />
                   <Tooltip />
@@ -531,7 +531,7 @@ function GezondheidPage() {
                       key={ras}
                       type="monotone"
                       dataKey={ras}
-                      stroke={RAS_KLEUR[ras] ?? "#27232a"}
+                      stroke={RAS_KLEUR[ras] ?? "#4a8c5c"}
                       strokeWidth={2.5}
                       dot={{ r: 5 }}
                       connectNulls

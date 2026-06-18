@@ -14,9 +14,9 @@ import {
 import { Thermometer } from "lucide-react";
 import { fetchGdd, huidigeGdd, isGddBeschikbaar } from "@/lib/gdd";
 
-// Huisstijl De Tappenmars
-const GOUD = "#cac176";
-const DONKER = "#27232a";
+// Grafiekkleuren — groen als primaire kleur
+const PRIMAIR = "#4a8c5c";
+const DONKER = "#1a1a1a";
 
 // Warmtesom (Growing Degree Days, basis 10°C) voor het groeiseizoen.
 // Geeft context bij fenologie: hetzelfde moment valt elk jaar rond een
@@ -66,9 +66,9 @@ export function GddKaart({ jaar }: { jaar: number }) {
           </div>
           <div
             className="flex h-12 w-12 items-center justify-center rounded-full"
-            style={{ backgroundColor: DONKER }}
+            style={{ backgroundColor: PRIMAIR }}
           >
-            <Thermometer className="h-6 w-6" style={{ color: GOUD }} />
+            <Thermometer className="h-6 w-6 text-white" />
           </div>
         </div>
 
@@ -84,18 +84,18 @@ export function GddKaart({ jaar }: { jaar: number }) {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="gddVerloop" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={GOUD} stopOpacity={0.7} />
-                    <stop offset="100%" stopColor={GOUD} stopOpacity={0.1} />
+                    <stop offset="0%" stopColor={PRIMAIR} stopOpacity={0.7} />
+                    <stop offset="100%" stopColor={PRIMAIR} stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#cac17655" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                 <XAxis dataKey="datum" fontSize={11} minTickGap={30} />
                 <YAxis fontSize={11} width={40} />
                 <Tooltip formatter={(v) => [`${v} °C·dagen`, "Warmtesom"]} />
                 <Area
                   type="monotone"
                   dataKey="cumulatief"
-                  stroke={DONKER}
+                  stroke={PRIMAIR}
                   strokeWidth={2}
                   fill="url(#gddVerloop)"
                 />

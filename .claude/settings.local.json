@@ -36,7 +36,9 @@
       "PowerShell(schtasks /create /tn \"Wijngaard PocketBase Backup\" /tr \"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \\\\\"C:\\\\Users\\\\Gebruiker\\\\Documents\\\\Tappenmars\\\\Wijngaard\\\\wijngaard-buddy-main\\\\scripts\\\\backup-pocketbase.ps1\\\\\"\" /sc daily /st 20:00 /f; schtasks /query /tn \"Wijngaard PocketBase Backup\")",
       "Bash(curl -s -m 15 -o /dev/null -w \"/dashboard -> %{http_code}\\\\n\" \"http://localhost:4173/dashboard\")",
       "Bash(curl -s -m 15 -o /dev/null -w \"/perceelkaart -> %{http_code}\\\\n\" \"http://localhost:4173/perceelkaart\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:52610/perceelkaart\" -UseBasicParsing -TimeoutSec 15; \"STATUS \" + $r.StatusCode + \" len=\" + $r.Content.Length } catch { \"ERR \" + $_.Exception.Message })",
+      "PowerShell(Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -in 52610,8080,8081 } | Select-Object LocalAddress,LocalPort | Format-Table -AutoSize)"
     ]
   }
 }

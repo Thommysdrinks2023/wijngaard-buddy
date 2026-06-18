@@ -186,8 +186,7 @@ function ZoekenPage() {
             onChange={(e) => setTerm(e.target.value)}
             placeholder='Bijv. "rij 12", "ziekte juni", "Chardonnay brix"…'
             autoFocus
-            className="h-14 w-full rounded-2xl border-2 bg-card pl-11 pr-3 text-base outline-none"
-            style={{ borderColor: "#cac176" }}
+            className="h-14 w-full rounded-2xl border-2 border-border bg-card pl-11 pr-3 text-base outline-none focus:border-primary focus:ring-2 focus:ring-ring"
           />
         </label>
 

@@ -47,11 +47,8 @@ export function Onboarding() {
   const laatste = stap === STAPPEN.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div
-        className="w-full max-w-sm rounded-3xl border-2 p-6 text-center"
-        style={{ backgroundColor: "#27232a", borderColor: "#cac176" }}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-[0_8px_30px_rgba(0,0,0,0.18)]">
         {huidige.logo ? (
           <img
             src="/logo-icon.png"
@@ -61,16 +58,15 @@ export function Onboarding() {
         ) : (
           <div className="text-5xl">{huidige.emoji}</div>
         )}
-        <h2 className="mt-3 text-xl font-bold text-white">{huidige.titel}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-white/80">{huidige.tekst}</p>
+        <h2 className="mt-3 text-xl font-bold text-foreground">{huidige.titel}</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{huidige.tekst}</p>
 
         {/* stappenindicator */}
         <div className="mt-4 flex justify-center gap-1.5">
           {STAPPEN.map((_, i) => (
             <span
               key={i}
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: i === stap ? "#cac176" : "#ffffff33" }}
+              className={`h-2 w-2 rounded-full ${i === stap ? "bg-accent-gold" : "bg-border"}`}
             />
           ))}
         </div>
@@ -80,8 +76,7 @@ export function Onboarding() {
             <Link
               to="/dashboard"
               onClick={sluit}
-              className="flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold"
-              style={{ backgroundColor: "#cac176", color: "#27232a" }}
+              className="flex h-12 w-full items-center justify-center rounded-lg bg-primary text-base font-semibold text-primary-foreground"
             >
               Naar het dashboard
             </Link>
@@ -89,8 +84,7 @@ export function Onboarding() {
             <button
               type="button"
               onClick={() => setStap((s) => s + 1)}
-              className="h-12 w-full rounded-xl text-base font-semibold"
-              style={{ backgroundColor: "#cac176", color: "#27232a" }}
+              className="h-12 w-full rounded-lg bg-primary text-base font-semibold text-primary-foreground"
             >
               Volgende
             </button>
@@ -98,7 +92,7 @@ export function Onboarding() {
           <button
             type="button"
             onClick={sluit}
-            className="h-10 w-full text-sm text-white/60 underline"
+            className="h-10 w-full text-sm text-muted-foreground underline"
           >
             Overslaan
           </button>

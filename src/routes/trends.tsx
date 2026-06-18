@@ -52,7 +52,7 @@ const X_OPTIES = [
 ] as const;
 type XKey = (typeof X_OPTIES)[number]["key"];
 
-const SERIE_KLEUREN = ["#27232a", "#cac176", "#a1a35b", "#7e22ce", "#7f1d1d", "#0891b2", "#ea580c"];
+const SERIE_KLEUREN = ["#4a8c5c", "#c9b84c", "#e6a817", "#7e22ce", "#d64444", "#0891b2", "#ea580c"];
 
 function jaarOf(item: { seizoen?: number; datum: string }): number {
   return item.seizoen ?? parseISO(item.datum).getFullYear();
@@ -321,8 +321,7 @@ function TrendsPage() {
             <button
               type="button"
               onClick={exporteer}
-              className="flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium"
-              style={{ backgroundColor: "#27232a", color: "#cac176" }}
+              className="flex h-10 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
             >
               <Download className="h-4 w-4" /> Exporteer
             </button>
@@ -339,7 +338,7 @@ function TrendsPage() {
             <div className="h-72" ref={chartRef}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#cac17655" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                   <XAxis dataKey="periode" fontSize={12} />
                   <YAxis fontSize={12} domain={["auto", "auto"]} />
                   <Tooltip />

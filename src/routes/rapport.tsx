@@ -162,8 +162,8 @@ function RapportPage() {
   const wijngaard = getWijngaardConfig();
   const uurloon = getUurloon();
 
-  const thStijl = "border border-[#cac176] bg-[#d4e6d3] px-2 py-1.5 text-left font-semibold";
-  const tdStijl = "border border-[#cac176] px-2 py-1.5";
+  const thStijl = "border border-border bg-muted px-2 py-1.5 text-left font-semibold";
+  const tdStijl = "border border-border px-2 py-1.5";
 
   return (
     <>
@@ -190,18 +190,17 @@ function RapportPage() {
         <button
           type="button"
           onClick={() => window.print()}
-          className="geen-print flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold"
-          style={{ backgroundColor: "#27232a", color: "#cac176" }}
+          className="geen-print flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground"
         >
           <Printer className="h-4 w-4" /> Afdrukken / Opslaan als PDF
         </button>
 
         {/* Rapportkop */}
-        <section className="rounded-2xl border-2 p-4" style={{ borderColor: "#cac176" }}>
+        <section className="rounded-xl border border-border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <div className="flex items-center gap-3">
             <img src="/logo-icon.png" alt="" className="h-14 w-14 object-contain" />
             <div>
-              <h2 className="text-xl font-bold" style={{ color: "#27232a" }}>
+              <h2 className="text-xl font-bold text-foreground">
                 {wijngaard.naam} — Seizoensrapport {jaar}
               </h2>
               <p className="text-xs text-muted-foreground">
@@ -219,7 +218,11 @@ function RapportPage() {
               { label: "Werkuren", waarde: `${totaalUren} u` },
               { label: "Warmtesom", waarde: gddTotaal > 0 ? `${gddTotaal} GDD` : "—" },
             ].map((s) => (
-              <div key={s.label} className="rounded-lg p-2" style={{ backgroundColor: "#d4e6d3" }}>
+              <div
+                key={s.label}
+                className="rounded-lg p-2"
+                style={{ backgroundColor: "var(--primary-soft)" }}
+              >
                 <p className="text-[10px] font-semibold uppercase text-muted-foreground">
                   {s.label}
                 </p>

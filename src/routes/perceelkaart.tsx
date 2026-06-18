@@ -178,8 +178,7 @@ function Perceelkaart() {
 
         <Link
           to="/snel"
-          className="flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold active:scale-[0.99]"
-          style={{ backgroundColor: "#27232a", color: "#cac176" }}
+          className="flex h-12 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-sm active:scale-[0.99]"
         >
           ⚡ Snelle meting — Brix in 3 tikken
         </Link>
@@ -193,13 +192,13 @@ function Perceelkaart() {
             role="img"
             aria-label="Bovenaanzicht wijngaard"
           >
-            <rect x="0" y="0" width={VB_W} height={VB_H} fill="#d4e6d3" />
+            <rect x="0" y="0" width={VB_W} height={VB_H} fill="#ffffff" />
 
-            {/* Perceel omtrek — huisstijl: zachtgroen veld met olijf-gouden rand */}
+            {/* Perceel omtrek — licht groen veld met groene rand */}
             <path
               d={PERCEEL_PATH_2}
-              fill="#b6cfb3"
-              stroke="#a1a35b"
+              fill="#e8f5e9"
+              stroke="#4a8c5c"
               strokeWidth="2.5"
               strokeDasharray="6 4"
               strokeLinejoin="round"
@@ -247,7 +246,7 @@ function Perceelkaart() {
                       cx={x}
                       cy={yBottom}
                       r="4"
-                      fill="hsl(var(--warning, 38 92% 50%))"
+                      fill="#e6a817"
                       stroke="white"
                       strokeWidth="1.5"
                     />
@@ -280,7 +279,7 @@ function Perceelkaart() {
                       x={x}
                       y={innerTop - 10}
                       fontSize="10"
-                      fill="hsl(var(--muted-foreground))"
+                      fill="#6b7a6b"
                       textAnchor="middle"
                       className="tabular-nums select-none"
                     >
@@ -293,22 +292,10 @@ function Perceelkaart() {
 
             {/* Kompas */}
             <g transform={`translate(${VB_W - 50}, 40)`}>
-              <circle
-                r="22"
-                fill="white"
-                stroke="hsl(var(--border))"
-                strokeWidth="1"
-                opacity="0.9"
-              />
+              <circle r="22" fill="white" stroke="#e2e8e2" strokeWidth="1" opacity="0.9" />
               <polygon points="0,-16 5,4 0,0 -5,4" fill="hsl(0 70% 45%)" />
               <polygon points="0,16 5,-4 0,0 -5,-4" fill="hsl(0 0% 50%)" />
-              <text
-                y="-24"
-                textAnchor="middle"
-                fontSize="9"
-                fontWeight="600"
-                fill="hsl(var(--foreground))"
-              >
+              <text y="-24" textAnchor="middle" fontSize="9" fontWeight="600" fill="#1a1a1a">
                 N
               </text>
             </g>

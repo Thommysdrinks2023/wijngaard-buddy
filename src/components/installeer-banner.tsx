@@ -28,16 +28,11 @@ export function InstalleerBanner() {
 
   return (
     <div className="fixed bottom-36 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2">
-      <div
-        className="flex items-center gap-3 rounded-2xl border-2 p-3 shadow-xl"
-        style={{ backgroundColor: "#27232a", borderColor: "#cac176" }}
-      >
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_4px_20px_rgba(0,0,0,0.12)]">
         <img src="/logo-icon.png" alt="" className="h-10 w-10 object-contain" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">Installeer Wijngaard Buddy</p>
-          <p className="text-xs" style={{ color: "#cac176" }}>
-            Als app op je beginscherm — ook offline
-          </p>
+          <p className="text-sm font-semibold text-foreground">Installeer Wijngaard Buddy</p>
+          <p className="text-xs text-muted-foreground">Als app op je beginscherm — ook offline</p>
         </div>
         <button
           type="button"
@@ -45,8 +40,7 @@ export function InstalleerBanner() {
             await promptEvent.prompt();
             setPromptEvent(null);
           }}
-          className="flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold"
-          style={{ backgroundColor: "#cac176", color: "#27232a" }}
+          className="flex h-10 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
         >
           <Download className="h-4 w-4" /> Installeer
         </button>
@@ -57,7 +51,7 @@ export function InstalleerBanner() {
             localStorage.setItem(LS_AFGEWEZEN, String(Date.now()));
             setPromptEvent(null);
           }}
-          className="text-white/60"
+          className="text-muted-foreground"
         >
           <X className="h-5 w-5" />
         </button>

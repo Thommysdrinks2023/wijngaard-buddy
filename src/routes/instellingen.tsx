@@ -346,11 +346,8 @@ function Instellingen() {
                       to={item.to}
                       className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition active:scale-[0.99]"
                     >
-                      <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                        style={{ backgroundColor: "#27232a" }}
-                      >
-                        <Icon className="h-5 w-5" style={{ color: "#cac176" }} />
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft">
+                        <Icon className="h-5 w-5 text-primary" />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold">{item.label}</span>
@@ -708,7 +705,7 @@ function Instellingen() {
             <button
               type="button"
               onClick={downloadJsonBackup}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#cac176] bg-[#27232a] px-4 text-sm font-semibold text-[#cac176] transition hover:bg-[#0a0b09]"
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
             >
               <Download className="h-4 w-4" />
               Download backup
@@ -716,7 +713,7 @@ function Instellingen() {
             <button
               type="button"
               onClick={downloadCsvBackup}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#cac176] bg-[#27232a] px-4 text-sm font-semibold text-[#cac176] transition hover:bg-[#0a0b09]"
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
             >
               <Download className="h-4 w-4" />
               Download CSV
@@ -724,7 +721,7 @@ function Instellingen() {
             <button
               type="button"
               onClick={() => void downloadServerBackup()}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#cac176] bg-[#27232a] px-4 text-sm font-semibold text-[#cac176] transition hover:bg-[#0a0b09] sm:col-span-2"
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 sm:col-span-2"
             >
               <Database className="h-4 w-4" />
               Download serverdata (alle collecties)

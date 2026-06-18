@@ -94,8 +94,7 @@ function PrullenbakPage() {
                 <button
                   type="button"
                   onClick={() => void terugzetten(item)}
-                  className="flex h-12 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold"
-                  style={{ backgroundColor: "#27232a", color: "#cac176" }}
+                  className="flex h-12 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
                 >
                   <RotateCcw className="h-4 w-4" /> Terugzetten
                 </button>

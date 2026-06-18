@@ -8,10 +8,11 @@ import {
   owmIconUrl,
 } from "@/lib/weer";
 
-// Huisstijl De Tappenmars
-const GROEN = "#b6cfb3";
-const GOUD = "#cac176";
-const DONKER = "#27232a";
+// Weerwidget — frisse, lichtblauwe tint
+const GROEN = "#f0f7ff"; // achtergrond van de widget (lichtblauwe tint)
+const GOUD = "#dce9f6"; // subtiele blauwe border
+const DONKER = "#1a1a1a"; // tekstkleur
+const BLAUW = "#2b6cb0"; // accent voor icoon-cirkel en vorstwaarschuwing
 
 interface WeerKaartProps {
   // compact: één horizontale strook (voor de perceelkaart)
@@ -50,10 +51,10 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
           <div className="text-sm">
             <p className="font-semibold">Weerfunctie niet ingesteld</p>
             <p className="opacity-80">
-              Voeg <code className="rounded bg-white/40 px-1 text-xs">VITE_OWM_API_KEY</code>,{" "}
-              <code className="rounded bg-white/40 px-1 text-xs">VITE_WEER_LAT</code> en{" "}
-              <code className="rounded bg-white/40 px-1 text-xs">VITE_WEER_LON</code> toe aan{" "}
-              <code className="rounded bg-white/40 px-1 text-xs">.env</code> en herstart de app.
+              Voeg <code className="rounded bg-black/10 px-1 text-xs">VITE_OWM_API_KEY</code>,{" "}
+              <code className="rounded bg-black/10 px-1 text-xs">VITE_WEER_LAT</code> en{" "}
+              <code className="rounded bg-black/10 px-1 text-xs">VITE_WEER_LON</code> toe aan{" "}
+              <code className="rounded bg-black/10 px-1 text-xs">.env</code> en herstart de app.
             </p>
           </div>
         </div>
@@ -67,12 +68,12 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
         className="animate-pulse rounded-2xl border p-4"
         style={{ backgroundColor: GROEN, borderColor: GOUD }}
       >
-        <div className="h-8 w-40 rounded-lg bg-white/40" />
+        <div className="h-8 w-40 rounded-lg bg-black/10" />
         {!compact && (
           <div className="mt-3 grid grid-cols-3 gap-3">
-            <div className="h-14 rounded-xl bg-white/40" />
-            <div className="h-14 rounded-xl bg-white/40" />
-            <div className="h-14 rounded-xl bg-white/40" />
+            <div className="h-14 rounded-xl bg-black/10" />
+            <div className="h-14 rounded-xl bg-black/10" />
+            <div className="h-14 rounded-xl bg-black/10" />
           </div>
         )}
       </section>
@@ -160,7 +161,7 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
       <div className="mb-4 flex items-center gap-3">
         <div
           className="flex h-14 w-14 items-center justify-center rounded-full"
-          style={{ backgroundColor: DONKER }}
+          style={{ backgroundColor: BLAUW }}
         >
           <img src={owmIconUrl(data.icoon)} alt={data.omschrijving} className="h-12 w-12" />
         </div>
@@ -197,10 +198,10 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
       {/* Vorstwaarschuwing — kritiek voor de wijngaard */}
       {(vorstNu || vorstKomend) && (
         <div
-          className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold"
-          style={{ backgroundColor: DONKER, color: "#ffffff" }}
+          className="mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold"
+          style={{ backgroundColor: BLAUW, color: "#ffffff" }}
         >
-          <Snowflake className="h-4 w-4 shrink-0" style={{ color: GOUD }} />
+          <Snowflake className="h-4 w-4 shrink-0" style={{ color: "#bfdbfe" }} />
           {vorstNu
             ? "Vorstwaarschuwing: het is nu rond of onder 2°C"
             : "Let op: kans op (nacht)vorst de komende dagen"}
@@ -215,7 +216,7 @@ export function WeerKaart({ compact = false }: WeerKaartProps) {
               key={dag.datum}
               className="flex flex-col items-center rounded-xl border px-2 py-2 text-center"
               style={{
-                backgroundColor: "rgba(255,255,255,0.35)",
+                backgroundColor: "#ffffff",
                 borderColor: GOUD,
                 color: DONKER,
               }}
@@ -255,7 +256,7 @@ function WeerStat({
   return (
     <div
       className="flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center"
-      style={{ backgroundColor: "rgba(255,255,255,0.35)", borderColor: GOUD, color: DONKER }}
+      style={{ backgroundColor: "#ffffff", borderColor: GOUD, color: DONKER }}
     >
       {icoon}
       <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</p>

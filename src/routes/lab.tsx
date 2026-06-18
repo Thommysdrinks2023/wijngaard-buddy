@@ -295,8 +295,7 @@ function LabPage() {
                       href={l.bestand}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
-                      style={{ backgroundColor: "#27232a", color: "#cac176" }}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
                     >
                       <FileText className="h-3.5 w-3.5" /> Rapport bekijken
                     </a>

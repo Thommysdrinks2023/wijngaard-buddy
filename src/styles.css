@@ -24,6 +24,10 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-gold: var(--accent-gold);
+  --color-nav: var(--nav);
+  --color-nav-foreground: var(--nav-foreground);
+  --color-nav-muted: var(--nav-muted);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
@@ -72,6 +76,10 @@
   --muted-foreground: #e0e0e0;
   --accent: #ffd400;
   --accent-foreground: #000000;
+  --accent-gold: #ffd400;
+  --nav: #000000;
+  --nav-foreground: #ffffff;
+  --nav-muted: #cccccc;
   --destructive: #ff5544;
   --destructive-foreground: #000000;
   --success: #44dd66;
@@ -88,94 +96,95 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  /* De Tappenmars — warm boutique wine palette */
-  --brand-cream: #fbeecc;
-  --brand-gold: #cac176;
-  --brand-olive: #a1a35b;
-  --brand-light-gold: #e2d294;
-  --brand-green-light: #d4e6d3;
-  --brand-green-med: #b6cfb3;
-  --brand-dark: #27232a;
-  --brand-black: #0a0b09;
+  /* Wijngaard Buddy — fris, modern, clean (Apple/Google-stijl) */
+  --background: #f5f7f5; /* lichte achtergrond */
+  --foreground: #1a1a1a; /* hoofdtekst */
 
-  --background: #b6cfb3;
-  --foreground: #0a0b09;
+  --card: #ffffff; /* witte kaarten */
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
 
-  --card: #d4e6d3;
-  --card-foreground: #0a0b09;
-  --popover: #d4e6d3;
-  --popover-foreground: #0a0b09;
-
-  /* Primair: donker met witte tekst */
-  --primary: #27232a;
+  /* Primair: groen met witte tekst */
+  --primary: #4a8c5c;
   --primary-foreground: #ffffff;
-  --primary-soft: #d6e6d5;
+  --primary-soft: #e8f5e9; /* lichte variant voor hover/states */
 
-  --secondary: #cac176;
-  --secondary-foreground: #27232a;
+  --secondary: #e8f5e9;
+  --secondary-foreground: #2d5a3d;
 
-  --muted: #d6e6d5;
-  --muted-foreground: #5a5240;
+  --muted: #eef2ee;
+  --muted-foreground: #6b7a6b; /* secundaire tekst */
 
-  --accent: #cac176;
-  --accent-foreground: #27232a;
+  --accent: #e8f5e9;
+  --accent-foreground: #2d5a3d;
+  --accent-gold: #c9b84c; /* subtiel goudaccent */
 
-  --destructive: #a83b2a;
+  /* Navigatie: donker groen */
+  --nav: #2d5a3d;
+  --nav-foreground: #ffffff;
+  --nav-muted: #a8c5b0; /* inactieve nav-items */
+
+  --destructive: #d64444;
   --destructive-foreground: #ffffff;
 
-  --success: #a1a35b;
+  --success: #4a8c5c;
   --success-foreground: #ffffff;
 
-  --warning: #cac176;
-  --warning-foreground: #27232a;
+  --warning: #e6a817;
+  --warning-foreground: #1a1a1a;
 
-  --border: #cac176;
-  --input: #cac176;
-  --ring: #a1a35b;
+  --border: #e2e8e2; /* subtiele borders */
+  --input: #e2e8e2;
+  --ring: #4a8c5c;
 
-  --chart-1: #27232a;
-  --chart-2: #a1a35b;
-  --chart-3: #cac176;
-  --chart-4: #a83b2a;
-  --chart-5: #5a5240;
+  --chart-1: #4a8c5c; /* groen — primair */
+  --chart-2: #c9b84c; /* goud */
+  --chart-3: #e6a817; /* amber */
+  --chart-4: #d64444; /* rood */
+  --chart-5: #6b7a6b; /* grijsgroen */
 
-  --sidebar: #27232a;
+  --sidebar: #2d5a3d;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #cac176;
-  --sidebar-primary-foreground: #27232a;
-  --sidebar-accent: #3a3438;
+  --sidebar-primary: #c9b84c;
+  --sidebar-primary-foreground: #2d5a3d;
+  --sidebar-accent: #3a6b49;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #cac176;
-  --sidebar-ring: #cac176;
+  --sidebar-border: #3a6b49;
+  --sidebar-ring: #c9b84c;
 }
 
 .dark {
-  --background: oklch(0.18 0.03 150);
-  --foreground: oklch(0.96 0.01 120);
-  --card: oklch(0.22 0.04 150);
-  --card-foreground: oklch(0.96 0.01 120);
-  --popover: oklch(0.22 0.04 150);
-  --popover-foreground: oklch(0.96 0.01 120);
-  --primary: oklch(0.7 0.12 150);
-  --primary-foreground: oklch(0.18 0.03 150);
-  --primary-soft: oklch(0.3 0.05 150);
-  --secondary: oklch(0.28 0.04 150);
-  --secondary-foreground: oklch(0.96 0.01 120);
-  --muted: oklch(0.26 0.03 150);
-  --muted-foreground: oklch(0.7 0.02 130);
-  --accent: oklch(0.78 0.15 75);
-  --accent-foreground: oklch(0.22 0.04 150);
-  --destructive: oklch(0.65 0.2 27);
-  --destructive-foreground: oklch(0.98 0.01 120);
-  --success: oklch(0.7 0.15 150);
-  --success-foreground: oklch(0.18 0.03 150);
-  --warning: oklch(0.78 0.15 75);
-  --warning-foreground: oklch(0.22 0.04 150);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.12 150);
+  --background: #121712;
+  --foreground: #f1f5f1;
+  --card: #1a221b;
+  --card-foreground: #f1f5f1;
+  --popover: #1a221b;
+  --popover-foreground: #f1f5f1;
+  --primary: #5fa873;
+  --primary-foreground: #0e140f;
+  --primary-soft: #233027;
+  --secondary: #233027;
+  --secondary-foreground: #f1f5f1;
+  --muted: #1f291f;
+  --muted-foreground: #9fb0a0;
+  --accent: #233027;
+  --accent-foreground: #f1f5f1;
+  --accent-gold: #d4c45a;
+  --nav: #16201a;
+  --nav-foreground: #ffffff;
+  --nav-muted: #7e9a86;
+  --destructive: #e25a5a;
+  --destructive-foreground: #0e140f;
+  --success: #5fa873;
+  --success-foreground: #0e140f;
+  --warning: #e6a817;
+  --warning-foreground: #0e140f;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.14);
+  --ring: #5fa873;
 }
 
 @layer base {
@@ -189,14 +198,35 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      "Noto Sans",
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   h1,
   h2,
   h3,
   h4 {
-    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      "Noto Sans",
+      sans-serif;
     letter-spacing: -0.01em;
+    font-weight: 600;
   }
   /* Touch-friendly controls */
   button,
@@ -206,10 +236,11 @@
 }
 
 @layer utilities {
+  /* Witte kaart met subtiele schaduw — fris, modern, clean */
   .card-tappenmars {
-    background-color: #d4e6d3;
-    border: 1px solid rgba(202, 193, 118, 0.5);
-    box-shadow: 0 2px 8px -2px rgba(10, 11, 9, 0.12);
-    border-radius: 0.75rem;
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border-radius: 0.5rem;
   }
 }

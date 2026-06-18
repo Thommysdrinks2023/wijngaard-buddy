@@ -421,7 +421,7 @@ function GrafiekenPage() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={brixVerloop} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                     <XAxis
                       dataKey="datum"
                       tick={{ fontSize: 11 }}
@@ -459,7 +459,7 @@ function GrafiekenPage() {
                     data={brixGemPerRas}
                     margin={{ top: 8, right: 12, left: 0, bottom: 40 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                     <XAxis
                       dataKey="ras"
                       tick={{ fontSize: 10 }}
@@ -513,7 +513,7 @@ function GrafiekenPage() {
                     data={tempBrixVerloop}
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                     <XAxis
                       dataKey="datum"
                       tick={{ fontSize: 11 }}
@@ -571,7 +571,7 @@ function GrafiekenPage() {
                     data={stkBrixVerloop}
                     margin={{ top: 8, right: 12, left: 0, bottom: 8 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                     <XAxis
                       dataKey="datum"
                       tick={{ fontSize: 11 }}
@@ -627,7 +627,7 @@ function GrafiekenPage() {
                     data={ziektePerWeek}
                     margin={{ top: 8, right: 12, left: 0, bottom: 30 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                     <XAxis
                       dataKey="week"
                       tick={{ fontSize: 10 }}
@@ -655,7 +655,7 @@ function GrafiekenPage() {
                     data={opbrengstVergelijk}
                     margin={{ top: 8, right: 12, left: 0, bottom: 40 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                     <XAxis
                       dataKey="ras"
                       tick={{ fontSize: 10 }}
@@ -667,7 +667,7 @@ function GrafiekenPage() {
                     <Tooltip />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="voorspeld" fill="#94a3b8" name="Voorspeld" />
-                    <Bar dataKey="werkelijk" fill="#16a34a" name="Werkelijk" />
+                    <Bar dataKey="werkelijk" fill="#4a8c5c" name="Werkelijk" />
                   </BarChart>
                 </ResponsiveContainer>
               )}

@@ -76,8 +76,8 @@ function RijDetail() {
             <span className="h-12 flex-1" />
           )}
           <span
-            className="flex h-12 items-center rounded-xl px-4 text-sm font-bold"
-            style={{ backgroundColor: "#27232a", color: "#cac176" }}
+            className="flex h-12 items-center rounded-lg px-4 text-sm font-bold"
+            style={{ backgroundColor: "var(--nav)", color: "var(--nav-foreground)" }}
           >
             Rij {rij?.rijnummer ?? "…"}
           </span>

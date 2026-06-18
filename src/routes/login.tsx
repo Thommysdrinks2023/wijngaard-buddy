@@ -9,10 +9,6 @@ export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Inloggen — Wijngaard" }] }),
 });
 
-// Huisstijl De Tappenmars
-const GOUD = "#cac176";
-const DONKER = "#27232a";
-
 function LoginPage() {
   const navigate = useNavigate();
   const { naam: wijngaardNaam } = useWijngaardConfig();
@@ -65,25 +61,24 @@ function LoginPage() {
   }
 
   const inputClass =
-    "h-12 w-full rounded-xl border bg-white/95 px-3 text-base text-foreground outline-none focus:ring-2";
+    "h-12 w-full rounded-lg border border-border bg-card px-3 text-base text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-ring";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div
-        className="w-full max-w-sm overflow-hidden rounded-3xl border-2 shadow-xl"
-        style={{ borderColor: GOUD, backgroundColor: DONKER }}
-      >
+      <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
         {/* Kop met logo */}
-        <div className="flex flex-col items-center px-6 pb-5 pt-8 text-center">
+        <div className="flex flex-col items-center bg-nav px-6 pb-6 pt-8 text-center">
           <img src="/logo-icon.png" alt={wijngaardNaam} className="h-20 w-20 object-contain" />
-          <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">{wijngaardNaam}</h1>
-          <p className="mt-1 text-sm" style={{ color: GOUD }}>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-nav-foreground">
+            {wijngaardNaam}
+          </h1>
+          <p className="mt-1 text-sm text-nav-muted">
             {naamModus ? "Vul je naam in om te beginnen" : "Log in met je account"}
           </p>
         </div>
 
         {/* Formulier op lichte ondergrond */}
-        <div className="rounded-t-3xl bg-card px-6 pb-8 pt-6">
+        <div className="bg-card px-6 pb-8 pt-6">
           <form onSubmit={handleInloggen} className="space-y-4">
             {naamModus ? (
               <label className="block">
@@ -104,7 +99,6 @@ function LoginPage() {
                   }}
                   autoFocus
                   className={inputClass}
-                  style={{ borderColor: GOUD }}
                 />
               </label>
             ) : (
@@ -124,7 +118,6 @@ function LoginPage() {
                     autoFocus
                     autoComplete="username"
                     className={inputClass}
-                    style={{ borderColor: GOUD }}
                   />
                 </label>
                 <label className="block">
@@ -140,7 +133,6 @@ function LoginPage() {
                     }}
                     autoComplete="current-password"
                     className={inputClass}
-                    style={{ borderColor: GOUD }}
                   />
                 </label>
               </>
@@ -155,8 +147,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={bezig}
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold transition active:scale-[0.99] disabled:opacity-60"
-              style={{ backgroundColor: DONKER, color: GOUD }}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-primary-foreground transition active:scale-[0.99] disabled:opacity-60"
             >
               {bezig && <Loader2 className="h-5 w-5 animate-spin" />}
               {bezig ? "Bezig met inloggen…" : naamModus ? "Doorgaan" : "Inloggen"}

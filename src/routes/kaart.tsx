@@ -103,7 +103,7 @@ function KaartPage() {
       const rij = rijenById.get(rijnummer);
       const icoon = L.divIcon({
         className: "",
-        html: `<div style="background:#cac176;border:2px solid #27232a;border-radius:9999px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#27232a">${rijnummer}</div>`,
+        html: `<div style="background:#4a8c5c;border:2px solid #ffffff;border-radius:9999px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.3)">${rijnummer}</div>`,
         iconSize: [26, 26],
         iconAnchor: [13, 13],
       });
@@ -185,7 +185,7 @@ function KaartPage() {
         </div>
 
         {/* Kaart */}
-        <div className="overflow-hidden rounded-2xl border-2" style={{ borderColor: "#cac176" }}>
+        <div className="overflow-hidden rounded-2xl border border-border shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <div ref={kaartDivRef} className="h-80 w-full" />
           <div className="flex divide-x divide-border border-t border-border bg-card">
             <button
@@ -238,8 +238,7 @@ function KaartPage() {
               type="button"
               onClick={() => vastleggen.mutate()}
               disabled={vastleggen.isPending || !gekozenRij}
-              className="flex h-12 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:opacity-50"
-              style={{ backgroundColor: "#27232a", color: "#cac176" }}
+              className="flex h-12 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
             >
               {vastleggen.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

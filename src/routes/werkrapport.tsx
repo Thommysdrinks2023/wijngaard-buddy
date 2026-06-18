@@ -50,16 +50,16 @@ export const Route = createFileRoute("/werkrapport")({
   }),
 });
 
-// Huisstijl-palet voor het taartdiagram
+// Palet voor het taartdiagram — fris en goed onderscheidbaar
 const TAART_KLEUREN = [
-  "#27232a",
-  "#cac176",
-  "#a1a35b",
-  "#b6cfb3",
-  "#e2d294",
-  "#5a5240",
+  "#4a8c5c",
+  "#c9b84c",
+  "#e6a817",
   "#7e22ce",
-  "#a83b2a",
+  "#0891b2",
+  "#6b7a6b",
+  "#d64444",
+  "#3a6b49",
 ];
 
 function jaarOf(item: { seizoen?: number; datum: string }): number {
@@ -236,8 +236,8 @@ function WerkrapportPage() {
           {/* Spuitregistratie — wettelijk verplichte velden */}
           {isSpuiten && (
             <div
-              className="space-y-3 rounded-xl border-2 p-3"
-              style={{ borderColor: "#cac176", backgroundColor: "rgba(202,193,118,0.08)" }}
+              className="space-y-3 rounded-xl border p-3"
+              style={{ borderColor: "var(--primary)", backgroundColor: "var(--primary-soft)" }}
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 🧴 Spuitregistratie (verplicht voor gewasbescherming)
@@ -456,11 +456,11 @@ function WerkrapportPage() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={perTaak} layout="vertical" margin={{ left: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#cac17655" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                   <XAxis type="number" fontSize={12} unit=" u" />
                   <YAxis type="category" dataKey="taak" fontSize={12} width={90} />
                   <Tooltip formatter={(v) => [`${v} uur`, "Duur"]} />
-                  <Bar dataKey="uren" fill="#cac176" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="uren" fill="#4a8c5c" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

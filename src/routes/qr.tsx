@@ -29,7 +29,7 @@ function QrPage() {
         map[r.rijnummer] = await QRCode.toDataURL(qrInhoud(r.rijnummer), {
           width: 220,
           margin: 1,
-          color: { dark: "#27232a", light: "#ffffff" },
+          color: { dark: "#1a1a1a", light: "#ffffff" },
         });
       }
       if (actief) setCodes(map);
@@ -68,15 +68,13 @@ function QrPage() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold"
-            style={{ backgroundColor: "#27232a", color: "#cac176" }}
+            className="flex h-12 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground"
           >
             <Printer className="h-4 w-4" /> Afdrukken (A4)
           </button>
           <Link
             to="/scan"
-            className="flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-semibold"
-            style={{ borderColor: "#cac176", color: "#27232a" }}
+            className="flex h-12 items-center justify-center gap-2 rounded-lg border border-border bg-card text-sm font-semibold text-foreground"
           >
             <ScanLine className="h-4 w-4" /> Naar de scanner
           </Link>
@@ -96,10 +94,10 @@ function QrPage() {
                 ) : (
                   <div className="aspect-square w-full animate-pulse rounded bg-muted" />
                 )}
-                <p className="mt-1 text-sm font-bold leading-tight text-[#27232a]">
+                <p className="mt-1 text-sm font-bold leading-tight text-foreground">
                   Rij {r.rijnummer}
                 </p>
-                <p className="text-[10px] leading-tight text-[#5a5240]">{r.ras}</p>
+                <p className="text-[10px] leading-tight text-muted-foreground">{r.ras}</p>
               </div>
             ))}
           </div>

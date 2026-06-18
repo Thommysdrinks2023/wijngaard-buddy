@@ -144,10 +144,7 @@ function ScanPage() {
         </div>
 
         {scannerBeschikbaar ? (
-          <section
-            className="overflow-hidden rounded-2xl border-2"
-            style={{ borderColor: "#cac176" }}
-          >
+          <section className="overflow-hidden rounded-2xl border border-border shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
             {scannerActief ? (
               <div className="relative">
                 <video
@@ -159,7 +156,7 @@ function ScanPage() {
                 <button
                   type="button"
                   onClick={() => setScannerActief(false)}
-                  className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-[#27232a]"
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-foreground"
                 >
                   Stop scanner
                 </button>
@@ -169,7 +166,7 @@ function ScanPage() {
                 type="button"
                 onClick={() => setScannerActief(true)}
                 className="flex h-72 w-full flex-col items-center justify-center gap-3"
-                style={{ backgroundColor: "#27232a", color: "#cac176" }}
+                style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
               >
                 <Camera className="h-12 w-12" />
                 <span className="text-base font-semibold">Start camera</span>
@@ -212,8 +209,7 @@ function ScanPage() {
             />
             <button
               type="submit"
-              className="h-12 rounded-xl px-5 text-sm font-semibold"
-              style={{ backgroundColor: "#27232a", color: "#cac176" }}
+              className="h-12 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground"
             >
               Ga
             </button>

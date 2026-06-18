@@ -60,7 +60,7 @@ function SnelPage() {
       <AppHeader back title="Snelle meting" subtitle="Brix in 3 tikken" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
         <div className="flex items-center gap-2">
-          <Zap className="h-6 w-6" style={{ color: "#cac176" }} />
+          <Zap className="h-6 w-6 text-primary" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Snelle meting</h1>
             <p className="text-sm text-muted-foreground">
@@ -73,7 +73,7 @@ function SnelPage() {
         {laatste && (
           <div
             className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium"
-            style={{ backgroundColor: "#27232a", color: "#cac176" }}
+            style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
           >
             <Check className="h-4 w-4 shrink-0" />
             Opgeslagen: {laatste}
@@ -107,8 +107,7 @@ function SnelPage() {
               value={brix}
               onChange={(e) => setBrix(e.target.value)}
               autoFocus
-              className="h-20 w-full rounded-2xl border-2 bg-background px-4 text-center text-4xl font-bold tabular-nums"
-              style={{ borderColor: "#cac176" }}
+              className="h-20 w-full rounded-2xl border-2 border-primary bg-card px-4 text-center text-4xl font-bold tabular-nums outline-none focus:ring-2 focus:ring-ring"
               placeholder="0.0"
             />
           </label>
@@ -138,7 +137,7 @@ function SnelPage() {
             onClick={() => m.mutate()}
             disabled={m.isPending || !rijId}
             className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold disabled:opacity-50"
-            style={{ backgroundColor: "#27232a", color: "#cac176" }}
+            style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
           >
             {m.isPending ? (
               <Loader2 className="h-6 w-6 animate-spin" />

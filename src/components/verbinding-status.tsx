@@ -43,8 +43,7 @@ export function VerbindingBadge() {
   if (!online) {
     return (
       <span
-        className="flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold"
-        style={{ backgroundColor: "rgba(255,255,255,0.12)", color: "#ffffff" }}
+        className="flex h-8 items-center gap-1.5 rounded-full bg-white/15 px-2.5 text-[11px] font-semibold text-nav-foreground"
         title="Geen verbinding met de server — invoer wordt lokaal bewaard en later gesynchroniseerd"
       >
         <WifiOff className="h-3.5 w-3.5" />
@@ -57,8 +56,7 @@ export function VerbindingBadge() {
     return (
       <Link
         to="/login"
-        className="flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold"
-        style={{ backgroundColor: "#cac176", color: "#27232a" }}
+        className="flex h-8 items-center gap-1.5 rounded-full bg-warning px-2.5 text-[11px] font-semibold text-warning-foreground"
         title="Je bent niet ingelogd — invoer synct pas na inloggen"
       >
         <UserX className="h-3.5 w-3.5" />
@@ -72,8 +70,7 @@ export function VerbindingBadge() {
 
   return (
     <span
-      className="flex h-8 max-w-32 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold"
-      style={{ backgroundColor: "rgba(202,193,118,0.18)", color: "#cac176" }}
+      className="flex h-8 max-w-32 items-center gap-1.5 rounded-full bg-white/15 px-2.5 text-[11px] font-semibold text-nav-foreground"
       title={`Verbonden en ingelogd als ${naam}`}
     >
       <Wifi className="h-3.5 w-3.5 shrink-0" />

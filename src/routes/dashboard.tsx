@@ -311,10 +311,9 @@ function Dashboard() {
               <Link
                 key={s.to}
                 to={s.to}
-                className="flex h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border text-xs font-semibold transition active:scale-[0.97]"
-                style={{ backgroundColor: "#27232a", borderColor: "#cac176", color: "#cac176" }}
+                className="flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-semibold text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition hover:bg-primary-soft active:scale-[0.97]"
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-5 w-5 text-primary" />
                 {s.label}
               </Link>
             );
@@ -393,7 +392,7 @@ function Dashboard() {
             <div className="space-y-2">
               {gezondheidPerRas.map((g) => {
                 const pct = (g.avg / 5) * 100;
-                const kleur = g.avg >= 4 ? "#a1a35b" : g.avg >= 3 ? "#cac176" : "#a83b2a";
+                const kleur = g.avg >= 4 ? "#4a8c5c" : g.avg >= 3 ? "#e6a817" : "#d64444";
                 return (
                   <div key={g.ras}>
                     <div className="mb-1 flex items-baseline justify-between text-sm">
