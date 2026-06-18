@@ -18,6 +18,18 @@ export const Route = createFileRoute("/perceelkaart")({
   }),
 });
 
+// Standaard plantdichtheid: 5 planten per vak tussen de palen.
+const STANDAARD_PER_VAK = 5;
+
+// Fysieke rijlengte voor het bovenaanzicht. Rijen met minder planten per vak
+// (bv. rij 23/24 met 4 i.p.v. 5) zijn fysiek even lang, maar bevatten minder
+// planten. Reken daarom terug naar het equivalent aantal planten bij
+// standaarddichtheid, zodat de getekende rijlengte de echte lengte volgt en
+// niet het (lagere) plantaantal.
+function fysiekeLengteBasis(aantalPlanten: number, plantenPerVak?: number): number {
+  return aantalPlanten * (STANDAARD_PER_VAK / (plantenPerVak ?? STANDAARD_PER_VAK));
+}
+
 const RAS_KLEUR: Record<Ras, string> = {
   Muscaris: "#fde68a",
   "Souvignier Gris": "#eab308",
@@ -85,7 +97,10 @@ function Perceelkaart() {
     [rijenQ.data],
   );
 
-  const maxPlanten = useMemo(() => Math.max(1, ...rijen.map((r) => r.aantal_planten)), [rijen]);
+  const maxPlanten = useMemo(
+    () => Math.max(1, ...rijen.map((r) => fysiekeLengteBasis(r.aantal_planten, r.planten_per_vak))),
+    [rijen],
+  );
 
   // SVG canvas
   const VB_W = 800;
@@ -119,7 +134,10 @@ function Perceelkaart() {
       rijen.map((r, i, arr) => {
         const t = N === 1 ? 0.5 : i / (N - 1);
         const x = MARGIN_X + 8 + t * (innerW - 16);
-        const len = MIN_LEN + (r.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN);
+        const len =
+          MIN_LEN +
+          (fysiekeLengteBasis(r.aantal_planten, r.planten_per_vak) / FULL_PLANTEN) *
+            (MAX_LEN - MIN_LEN);
         // Uitzondering: de korte stomp-rij (rij 69, 36 planten) groeit van
         // onderkant omhoog — onderkant gelijk aan die van de buurrij, met gat
         // aan de bovenkant.
@@ -129,7 +147,9 @@ function Perceelkaart() {
         if (groeitVanOnder) {
           const buur = arr[i - 1] ?? arr[i + 1];
           const buurLen = buur
-            ? MIN_LEN + (buur.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN)
+            ? MIN_LEN +
+              (fysiekeLengteBasis(buur.aantal_planten, buur.planten_per_vak) / FULL_PLANTEN) *
+                (MAX_LEN - MIN_LEN)
             : len;
           yBottom = innerTop + buurLen;
           yTop = yBottom - len;
