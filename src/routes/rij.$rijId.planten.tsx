@@ -39,6 +39,8 @@ function PlantenPage() {
   });
 
   const rij = rijenQ.data?.find((r) => r.id === rijId);
+  // aantal planten per vak tussen de palen (standaard 5; rij 23/24 hebben er 4)
+  const perVak = rij?.planten_per_vak ?? 5;
   const [openPlant, setOpenPlant] = useState<number | null>(null);
 
   const gezondM = useMutation({
@@ -112,17 +114,22 @@ function PlantenPage() {
         {/* Plant grid */}
         {rij ? (
           <div>
+            {rij.notitie && (
+              <div className="mb-2 rounded-lg border border-border bg-primary-soft px-3 py-2 text-sm text-foreground">
+                ℹ️ {rij.notitie}
+              </div>
+            )}
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Planten ({rij.aantal_planten})
             </h2>
             <div className="rounded-2xl border border-border bg-card p-3">
-              {/* Render planten in groepjes van 5 met palen ertussen.
+              {/* Render planten in groepjes (vakken) met palen ertussen.
                   Elk groepje is een inline-flex blok dat als geheel wrapt,
-                  zodat palen nooit midden in een groep terechtkomen. */}
+                  zodat palen nooit midden in een vak terechtkomen. */}
               <div className="flex flex-wrap items-center gap-y-3">
-                {Array.from({ length: Math.ceil(plantStatuses.length / 5) }, (_, groupIdx) => {
-                  const group = plantStatuses.slice(groupIdx * 5, groupIdx * 5 + 5);
-                  const isLastGroup = groupIdx === Math.ceil(plantStatuses.length / 5) - 1;
+                {Array.from({ length: Math.ceil(plantStatuses.length / perVak) }, (_, groupIdx) => {
+                  const group = plantStatuses.slice(groupIdx * perVak, groupIdx * perVak + perVak);
+                  const isLastGroup = groupIdx === Math.ceil(plantStatuses.length / perVak) - 1;
                   return (
                     <div key={groupIdx} className="flex items-center">
                       <div className="flex items-center gap-1.5">
@@ -168,7 +175,7 @@ function PlantenPage() {
               </div>
             </div>
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Tik op een plant voor details en acties · paal na elke 5 planten
+              Tik op een plant voor details en acties · paal na elke {perVak} planten
             </p>
           </div>
         ) : (

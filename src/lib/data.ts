@@ -95,7 +95,9 @@ export function isIngelogd(): boolean {
 }
 
 // ---------- localStorage helpers ----------
-const LS_RIJEN = "wg.rijen.v2";
+// v3: actuele rijdata (69 rijen, juiste plantaantallen + notities). Het ophogen
+// van de versie zorgt dat bestaande apparaten de oude seed automatisch vervangen.
+const LS_RIJEN = "wg.rijen.v3";
 const LS_METINGEN = "wg.metingen.v1";
 const LS_OBS = "wg.observaties.v1";
 const LS_FENOLOGIE = "wg.fenologie.v1";
@@ -119,6 +121,8 @@ function ensureSeeded(): Rij[] {
     rijnummer: r.rijnummer,
     ras: r.ras,
     aantal_planten: r.aantal_planten,
+    notitie: r.notitie,
+    planten_per_vak: r.planten_per_vak,
   }));
   writeLs(LS_RIJEN, seeded);
   return seeded;
@@ -135,6 +139,8 @@ export async function fetchRijen(): Promise<Rij[]> {
         rijnummer: r.rijnummer,
         ras: r.ras,
         aantal_planten: r.aantal_planten,
+        notitie: r.notitie || undefined,
+        planten_per_vak: r.planten_per_vak || undefined,
       }));
       if (mapped.length > 0) {
         // cache voor offline gebruik (vervangt lokale seed door echte server-ids)

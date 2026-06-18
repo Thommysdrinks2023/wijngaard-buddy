@@ -22,80 +22,85 @@ const base = baseUrl.replace(/\/+$/, "");
 
 const AUTH_RULE = "@request.auth.id != ''";
 
+const VAK4 = "4 planten per vak (i.p.v. standaard 5)";
+const VAK6 = "Laatste vak heeft 6 planten, zelfde rijlengte";
+
+// [rijnummer, ras, aantal_planten, notitie?, planten_per_vak?]
 const SEED_RIJEN = [
   [1, "Muscaris", 10],
   [2, "Muscaris", 15],
   [3, "Muscaris", 20],
   [4, "Muscaris", 25],
   [5, "Muscaris", 30],
-  [6, "Souveginier Gris", 34],
-  [7, "Souveginier Gris", 39],
-  [8, "Souveginier Gris", 43],
-  [9, "Souveginier Gris", 49],
-  [10, "Souveginier Gris", 49],
-  [11, "Souveginier Gris", 49],
-  [12, "Souveginier Gris", 50],
-  [13, "Souveginier Gris", 50],
-  [14, "Souveginier Gris", 50],
-  [15, "Souveginier Gris", 56],
-  [16, "Souveginier Gris", 58],
-  [17, "Souveginier Gris", 59],
-  [18, "Souveginier Gris", 60],
-  [19, "Souveginier Gris", 61],
-  [20, "Souveginier Gris", 63],
-  [21, "Souveginier Gris", 63],
-  [22, "Johanniter", 64],
-  [23, "Johanniter", 66],
-  [24, "Johanniter", 67],
-  [25, "Johanniter", 68],
-  [26, "Johanniter", 70],
-  [27, "Johanniter", 72],
-  [28, "Johanniter", 74],
-  [29, "Johanniter", 75],
-  [30, "Johanniter", 75],
-  [31, "Johanniter", 77],
-  [32, "Johanniter", 79],
-  [33, "Johanniter", 81],
-  [34, "Johanniter", 82],
-  [35, "Johanniter", 83],
-  [36, "Johanniter", 84],
-  [37, "Johanniter", 85],
-  [38, "Johanniter", 85],
-  [39, "Johanniter", 86],
-  [40, "Johanniter", 87],
-  [41, "Regent", 88],
-  [42, "Regent", 88],
-  [43, "Regent", 89],
-  [44, "Regent", 89],
-  [46, "Regent", 90],
-  [47, "Regent", 90],
-  [45, "Pinot Noir", 90],
-  [65, "Pinot Noir", 87],
-  [68, "Pinot Noir", 36],
-  [48, "Chardonnay", 90],
-  [49, "Chardonnay", 91],
-  [50, "Chardonnay", 91],
-  [51, "Chardonnay", 91],
-  [52, "Chardonnay", 91],
-  [53, "Chardonnay", 91],
-  [54, "Chardonnay", 90],
-  [55, "Chardonnay", 90],
-  [56, "Chardonnay", 90],
-  [57, "Pinotin", 90],
-  [58, "Pinotin", 90],
-  [59, "Pinotin", 89],
-  [60, "Pinotin", 89],
-  [61, "Pinotin", 89],
-  [62, "Pinotin", 88],
-  [63, "Pinotin", 88],
-  [64, "Pinotin", 87],
-  [66, "Pinotin", 87],
-  [67, "Pinotin", 87],
+  [6, "Souvignier Gris", 34],
+  [7, "Souvignier Gris", 39],
+  [8, "Souvignier Gris", 43],
+  [9, "Souvignier Gris", 49],
+  [10, "Souvignier Gris", 49],
+  [11, "Souvignier Gris", 49],
+  [12, "Souvignier Gris", 49],
+  [13, "Souvignier Gris", 50],
+  [14, "Souvignier Gris", 50],
+  [15, "Souvignier Gris", 51],
+  [16, "Souvignier Gris", 52],
+  [17, "Souvignier Gris", 53],
+  [18, "Souvignier Gris", 55],
+  [19, "Souvignier Gris", 56],
+  [20, "Souvignier Gris", 58],
+  [21, "Souvignier Gris", 59],
+  [22, "Souvignier Gris", 60],
+  [23, "Johanniter", 50, VAK4, 4],
+  [24, "Johanniter", 51, VAK4, 4],
+  [25, "Johanniter", 65],
+  [26, "Johanniter", 67],
+  [27, "Johanniter", 68],
+  [28, "Johanniter", 70],
+  [29, "Johanniter", 71, VAK6],
+  [30, "Johanniter", 72],
+  [31, "Johanniter", 73],
+  [32, "Johanniter", 74],
+  [33, "Johanniter", 76, VAK6],
+  [34, "Johanniter", 77],
+  [35, "Johanniter", 78],
+  [36, "Johanniter", 79],
+  [37, "Johanniter", 80],
+  [38, "Johanniter", 81, VAK6],
+  [39, "Johanniter", 81],
+  [40, "Regent", 82],
+  [41, "Pinot Noir", 83],
+  [42, "Regent", 83],
+  [43, "Regent", 84],
+  [44, "Regent", 84],
+  [45, "Regent", 85],
+  [46, "Regent", 85],
+  [47, "Regent", 86, VAK6],
+  [48, "Chardonnay", 86, VAK6],
+  [49, "Chardonnay", 86, VAK6],
+  [50, "Chardonnay", 86, VAK6],
+  [51, "Chardonnay", 86, VAK6],
+  [52, "Chardonnay", 86, VAK6],
+  [53, "Chardonnay", 86, VAK6],
+  [54, "Chardonnay", 86, VAK6],
+  [55, "Pinotin", 85],
+  [56, "Pinotin", 85],
+  [57, "Pinotin", 85],
+  [58, "Pinotin", 85],
+  [59, "Pinotin", 84],
+  [60, "Pinotin", 84],
+  [61, "Pinotin", 84],
+  [62, "Pinotin", 83],
+  [63, "Pinotin", 83],
+  [64, "Pinotin", 82],
+  [65, "Pinotin", 82],
+  [66, "Pinot Noir", 82],
+  [67, "Pinotin", 81, VAK6],
+  [68, "Pinotin", 81, VAK6],
+  [69, "Pinot Noir", 36, VAK6],
 ];
 
 const RAS_VALUES = [
   "Muscaris",
-  "Souveginier Gris",
+  "Souvignier Gris",
   "Johanniter",
   "Regent",
   "Pinot Noir",
@@ -215,6 +220,8 @@ async function main() {
       { name: "rijnummer", type: "number", required: true, onlyInt: true },
       { name: "ras", type: "select", required: true, maxSelect: 1, values: RAS_VALUES },
       { name: "aantal_planten", type: "number", onlyInt: true },
+      { name: "notitie", type: "text" },
+      { name: "planten_per_vak", type: "number", onlyInt: true },
       ...autodateFields(),
     ],
     listRule: AUTH_RULE,
@@ -632,22 +639,58 @@ async function main() {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);
   }
 
-  // 4. rijen seeden
-  console.log("Rijen seeden...");
-  const bestaande = await api("/api/collections/rijen/records?perPage=1");
-  if (bestaande.totalItems > 0) {
-    console.log(
-      `  ✓ rijen-collectie bevat al ${bestaande.totalItems} records, seeden overgeslagen`,
-    );
-  } else {
-    for (const [rijnummer, ras, aantal_planten] of SEED_RIJEN) {
-      await api("/api/collections/rijen/records", {
-        method: "POST",
-        body: { rijnummer, ras, aantal_planten },
-      });
+  // 4a. rijen-schema migreren op bestaande databases:
+  //   - notitie + planten_per_vak velden toevoegen
+  //   - ras-select bijwerken naar de juiste rasnamen (o.a. "Souvignier Gris")
+  await ensureVelden("rijen", [
+    { name: "notitie", type: "text" },
+    { name: "planten_per_vak", type: "number", onlyInt: true },
+  ]);
+  {
+    const col = await api("/api/collections/rijen");
+    const rasVeld = col.fields.find((f) => f.name === "ras");
+    if (rasVeld && JSON.stringify(rasVeld.values) !== JSON.stringify(RAS_VALUES)) {
+      const velden = col.fields.map((f) => (f.name === "ras" ? { ...f, values: RAS_VALUES } : f));
+      await api(`/api/collections/${col.id}`, { method: "PATCH", body: { fields: velden } });
+      console.log("  ✓ ras-select bijgewerkt naar actuele rasnamen");
     }
-    console.log(`  + ${SEED_RIJEN.length} rijen aangemaakt`);
   }
+
+  // 4b. rijen seeden/bijwerken (idempotent: bestaande rijen worden geüpdatet,
+  //     nieuwe aangemaakt, en rijen die niet meer in de seed staan verwijderd)
+  console.log("Rijen seeden/bijwerken...");
+  const bestaandeRijen = await api("/api/collections/rijen/records?perPage=500&sort=rijnummer");
+  const perNummer = new Map();
+  for (const rec of bestaandeRijen.items ?? []) perNummer.set(rec.rijnummer, rec);
+  let nieuw = 0;
+  let bijgewerkt = 0;
+  for (const [rijnummer, ras, aantal_planten, notitie, planten_per_vak] of SEED_RIJEN) {
+    const body = {
+      rijnummer,
+      ras,
+      aantal_planten,
+      notitie: notitie ?? "",
+      planten_per_vak: planten_per_vak ?? 5,
+    };
+    const bestaand = perNummer.get(rijnummer);
+    if (bestaand) {
+      await api(`/api/collections/rijen/records/${bestaand.id}`, { method: "PATCH", body });
+      perNummer.delete(rijnummer);
+      bijgewerkt++;
+    } else {
+      await api("/api/collections/rijen/records", { method: "POST", body });
+      nieuw++;
+    }
+  }
+  // overgebleven records (bv. een oude rij 70) staan niet meer in de seed → verwijderen
+  let verwijderd = 0;
+  for (const rec of perNummer.values()) {
+    await api(`/api/collections/rijen/records/${rec.id}`, { method: "DELETE" });
+    verwijderd++;
+  }
+  console.log(
+    `  ✓ rijen: ${nieuw} nieuw, ${bijgewerkt} bijgewerkt, ${verwijderd} verwijderd (${SEED_RIJEN.length} totaal)`,
+  );
 
   // 5. gebruikers
   console.log("Gebruikers aanmaken...");

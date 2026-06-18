@@ -7,6 +7,10 @@ export interface Rij {
   rijnummer: number;
   ras: Ras;
   aantal_planten: number;
+  // optionele veldnotitie bij deze rij
+  notitie?: string;
+  // aantal planten per vak tussen de palen (standaard 5)
+  planten_per_vak?: number;
 }
 
 export type RijpheidScore = 1 | 2 | 3 | 4 | 5;

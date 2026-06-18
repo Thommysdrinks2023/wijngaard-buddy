@@ -94,6 +94,13 @@ function RijDetail() {
           )}
         </div>
 
+        {/* Veldnotitie bij deze rij */}
+        {rij?.notitie && (
+          <div className="rounded-xl border border-border bg-primary-soft px-3 py-2.5 text-sm text-foreground">
+            ℹ️ {rij.notitie}
+          </div>
+        )}
+
         {/* Plant view link */}
         <Link
           to="/rij/$rijId/planten"

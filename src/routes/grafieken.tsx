@@ -53,7 +53,7 @@ export const Route = createFileRoute("/grafieken")({
 
 const RAS_KLEUR: Record<Ras, string> = {
   Muscaris: "#fde68a",
-  "Souveginier Gris": "#eab308",
+  "Souvignier Gris": "#eab308",
   Johanniter: "#86efac",
   Regent: "#7e22ce",
   "Pinot Noir": "#7f1d1d",

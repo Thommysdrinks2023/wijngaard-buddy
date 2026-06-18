@@ -20,7 +20,7 @@ export const Route = createFileRoute("/perceelkaart")({
 
 const RAS_KLEUR: Record<Ras, string> = {
   Muscaris: "#fde68a",
-  "Souveginier Gris": "#eab308",
+  "Souvignier Gris": "#eab308",
   Johanniter: "#86efac",
   Regent: "#7e22ce",
   "Pinot Noir": "#7f1d1d",
@@ -110,7 +110,7 @@ function Perceelkaart() {
   // Alle rijen starten bovenaan op dezelfde horizontale lijn (yTop = innerTop)
   // en hangen naar beneden. Bottom-rand volgt dus de rij-tips (licht gebogen).
 
-  // Maximum length op basis van een "vol" rij (bv. 91 planten) zodat de onderlijn vast ligt
+  // Maximum length op basis van een "vol" rij (bv. 86 planten) zodat de onderlijn vast ligt
   const FULL_PLANTEN = maxPlanten;
 
   // Pre-compute rij geometry (gememoized: alleen herberekenen als de rijen wijzigen)
@@ -120,9 +120,10 @@ function Perceelkaart() {
         const t = N === 1 ? 0.5 : i / (N - 1);
         const x = MARGIN_X + 8 + t * (innerW - 16);
         const len = MIN_LEN + (r.aantal_planten / FULL_PLANTEN) * (MAX_LEN - MIN_LEN);
-        // Uitzondering: rij 68 groeit van onderkant omhoog — onderkant gelijk
-        // aan onderkant van buurrij (rij 67), met gat aan de bovenkant.
-        const groeitVanOnder = r.rijnummer === 68;
+        // Uitzondering: de korte stomp-rij (rij 69, 36 planten) groeit van
+        // onderkant omhoog — onderkant gelijk aan die van de buurrij, met gat
+        // aan de bovenkant.
+        const groeitVanOnder = r.rijnummer === 69;
         let yTop = innerTop;
         let yBottom = innerTop + len;
         if (groeitVanOnder) {

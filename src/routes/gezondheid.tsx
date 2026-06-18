@@ -44,7 +44,7 @@ export const Route = createFileRoute("/gezondheid")({
 
 const RAS_KLEUR: Record<string, string> = {
   Muscaris: "#caa53d",
-  "Souveginier Gris": "#eab308",
+  "Souvignier Gris": "#eab308",
   Johanniter: "#5f9e54",
   Regent: "#7e22ce",
   "Pinot Noir": "#7f1d1d",

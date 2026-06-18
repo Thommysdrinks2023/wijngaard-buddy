@@ -201,7 +201,7 @@ function ScanPage() {
               type="number"
               inputMode="numeric"
               min={1}
-              max={68}
+              max={69}
               value={handmatig}
               onChange={(e) => setHandmatig(e.target.value)}
               placeholder="Bijv. 12"
