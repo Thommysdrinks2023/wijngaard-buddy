@@ -1,10 +1,10 @@
 # Wijngaard Buddy — CLAUDE.md
 
-Projectinstructies voor Claude Code. Lees dit aan het begin van elke sessie.
+Projectinstructies voor Claude Code. Lees dit aan het begin van elke sessie. Lees ook `ARCHITECTURE.md` — het autoritatieve systeemontwerp voor de uitbouw naar **Tappenmars Buddy** (modulair bedrijfsdashboard met Wijngaard/Kelder/Voorraad). Kelder Fase 0–2 is gebouwd (partijen, tankbeheer, tankboek met validatieregels, analyses, kelderlog); botteling en voorraad (Fase 3+) nog niet.
 
 ## Wat is dit?
 
-**Wijngaard Buddy** is een Progressive Web App (PWA) voor het beheren van wijngaard **De Tappenmars** in Den Ham (Overijssel). Eigenaar: Thomas (thomas@tappenmars.nl).
+**Wijngaard Buddy** is een Progressive Web App (PWA) voor het beheren van wijngaard **De Tappenmars** in Den Ham (Overijssel). Eigenaar: Thomas (thomas@tappenmars.nl). De app groeit uit tot **Tappenmars Buddy**: `/` is een modulekiezer, `/wijngaard` is deze bestaande wijngaardmodule, `/kelder/*` is de kelder-uitbouw (zie `ARCHITECTURE.md`).
 
 De app registreert Brix-metingen, observaties, fenologie en plant-status per rij. Offline-first: alles werkt zonder internet via localStorage-cache; PocketBase is de backend wanneer beschikbaar.
 
@@ -33,14 +33,20 @@ pocketbase/
 ### Routeoverzicht (belangrijkste)
 | Route | Pagina |
 |---|---|
-| `/` | Dashboard |
+| `/` | Modulekiezer (tegels: Wijngaard, Kelder, Voorraad [binnenkort], Assistent) |
+| `/wijngaard` | Redirect naar `/perceelkaart` — bestaande wijngaardmodule, ongewijzigd |
 | `/perceelkaart` | SVG bovenaanzicht van de wijngaard |
 | `/rij/$rijId` | Rij-detail (metingen, observaties, fenologie) |
 | `/rij/$rijId/planten` | Plant-status per vak in de rij |
 | `/snel` | Snelle Brix-meting in 3 tikken |
 | `/scan` | QR-scanner (rijpalen) |
+| `/kelder` | Kelderdashboard: tankinventaris (48 tanks), actieve partijen, kerncijfers |
+| `/kelder/partijen` | Partijenlijst; `/kelder/partijen/nieuw` (met eerste vulling), `/kelder/partijen/$partijId` (detail: tankboek, analyses, kelderlog) |
+| `/kelder/tanks` | Tankbeheer; `/kelder/tanks/$tankId` (detail + historie + herbereken) |
+| `/kelder/overhevelen` | Overhevel-formulier (servervalidatie) |
+| `/kelder/tankboek` | Onwijzigbaar register, filterbaar, printbaar |
 | `/assistent` | AI-assistent (Claude, in opbouw) |
-| `/instellingen` | App- en wijngaard-instellingen |
+| `/instellingen` | App- en wijngaard-instellingen (incl. "start direct in laatst gebruikte module") |
 
 ## Dev-omgeving opstarten
 
@@ -48,6 +54,9 @@ pocketbase/
 
 ```bash
 # 1. PocketBase starten (aparte terminal, in projectmap)
+#    Op deze Windows dev-machine draait dit al automatisch via de
+#    Taakplanner — zie "PocketBase op Windows" hieronder. Handmatig starten
+#    (bijv. op een andere machine) kan gewoon met:
 ./pocketbase/pocketbase.exe serve --http=127.0.0.1:8090
 
 # 2. PocketBase schema + seed initialiseren (alleen 1e keer of na reset)
@@ -68,6 +77,35 @@ VITE_WEER_LON=6.48405
 ```
 
 **Offline werken zonder PocketBase:** de app seeded automatisch localStorage-sleutel `wg.rijen.v3` bij eerste bezoek. Cache-versie ophogen in `src/lib/data.ts` om reseed te forceren.
+
+## PocketBase op Windows (Taakplanner)
+
+Op deze dev-machine draait PocketBase niet meer als los terminalproces (dat stierf bij herstart of het sluiten van het venster), maar als een **Windows Taakplanner-taak** die automatisch start bij aanmelden.
+
+- **Taaknaam**: `PocketBase Tappenmars`
+- **Startscript**: `deploy/start-pocketbase.bat` — `cd`'t naar `pocketbase/` (niet de projectroot: `pb_data` en `pb_hooks` staan in die submap) en start `.\pocketbase.exe serve --http=127.0.0.1:8090`
+- **Trigger**: bij aanmelden van de gebruiker (`ONLOGON`); logt alleen in als de gebruiker is aangemeld (`Interactive`, geen opgeslagen wachtwoord)
+- **Herstelgedrag**: bij een crash 3 herstartpogingen met 1 minuut interval; geen tijdslimiet op de taak (server mag onbeperkt blijven draaien)
+- **`pb_data`-backup**: `pocketbase/pb_data_backup_<datum>` (gemaakt vóór de omzetting naar de Taakplanner)
+
+**Herstarten:**
+```powershell
+schtasks /End /TN "PocketBase Tappenmars"
+schtasks /Run /TN "PocketBase Tappenmars"
+```
+
+**Stoppen** (zonder de taak zelf te verwijderen):
+```powershell
+schtasks /End /TN "PocketBase Tappenmars"
+```
+
+**Logs bekijken:** de taak draait zonder zichtbaar venster, dus er is geen live logvenster. Om output te zien: stop de taak (hierboven) en draai het bat-bestand tijdelijk handmatig in een terminal:
+```powershell
+& "deploy\start-pocketbase.bat"
+```
+Sluit dat venster (Ctrl+C) en start de Taakplanner-taak weer op zodra je klaar bent met kijken.
+
+**Bekende valkuil — `NoDefaultCurrentDirectoryInExePath`:** deze machine heeft een Windows-hardeningsvariabele actief (vaak door beveiligingssoftware gezet) die voorkomt dat `cmd.exe` een kale bestandsnaam (`pocketbase.exe`) in de huidige werkmap zoekt — alleen nog op het PATH. Resultaat: `"pocketbase.exe is not recognized"` ondanks dat het bestand er echt staat. Daarom gebruikt `start-pocketbase.bat` bewust `.\pocketbase.exe` (expliciet relatief pad) in plaats van de kale bestandsnaam. Kom je deze foutmelding ergens anders tegen in een `.bat`-bestand: zelfde fix.
 
 ## Codeerconventies
 
@@ -95,4 +133,8 @@ VITE_WEER_LON=6.48405
 - **VPS (Hetzner)**: PocketBase draait niet op de VPS — wachtwoord reset nodig via Hetzner-console. Plan: `pb.tappenmars.nl` voor HTTPS-productie, SSL via Cloud86.
 - **Raspberry Pi migratie**: gepland als productie-backend (lokaal in de schuur), nog niet uitgevoerd.
 - **/assistent route**: in opbouw. `VITE_ANTHROPIC_API_KEY` nog niet ingesteld — de pagina laadt maar AI-gesprekken werken niet zonder sleutel.
-- **localStorage-sleutels**: `wg.rijen.v3` (rijen-cache), `wg.wijngaard_config.v1` (config). Versienummer ophogen = reseed bij volgende app-start.
+- **localStorage-sleutels**: `wg.rijen.v3` (rijen-cache), `wg.wijngaard_config.v1` (config), `wg.instellingen.laatste_module.v1`/`wg.instellingen.auto_start_module.v1` (modulekiezer). Versienummer ophogen = reseed bij volgende app-start.
+- **Kelder-module (Tappenmars Buddy), Fase 0–2 gebouwd**: collecties `producenten`, `partijen` (met producent/opdracht_type/ouder_partij/lotnummer/dichtheden), `tanks` (48 stuks geseed uit Thomas' Excel-tankinventaris; `huidige_partij`/`huidig_volume_l` zijn CACHES), `tankboek` (onwijzigbaar register: API-rules create/update/delete = null), `analyses`, `kelderlog` (werklogboek), `regelgeving_instellingen` (scaffold). Datalagen: `kelder-data.ts` + `partijen-data.ts` (online-only, bewust géén sync-wachtrij). Dichtheidsconversie °Oe↔Brix↔SG in `src/lib/dichtheid.ts` (SG-gebaseerde formule, níet de lineaire benadering). Volgende fases (botteling, voorraad, cuvée/splitsing): zie `ARCHITECTURE.md`.
+- **Tankboek-boekingen lopen UITSLUITEND via server-endpoints** (`pocketbase/pb_hooks/kelder.pb.js`): `POST /api/tappenmars/partij-aanmaken`, `/tankboek-boeking`, `/tanks-herbereken`. Atomisch via `runInTransaction`; valideert capaciteit, bronvolume ("systeem toont X L, jij boekt Y L"), doeltank-partij, status, toekomstdatum. Correcties = nieuwe regel met `corrigeert`-verwijzing, nooit bewerken.
+- **PocketBase JSVM-valkuilen** (kostte een debugsessie — niet opnieuw ontdekken): (1) routerAdd-handlers draaien in een VM-pool waar closures én top-level functies uit het .pb.js-bestand NIET bestaan — gedeelde code via `require(`${__hooks}/bestand.js`)` bínnen de handler (zie `kelder_logica.js`); (2) fouten gegooid binnen `runInTransaction` verliezen hun boodschap — valideer zonder te gooien (retourneer `{ fout }`) en gooi de `BadRequestError` pas buiten de transactie; (3) hooks herladen niet op Windows — PocketBase herstarten na elke wijziging in `pb_hooks/`.
+- **TanStack Router — routes onder een bestaande pagina nesten automatisch.** Een bestand als `kelder.tanks.tsx` wordt door de router-generator een kind-route van `kelder.tsx` zodra die bestaat, en dan moet `kelder.tsx` een `<Outlet />` bevatten (patroon: `rij.$rijId.tsx`) — anders rendert de kind-route de verkeerde inhoud (dit ging eerder mis). Wil je bewust een "vlakke" route zonder nesting terwijl de ouder al bestaat, gebruik dan de trailing-underscore-escape (`kelder_.partijen.tsx` → `/kelder/partijen`, geen parent-layout).
