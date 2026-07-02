@@ -30,6 +30,7 @@ import {
   Sun,
   History,
   Sparkles,
+  Home,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -47,6 +48,12 @@ import {
 import { getWijngaardConfig, setWijngaardConfig } from "@/lib/wijngaard-config";
 import { getSyncFouten, wisSyncFouten } from "@/lib/sync";
 import { getAuditLog } from "@/lib/audit";
+import {
+  getAutoStartModule,
+  getLaatsteModule,
+  MODULE_LABELS,
+  setAutoStartModule,
+} from "@/lib/module-keuze";
 
 // Volledig menu, gegroepeerd: Veld (registreren), Analyse (bekijken), Beheer
 const MENU_GROEPEN = [
@@ -307,6 +314,8 @@ function Instellingen() {
   const [weergave, setWeergaveState] = useState<Weergave>(() => getWeergave());
   const [syncFouten, setSyncFouten] = useState(() => getSyncFouten());
   const [toonAudit, setToonAudit] = useState(false);
+  const [autoStart, setAutoStartState] = useState(() => getAutoStartModule());
+  const laatsteModule = getLaatsteModule();
 
   const wijzigWeergave = (deel: Partial<Weergave>) => {
     const nieuw = { ...weergave, ...deel };
@@ -573,6 +582,34 @@ function Instellingen() {
               </span>
             </button>
           </div>
+        </section>
+
+        {/* Startscherm: modulekiezer of direct naar laatst gebruikte module */}
+        <section className="space-y-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <Home className="h-4 w-4" /> Startscherm
+          </h2>
+          <button
+            type="button"
+            onClick={() => {
+              const nieuw = !autoStart;
+              setAutoStartState(nieuw);
+              setAutoStartModule(nieuw);
+            }}
+            className={`flex h-14 w-full items-center justify-between rounded-xl border-2 px-4 text-sm font-semibold transition ${
+              autoStart
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card"
+            }`}
+          >
+            Start direct in laatst gebruikte module
+            <span className="text-xs font-normal opacity-70">{autoStart ? "aan" : "uit"}</span>
+          </button>
+          <p className="text-xs text-muted-foreground">
+            Laatst gebruikt:{" "}
+            {laatsteModule ? MODULE_LABELS[laatsteModule] : "nog geen module gekozen"}. Indien uit,
+            toont het startscherm altijd de modulekeuze.
+          </p>
         </section>
 
         {/* Sync-problemen: records die de server blijvend weigerde */}

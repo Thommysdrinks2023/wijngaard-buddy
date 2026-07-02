@@ -89,3 +89,217 @@ export interface Fenologie {
   ingevoerd_door: string;
   created: string;
 }
+
+// ============= Partijen (wijngaard → kelder overdracht) =============
+// Vroeg-stadium concept: een partij volgt geoogste druiven vóór tanktoewijzing.
+// Koppeling met wijnbatches/tanks is toekomstig werk.
+export type PartijType = "wit" | "rood" | "rosé" | "mousserend" | "overig";
+export const PARTIJ_TYPES: PartijType[] = ["wit", "rood", "rosé", "mousserend", "overig"];
+
+export type PartijStatus =
+  | "most"
+  | "gisting"
+  | "opvoeding"
+  | "klaar_voor_botteling"
+  | "gebotteld"
+  | "afgevoerd";
+
+export const PARTIJ_STATUSSEN: { value: PartijStatus; label: string; emoji: string }[] = [
+  { value: "most", label: "Most", emoji: "🍇" },
+  { value: "gisting", label: "Gisting", emoji: "🔥" },
+  { value: "opvoeding", label: "Opvoeding", emoji: "😴" },
+  { value: "klaar_voor_botteling", label: "Klaar voor botteling", emoji: "🧪" },
+  { value: "gebotteld", label: "Gebotteld", emoji: "🍾" },
+  { value: "afgevoerd", label: "Afgevoerd", emoji: "🗑️" },
+];
+
+export interface Partij {
+  id: string;
+  naam: string;
+  jaargang: number;
+  type: PartijType;
+  status: PartijStatus;
+  samenstelling?: string;
+  start_volume_l?: number | null;
+  notitie?: string;
+  // kelder Fase 0–2
+  producent?: string | null; // producent id
+  opdracht_type?: OpdrachtType | null;
+  ouder_partij?: string | null; // partij id — genealogie (cuvée/splitsing, UI later)
+  lotnummer?: string;
+  pers_datum?: string;
+  gist?: string;
+  start_dichtheid_oechsle?: number | null;
+  start_dichtheid_brix?: number | null;
+  start_dichtheid_sg?: number | null;
+  start_tank?: string | null; // tank id
+  created: string;
+  updated?: string;
+}
+
+export type OpdrachtType = "eigen_wijn" | "drank" | "loonproductie" | "bottelservice";
+export const OPDRACHT_TYPES: { value: OpdrachtType; label: string }[] = [
+  { value: "eigen_wijn", label: "Eigen wijn" },
+  { value: "drank", label: "Drankproductie" },
+  { value: "loonproductie", label: "Loonproductie" },
+  { value: "bottelservice", label: "Bottelservice" },
+];
+
+// ============= Producenten =============
+export type ProducentSoort = "eigen_wijngaard" | "drankproductie" | "extern_klant";
+
+export interface Producent {
+  id: string;
+  naam: string;
+  soort: ProducentSoort;
+  actief: boolean;
+  notitie?: string;
+}
+
+// ============= Tanks =============
+export type TankStatus = "leeg" | "in_gebruik" | "reiniging" | "defect";
+export const TANK_STATUSSEN: { value: TankStatus; label: string; emoji: string }[] = [
+  { value: "leeg", label: "Leeg", emoji: "⚪" },
+  { value: "in_gebruik", label: "In gebruik", emoji: "🍷" },
+  { value: "reiniging", label: "Reiniging", emoji: "🧽" },
+  { value: "defect", label: "Defect", emoji: "⚠️" },
+];
+
+export interface Tank {
+  id: string;
+  code: string;
+  soort?: string; // bv. IM530 (zwemdeksel), Pulptank, koeltank, IBC1000
+  capaciteit_l: number;
+  status: TankStatus;
+  huidige_partij?: string | null; // cache — waarheid is het tankboek
+  huidig_volume_l: number; // cache — waarheid is het tankboek
+  locatie?: string;
+  notitie?: string;
+}
+
+// ============= Tankboek =============
+export type TankboekActie =
+  | "vullen"
+  | "overhevelen"
+  | "toevoeging"
+  | "monster"
+  | "botteling"
+  | "verlies"
+  | "correctie"
+  | "overig";
+
+export const TANKBOEK_ACTIES: { value: TankboekActie; label: string; emoji: string }[] = [
+  { value: "vullen", label: "Vullen", emoji: "🍇" },
+  { value: "overhevelen", label: "Overhevelen", emoji: "🔁" },
+  { value: "toevoeging", label: "Toevoeging", emoji: "🧪" },
+  { value: "monster", label: "Monster", emoji: "🥃" },
+  { value: "botteling", label: "Botteling", emoji: "🍾" },
+  { value: "verlies", label: "Verlies", emoji: "💧" },
+  { value: "correctie", label: "Correctie", emoji: "✏️" },
+  { value: "overig", label: "Overig", emoji: "📝" },
+];
+
+export interface TankboekRegel {
+  id: string;
+  datum: string;
+  tijd?: string;
+  partij: string; // partij id
+  producent?: string | null;
+  actie: TankboekActie;
+  van_tank?: string | null;
+  naar_tank?: string | null;
+  volume_l: number;
+  middel?: string;
+  dosering?: string;
+  verantwoordelijke: string;
+  corrigeert?: string | null; // tankboek id bij actie "correctie"
+  notitie?: string;
+  created: string;
+}
+
+// ============= Analyses (kelder) =============
+export type AnalyseMethode = "eigen_meting" | "extern_lab";
+
+export interface Analyse {
+  id: string;
+  datum: string;
+  tijd?: string;
+  partij: string;
+  tank?: string | null; // snapshot: waar de partij lag
+  dichtheid_oechsle?: number | null;
+  dichtheid_brix?: number | null;
+  dichtheid_sg?: number | null;
+  ph?: number | null;
+  alcohol_pct?: number | null;
+  restsuiker_g_l?: number | null;
+  totaalzuur_g_l?: number | null;
+  vluchtig_zuur_g_l?: number | null;
+  so2_vrij?: number | null;
+  so2_totaal?: number | null;
+  methode?: AnalyseMethode | null;
+  bestand?: string;
+  notitie?: string;
+  ingevoerd_door?: string;
+  created: string;
+}
+
+// ============= Kelderlog (werklogboek) =============
+export type KelderlogActie =
+  | "ontstelen"
+  | "persen"
+  | "voorklaren"
+  | "gisting_start"
+  | "gisting_einde"
+  | "roeren"
+  | "overhevelen"
+  | "filtreren"
+  | "klaring"
+  | "toevoeging"
+  | "koeling"
+  | "proeven"
+  | "reiniging"
+  | "botteling"
+  | "overig";
+
+export const KELDERLOG_ACTIES: { value: KelderlogActie; label: string; emoji: string }[] = [
+  { value: "ontstelen", label: "Ontstelen", emoji: "🍇" },
+  { value: "persen", label: "Persen", emoji: "🫸" },
+  { value: "voorklaren", label: "Voorklaren", emoji: "🫧" },
+  { value: "gisting_start", label: "Gisting start", emoji: "🔥" },
+  { value: "gisting_einde", label: "Gisting einde", emoji: "🏁" },
+  { value: "roeren", label: "Roeren", emoji: "🌀" },
+  { value: "overhevelen", label: "Overhevelen", emoji: "🔁" },
+  { value: "filtreren", label: "Filtreren", emoji: "🧫" },
+  { value: "klaring", label: "Klaring", emoji: "✨" },
+  { value: "toevoeging", label: "Toevoeging", emoji: "🧪" },
+  { value: "koeling", label: "Koeling", emoji: "❄️" },
+  { value: "proeven", label: "Proeven", emoji: "👅" },
+  { value: "reiniging", label: "Reiniging", emoji: "🧽" },
+  { value: "botteling", label: "Botteling", emoji: "🍾" },
+  { value: "overig", label: "Overig", emoji: "📝" },
+];
+
+export type KelderlogEenheid = "g" | "kg" | "ml" | "l" | "g_hl" | "mg_l";
+export const KELDERLOG_EENHEDEN: { value: KelderlogEenheid; label: string }[] = [
+  { value: "g", label: "g" },
+  { value: "kg", label: "kg" },
+  { value: "ml", label: "ml" },
+  { value: "l", label: "L" },
+  { value: "g_hl", label: "g/hL" },
+  { value: "mg_l", label: "mg/L" },
+];
+
+export interface KelderlogRegel {
+  id: string;
+  datum: string;
+  partij?: string | null;
+  tank?: string | null;
+  actie: KelderlogActie;
+  middel?: string;
+  hoeveelheid?: number | null;
+  eenheid?: KelderlogEenheid | null;
+  notitie?: string;
+  foto?: string;
+  ingevoerd_door?: string;
+  created: string;
+}

@@ -1,4 +1,6 @@
 import type { MetingInput, ObservatieInput, FenologieInput } from "./data";
+import type { PartijInput } from "./partijen-data";
+import type { AnalyseInput, BoekingInput, KelderlogInput, TankInput } from "./kelder-data";
 
 export interface ValidatieFout {
   veld: string;
@@ -145,6 +147,78 @@ export function valideerWerkuur(input: WerkuurValidatieInput): ValidatieFout[] {
   if (!input.ingevoerd_door?.trim())
     fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
 
+  return fouten;
+}
+
+export function valideerPartij(input: Partial<PartijInput>): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+  if (!input.naam?.trim()) fouten.push({ veld: "naam", bericht: "Naam is verplicht" });
+  if (!input.jaargang || input.jaargang < 2000 || input.jaargang > 2100)
+    fouten.push({ veld: "jaargang", bericht: "Vul een geldige jaargang in" });
+  if (!input.type) fouten.push({ veld: "type", bericht: "Kies een type" });
+  if (!input.status) fouten.push({ veld: "status", bericht: "Kies een status" });
+  if (input.start_volume_l != null && input.start_volume_l < 0)
+    fouten.push({ veld: "start_volume_l", bericht: "Startvolume kan niet negatief zijn" });
+  return fouten;
+}
+
+export function valideerTank(input: Partial<TankInput>): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+  if (!input.code?.trim()) fouten.push({ veld: "code", bericht: "Code is verplicht" });
+  if (input.capaciteit_l != null && input.capaciteit_l < 0)
+    fouten.push({ veld: "capaciteit_l", bericht: "Capaciteit kan niet negatief zijn" });
+  if (!input.status) fouten.push({ veld: "status", bericht: "Kies een status" });
+  return fouten;
+}
+
+export function valideerBoeking(input: Partial<BoekingInput>): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+  if (!input.partij) fouten.push({ veld: "partij", bericht: "Kies een partij" });
+  if (!input.actie) fouten.push({ veld: "actie", bericht: "Kies een actie" });
+  checkDatum(input.datum, fouten);
+  if (input.volume_l == null || Number.isNaN(input.volume_l) || input.volume_l < 0)
+    fouten.push({ veld: "volume_l", bericht: "Vul een geldig volume in (liter)" });
+  if (input.actie === "overhevelen" && (!input.van_tank || !input.naar_tank))
+    fouten.push({ veld: "van_tank", bericht: "Overhevelen vereist een van- én naar-tank" });
+  if (input.actie === "vullen" && !input.naar_tank)
+    fouten.push({ veld: "naar_tank", bericht: "Vullen vereist een naar-tank" });
+  if (!input.verantwoordelijke?.trim())
+    fouten.push({ veld: "verantwoordelijke", bericht: "Verantwoordelijke is verplicht" });
+  return fouten;
+}
+
+export function valideerAnalyse(input: Partial<AnalyseInput>): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+  if (!input.partij) fouten.push({ veld: "partij", bericht: "Kies een partij" });
+  checkDatum(input.datum, fouten);
+  if (input.ph != null && (input.ph < 2 || input.ph > 5))
+    fouten.push({ veld: "ph", bericht: "pH moet tussen 2 en 5 liggen" });
+  if (input.alcohol_pct != null && (input.alcohol_pct < 0 || input.alcohol_pct > 25))
+    fouten.push({ veld: "alcohol_pct", bericht: "Alcohol moet tussen 0 en 25 % liggen" });
+  if (input.so2_vrij != null && (input.so2_vrij < 0 || input.so2_vrij > 300))
+    fouten.push({ veld: "so2_vrij", bericht: "Vrije SO₂ moet tussen 0 en 300 mg/L liggen" });
+  if (input.so2_totaal != null && (input.so2_totaal < 0 || input.so2_totaal > 500))
+    fouten.push({ veld: "so2_totaal", bericht: "Totaal SO₂ moet tussen 0 en 500 mg/L liggen" });
+  if (
+    input.dichtheid_oechsle != null &&
+    (input.dichtheid_oechsle < -20 || input.dichtheid_oechsle > 200)
+  )
+    fouten.push({ veld: "dichtheid_oechsle", bericht: "°Oechsle moet tussen -20 en 200 liggen" });
+  if (!input.ingevoerd_door?.trim())
+    fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
+  return fouten;
+}
+
+export function valideerKelderlog(input: Partial<KelderlogInput>): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+  checkDatum(input.datum, fouten);
+  if (!input.actie) fouten.push({ veld: "actie", bericht: "Kies een actie" });
+  if (!input.partij && !input.tank)
+    fouten.push({ veld: "partij", bericht: "Kies minstens een partij of een tank" });
+  if (input.hoeveelheid != null && input.hoeveelheid < 0)
+    fouten.push({ veld: "hoeveelheid", bericht: "Hoeveelheid kan niet negatief zijn" });
+  if (!input.ingevoerd_door?.trim())
+    fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
   return fouten;
 }
 

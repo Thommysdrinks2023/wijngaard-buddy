@@ -110,6 +110,109 @@ const RAS_VALUES = [
 const OBSERVATIE_TYPES = ["gezond", "groei", "ziekte", "schade", "uitval", "anders"];
 const FENOLOGIE_MOMENTEN = ["Knopbreek", "Bloei", "Zetting", "Véraison", "Oogstrijp"];
 const NEERSLAG = ["Geen", "Lichte regen", "Matige regen", "Zware regen", "Onweer"];
+const PARTIJ_TYPES = ["wit", "rood", "rosé", "mousserend", "overig"];
+const PARTIJ_STATUSSEN = [
+  "most",
+  "gisting",
+  "opvoeding",
+  "klaar_voor_botteling",
+  "gebotteld",
+  "afgevoerd",
+];
+const PRODUCENT_SOORTEN = ["eigen_wijngaard", "drankproductie", "extern_klant"];
+const OPDRACHT_TYPES = ["eigen_wijn", "drank", "loonproductie", "bottelservice"];
+const TANK_STATUSSEN = ["leeg", "in_gebruik", "reiniging", "defect"];
+const TANKBOEK_ACTIES = [
+  "vullen",
+  "overhevelen",
+  "toevoeging",
+  "monster",
+  "botteling",
+  "verlies",
+  "correctie",
+  "overig",
+];
+const KELDERLOG_ACTIES = [
+  "ontstelen",
+  "persen",
+  "voorklaren",
+  "gisting_start",
+  "gisting_einde",
+  "roeren",
+  "overhevelen",
+  "filtreren",
+  "klaring",
+  "toevoeging",
+  "koeling",
+  "proeven",
+  "reiniging",
+  "botteling",
+  "overig",
+];
+const KELDERLOG_EENHEDEN = ["g", "kg", "ml", "l", "g_hl", "mg_l"];
+const ANALYSE_METHODEN = ["eigen_meting", "extern_lab"];
+
+// Tankinventaris van De Tappenmars — overgenomen uit "Tankboek Leeg.xlsx".
+// IM = zwemdekseltank; capaciteit afgeleid uit de typecode. Pulptank/koeltank
+// hebben geen capaciteit in de Excel: 0 + notitie, zelf invullen in de app.
+// Seed is create-only (per code): bestaande tanks worden nooit overschreven,
+// want huidige_partij/huidig_volume_l zijn live kelderdata.
+// [code, soort, capaciteit_l]
+const SEED_TANKS = [
+  ["1", "IM530", 530],
+  ["2", "IM530", 530],
+  ["3", "IM530", 530],
+  ["4", "IM530", 530],
+  ["5", "IM530", 530],
+  ["6", "650", 650],
+  ["7", "650", 650],
+  ["8", "1050", 1050],
+  ["9", "IM530", 530],
+  ["10", "650", 650],
+  ["11", "IM530", 530],
+  ["12", "IM530", 530],
+  ["13", "1050", 1050],
+  ["14", "650", 650],
+  ["15", "1050", 1050],
+  ["16", "1050", 1050],
+  ["17", "650", 650],
+  ["18", "650", 650],
+  ["19", "IM530", 530],
+  ["20", "Pulptank", 0],
+  ["21", "Pulptank", 0],
+  ["22", "IM1100", 1100],
+  ["23", "IM1100", 1100],
+  ["24", "IM2200", 2200],
+  ["25", "IM2200", 2200],
+  ["26", "IM530", 530],
+  ["27", "IM1600", 1600],
+  ["28", "koeltank", 0],
+  ["29", "IM1600", 1600],
+  ["30", "IM530", 530],
+  ["31", "IM530", 530],
+  ["32", "IM530", 530],
+  ["33", "IM530", 530],
+  ["34", "IM1600", 1600],
+  ["35", "IM1600", 1600],
+  ["36", "IM1100", 1100],
+  ["37", "IM1100", 1100],
+  ["38", "IM2200", 2200],
+  ["39", "IM530", 530],
+  ["40", "IM530", 530],
+  ["41", "IM530", 530],
+  ["42", "IM530", 530],
+  ["43", "525 onder", 525],
+  ["44", "525 boven", 525],
+  ["45", "IM1100", 1100],
+  ["46", "1050", 1050],
+  ["47", "IM1100", 1100],
+  ["IBC1", "IBC1000", 1000],
+];
+
+const SEED_PRODUCENTEN = [
+  ["De Tappenmars", "eigen_wijngaard"],
+  ["Thomas Drinks", "drankproductie"],
+];
 
 const GEBRUIKERS = [
   { email: "invoerder1@tappenmars.nl", name: "Invoerder 1" },
@@ -583,6 +686,343 @@ async function main() {
     deleteRule: null,
   });
 
+  // 3a-2. Kelder — producenten en tanks.
+  // Producenten: eigen wijn, Thomas Drinks en externe klanten (loonproductie/
+  // bottelservice). Relatieveld i.p.v. vrije tekst zodat records nooit
+  // versnipperen over spellingsvarianten.
+  const producentenCol = await ensureCollection({
+    name: "producenten",
+    type: "base",
+    fields: [
+      { name: "naam", type: "text", required: true },
+      {
+        name: "soort",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: PRODUCENT_SOORTEN,
+      },
+      { name: "actief", type: "bool" },
+      { name: "notitie", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // Tanks: fysieke keldervaten. huidige_partij/huidig_volume_l zijn CACHES —
+  // de waarheid is het tankboek; alleen de server-endpoints muteren deze velden.
+  const tanksCol = await ensureCollection({
+    name: "tanks",
+    type: "base",
+    fields: [
+      { name: "code", type: "text", required: true },
+      { name: "soort", type: "text" },
+      // niet required: PocketBase behandelt 0 als leeg, en pulptank/koeltank
+      // staan bewust op 0 tot de capaciteit bekend is
+      { name: "capaciteit_l", type: "number" },
+      { name: "status", type: "select", required: true, maxSelect: 1, values: TANK_STATUSSEN },
+      { name: "huidig_volume_l", type: "number" },
+      { name: "locatie", type: "text" },
+      { name: "notitie", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // 3a-3. Partijen (wijngaard → kelder overdracht): oogstlotten volgen tot
+  // botteling. Bewust los van wijnbatches/tanks (vroeg-stadium concept, vóór
+  // tanktoewijzing) — koppeling tussen partij en wijnbatch is toekomstig werk.
+  const partijenCol = await ensureCollection({
+    name: "partijen",
+    type: "base",
+    fields: [
+      { name: "naam", type: "text", required: true },
+      { name: "jaargang", type: "number", required: true, onlyInt: true },
+      { name: "type", type: "select", required: true, maxSelect: 1, values: PARTIJ_TYPES },
+      { name: "status", type: "select", required: true, maxSelect: 1, values: PARTIJ_STATUSSEN },
+      { name: "samenstelling", type: "text" },
+      { name: "start_volume_l", type: "number" },
+      { name: "notitie", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  await ensureVelden("oogst", [
+    {
+      name: "partij",
+      type: "relation",
+      collectionId: partijenCol.id,
+      cascadeDelete: false,
+      maxSelect: 1,
+    },
+  ]);
+
+  // 3a-4. Partijen-uitbreiding (Fase 0–2 kelder): producent, opdrachttype,
+  // genealogie-voorbereiding (ouder_partij, UI komt later), lot, dichtheden
+  // (°Oe primair; Brix/SG worden altijd meegeschreven) en starttank.
+  await ensureVelden("partijen", [
+    {
+      name: "producent",
+      type: "relation",
+      collectionId: producentenCol.id,
+      cascadeDelete: false,
+      maxSelect: 1,
+    },
+    { name: "opdracht_type", type: "select", maxSelect: 1, values: OPDRACHT_TYPES },
+    {
+      name: "ouder_partij",
+      type: "relation",
+      collectionId: partijenCol.id,
+      cascadeDelete: false,
+      maxSelect: 1,
+    },
+    { name: "lotnummer", type: "text" },
+    { name: "pers_datum", type: "text" },
+    { name: "gist", type: "text" },
+    { name: "start_dichtheid_oechsle", type: "number" },
+    { name: "start_dichtheid_brix", type: "number" },
+    { name: "start_dichtheid_sg", type: "number" },
+    {
+      name: "start_tank",
+      type: "relation",
+      collectionId: tanksCol.id,
+      cascadeDelete: false,
+      maxSelect: 1,
+    },
+  ]);
+
+  // Kruisrelatie die pas kan bestaan nu partijen er is: tank → huidige partij (cache)
+  await ensureVelden("tanks", [
+    {
+      name: "huidige_partij",
+      type: "relation",
+      collectionId: partijenCol.id,
+      cascadeDelete: false,
+      maxSelect: 1,
+    },
+  ]);
+
+  // 3a-5. Tankboek — het onwijzigbare kelderregister. Schrijven kan UITSLUITEND
+  // via het server-endpoint (pb_hooks/kelder.pb.js): create/update/delete zijn
+  // dichtgezet in de API-rules. Correcties = nieuwe regel met actie "correctie"
+  // + corrigeert-verwijzing, nooit een bewerking van de historie.
+  const tankboekCol = await ensureCollection({
+    name: "tankboek",
+    type: "base",
+    fields: [
+      { name: "datum", type: "text", required: true },
+      { name: "tijd", type: "text" },
+      {
+        name: "partij",
+        type: "relation",
+        required: true,
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "producent",
+        type: "relation",
+        collectionId: producentenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "actie", type: "select", required: true, maxSelect: 1, values: TANKBOEK_ACTIES },
+      {
+        name: "van_tank",
+        type: "relation",
+        collectionId: tanksCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "naar_tank",
+        type: "relation",
+        collectionId: tanksCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "volume_l", type: "number" },
+      { name: "middel", type: "text" },
+      { name: "dosering", type: "text" },
+      { name: "verantwoordelijke", type: "text", required: true },
+      { name: "notitie", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: null,
+    updateRule: null,
+    deleteRule: null,
+  });
+
+  // 3a-6. Analyses (kelder) — gescheiden van "lab" (wijngaard: bodem/sap).
+  await ensureCollection({
+    name: "analyses",
+    type: "base",
+    fields: [
+      { name: "datum", type: "text", required: true },
+      { name: "tijd", type: "text" },
+      {
+        name: "partij",
+        type: "relation",
+        required: true,
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "tank",
+        type: "relation",
+        collectionId: tanksCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "dichtheid_oechsle", type: "number" },
+      { name: "dichtheid_brix", type: "number" },
+      { name: "dichtheid_sg", type: "number" },
+      { name: "ph", type: "number" },
+      { name: "alcohol_pct", type: "number" },
+      { name: "restsuiker_g_l", type: "number" },
+      { name: "totaalzuur_g_l", type: "number" },
+      { name: "vluchtig_zuur_g_l", type: "number" },
+      { name: "so2_vrij", type: "number" },
+      { name: "so2_totaal", type: "number" },
+      { name: "methode", type: "select", maxSelect: 1, values: ANALYSE_METHODEN },
+      {
+        name: "bestand",
+        type: "file",
+        maxSelect: 1,
+        maxSize: 20971520,
+        mimeTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic"],
+      },
+      { name: "notitie", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // 3a-7. Kelderlog — werklogboek (patroon van de Bewerkingen-tabel in het
+  // Excel-logboek), géén takenplanner.
+  await ensureCollection({
+    name: "kelderlog",
+    type: "base",
+    fields: [
+      { name: "datum", type: "text", required: true },
+      {
+        name: "partij",
+        type: "relation",
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "tank",
+        type: "relation",
+        collectionId: tanksCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "actie", type: "select", required: true, maxSelect: 1, values: KELDERLOG_ACTIES },
+      { name: "middel", type: "text" },
+      { name: "hoeveelheid", type: "number" },
+      { name: "eenheid", type: "select", maxSelect: 1, values: KELDERLOG_EENHEDEN },
+      { name: "notitie", type: "text" },
+      fotoVeld,
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // 3a-8. Regelgeving-instellingen — tarieven/drempels als data i.p.v. code,
+  // met "laatst gecontroleerd"-datum. Alleen scaffold; nog geen UI.
+  await ensureCollection({
+    name: "regelgeving_instellingen",
+    type: "base",
+    fields: [
+      { name: "sleutel", type: "text", required: true },
+      { name: "waarde", type: "number" },
+      { name: "eenheid", type: "text" },
+      { name: "geldig_vanaf", type: "text" },
+      { name: "laatst_gecontroleerd", type: "text" },
+      { name: "bron", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // corrigeert = zelfverwijzing; kan pas ná aanmaak (id nog onbekend in de definitie)
+  await ensureVelden("tankboek", [
+    {
+      name: "corrigeert",
+      type: "relation",
+      collectionId: tankboekCol.id,
+      cascadeDelete: false,
+      maxSelect: 1,
+    },
+  ]);
+
+  // 3a-9. Seeds: producenten en tankinventaris (create-only, nooit overschrijven)
+  {
+    const bestaandeProducenten = await api("/api/collections/producenten/records?perPage=200");
+    const namen = new Set((bestaandeProducenten.items ?? []).map((p) => p.naam));
+    for (const [naam, soort] of SEED_PRODUCENTEN) {
+      if (namen.has(naam)) continue;
+      await api("/api/collections/producenten/records", {
+        method: "POST",
+        body: { naam, soort, actief: true },
+      });
+      console.log(`  + producent "${naam}" aangemaakt`);
+    }
+
+    const bestaandeTanks = await api("/api/collections/tanks/records?perPage=200");
+    const codes = new Set((bestaandeTanks.items ?? []).map((t) => t.code));
+    let nieuweTanks = 0;
+    for (const [code, soort, capaciteit_l] of SEED_TANKS) {
+      if (codes.has(code)) continue;
+      await api("/api/collections/tanks/records", {
+        method: "POST",
+        body: {
+          code,
+          soort,
+          capaciteit_l,
+          status: "leeg",
+          huidig_volume_l: 0,
+          notitie: capaciteit_l === 0 ? "Capaciteit nog invullen" : "",
+        },
+      });
+      nieuweTanks++;
+    }
+    if (nieuweTanks > 0) console.log(`  + ${nieuweTanks} tank(s) geseed uit tankinventaris`);
+  }
+
   // 3b. Wijngaard-instellingen (vineyard_settings) + eerste configuratie
   await ensureCollection({
     name: "vineyard_settings",
@@ -634,6 +1074,13 @@ async function main() {
     "lab",
     "rij_locaties",
     "ai_gesprekken",
+    "partijen",
+    "producenten",
+    "tanks",
+    "tankboek",
+    "analyses",
+    "kelderlog",
+    "regelgeving_instellingen",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);

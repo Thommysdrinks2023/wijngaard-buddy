@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ZoekenRouteImport } from './routes/zoeken'
+import { Route as WijngaardRouteImport } from './routes/wijngaard'
 import { Route as WerkrapportRouteImport } from './routes/werkrapport'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as SnelRouteImport } from './routes/snel'
@@ -22,6 +23,7 @@ import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
 import { Route as OogstRouteImport } from './routes/oogst'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LabRouteImport } from './routes/lab'
+import { Route as KelderRouteImport } from './routes/kelder'
 import { Route as KaartRouteImport } from './routes/kaart'
 import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as GrafiekenRouteImport } from './routes/grafieken'
@@ -30,19 +32,32 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AssistentRouteImport } from './routes/assistent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SteekproevenIndexRouteImport } from './routes/steekproeven.index'
+import { Route as KelderIndexRouteImport } from './routes/kelder.index'
 import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.beheer'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
+import { Route as KelderTankboekRouteImport } from './routes/kelder.tankboek'
+import { Route as KelderOverhevelenRouteImport } from './routes/kelder.overhevelen'
 import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
+import { Route as KelderTanksIndexRouteImport } from './routes/kelder.tanks.index'
+import { Route as KelderPartijenIndexRouteImport } from './routes/kelder.partijen.index'
 import { Route as SteekproevenPuntIdInvoerRouteImport } from './routes/steekproeven.$puntId.invoer'
 import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten'
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
 import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
 import { Route as RijRijIdFenologieRouteImport } from './routes/rij.$rijId.fenologie'
+import { Route as KelderTanksTankIdRouteImport } from './routes/kelder.tanks.$tankId'
+import { Route as KelderPartijenNieuwRouteImport } from './routes/kelder.partijen.nieuw'
+import { Route as KelderPartijenPartijIdRouteImport } from './routes/kelder.partijen.$partijId'
 import { Route as FenologieFenIdBewerkenRouteImport } from './routes/fenologie.$fenId.bewerken'
 
 const ZoekenRoute = ZoekenRouteImport.update({
   id: '/zoeken',
   path: '/zoeken',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WijngaardRoute = WijngaardRouteImport.update({
+  id: '/wijngaard',
+  path: '/wijngaard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WerkrapportRoute = WerkrapportRouteImport.update({
@@ -105,6 +120,11 @@ const LabRoute = LabRouteImport.update({
   path: '/lab',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KelderRoute = KelderRouteImport.update({
+  id: '/kelder',
+  path: '/kelder',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KaartRoute = KaartRouteImport.update({
   id: '/kaart',
   path: '/kaart',
@@ -145,6 +165,11 @@ const SteekproevenIndexRoute = SteekproevenIndexRouteImport.update({
   path: '/steekproeven/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KelderIndexRoute = KelderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => KelderRoute,
+} as any)
 const SteekproevenBeheerRoute = SteekproevenBeheerRouteImport.update({
   id: '/steekproeven/beheer',
   path: '/steekproeven/beheer',
@@ -155,10 +180,30 @@ const RijRijIdRoute = RijRijIdRouteImport.update({
   path: '/rij/$rijId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KelderTankboekRoute = KelderTankboekRouteImport.update({
+  id: '/tankboek',
+  path: '/tankboek',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderOverhevelenRoute = KelderOverhevelenRouteImport.update({
+  id: '/overhevelen',
+  path: '/overhevelen',
+  getParentRoute: () => KelderRoute,
+} as any)
 const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RijRijIdRoute,
+} as any)
+const KelderTanksIndexRoute = KelderTanksIndexRouteImport.update({
+  id: '/tanks/',
+  path: '/tanks/',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderPartijenIndexRoute = KelderPartijenIndexRouteImport.update({
+  id: '/partijen/',
+  path: '/partijen/',
+  getParentRoute: () => KelderRoute,
 } as any)
 const SteekproevenPuntIdInvoerRoute =
   SteekproevenPuntIdInvoerRouteImport.update({
@@ -186,6 +231,21 @@ const RijRijIdFenologieRoute = RijRijIdFenologieRouteImport.update({
   path: '/fenologie',
   getParentRoute: () => RijRijIdRoute,
 } as any)
+const KelderTanksTankIdRoute = KelderTanksTankIdRouteImport.update({
+  id: '/tanks/$tankId',
+  path: '/tanks/$tankId',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderPartijenNieuwRoute = KelderPartijenNieuwRouteImport.update({
+  id: '/partijen/nieuw',
+  path: '/partijen/nieuw',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderPartijenPartijIdRoute = KelderPartijenPartijIdRouteImport.update({
+  id: '/partijen/$partijId',
+  path: '/partijen/$partijId',
+  getParentRoute: () => KelderRoute,
+} as any)
 const FenologieFenIdBewerkenRoute = FenologieFenIdBewerkenRouteImport.update({
   id: '/fenologie/$fenId/bewerken',
   path: '/fenologie/$fenId/bewerken',
@@ -200,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
   '/kaart': typeof KaartRoute
+  '/kelder': typeof KelderRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/oogst': typeof OogstRoute
@@ -212,16 +273,25 @@ export interface FileRoutesByFullPath {
   '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
+  '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/kelder/overhevelen': typeof KelderOverhevelenRoute
+  '/kelder/tankboek': typeof KelderTankboekRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
+  '/kelder/': typeof KelderIndexRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
+  '/kelder/partijen/$partijId': typeof KelderPartijenPartijIdRoute
+  '/kelder/partijen/nieuw': typeof KelderPartijenNieuwRoute
+  '/kelder/tanks/$tankId': typeof KelderTanksTankIdRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
   '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
+  '/kelder/partijen/': typeof KelderPartijenIndexRoute
+  '/kelder/tanks/': typeof KelderTanksIndexRoute
   '/rij/$rijId/': typeof RijRijIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -244,15 +314,24 @@ export interface FileRoutesByTo {
   '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
+  '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/kelder/overhevelen': typeof KelderOverhevelenRoute
+  '/kelder/tankboek': typeof KelderTankboekRoute
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
+  '/kelder': typeof KelderIndexRoute
   '/steekproeven': typeof SteekproevenIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
+  '/kelder/partijen/$partijId': typeof KelderPartijenPartijIdRoute
+  '/kelder/partijen/nieuw': typeof KelderPartijenNieuwRoute
+  '/kelder/tanks/$tankId': typeof KelderTanksTankIdRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
   '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
+  '/kelder/partijen': typeof KelderPartijenIndexRoute
+  '/kelder/tanks': typeof KelderTanksIndexRoute
   '/rij/$rijId': typeof RijRijIdIndexRoute
 }
 export interface FileRoutesById {
@@ -264,6 +343,7 @@ export interface FileRoutesById {
   '/grafieken': typeof GrafiekenRoute
   '/instellingen': typeof InstellingenRoute
   '/kaart': typeof KaartRoute
+  '/kelder': typeof KelderRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/oogst': typeof OogstRoute
@@ -276,16 +356,25 @@ export interface FileRoutesById {
   '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
   '/werkrapport': typeof WerkrapportRoute
+  '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/kelder/overhevelen': typeof KelderOverhevelenRoute
+  '/kelder/tankboek': typeof KelderTankboekRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
+  '/kelder/': typeof KelderIndexRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
+  '/kelder/partijen/$partijId': typeof KelderPartijenPartijIdRoute
+  '/kelder/partijen/nieuw': typeof KelderPartijenNieuwRoute
+  '/kelder/tanks/$tankId': typeof KelderTanksTankIdRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
   '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
+  '/kelder/partijen/': typeof KelderPartijenIndexRoute
+  '/kelder/tanks/': typeof KelderTanksIndexRoute
   '/rij/$rijId/': typeof RijRijIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -298,6 +387,7 @@ export interface FileRouteTypes {
     | '/grafieken'
     | '/instellingen'
     | '/kaart'
+    | '/kelder'
     | '/lab'
     | '/login'
     | '/oogst'
@@ -310,16 +400,25 @@ export interface FileRouteTypes {
     | '/snel'
     | '/trends'
     | '/werkrapport'
+    | '/wijngaard'
     | '/zoeken'
+    | '/kelder/overhevelen'
+    | '/kelder/tankboek'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
+    | '/kelder/'
     | '/steekproeven/'
     | '/fenologie/$fenId/bewerken'
+    | '/kelder/partijen/$partijId'
+    | '/kelder/partijen/nieuw'
+    | '/kelder/tanks/$tankId'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
     | '/steekproeven/$puntId/invoer'
+    | '/kelder/partijen/'
+    | '/kelder/tanks/'
     | '/rij/$rijId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -342,15 +441,24 @@ export interface FileRouteTypes {
     | '/snel'
     | '/trends'
     | '/werkrapport'
+    | '/wijngaard'
     | '/zoeken'
+    | '/kelder/overhevelen'
+    | '/kelder/tankboek'
     | '/steekproeven/beheer'
+    | '/kelder'
     | '/steekproeven'
     | '/fenologie/$fenId/bewerken'
+    | '/kelder/partijen/$partijId'
+    | '/kelder/partijen/nieuw'
+    | '/kelder/tanks/$tankId'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
     | '/steekproeven/$puntId/invoer'
+    | '/kelder/partijen'
+    | '/kelder/tanks'
     | '/rij/$rijId'
   id:
     | '__root__'
@@ -361,6 +469,7 @@ export interface FileRouteTypes {
     | '/grafieken'
     | '/instellingen'
     | '/kaart'
+    | '/kelder'
     | '/lab'
     | '/login'
     | '/oogst'
@@ -373,16 +482,25 @@ export interface FileRouteTypes {
     | '/snel'
     | '/trends'
     | '/werkrapport'
+    | '/wijngaard'
     | '/zoeken'
+    | '/kelder/overhevelen'
+    | '/kelder/tankboek'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
+    | '/kelder/'
     | '/steekproeven/'
     | '/fenologie/$fenId/bewerken'
+    | '/kelder/partijen/$partijId'
+    | '/kelder/partijen/nieuw'
+    | '/kelder/tanks/$tankId'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
     | '/steekproeven/$puntId/invoer'
+    | '/kelder/partijen/'
+    | '/kelder/tanks/'
     | '/rij/$rijId/'
   fileRoutesById: FileRoutesById
 }
@@ -394,6 +512,7 @@ export interface RootRouteChildren {
   GrafiekenRoute: typeof GrafiekenRoute
   InstellingenRoute: typeof InstellingenRoute
   KaartRoute: typeof KaartRoute
+  KelderRoute: typeof KelderRouteWithChildren
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
   OogstRoute: typeof OogstRoute
@@ -406,6 +525,7 @@ export interface RootRouteChildren {
   SnelRoute: typeof SnelRoute
   TrendsRoute: typeof TrendsRoute
   WerkrapportRoute: typeof WerkrapportRoute
+  WijngaardRoute: typeof WijngaardRoute
   ZoekenRoute: typeof ZoekenRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
   SteekproevenBeheerRoute: typeof SteekproevenBeheerRoute
@@ -421,6 +541,13 @@ declare module '@tanstack/react-router' {
       path: '/zoeken'
       fullPath: '/zoeken'
       preLoaderRoute: typeof ZoekenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wijngaard': {
+      id: '/wijngaard'
+      path: '/wijngaard'
+      fullPath: '/wijngaard'
+      preLoaderRoute: typeof WijngaardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/werkrapport': {
@@ -507,6 +634,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kelder': {
+      id: '/kelder'
+      path: '/kelder'
+      fullPath: '/kelder'
+      preLoaderRoute: typeof KelderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kaart': {
       id: '/kaart'
       path: '/kaart'
@@ -563,6 +697,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SteekproevenIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kelder/': {
+      id: '/kelder/'
+      path: '/'
+      fullPath: '/kelder/'
+      preLoaderRoute: typeof KelderIndexRouteImport
+      parentRoute: typeof KelderRoute
+    }
     '/steekproeven/beheer': {
       id: '/steekproeven/beheer'
       path: '/steekproeven/beheer'
@@ -577,12 +718,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RijRijIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kelder/tankboek': {
+      id: '/kelder/tankboek'
+      path: '/tankboek'
+      fullPath: '/kelder/tankboek'
+      preLoaderRoute: typeof KelderTankboekRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/overhevelen': {
+      id: '/kelder/overhevelen'
+      path: '/overhevelen'
+      fullPath: '/kelder/overhevelen'
+      preLoaderRoute: typeof KelderOverhevelenRouteImport
+      parentRoute: typeof KelderRoute
+    }
     '/rij/$rijId/': {
       id: '/rij/$rijId/'
       path: '/'
       fullPath: '/rij/$rijId/'
       preLoaderRoute: typeof RijRijIdIndexRouteImport
       parentRoute: typeof RijRijIdRoute
+    }
+    '/kelder/tanks/': {
+      id: '/kelder/tanks/'
+      path: '/tanks'
+      fullPath: '/kelder/tanks/'
+      preLoaderRoute: typeof KelderTanksIndexRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/partijen/': {
+      id: '/kelder/partijen/'
+      path: '/partijen'
+      fullPath: '/kelder/partijen/'
+      preLoaderRoute: typeof KelderPartijenIndexRouteImport
+      parentRoute: typeof KelderRoute
     }
     '/steekproeven/$puntId/invoer': {
       id: '/steekproeven/$puntId/invoer'
@@ -619,6 +788,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RijRijIdFenologieRouteImport
       parentRoute: typeof RijRijIdRoute
     }
+    '/kelder/tanks/$tankId': {
+      id: '/kelder/tanks/$tankId'
+      path: '/tanks/$tankId'
+      fullPath: '/kelder/tanks/$tankId'
+      preLoaderRoute: typeof KelderTanksTankIdRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/partijen/nieuw': {
+      id: '/kelder/partijen/nieuw'
+      path: '/partijen/nieuw'
+      fullPath: '/kelder/partijen/nieuw'
+      preLoaderRoute: typeof KelderPartijenNieuwRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/partijen/$partijId': {
+      id: '/kelder/partijen/$partijId'
+      path: '/partijen/$partijId'
+      fullPath: '/kelder/partijen/$partijId'
+      preLoaderRoute: typeof KelderPartijenPartijIdRouteImport
+      parentRoute: typeof KelderRoute
+    }
     '/fenologie/$fenId/bewerken': {
       id: '/fenologie/$fenId/bewerken'
       path: '/fenologie/$fenId/bewerken'
@@ -628,6 +818,31 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface KelderRouteChildren {
+  KelderOverhevelenRoute: typeof KelderOverhevelenRoute
+  KelderTankboekRoute: typeof KelderTankboekRoute
+  KelderIndexRoute: typeof KelderIndexRoute
+  KelderPartijenPartijIdRoute: typeof KelderPartijenPartijIdRoute
+  KelderPartijenNieuwRoute: typeof KelderPartijenNieuwRoute
+  KelderTanksTankIdRoute: typeof KelderTanksTankIdRoute
+  KelderPartijenIndexRoute: typeof KelderPartijenIndexRoute
+  KelderTanksIndexRoute: typeof KelderTanksIndexRoute
+}
+
+const KelderRouteChildren: KelderRouteChildren = {
+  KelderOverhevelenRoute: KelderOverhevelenRoute,
+  KelderTankboekRoute: KelderTankboekRoute,
+  KelderIndexRoute: KelderIndexRoute,
+  KelderPartijenPartijIdRoute: KelderPartijenPartijIdRoute,
+  KelderPartijenNieuwRoute: KelderPartijenNieuwRoute,
+  KelderTanksTankIdRoute: KelderTanksTankIdRoute,
+  KelderPartijenIndexRoute: KelderPartijenIndexRoute,
+  KelderTanksIndexRoute: KelderTanksIndexRoute,
+}
+
+const KelderRouteWithChildren =
+  KelderRoute._addFileChildren(KelderRouteChildren)
 
 interface RijRijIdRouteChildren {
   RijRijIdFenologieRoute: typeof RijRijIdFenologieRoute
@@ -657,6 +872,7 @@ const rootRouteChildren: RootRouteChildren = {
   GrafiekenRoute: GrafiekenRoute,
   InstellingenRoute: InstellingenRoute,
   KaartRoute: KaartRoute,
+  KelderRoute: KelderRouteWithChildren,
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
   OogstRoute: OogstRoute,
@@ -669,6 +885,7 @@ const rootRouteChildren: RootRouteChildren = {
   SnelRoute: SnelRoute,
   TrendsRoute: TrendsRoute,
   WerkrapportRoute: WerkrapportRoute,
+  WijngaardRoute: WijngaardRoute,
   ZoekenRoute: ZoekenRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
   SteekproevenBeheerRoute: SteekproevenBeheerRoute,

@@ -6,6 +6,7 @@ import { nl } from "date-fns/locale";
 import { toast } from "sonner";
 import { fetchRijen } from "@/lib/data";
 import { createOogstRecord, fetchOogst, VERWACHTE_KG_PER_PLANT } from "@/lib/extra-data";
+import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerOogst } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
@@ -43,12 +44,19 @@ function OogstPage() {
   const [invoerder, setInvoerder] = useInvoerder();
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const oogstQ = useQuery({ queryKey: ["oogst-records"], queryFn: fetchOogst });
+  const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
 
   const [rijId, setRijId] = useState("");
   const [kg, setKg] = useState("");
   const [datum, setDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [partijId, setPartijId] = useState("");
   const [notitie, setNotitie] = useState("");
   const [fouten, setFouten] = useState<Record<string, string>>({});
+
+  const partijenJaar = useMemo(
+    () => (partijenQ.data ?? []).filter((p) => p.jaargang === jaar),
+    [partijenQ.data, jaar],
+  );
 
   const wisFout = (veld: string) =>
     setFouten((f) => {
@@ -77,6 +85,7 @@ function OogstPage() {
         kg: Number(kg),
         notitie,
         ingevoerd_door: invoerder,
+        partij: partijId || null,
       });
     },
     onSuccess: () => {
@@ -269,6 +278,26 @@ function OogstPage() {
               )}
             </label>
           </div>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Partij (optioneel)</span>
+            <select
+              value={partijId}
+              onChange={(e) => setPartijId(e.target.value)}
+              className={veldClass}
+            >
+              <option value="">Geen partij</option>
+              {partijenJaar.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.naam} · {p.jaargang}
+                </option>
+              ))}
+            </select>
+            {partijenJaar.length === 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Nog geen partijen voor {jaar} — aan te maken op de partijenpagina in de kelder.
+              </p>
+            )}
+          </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Notitie</span>
             <input

@@ -132,6 +132,7 @@ export interface OogstRecord {
   kg: number;
   notitie?: string;
   ingevoerd_door?: string;
+  partij?: string | null; // partij id — koppeling wijngaard → kelder
   created: string;
 }
 
@@ -148,6 +149,7 @@ const oogstEntity = maakEntity<OogstRecord>({
     kg: r["kg"],
     notitie: r["notitie"] ?? "",
     ingevoerd_door: r["ingevoerd_door"] ?? "",
+    partij: r["partij"] || null,
     created: r["created"],
   }),
 });

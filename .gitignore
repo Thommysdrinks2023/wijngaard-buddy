@@ -7,7 +7,13 @@
 pocketbase-accounts.txt
 
 # Lokale PocketBase server + database (nooit committen!)
-pocketbase/
+# pb_hooks/ blijft WEL getrackt: dat is handgeschreven servercode (kelder-
+# validatielogica), geen binary/database.
+pocketbase/pocketbase.exe
+pocketbase/pb_data/
+pocketbase/pb_data_backup_*/
+pocketbase/pb_migrations/
+pocketbase/backup-credentials.txt
 
 # Logs
 logs
