@@ -214,6 +214,20 @@ const SEED_PRODUCENTEN = [
   ["Thomas Drinks", "drankproductie"],
 ];
 
+// Fase 3 — AI-agent
+const AGENT_ROLLEN = ["user", "assistant", "tool"];
+const AGENT_ACTIE_TYPES = ["tankboek_boeking", "observatie", "uitval", "kelderlog", "analyse"];
+const AGENT_ACTIE_STATUSSEN = ["voorgesteld", "bevestigd", "afgewezen", "uitgevoerd", "mislukt"];
+const INZICHT_TYPES = [
+  "brix_verloop",
+  "gisting_snelheid",
+  "uitval_cluster",
+  "gdd_afwijking",
+  "fenologie_vergelijking",
+  "spuit_effectiviteit",
+];
+const FEEDBACK_OORDELEN = ["klopte", "klopte_niet", "deels"];
+
 const GEBRUIKERS = [
   { email: "invoerder1@tappenmars.nl", name: "Invoerder 1" },
   { email: "invoerder2@tappenmars.nl", name: "Invoerder 2" },
@@ -1023,6 +1037,166 @@ async function main() {
     if (nieuweTanks > 0) console.log(`  + ${nieuweTanks} tank(s) geseed uit tankinventaris`);
   }
 
+  // ingebouwde auth-collectie, nodig als relation-doel voor agent-collecties
+  const usersCol = await api("/api/collections/users");
+
+  // 3a-10. AI-agent (Fase 3): gesprekken, berichten, bevestigingsacties, inzichten,
+  // adviesfeedback. Schrijfacties gaan NOOIT direct de vakcollecties in — de
+  // agent stelt voor via agent_acties (status "voorgesteld"); pas na expliciete
+  // bevestiging voert het bevestig-endpoint de bestaande atomische
+  // endpoints/hooks aan (zie pb_hooks/agent.pb.js). Regels 1-8 uit Fase 2
+  // blijven ongewijzigd de bron van waarheid voor kelderboekingen.
+  const agentGesprekkenCol = await ensureCollection({
+    name: "agent_gesprekken",
+    type: "base",
+    fields: [
+      {
+        name: "gebruiker",
+        type: "relation",
+        collectionId: usersCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "titel", type: "text" },
+      { name: "laatste_bericht_op", type: "text" },
+      { name: "deleted", type: "bool" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  const gesprekRelatie = {
+    name: "gesprek_id",
+    type: "relation",
+    required: true,
+    collectionId: agentGesprekkenCol.id,
+    cascadeDelete: true,
+    maxSelect: 1,
+  };
+
+  const agentBerichtenCol = await ensureCollection({
+    name: "agent_berichten",
+    type: "base",
+    fields: [
+      gesprekRelatie,
+      { name: "rol", type: "select", required: true, maxSelect: 1, values: AGENT_ROLLEN },
+      { name: "inhoud", type: "text" },
+      { name: "tool_calls", type: "json" },
+      { name: "tool_resultaten", type: "json" },
+      { ...fotoVeld, maxSize: 10485760 },
+      { name: "deleted", type: "bool" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "agent_acties",
+    type: "base",
+    fields: [
+      { ...gesprekRelatie, cascadeDelete: false },
+      {
+        name: "bericht_id",
+        type: "relation",
+        collectionId: agentBerichtenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "actie_type",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: AGENT_ACTIE_TYPES,
+      },
+      { name: "payload", type: "json", required: true },
+      { name: "samenvatting", type: "text", required: true },
+      {
+        name: "status",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: AGENT_ACTIE_STATUSSEN,
+      },
+      { name: "fout", type: "text" },
+      { name: "uitgevoerd_record_id", type: "text" },
+      {
+        name: "bevestigd_door",
+        type: "relation",
+        collectionId: usersCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "bevestigd_op", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    // schrijven kan uitsluitend via de agent-hook (superuser-context) - de
+    // gewone client mag voorstellen alleen lezen, nooit zelf status wijzigen
+    createRule: null,
+    updateRule: null,
+    deleteRule: null,
+  });
+
+  await ensureCollection({
+    name: "inzichten",
+    type: "base",
+    fields: [
+      { name: "inzicht_type", type: "select", required: true, maxSelect: 1, values: INZICHT_TYPES },
+      { name: "onderwerp", type: "text", required: true },
+      { name: "periode", type: "text" },
+      { name: "berekend_op", type: "text", required: true },
+      { name: "waarde", type: "json" },
+      { name: "samenvatting_nl", type: "text", required: true },
+      { name: "deleted", type: "bool" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  await ensureCollection({
+    name: "advies_feedback",
+    type: "base",
+    fields: [
+      {
+        name: "bericht_id",
+        type: "relation",
+        required: true,
+        collectionId: agentBerichtenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "oordeel", type: "select", required: true, maxSelect: 1, values: FEEDBACK_OORDELEN },
+      { name: "toelichting", type: "text" },
+      {
+        name: "gegeven_door",
+        type: "relation",
+        collectionId: usersCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
   // 3b. Wijngaard-instellingen (vineyard_settings) + eerste configuratie
   await ensureCollection({
     name: "vineyard_settings",
@@ -1081,6 +1255,11 @@ async function main() {
     "analyses",
     "kelderlog",
     "regelgeving_instellingen",
+    "agent_gesprekken",
+    "agent_berichten",
+    "agent_acties",
+    "inzichten",
+    "advies_feedback",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);

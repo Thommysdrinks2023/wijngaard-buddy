@@ -98,6 +98,7 @@ schtasks /Run /TN "PocketBase Tappenmars"
 ```powershell
 schtasks /End /TN "PocketBase Tappenmars"
 ```
+**Let op:** `/End` beëindigt soms alleen de cmd.exe-wrapper, niet het onderliggende `pocketbase.exe`-proces (blijft dan als wees doordraaien — bijv. gemerkt na een `.env`-wijziging die niet doorkwam). Controleer met `Get-Process pocketbase.exe`; zo nodig `Get-Process pocketbase | Stop-Process -Force` vóór je opnieuw start.
 
 **Logs bekijken:** de taak draait zonder zichtbaar venster, dus er is geen live logvenster. Om output te zien: stop de taak (hierboven) en draai het bat-bestand tijdelijk handmatig in een terminal:
 ```powershell
