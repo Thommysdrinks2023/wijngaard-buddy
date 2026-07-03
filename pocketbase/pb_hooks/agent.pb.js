@@ -71,7 +71,7 @@ routerAdd(
         const resultaat = uitvoering.voerBevestigdeActieUit(
           txApp,
           actie.getString("actie_type"),
-          actie.get("payload"),
+          uitvoering.leesJsonVeld(actie, "payload"),
           naam,
         );
         if (resultaat.fout) {

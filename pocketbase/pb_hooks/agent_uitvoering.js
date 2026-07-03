@@ -217,7 +217,7 @@ function voerLeesToolUit(app, naam, input) {
         onderwerp: i.getString("onderwerp"),
         periode: i.getString("periode"),
         samenvatting_nl: i.getString("samenvatting_nl"),
-        waarde: i.get("waarde"),
+        waarde: leesJsonVeld(i, "waarde"),
       }));
     }
     case "zoek_advies_feedback": {
@@ -497,6 +497,22 @@ function leesbareFout(err) {
   return new BadRequestError("AI-agent fout: " + (err && err.message ? err.message : String(err)));
 }
 
+// record.get("jsonveld") levert in de JSVM een types.JSONRaw op - dat is GEEN
+// parsed object en ook geen string, maar een byte-array (Array<number>).
+// {...ruw} spreidt dan numerieke indices i.p.v. de echte sleutels (kostte een
+// debugronde: "partij is verplicht" ondanks een correcte payload, omdat
+// voerBoekingUit() een spread van bytes kreeg). .string() + JSON.parse is de
+// juiste weg terug naar een bruikbaar object.
+function leesJsonVeld(record, veld) {
+  const ruw = record.get(veld);
+  if (ruw == null) return {};
+  if (typeof ruw === "object" && typeof ruw.string === "function") {
+    return JSON.parse(ruw.string());
+  }
+  if (typeof ruw === "string") return JSON.parse(ruw);
+  return ruw;
+}
+
 function haalFotoBase64Op(app, berichtId, pocketbaseUrl, apiKey) {
   try {
     const bericht = app.findRecordById("agent_berichten", berichtId);
@@ -730,6 +746,7 @@ module.exports = {
   voerBevestigdeActieUit,
   roepAnthropicAan,
   haalFotoBase64Op,
+  leesJsonVeld,
   verwerkBeurt,
   leesSysteemprompt,
   leesbareFout,
