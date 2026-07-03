@@ -118,6 +118,106 @@ routerAdd(
   $apis.requireAuth(),
 );
 
+// ---------- POST /api/tappenmars/bottelronde-aanmaken ----------
+// Fase 4 (Botteling & Voorraad, zie DECISIONS-FASE4.md). Eén gebruikersactie
+// -> drie samenhangende records atomisch: de tankboekregel (actie "botteling",
+// hergebruikt de bestaande voerBoekingUit-validatie/Regel 3 ongewijzigd),
+// het bottelronde-record en het voorraad_flessen-record. Faalt de
+// tankboekboeking (te weinig volume, tank op reiniging/defect, etc.), dan
+// rolt de hele transactie terug — er blijft geen wees-bottelronde of
+// wees-voorraadrecord achter.
+routerAdd(
+  "POST",
+  "/api/tappenmars/bottelronde-aanmaken",
+  (e) => {
+    const logica = require(`${__hooks}/kelder_logica.js`);
+    let resultaat = null;
+    let bottelrondeId = "";
+    let voorraadId = "";
+    try {
+      const b = e.requestInfo().body;
+      if (!b.partij) throw new BadRequestError("partij is verplicht.");
+      if (!b.van_tank) throw new BadRequestError("van_tank is verplicht.");
+      const aantalFlessen = Number(b.aantal_flessen);
+      const flesinhoudMl = Number(b.flesinhoud_ml);
+      if (!aantalFlessen || aantalFlessen <= 0)
+        throw new BadRequestError("aantal_flessen moet positief zijn.");
+      if (!flesinhoudMl || flesinhoudMl <= 0)
+        throw new BadRequestError("flesinhoud_ml moet positief zijn.");
+      const volumeL = (aantalFlessen * flesinhoudMl) / 1000;
+
+      e.app.runInTransaction((txApp) => {
+        // 1. Tankboekregel — dezelfde validatie/logica als elke andere
+        // boeking (Regel 1-4/6), geen aparte "bottling"-tak nodig: "botteling"
+        // wordt al als bronactie behandeld door voerBoekingUit.
+        resultaat = logica.voerBoekingUit(txApp, {
+          datum: b.botteldatum,
+          partij: b.partij,
+          producent: b.producent,
+          actie: "botteling",
+          van_tank: b.van_tank,
+          volume_l: volumeL,
+          verantwoordelijke: b.ingevoerd_door || "onbekend",
+          notitie: `Bottelronde: ${aantalFlessen} x ${flesinhoudMl} ml`,
+          vineyard_id: b.vineyard_id,
+        });
+        if (resultaat.fout) throw new Error(resultaat.fout); // rollback
+
+        const partijRecord = txApp.findRecordById("partijen", b.partij);
+
+        // 2. Bottelronde-record
+        const bcol = txApp.findCollectionByNameOrId("bottelrondes");
+        const bottelronde = new Record(bcol);
+        bottelronde.set("partij", b.partij);
+        if (b.producent) bottelronde.set("producent", b.producent);
+        bottelronde.set("van_tank", b.van_tank);
+        bottelronde.set("botteldatum", b.botteldatum);
+        bottelronde.set("aantal_flessen", aantalFlessen);
+        bottelronde.set("flesinhoud_ml", flesinhoudMl);
+        bottelronde.set("flestype", b.flestype || "");
+        bottelronde.set("kleur_fles", b.kleur_fles || "");
+        bottelronde.set("parelwijn", !!b.parelwijn);
+        bottelronde.set("lotnummer", b.lotnummer || partijRecord.getString("lotnummer") || "");
+        if (b.voedingswaarde_berekening)
+          bottelronde.set("voedingswaarde_berekening", b.voedingswaarde_berekening);
+        bottelronde.set("notities", b.notities || "");
+        bottelronde.set("ingevoerd_door", b.ingevoerd_door || "onbekend");
+        bottelronde.set("vineyard_id", b.vineyard_id || "");
+        txApp.save(bottelronde);
+        bottelrondeId = bottelronde.id;
+
+        // 3. Voorraad_flessen-record — wijnnaam/jaargang vallen terug op de
+        // partij zelf, zodat de client die niet hoeft te dupliceren.
+        const vcol = txApp.findCollectionByNameOrId("voorraad_flessen");
+        const voorraad = new Record(vcol);
+        voorraad.set("bottelronde", bottelronde.id);
+        voorraad.set("partij", b.partij);
+        if (b.producent) voorraad.set("producent", b.producent);
+        voorraad.set("wijnnaam", b.wijnnaam || partijRecord.getString("naam"));
+        voorraad.set("jaargang", b.jaargang || partijRecord.getFloat("jaargang"));
+        voorraad.set("aantal_beginvoorraad", aantalFlessen);
+        voorraad.set("aantal_huidig", aantalFlessen);
+        voorraad.set("locatie", b.locatie || "");
+        voorraad.set("status", "op_voorraad");
+        voorraad.set("vineyard_id", b.vineyard_id || "");
+        txApp.save(voorraad);
+        voorraadId = voorraad.id;
+      });
+
+      return e.json(200, {
+        ok: true,
+        id: bottelrondeId,
+        voorraad_id: voorraadId,
+        waarschuwing: (resultaat && resultaat.waarschuwing) || "",
+      });
+    } catch (err) {
+      if (resultaat && resultaat.fout) throw new BadRequestError(resultaat.fout);
+      throw logica.leesbareFout(err);
+    }
+  },
+  $apis.requireAuth(),
+);
+
 // ---------- POST /api/tappenmars/tanks-herbereken ----------
 // Vangnet (ARCHITECTURE.md §7.1): reconstrueert alle tankcaches uit het
 // tankboek. Draaien bij twijfel of na handmatig ingrijpen in de admin.

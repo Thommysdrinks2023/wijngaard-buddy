@@ -1176,7 +1176,9 @@ async function main() {
       { name: "wijnnaam", type: "text", required: true },
       { name: "jaargang", type: "number", onlyInt: true },
       { name: "aantal_beginvoorraad", type: "number", required: true, onlyInt: true },
-      { name: "aantal_huidig", type: "number", required: true, onlyInt: true },
+      // niet required: PocketBase behandelt 0 als leeg (zelfde valkuil als
+      // tanks.capaciteit_l), en 0 is hier juist de legitieme "uitverkocht"-waarde
+      { name: "aantal_huidig", type: "number", onlyInt: true },
       { name: "locatie", type: "text" },
       {
         name: "status",
