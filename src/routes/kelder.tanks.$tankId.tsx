@@ -69,7 +69,17 @@ function TankDetailPage() {
 
   return (
     <>
-      <AppHeader back title={tank ? `Tank ${tank.code}` : "Tank"} subtitle={tank?.soort ?? ""} />
+      <AppHeader
+        back
+        title={tank ? `Tank ${tank.code}` : "Tank"}
+        subtitle={
+          tank?.soort
+            ? tank.soort.toUpperCase().startsWith("IM")
+              ? `${tank.soort} (zwemdekseltank)`
+              : tank.soort
+            : ""
+        }
+      />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
         {/* Status + inhoud */}
         <section className="rounded-2xl border border-border bg-card p-4">

@@ -173,6 +173,11 @@ function TanksPage() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Alle tanks ({tanksQ.data?.length ?? 0})
           </h2>
+          {(tanksQ.data ?? []).some((t) => t.soort?.toUpperCase().startsWith("IM")) && (
+            <p className="mb-2 text-xs text-muted-foreground">
+              <span className="font-medium">IM</span> = zwemdekseltank
+            </p>
+          )}
           {(tanksQ.data ?? []).length === 0 ? (
             <EmptyState message="Nog geen tanks." icon={<Container className="h-6 w-6" />} />
           ) : (
