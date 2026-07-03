@@ -6,6 +6,9 @@
 # PocketBase wachtwoorden (nooit committen!)
 pocketbase-accounts.txt
 
+# Testdata-boekhouding van seed-testdata-agent.mjs (lokaal, per omgeving)
+scripts/.seed-testdata-agent.json
+
 # Lokale PocketBase server + database (nooit committen!)
 # pb_hooks/ blijft WEL getrackt: dat is handgeschreven servercode (kelder-
 # validatielogica), geen binary/database.
