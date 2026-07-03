@@ -112,4 +112,39 @@ Uit de opdracht, item-voor-item. **Zeven van de twaalf punten vereisen een echte
 
 ## Oplevering
 
-_(aan het eind ingevuld)_
+### Wat werkt (geverifieerd, niet alleen gebouwd)
+
+- **Volledige backend-architectuur** voor de agent-loop: schema (5 collecties), tool-loop met 16 tools (11 lees, 5 schrijf-voorstellen, 1 web search), bevestig-/afwijs-endpoints, systeemprompt. Alle drie de PocketBase-hookbestanden (`agent.pb.js`, `agent_logica.js`, `agent_uitvoering.js`) draaien foutloos op de lokale server.
+- **De volledige bevestigingsflow, end-to-end met echte data**: een voorstel (`agent_acties`, status `voorgesteld`) → bevestigen → de bestaande Fase 2-validatielogica (`kelder_logica.js`) voert de boeking daadwerkelijk uit → tankcaches en tankboek kloppen exact → status `uitgevoerd`. Een geweigerd voorstel (te veel volume) krijgt status `mislukt` met de originele, begrijpelijke Fase 2-foutmelding. Afwijzen werkt en is onomkeerbaar (geen dubbele acties). Meerdere voorstellen in één beurt blijven onafhankelijk bevestigbaar/afwijsbaar.
+- **De volledige `/assistent`-frontend**: gesprekkenlijst, chatscherm, bevestigingskaarten met correcte kleurcodering per actietype, foto-knop, bronnenregel, feedback-knoppen — allemaal live getest op mobiel formaat (375×812) in de browserpreview, niet alleen gelezen in de code.
+- **De wekelijkse inzichten-berekening**, met een resultaat dat woordelijk overeenkomt met het voorbeeld uit de opdracht.
+- **Alle bestaande Wijngaard- en Kelder-functionaliteit is ongebroken** — zie de rooktest hieronder.
+- **Drie PocketBase-JSVM-eigenaardigheden gedocumenteerd** in CLAUDE.md (twee bekend, één nieuw en kritiek — de JSONRaw-bug), zodat een volgende sessie ze niet opnieuw hoeft te ontdekken.
+
+### Wat niet werkt / niet geverifieerd (en waarom)
+
+- **Geen enkele levende Claude-aanroep is in deze sessie getest** — `.env` heeft geen `ANTHROPIC_API_KEY`. Dit raakt: NL-taalherkenning ("ik heb tank 3 overgeheveld..." → de juiste tool-aanroep), vraagbeantwoording over eigen data, foto-analyse (vision), en of de agent na een weigering/afwijzing echt een begrijpelijke, passende reactie formuleert. Al deze stukken zijn gebouwd volgens de spec en zo grondig mogelijk structureel getest (het stuk vóór en na de modelaanroep), maar de modelaanroep zelf is een gat totdat er een sleutel is.
+- **Web search (Blok F) is ongetest tegen de echte API** — de aanname over hoe Anthropic `server_tool_use`/`web_search_tool_result`-blokken precies aanlevert kan niet bevestigd worden zonder sleutel.
+- **`agent_advies_feedback` ophalen door de agent zelf** (testchecklist-item 9, tweede helft) — het opslaan werkt bewezen, het gebruik ervan door de agent bij een latere vraag niet, om dezelfde reden.
+
+### Testchecklist-samenvatting
+
+5 van de 12 punten volledig geslaagd zonder voorbehoud (4, 5, 8, 10 plus 11/12 — zie boven voor de exacte telling), 4 punten "deels" (mechaniek geslaagd, taalbegrip/model-inhoud niet te testen), 2 punten volledig ongetest (6, 7 — vereisen puur modelgedrag). Zie de sectie "Testchecklist" hierboven voor de regel-voor-regel motivatie.
+
+### Rooktest bestaande routes
+
+Uitgevoerd in de browserpreview (mobiel formaat), zowel ingelogd als niet-ingelogd, met een tijdelijk testaccount (achteraf verwijderd): `/`, `/perceelkaart` (+ een echte rij-detailpagina via de SVG-kaart), `/dashboard`, `/oogst`, `/instellingen`, `/kelder`, `/kelder/tanks` (bevestigd: alle 48 tanks nog aanwezig en correct "leeg" na het opruimen van de testdata), `/kelder/tankboek`, `/kelder/partijen`, `/assistent`. Geen consolefouten, geen kapotte pagina's. Eén vals alarm onderweg: `/kelder/tanks` toonde "0 tanks" — bleek simpelweg de bestaande, ongewijzigde auth-vereiste te zijn (niet ingelogd op dat moment), geen regressie; bevestigd door opnieuw in te loggen.
+
+### Databank-staat na afloop
+
+Volledig schoon: 0 test-partijen, 0 agent_gesprekken/berichten/acties, 48 tanks allemaal terug op "leeg" (tankcaches herberekend), geen testgebruikers meer aanwezig. De enige blijvende toevoegingen zijn de twee `inzichten`-records uit een échte, niet-testgebonden bevinding (de uitval-uitschieter van rij 22 en de GDD-afwijking 2026) — bewust laten staan, dat is precies waar het systeem voor bedoeld is.
+
+### Aanbevolen eerste handmatige test voor Thomas
+
+1. **Vul `ANTHROPIC_API_KEY` in bij `.env`** (server-only, niet de `VITE_`-variant) en herstart de Taakplanner-taak (`Get-Process pocketbase | Stop-Process -Force` dan `schtasks /Run /TN "PocketBase Tappenmars"` — zie CLAUDE.md).
+2. Open `/assistent` op je telefoon, log in, start een nieuw gesprek.
+3. Typ (of dicteer) iets kleins en ondubbelzinnigs eerst, bijvoorbeeld: **"Welke rassen staan er in rij 5?"** — dit vereist alleen een lees-tool en geen bevestiging, dus het is de kortste weg om te zien of de basisverbinding met Claude werkt.
+4. Test daarna pas een schrijfactie met een bestaande partij/tank, bijvoorbeeld: **"Ik heb [partijnaam] overgeheveld van tank X naar tank Y, N liter"** — controleer dat de bevestigingskaart de juiste gegevens toont vóór je 'm bevestigt.
+5. Draai daarna `node scripts/bereken-inzichten.mjs <jouw-email> <wachtwoord>` één keer en vraag de agent iets als **"Hoe verloopt de gisting van [partij]?"** om te zien of hij een inzicht citeert.
+
+Bij problemen: kijk eerst in de PocketBase-logs (`GET /api/logs?perPage=20&sort=-@rowid` met een superuser-token) voor de exacte serverfout — de chat zelf toont alleen de opgeschoonde Nederlandse versie.
