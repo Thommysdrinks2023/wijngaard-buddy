@@ -238,6 +238,20 @@ export function bouwBronnenregel(
       delen.push("1 fotoanalyse");
       continue;
     }
+    if (call.naam === "web_search") {
+      for (const raw of resultatenPerNaam.get(call.naam) ?? []) {
+        try {
+          const resultaten = JSON.parse(raw);
+          const aantal = Array.isArray(resultaten) ? resultaten.length : 0;
+          delen.push(
+            aantal > 0 ? `web search (${aantal} bron${aantal === 1 ? "" : "nen"})` : "web search",
+          );
+        } catch {
+          delen.push("web search");
+        }
+      }
+      continue;
+    }
     const label = LEES_TOOL_LABELS[call.naam];
     if (!label) continue; // schrijf-tools zijn een voorstel, geen bron
     for (const raw of resultatenPerNaam.get(call.naam) ?? []) {

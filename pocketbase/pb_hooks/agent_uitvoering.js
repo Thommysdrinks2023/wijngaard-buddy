@@ -574,6 +574,24 @@ function verwerkBeurt(app, opties) {
       return { fout: `Kon de AI-agent niet bereiken: ${e.message}` };
     }
     laatsteAntwoord = antwoord;
+
+    // Blok F: web search is een server-side tool - Anthropic voert 'm zelf uit
+    // en levert search + antwoordtekst in dezelfde beurt terug (vaak met
+    // stop_reason "end_turn", niet "tool_use"). Daarom hier al vastleggen
+    // voor de bronnenregel, vóór de stop_reason-check hieronder anders zou
+    // een beurt met UITSLUITEND een websearch (geen eigen tool_use) nooit in
+    // alleToolCalls terechtkomen.
+    for (const blok of antwoord.content) {
+      if (blok.type === "server_tool_use" && blok.name === "web_search") {
+        alleToolCalls.push({ naam: "web_search", input: blok.input });
+      } else if (blok.type === "web_search_tool_result") {
+        alleToolResultaten.push({
+          naam: "web_search",
+          resultaat: JSON.stringify(blok.content || []),
+        });
+      }
+    }
+
     if (antwoord.stop_reason !== "tool_use") break;
 
     berichten.push({ role: "assistant", content: antwoord.content });

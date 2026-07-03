@@ -7,6 +7,7 @@ const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const MAX_TOOL_ITERATIES = 10;
 const MAX_GESCHIEDENIS_BERICHTEN = 30;
 const MAX_TOKENS = 2048; // Sonnet 5-tokenizer produceert ~30% meer tokens dan voorheen
+const MAX_WEB_SEARCHES = 3; // Blok F: begrenst kosten/latency per beurt
 
 // ============= Kleine hulpjes =============
 
@@ -383,6 +384,17 @@ function bouwTools() {
         required: ["partij"],
       },
     },
+    // Blok F: Anthropics ingebouwde server-side web-search-tool. Anders dan de
+    // tools hierboven wordt deze NIET door onze code uitgevoerd - Anthropic
+    // doet de zoekopdracht zelf en levert het resultaat binnen dezelfde
+    // aanroep terug als server_tool_use/web_search_tool_result-blokken (zie
+    // verwerkBeurt() in agent_uitvoering.js). Wanneer/waarvoor de agent dit
+    // wel of niet mag gebruiken staat in Gedragsregel 9 van de systeemprompt.
+    {
+      type: "web_search_20250305",
+      name: "web_search",
+      max_uses: MAX_WEB_SEARCHES,
+    },
   ];
 }
 
@@ -392,6 +404,7 @@ module.exports = {
   MAX_TOOL_ITERATIES,
   MAX_GESCHIEDENIS_BERICHTEN,
   MAX_TOKENS,
+  MAX_WEB_SEARCHES,
   LEES_TOOLS,
   SCHRIJF_TOOL_INFO,
   vandaagStr,
