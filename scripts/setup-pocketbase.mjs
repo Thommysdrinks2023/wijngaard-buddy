@@ -155,6 +155,10 @@ const KELDERLOG_ACTIES = [
 ];
 const KELDERLOG_EENHEDEN = ["g", "kg", "ml", "l", "g_hl", "mg_l"];
 const ANALYSE_METHODEN = ["eigen_meting", "extern_lab"];
+// Kelderuitbreiding: eenheden voor partij_toevoegingen — bewust een eigen,
+// voluit geschreven set i.p.v. hergebruik van KELDERLOG_EENHEDEN (andere
+// collectie, geen gedeelde betekenis nodig).
+const TOEVOEGING_EENHEDEN = ["gram", "kilogram", "ml", "liter", "mg_per_liter"];
 
 // Tankinventaris van De Tappenmars — overgenomen uit "Tankboek Leeg.xlsx".
 // IM = zwemdekseltank; capaciteit afgeleid uit de typecode. Pulptank/koeltank
@@ -996,6 +1000,57 @@ async function main() {
     deleteRule: AUTH_RULE,
   });
 
+  // 3a-8b. Kelderuitbreiding: velden uit Logboek_leeg.xlsx die vóór de eerste
+  // analyse al ingevuld worden (Ph/Totaal zuur bovenaan het logboek) plus twee
+  // vinkjes (ontstelen/voorklaren) en twee vrije-tekstvelden. "gist" stond al
+  // in het Fase 0-2-schema (zie hierboven) en wordt hier bewust niet dubbel
+  // toegevoegd.
+  await ensureVelden("partijen", [
+    { name: "ontstelen", type: "bool" },
+    { name: "voorklaren", type: "bool" },
+    { name: "ph_bij_aanmaak", type: "number" },
+    { name: "totaal_zuur_bij_aanmaak", type: "number" },
+    { name: "standtijd", type: "text" },
+    { name: "koeling", type: "text" },
+  ]);
+
+  // 3a-8c. Partij-toevoegingen — vrije lijst i.p.v. vaste velden per middel
+  // (Bentoniet/Oenopur/Go-Ferm/...), zodat Thomas zelf nieuwe toevoegingen kan
+  // invoeren zonder schemawijziging. Zelfde AUTH_RULE-niveau als analyses/
+  // kelderlog (geen wettelijk register zoals tankboek, dus geen lockdown).
+  await ensureCollection({
+    name: "partij_toevoegingen",
+    type: "base",
+    fields: [
+      {
+        name: "partij",
+        type: "relation",
+        required: true,
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "naam", type: "text", required: true },
+      { name: "hoeveelheid", type: "number", required: true },
+      {
+        name: "eenheid",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: TOEVOEGING_EENHEDEN,
+      },
+      { name: "datum", type: "text", required: true },
+      { name: "notities", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
   // corrigeert = zelfverwijzing; kan pas ná aanmaak (id nog onbekend in de definitie)
   await ensureVelden("tankboek", [
     {
@@ -1264,6 +1319,7 @@ async function main() {
     "analyses",
     "kelderlog",
     "regelgeving_instellingen",
+    "partij_toevoegingen",
     "agent_gesprekken",
     "agent_berichten",
     "agent_acties",

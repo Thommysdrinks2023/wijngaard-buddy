@@ -27,6 +27,12 @@ function partijFromPb(r: RecordModel): Partij {
     start_dichtheid_brix: r["start_dichtheid_brix"] ?? null,
     start_dichtheid_sg: r["start_dichtheid_sg"] ?? null,
     start_tank: r["start_tank"] || null,
+    ontstelen: r["ontstelen"] ?? false,
+    voorklaren: r["voorklaren"] ?? false,
+    ph_bij_aanmaak: r["ph_bij_aanmaak"] ?? null,
+    totaal_zuur_bij_aanmaak: r["totaal_zuur_bij_aanmaak"] ?? null,
+    standtijd: r["standtijd"] ?? "",
+    koeling: r["koeling"] ?? "",
     created: r["created"],
     updated: r["updated"],
   };
@@ -66,6 +72,12 @@ export interface PartijInput {
   start_dichtheid_oechsle?: number | null;
   start_dichtheid_brix?: number | null;
   start_dichtheid_sg?: number | null;
+  ontstelen?: boolean;
+  voorklaren?: boolean;
+  ph_bij_aanmaak?: number | null;
+  totaal_zuur_bij_aanmaak?: number | null;
+  standtijd?: string;
+  koeling?: string;
 }
 
 export interface PartijUpdateInput {

@@ -67,6 +67,12 @@ routerAdd(
           "start_dichtheid_brix",
           "start_dichtheid_sg",
           "start_tank",
+          "ontstelen",
+          "voorklaren",
+          "ph_bij_aanmaak",
+          "totaal_zuur_bij_aanmaak",
+          "standtijd",
+          "koeling",
           "vineyard_id",
         ];
         for (let i = 0; i < velden.length; i++) {

@@ -42,6 +42,12 @@ function NieuwePartijPage() {
   const [samenstelling, setSamenstelling] = useState("");
   const [gist, setGist] = useState("");
   const [persDatum, setPersDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [ontstelen, setOntstelen] = useState(false);
+  const [voorklaren, setVoorklaren] = useState(false);
+  const [phBijAanmaak, setPhBijAanmaak] = useState("");
+  const [totaalZuurBijAanmaak, setTotaalZuurBijAanmaak] = useState("");
+  const [standtijd, setStandtijd] = useState("");
+  const [koeling, setKoeling] = useState("");
   const [oechsle, setOechsle] = useState("");
   const [brixInvoer, setBrixInvoer] = useState("");
   const [startTank, setStartTank] = useState("");
@@ -77,6 +83,12 @@ function NieuwePartijPage() {
         samenstelling,
         gist,
         pers_datum: persDatum,
+        ontstelen,
+        voorklaren,
+        ph_bij_aanmaak: phBijAanmaak ? Number(phBijAanmaak) : null,
+        totaal_zuur_bij_aanmaak: totaalZuurBijAanmaak ? Number(totaalZuurBijAanmaak) : null,
+        standtijd,
+        koeling,
         start_dichtheid_oechsle: dichtheid?.oechsle ?? null,
         start_dichtheid_brix: dichtheid?.brix ?? null,
         start_dichtheid_sg: dichtheid?.sg ?? null,
@@ -316,6 +328,79 @@ function NieuwePartijPage() {
               opgeslagen
             </p>
           )}
+        </section>
+
+        {/* Verwerking: velden uit Logboek_leeg.xlsx die vóór de eerste analyse al ingevuld worden */}
+        <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Verwerking
+          </h2>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={ontstelen}
+                onChange={(e) => setOntstelen(e.target.checked)}
+                className="h-5 w-5 rounded border-input"
+              />
+              Ontstelen
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={voorklaren}
+                onChange={(e) => setVoorklaren(e.target.checked)}
+                className="h-5 w-5 rounded border-input"
+              />
+              Voorklaren
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">pH (bij aanmaak)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={phBijAanmaak}
+                onChange={(e) => setPhBijAanmaak(e.target.value)}
+                className={veldClass}
+                placeholder="Optioneel…"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Totaal zuur (bij aanmaak)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={totaalZuurBijAanmaak}
+                onChange={(e) => setTotaalZuurBijAanmaak(e.target.value)}
+                className={veldClass}
+                placeholder="Optioneel…"
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Standtijd</span>
+              <input
+                value={standtijd}
+                onChange={(e) => setStandtijd(e.target.value)}
+                className={veldClass}
+                placeholder="bijv. 24 uur"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Koeling</span>
+              <input
+                value={koeling}
+                onChange={(e) => setKoeling(e.target.value)}
+                className={veldClass}
+                placeholder="Optioneel…"
+              />
+            </label>
+          </div>
         </section>
 
         {/* Starttank + volume → eerste vullen-boeking in het tankboek */}

@@ -9,11 +9,13 @@ import type {
   KelderlogActie,
   KelderlogEenheid,
   KelderlogRegel,
+  PartijToevoeging,
   Producent,
   Tank,
   TankboekActie,
   TankboekRegel,
   TankStatus,
+  ToevoegingEenheid,
 } from "./types";
 import type { PartijInput } from "./partijen-data";
 import { ensureOnline, getPb } from "./data";
@@ -316,4 +318,52 @@ export async function createKelderlog(input: KelderlogInput): Promise<KelderlogR
   logAudit("aangemaakt", "kelderlog", `${input.actie} · ${input.datum}`);
   const r = await pb.collection("kelderlog").create({ ...input });
   return kelderlogFromPb(r);
+}
+
+// ============= Partij-toevoegingen =============
+// Zelfde patroon als analyses/kelderlog: vrij toevoegen, nooit bewerken/
+// verwijderen — het is een historisch registratielijstje, geen beheerlijst.
+function toevoegingFromPb(r: RecordModel): PartijToevoeging {
+  return {
+    id: r.id,
+    partij: r["partij"],
+    naam: r["naam"],
+    hoeveelheid: r["hoeveelheid"],
+    eenheid: r["eenheid"],
+    datum: r["datum"],
+    notities: r["notities"] ?? "",
+    ingevoerd_door: r["ingevoerd_door"] ?? "",
+    created: r["created"],
+  };
+}
+
+export async function fetchToevoegingen(partijId: string): Promise<PartijToevoeging[]> {
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) return [];
+  const records = await pb.collection("partij_toevoegingen").getFullList({
+    sort: "-datum,-created",
+    filter: `partij = "${partijId}"`,
+  });
+  return records.map(toevoegingFromPb);
+}
+
+export interface ToevoegingInput {
+  partij: string;
+  naam: string;
+  hoeveelheid: number;
+  eenheid: ToevoegingEenheid;
+  datum: string;
+  notities?: string;
+  ingevoerd_door?: string;
+}
+
+export async function createToevoeging(input: ToevoegingInput): Promise<PartijToevoeging> {
+  const pb = await pbOfFout();
+  logAudit(
+    "aangemaakt",
+    "partij_toevoegingen",
+    `${input.naam} · ${input.hoeveelheid} ${input.eenheid}`,
+  );
+  const r = await pb.collection("partij_toevoegingen").create({ ...input });
+  return toevoegingFromPb(r);
 }

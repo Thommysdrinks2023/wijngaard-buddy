@@ -7,14 +7,22 @@ import { toast } from "sonner";
 import {
   createAnalyse,
   createKelderlog,
+  createToevoeging,
   fetchAnalyses,
   fetchKelderlog,
   fetchProducenten,
   fetchTankboek,
   fetchTanks,
+  fetchToevoegingen,
 } from "@/lib/kelder-data";
 import { fetchPartijById, updatePartij } from "@/lib/partijen-data";
-import { foutenPerVeld, isGeldig, valideerAnalyse, valideerKelderlog } from "@/lib/validatie";
+import {
+  foutenPerVeld,
+  isGeldig,
+  valideerAnalyse,
+  valideerKelderlog,
+  valideerToevoeging,
+} from "@/lib/validatie";
 import { vanBrix, vanOechsle } from "@/lib/dichtheid";
 import { useInvoerder } from "@/lib/use-invoerder";
 import {
@@ -22,14 +30,17 @@ import {
   KELDERLOG_EENHEDEN,
   PARTIJ_STATUSSEN,
   TANKBOEK_ACTIES,
+  TOEVOEGING_EENHEDEN,
+  VEELGEBRUIKTE_TOEVOEGINGEN,
   type KelderlogActie,
   type KelderlogEenheid,
   type PartijStatus,
+  type ToevoegingEenheid,
 } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { ArrowLeftRight, FlaskConical, Loader2, NotebookPen } from "lucide-react";
+import { ArrowLeftRight, Beaker, FlaskConical, Loader2, NotebookPen } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/partijen/$partijId")({
   component: PartijDetailPage,
@@ -58,6 +69,10 @@ function PartijDetailPage() {
   const kelderlogQ = useQuery({
     queryKey: ["kelderlog", partijId],
     queryFn: () => fetchKelderlog(partijId),
+  });
+  const toevoegingenQ = useQuery({
+    queryKey: ["toevoegingen", partijId],
+    queryFn: () => fetchToevoegingen(partijId),
   });
 
   const partij = partijQ.data;
@@ -208,6 +223,54 @@ function PartijDetailPage() {
     logM.mutate();
   };
 
+  // ---------- toevoeging-invoer ----------
+  const [toonToevoeging, setToonToevoeging] = useState(false);
+  const [tDatum, setTDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [tNaam, setTNaam] = useState("");
+  const [tHoeveelheid, setTHoeveelheid] = useState("");
+  const [tEenheid, setTEenheid] = useState<ToevoegingEenheid>("gram");
+  const [tNotities, setTNotities] = useState("");
+  const [tFouten, setTFouten] = useState<Record<string, string>>({});
+
+  const toevoegingM = useMutation({
+    mutationFn: () =>
+      createToevoeging({
+        partij: partijId,
+        naam: tNaam,
+        hoeveelheid: Number(tHoeveelheid),
+        eenheid: tEenheid,
+        datum: tDatum,
+        notities: tNotities,
+        ingevoerd_door: invoerder,
+      }),
+    onSuccess: () => {
+      toast.success("Toevoeging opgeslagen ✓");
+      qc.invalidateQueries({ queryKey: ["toevoegingen", partijId] });
+      setTNaam("");
+      setTHoeveelheid("");
+      setTNotities("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bewaarToevoeging = () => {
+    if (toevoegingM.isPending) return;
+    const validatie = valideerToevoeging({
+      partij: partijId,
+      naam: tNaam,
+      hoeveelheid: tHoeveelheid ? Number(tHoeveelheid) : undefined,
+      eenheid: tEenheid,
+      datum: tDatum,
+    });
+    if (!isGeldig(validatie)) {
+      setTFouten(foutenPerVeld(validatie));
+      toast.error(validatie[0].bericht);
+      return;
+    }
+    setTFouten({});
+    toevoegingM.mutate();
+  };
+
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
   if (partijQ.isError || (partijQ.isFetched && !partij)) {
@@ -309,7 +372,7 @@ function PartijDetailPage() {
         </section>
 
         {/* Acties */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <Link
             to="/kelder/overhevelen"
             search={{ partij: partijId }}
@@ -338,6 +401,18 @@ function PartijDetailPage() {
             <NotebookPen className="h-5 w-5" />
             Logboek
           </button>
+          <button
+            type="button"
+            onClick={() => setToonToevoeging((v) => !v)}
+            className={`flex h-16 flex-col items-center justify-center gap-1 rounded-2xl border text-xs font-semibold active:scale-[0.98] ${
+              toonToevoeging
+                ? "border-primary bg-primary-soft text-primary"
+                : "border-border bg-card"
+            }`}
+          >
+            <Beaker className="h-5 w-5" />
+            Toevoeging
+          </button>
         </div>
 
         {/* Status wijzigen */}
@@ -363,6 +438,35 @@ function PartijDetailPage() {
             ))}
           </div>
         </section>
+
+        {/* Verwerking: velden uit Logboek_leeg.xlsx, alleen tonen als er iets ingevuld is */}
+        {partij &&
+          (partij.ontstelen ||
+            partij.voorklaren ||
+            partij.ph_bij_aanmaak != null ||
+            partij.totaal_zuur_bij_aanmaak != null ||
+            partij.standtijd ||
+            partij.koeling) && (
+            <section className="rounded-2xl border border-border bg-card p-3">
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Verwerking
+              </h2>
+              <p className="text-sm">
+                {[
+                  partij.ontstelen ? "Ontsteeld" : null,
+                  partij.voorklaren ? "Voorgeklaard" : null,
+                  partij.ph_bij_aanmaak != null ? `pH ${partij.ph_bij_aanmaak}` : null,
+                  partij.totaal_zuur_bij_aanmaak != null
+                    ? `Totaal zuur ${partij.totaal_zuur_bij_aanmaak}`
+                    : null,
+                  partij.standtijd ? `Standtijd ${partij.standtijd}` : null,
+                  partij.koeling ? `Koeling: ${partij.koeling}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </section>
+          )}
 
         {/* Analyse-invoer */}
         {toonAnalyse && (
@@ -552,6 +656,93 @@ function PartijDetailPage() {
           </section>
         )}
 
+        {/* Toevoeging-invoer */}
+        {toonToevoeging && (
+          <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Nieuwe toevoeging
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Datum</span>
+                <input
+                  type="date"
+                  value={tDatum}
+                  onChange={(e) => setTDatum(e.target.value)}
+                  className={veldClass}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Naam</span>
+                <input
+                  list="veelgebruikte-toevoegingen"
+                  value={tNaam}
+                  onChange={(e) => setTNaam(e.target.value)}
+                  className={`${veldClass} ${tFouten.naam ? "border-destructive" : ""}`}
+                  placeholder="bijv. Bentoniet"
+                />
+                <datalist id="veelgebruikte-toevoegingen">
+                  {VEELGEBRUIKTE_TOEVOEGINGEN.map((naam) => (
+                    <option key={naam} value={naam} />
+                  ))}
+                </datalist>
+                {tFouten.naam && (
+                  <span className="mt-1 block text-xs text-destructive">{tFouten.naam}</span>
+                )}
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Hoeveelheid</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  value={tHoeveelheid}
+                  onChange={(e) => setTHoeveelheid(e.target.value)}
+                  className={`${veldClass} ${tFouten.hoeveelheid ? "border-destructive" : ""}`}
+                  placeholder="—"
+                />
+                {tFouten.hoeveelheid && (
+                  <span className="mt-1 block text-xs text-destructive">{tFouten.hoeveelheid}</span>
+                )}
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Eenheid</span>
+                <select
+                  value={tEenheid}
+                  onChange={(e) => setTEenheid(e.target.value as ToevoegingEenheid)}
+                  className={veldClass}
+                >
+                  {TOEVOEGING_EENHEDEN.map((e2) => (
+                    <option key={e2.value} value={e2.value}>
+                      {e2.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Notities</span>
+              <input
+                value={tNotities}
+                onChange={(e) => setTNotities(e.target.value)}
+                className={veldClass}
+                placeholder="Optioneel…"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={bewaarToevoeging}
+              disabled={toevoegingM.isPending}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {toevoegingM.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Toevoeging opslaan
+            </button>
+          </section>
+        )}
+
         {/* Tankboek van deze partij */}
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -624,6 +815,38 @@ function PartijDetailPage() {
                   </p>
                 </li>
               ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Toevoegingen */}
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Toevoegingen ({toevoegingenQ.data?.length ?? 0})
+          </h2>
+          {(toevoegingenQ.data ?? []).length === 0 ? (
+            <EmptyState message="Nog geen toevoegingen." icon={<Beaker className="h-6 w-6" />} />
+          ) : (
+            <ul className="space-y-1.5">
+              {(toevoegingenQ.data ?? []).map((t) => {
+                const eenheid = TOEVOEGING_EENHEDEN.find((e2) => e2.value === t.eenheid);
+                return (
+                  <li
+                    key={t.id}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">
+                        {t.naam} · {t.hoeveelheid} {eenheid?.label ?? t.eenheid}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(parseISO(t.datum), "d MMM yyyy", { locale: nl })}
+                        {t.notities ? ` · ${t.notities}` : ""}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
