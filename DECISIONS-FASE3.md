@@ -200,3 +200,21 @@ Bij het opruimen bleek Thomas tussen de vorige sessie en deze in al zelf twee ec
 ### Databank-staat na afloop
 
 Volledig schoon: `scripts/seed-testdata-agent.mjs --cleanup` heeft de 2 testpartijen, hun tankboekregels en gekoppelde inzichten verwijderd en de tankcaches herberekend (0 niet-lege tanks over). Daarnaast handmatig opgeruimd: 12 ad-hoc testgesprekken (met hun berichten en acties) en 3 losse test-observaties (rij 5 ziekte, rij 7 bladluis, rij 8 uitval — allemaal `ingevoerd_door: "Thomas (livetest)"`) en 1 test-feedbackrecord. Overgebleven: de 2 `inzichten`-records uit de vorige sessie (rij 22-uitschieter, GDD-afwijking — bewust echte bevindingen, geen testdata) en de 2 gesprekken + 5 observaties van Thomas' eigen, echte gebruik hierboven.
+
+## Opschoning client-side assistent-implementatie (vervolgsessie)
+
+Vraag: welke van de twee AI-assistent-implementaties (`src/lib/assistent.ts`, rechtstreekse browser→Anthropic-aanroep met `VITE_ANTHROPIC_API_KEY`, model `claude-sonnet-4-6`; of de Fase 3-serverhook `pb_hooks/agent.pb.js`, model `claude-sonnet-5`) daadwerkelijk actief is op de `/assistent`-route.
+
+**Bevinding: alleen de Fase 3-serverhook.** `src/lib/assistent.ts` bleek al niet meer te bestaan — die is al verwijderd tijdens Blok H van de oorspronkelijke Fase 3-sessie (zie hierboven, sectie "Blok H — Frontend": _"oude implementatie verwijderd: `src/lib/assistent.ts` ... zijn weg — geen enkele andere plek in de codebase importeerde ze nog"_). `src/routes/assistent.tsx` importeert uitsluitend uit `@/lib/agent-data.ts`, dat uitsluitend `POST /api/agent/bericht` (en de bevestig/afwijs-endpoints) aanroept — de Fase 3-serverhook. Geen "allebei"-situatie dus: de client-side variant was al dood.
+
+**Wat nog wél restte** (puur configuratie/documentatie, geen code):
+
+- `VITE_ANTHROPIC_API_KEY=` (leeg) in `.env` — **verwijderd**.
+- `VITE_ANTHROPIC_API_KEY=sk-ant-...` (placeholder + toelichting) in `.env.example` — **verwijderd**.
+- Een verwijzing naar `VITE_ANTHROPIC_API_KEY` in `CLAUDE.md` (omgevingsvariabelen-voorbeeld + de Fase 3-alinea) — **bijgewerkt** om te verwijzen naar deze opschoning i.p.v. de sleutel als "nog aanwezig maar ongebruikt" te beschrijven.
+
+Geen andere bestanden (geen `vite-env.d.ts`-type, geen `vite.config.ts`-verwijzing, geen andere `.ts`/`.tsx`-import) refereerden nog aan de client-side sleutel of aan `claude-sonnet-4-6` — bevestigd met een projectbrede grep vóór het opruimen.
+
+**Bundle-check**: een volledige productie-build (`vite build`) gedraaid en de complete `dist/`-output doorzocht op `ANTHROPIC`, `sk-ant-` en `claude-sonnet-4` — **geen enkele match**. De sleutel kwam dus al niet in de bundel terecht (er was geen `import.meta.env.VITE_ANTHROPIC_API_KEY`-referentie meer in de code om te vervangen), en komt dat na deze opschoning nog steeds niet. De verificatie-build is niet gecommit (`dist/` staat al in `.gitignore`).
+
+**Rooktest van `/assistent` na opschoning**: leesvraag ("Hoeveel liter zit er nu in tank 1?") → agent riep `zoek_tanks` aan en antwoordde met de juiste tankinhoud; schrijfvoorstel ("Ik heb 10 liter overgeheveld van tank 1 naar tank 2") → correcte `tankboek_boeking`-kaart klaargezet → bevestigen → tankboekregel aangemaakt, tank 1 −10L / tank 2 +10L. Testgesprek en testboeking achteraf verwijderd. Geen regressie: dit bevestigt dat de eerdere conclusie (alleen de serverhook was al actief) klopte — er was functioneel niets te "omschakelen", enkel dode configuratie op te ruimen.
