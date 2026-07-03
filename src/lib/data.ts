@@ -57,9 +57,15 @@ export async function pingPb(): Promise<boolean> {
     return false;
   }
   try {
-    // maximaal 3,5s wachten: in het veld zonder bereik mag de app niet blijven hangen
+    // maximaal 3,5s wachten: in het veld zonder bereik mag de app niet blijven hangen.
+    // requestKey: null schakelt PocketBase's auto-cancellation uit voor deze call —
+    // zonder die vlag annuleert een tweede gelijktijdige pingPb()-aanroep (bv. de
+    // VerbindingBadge in AppHeader naast een paginaquery die zelf ensureOnline()
+    // aanroept) de eerste, die dan als "offline" wordt gerapporteerd terwijl de
+    // server prima bereikbaar is. Ontdekt bij Fase 3 (agent-gesprekkenlijst leek na
+    // een herlaad leeg), maar gold voor de hele app. Zie DECISIONS-FASE3.md.
     await Promise.race([
-      pb.health.check(),
+      pb.health.check({ requestKey: null }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3500)),
     ]);
     setPbStatus("online");

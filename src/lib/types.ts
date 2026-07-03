@@ -303,3 +303,76 @@ export interface KelderlogRegel {
   ingevoerd_door?: string;
   created: string;
 }
+
+// ============= AI-agent (Fase 3) =============
+
+export type AgentRol = "user" | "assistant" | "tool";
+
+export type AgentActieType = "tankboek_boeking" | "observatie" | "uitval" | "kelderlog" | "analyse";
+
+export type AgentActieStatus = "voorgesteld" | "bevestigd" | "afgewezen" | "uitgevoerd" | "mislukt";
+
+export type AdviesOordeel = "klopte" | "klopte_niet" | "deels";
+
+export interface AgentGesprek {
+  id: string;
+  titel: string;
+  laatste_bericht_op: string;
+  created: string;
+}
+
+export interface AgentToolCall {
+  naam: string;
+  input: Record<string, unknown>;
+}
+
+export interface AgentToolResultaat {
+  naam: string;
+  resultaat: string;
+}
+
+export interface AgentBericht {
+  id: string;
+  gesprek_id: string;
+  rol: AgentRol;
+  inhoud: string;
+  tool_calls?: AgentToolCall[];
+  tool_resultaten?: AgentToolResultaat[];
+  foto?: string;
+  created: string;
+}
+
+export interface AgentActie {
+  id: string;
+  gesprek_id: string;
+  bericht_id: string;
+  actie_type: AgentActieType;
+  payload: Record<string, unknown>;
+  samenvatting: string;
+  status: AgentActieStatus;
+  fout?: string;
+  uitgevoerd_record_id?: string;
+  created: string;
+}
+
+export interface AdviesFeedback {
+  id: string;
+  bericht_id: string;
+  oordeel: AdviesOordeel;
+  toelichting?: string;
+  created: string;
+}
+
+// visuele indeling van bevestigingskaarten: elk actietype een eigen randkleur
+// (bestaande CSS-variabelen, geen nieuwe kleuren) zodat Thomas in één oogopslag
+// ziet wat voor voorstel het is
+export const AGENT_ACTIE_CONFIG: Record<
+  AgentActieType,
+  { label: string; emoji: string; randKlasse: string }
+> = {
+  tankboek_boeking: { label: "Tankboek-boeking", emoji: "🛢️", randKlasse: "border-primary" },
+  observatie: { label: "Observatie", emoji: "🌿", randKlasse: "border-warning" },
+  uitval: { label: "Uitval", emoji: "💀", randKlasse: "border-destructive" },
+  kelderlog: { label: "Kelderlog", emoji: "📓", randKlasse: "border-accent-gold" },
+  analyse: { label: "Analyse", emoji: "🧪", randKlasse: "border-success" },
+};

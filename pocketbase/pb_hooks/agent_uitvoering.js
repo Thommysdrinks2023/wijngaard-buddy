@@ -697,7 +697,13 @@ function verwerkBeurt(app, opties) {
     txApp.save(gesprek);
   });
 
-  return { antwoord: tekst, acties: aangemaakteActies, bericht_id: assistantBerichtId };
+  return {
+    antwoord: tekst,
+    acties: aangemaakteActies,
+    bericht_id: assistantBerichtId,
+    tool_calls: alleToolCalls,
+    tool_resultaten: alleToolResultaten,
+  };
 }
 
 module.exports = {
