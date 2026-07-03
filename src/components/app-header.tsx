@@ -28,7 +28,7 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
             <ChevronLeft className="h-6 w-6" />
           </button>
         ) : (
-          <Link to="/perceelkaart" className="flex h-12 items-center gap-2 px-1">
+          <Link to="/" className="flex h-12 items-center gap-2 px-1">
             <img src="/logo-icon.png" alt={naam} className="h-9 w-9 object-contain" />
             <span className="text-base font-semibold tracking-tight text-nav-foreground">
               {naam}

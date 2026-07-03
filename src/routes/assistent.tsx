@@ -21,7 +21,7 @@ import { comprimeerFoto } from "@/lib/foto-compressie";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { VerbindingBadge, useVerbinding } from "@/components/verbinding-status";
+import { VerbindingBadge } from "@/components/verbinding-status";
 import { useWijngaardConfig } from "@/lib/use-wijngaard-config";
 import {
   AGENT_ACTIE_CONFIG,
@@ -67,7 +67,6 @@ const VOORBEELDVRAGEN = [
 function AssistentPage() {
   const { naam } = useWijngaardConfig();
   const pbActief = isPbConfigured();
-  const verbinding = useVerbinding();
   const [gesprekId, setGesprekId] = useState<string | null>(null);
 
   if (!pbActief) {
@@ -82,28 +81,6 @@ function AssistentPage() {
               <code className="rounded bg-muted px-1">VITE_POCKETBASE_URL</code>
               ).
             </p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (!verbinding.ingelogd) {
-    return (
-      <>
-        <AppHeader back title="Assistent" subtitle={naam} />
-        <div className="mx-auto max-w-screen-md px-3 py-4">
-          <div className="space-y-3 rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm">
-            <p className="font-medium">Log in om de assistent te gebruiken.</p>
-            <p className="text-muted-foreground">
-              Gesprekken en voorstellen zijn persoonlijk en vereisen een account.
-            </p>
-            <Link
-              to="/login"
-              className="flex h-12 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
-            >
-              Inloggen
-            </Link>
           </div>
         </div>
       </>

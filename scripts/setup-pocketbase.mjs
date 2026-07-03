@@ -21,6 +21,10 @@ if (!baseUrl || !adminEmail || !adminPass) {
 const base = baseUrl.replace(/\/+$/, "");
 
 const AUTH_RULE = "@request.auth.id != ''";
+// Leeg = geen restrictie (ook anonieme/niet-ingelogde clients mogen erbij).
+// Gebruikt voor de agent-collecties: de assistent werkt bewust ook zonder
+// inloggen, net als de rest van de app (zie CLAUDE.md).
+const OPEN_RULE = "";
 
 const VAK4 = "4 planten per vak (i.p.v. standaard 5)";
 const VAK6 = "Laatste vak heeft 6 planten, zelfde rijlengte";
@@ -1062,11 +1066,14 @@ async function main() {
       { name: "deleted", type: "bool" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE,
-    viewRule: AUTH_RULE,
-    createRule: AUTH_RULE,
-    updateRule: AUTH_RULE,
-    deleteRule: AUTH_RULE,
+    // Open (geen AUTH_RULE): de assistent werkt bewust ook zonder inloggen,
+    // net als de rest van de app (zie CLAUDE.md — "login weer optioneel").
+    // Geen multi-tenant scheiding nodig: één bedrijf, één PocketBase-instantie.
+    listRule: OPEN_RULE,
+    viewRule: OPEN_RULE,
+    createRule: OPEN_RULE,
+    updateRule: OPEN_RULE,
+    deleteRule: OPEN_RULE,
   });
 
   const gesprekRelatie = {
@@ -1091,11 +1098,11 @@ async function main() {
       { name: "deleted", type: "bool" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE,
-    viewRule: AUTH_RULE,
-    createRule: AUTH_RULE,
-    updateRule: AUTH_RULE,
-    deleteRule: AUTH_RULE,
+    listRule: OPEN_RULE,
+    viewRule: OPEN_RULE,
+    createRule: OPEN_RULE,
+    updateRule: OPEN_RULE,
+    deleteRule: OPEN_RULE,
   });
 
   await ensureCollection({
@@ -1138,10 +1145,12 @@ async function main() {
       { name: "bevestigd_op", type: "text" },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE,
-    viewRule: AUTH_RULE,
-    // schrijven kan uitsluitend via de agent-hook (superuser-context) - de
-    // gewone client mag voorstellen alleen lezen, nooit zelf status wijzigen
+    // Lezen open (geen login nodig, zelfde als de andere agent-collecties).
+    // Schrijven blijft dicht (null = uitsluitend de hook-context): dat is een
+    // bedrijfsregel ("bevestigen kan alleen via het echte bevestigingspad"),
+    // geen inlog-vereiste — staat los van OPEN_RULE hierboven.
+    listRule: OPEN_RULE,
+    viewRule: OPEN_RULE,
     createRule: null,
     updateRule: null,
     deleteRule: null,
@@ -1190,11 +1199,11 @@ async function main() {
       },
       ...autodateFields(),
     ],
-    listRule: AUTH_RULE,
-    viewRule: AUTH_RULE,
-    createRule: AUTH_RULE,
-    updateRule: AUTH_RULE,
-    deleteRule: AUTH_RULE,
+    listRule: OPEN_RULE,
+    viewRule: OPEN_RULE,
+    createRule: OPEN_RULE,
+    updateRule: OPEN_RULE,
+    deleteRule: OPEN_RULE,
   });
 
   // 3b. Wijngaard-instellingen (vineyard_settings) + eerste configuratie

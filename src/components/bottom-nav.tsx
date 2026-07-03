@@ -1,17 +1,65 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { BarChart3, Map, Calendar, Settings, LineChart, ClipboardList, Wine } from "lucide-react";
+import {
+  BarChart3,
+  Map,
+  Calendar,
+  Settings,
+  LineChart,
+  ClipboardList,
+  Home,
+  Wine,
+  Grape,
+  BookOpen,
+  Container,
+  Sparkles,
+} from "lucide-react";
+
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof Home;
+  exact?: boolean;
+}
+
+// Elke module heeft een eigen navigatiebalk: in de Wijngaard geen Kelder-links
+// en andersom. "Home" brengt je altijd terug naar de modulekiezer op /.
+// De hub zelf toont geen balk — dat scherm ís het menu.
+const WIJNGAARD_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/perceelkaart", label: "Kaart", icon: Map },
+  { to: "/seizoen", label: "Seizoen", icon: Calendar },
+  { to: "/steekproeven", label: "Steek", icon: ClipboardList },
+  { to: "/dashboard", label: "Dash", icon: BarChart3 },
+  { to: "/grafieken", label: "Grafiek", icon: LineChart },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
+const KELDER_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/kelder", label: "Kelder", icon: Wine, exact: true },
+  { to: "/kelder/partijen", label: "Partijen", icon: Grape },
+  { to: "/kelder/tanks", label: "Tanks", icon: Container },
+  { to: "/kelder/tankboek", label: "Boek", icon: BookOpen },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
+const ASSISTENT_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/assistent", label: "Assistent", icon: Sparkles },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
+function itemsVoorPad(pathname: string): NavItem[] | null {
+  if (pathname === "/") return null; // modulekiezer = zelf het menu
+  if (pathname.startsWith("/kelder")) return KELDER_ITEMS;
+  if (pathname.startsWith("/assistent")) return ASSISTENT_ITEMS;
+  return WIJNGAARD_ITEMS;
+}
 
 export function BottomNav() {
   const { pathname } = useLocation();
-  const items = [
-    { to: "/perceelkaart", label: "Kaart", icon: Map, exact: false },
-    { to: "/seizoen", label: "Seizoen", icon: Calendar, exact: false },
-    { to: "/steekproeven", label: "Steek", icon: ClipboardList, exact: false },
-    { to: "/dashboard", label: "Dash", icon: BarChart3, exact: false },
-    { to: "/kelder", label: "Kelder", icon: Wine, exact: false },
-    { to: "/grafieken", label: "Grafiek", icon: LineChart, exact: false },
-    { to: "/instellingen", label: "Meer", icon: Settings, exact: false },
-  ];
+  const items = itemsVoorPad(pathname);
+  if (!items) return null;
 
   return (
     <nav

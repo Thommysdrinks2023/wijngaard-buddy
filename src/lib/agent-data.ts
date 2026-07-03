@@ -27,6 +27,19 @@ function huidigeGebruikerId(): string {
   return getPb()?.authStore.record?.id ?? "";
 }
 
+// naam voor "verantwoordelijke" op boekingen: ingelogde accountnaam, anders de
+// lokaal ingestelde invoerder (zelfde bron als metingen/observaties gebruiken)
+function huidigeNaam(): string {
+  const record = getPb()?.authStore.record as { name?: string; email?: string } | null;
+  if (record?.name) return record.name;
+  if (record?.email) return record.email.split("@")[0];
+  try {
+    return JSON.parse(localStorage.getItem("wg.invoerder.v1") ?? '""') || "onbekend";
+  } catch {
+    return "onbekend";
+  }
+}
+
 // ============= Gesprekken =============
 
 function gesprekFromPb(r: RecordModel): AgentGesprek {
@@ -38,14 +51,15 @@ function gesprekFromPb(r: RecordModel): AgentGesprek {
   };
 }
 
+// Geen filter op gebruiker: de app is in de praktijk één bedrijf/één gebruiker,
+// en de assistent werkt bewust ook zonder inloggen (gesprekken die uitgelogd
+// zijn gestart moeten na inloggen gewoon zichtbaar blijven, en andersom).
 export async function fetchGesprekken(): Promise<AgentGesprek[]> {
   const pb = getPb();
   if (!pb || !(await ensureOnline())) return [];
-  const gebruiker = huidigeGebruikerId();
-  if (!gebruiker) return [];
   const records = await pb.collection("agent_gesprekken").getFullList({
     sort: "-laatste_bericht_op",
-    filter: `gebruiker = "${gebruiker}" && deleted != true`,
+    filter: `deleted != true`,
   });
   return records.map(gesprekFromPb);
 }
@@ -117,7 +131,10 @@ export interface AgentBeurtResultaat {
 // al in het Nederlands terug van de server (leesbareFout in agent_uitvoering.js).
 export async function stuurBerichtNaarAgent(berichtId: string): Promise<AgentBeurtResultaat> {
   const pb = await pbOfFout();
-  return await pb.send("/api/agent/bericht", { method: "POST", body: { bericht_id: berichtId } });
+  return await pb.send("/api/agent/bericht", {
+    method: "POST",
+    body: { bericht_id: berichtId, verantwoordelijke: huidigeNaam() },
+  });
 }
 
 export async function fetchActies(gesprekId: string): Promise<AgentActie[]> {
@@ -154,13 +171,19 @@ export interface AgentActieUitkomst {
 export async function bevestigActie(actieId: string): Promise<AgentActieUitkomst> {
   const pb = await pbOfFout();
   logAudit("gewijzigd", "agent_acties", "Voorstel bevestigd");
-  return await pb.send(`/api/agent/actie/${actieId}/bevestig`, { method: "POST", body: {} });
+  return await pb.send(`/api/agent/actie/${actieId}/bevestig`, {
+    method: "POST",
+    body: { verantwoordelijke: huidigeNaam() },
+  });
 }
 
 export async function afwijzActie(actieId: string): Promise<AgentActieUitkomst> {
   const pb = await pbOfFout();
   logAudit("gewijzigd", "agent_acties", "Voorstel afgewezen");
-  return await pb.send(`/api/agent/actie/${actieId}/afwijzen`, { method: "POST", body: {} });
+  return await pb.send(`/api/agent/actie/${actieId}/afwijzen`, {
+    method: "POST",
+    body: { verantwoordelijke: huidigeNaam() },
+  });
 }
 
 // ============= Feedback =============

@@ -16,152 +16,149 @@
 // letterlijke waarde staat rechtstreeks in elke handler.
 
 // ---------- POST /api/agent/bericht ----------
-// body: { bericht_id } - het user-bericht dat de frontend al rechtstreeks
-// via de SDK heeft aangemaakt in agent_berichten (inclusief eventuele foto).
-routerAdd(
-  "POST",
-  "/api/agent/bericht",
-  (e) => {
-    const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
-    try {
-      const b = e.requestInfo().body;
-      if (!b.bericht_id) throw new BadRequestError("bericht_id is verplicht.");
-      const bericht = e.app.findRecordById("agent_berichten", b.bericht_id);
-      const gesprekId = bericht.getString("gesprek_id");
-      const naam = (e.auth && (e.auth.get("name") || e.auth.get("email"))) || "onbekend";
+// body: { bericht_id, verantwoordelijke? } - het user-bericht dat de frontend
+// al rechtstreeks via de SDK heeft aangemaakt in agent_berichten (inclusief
+// eventuele foto). Geen requireAuth: de assistent werkt (net als de rest van
+// de app) bewust ook zonder inloggen; de naam komt uit de body (de lokaal
+// ingestelde invoerder) met de accountnaam als terugval.
+routerAdd("POST", "/api/agent/bericht", (e) => {
+  const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
+  try {
+    const b = e.requestInfo().body;
+    if (!b.bericht_id) throw new BadRequestError("bericht_id is verplicht.");
+    const bericht = e.app.findRecordById("agent_berichten", b.bericht_id);
+    const gesprekId = bericht.getString("gesprek_id");
+    const naam =
+      b.verantwoordelijke || (e.auth && (e.auth.get("name") || e.auth.get("email"))) || "onbekend";
 
-      const resultaat = uitvoering.verwerkBeurt(e.app, {
-        gesprekId,
-        systeemprompt: uitvoering.leesSysteemprompt(),
-        pocketbaseUrl: "http://127.0.0.1:8090",
-        verantwoordelijke: naam,
-      });
-      if (resultaat.fout) throw new BadRequestError(resultaat.fout);
-      return e.json(200, { ok: true, ...resultaat });
-    } catch (err) {
-      throw uitvoering.leesbareFout(err);
-    }
-  },
-  $apis.requireAuth(),
-);
+    const resultaat = uitvoering.verwerkBeurt(e.app, {
+      gesprekId,
+      systeemprompt: uitvoering.leesSysteemprompt(),
+      pocketbaseUrl: "http://127.0.0.1:8090",
+      verantwoordelijke: naam,
+    });
+    if (resultaat.fout) throw new BadRequestError(resultaat.fout);
+    return e.json(200, { ok: true, ...resultaat });
+  } catch (err) {
+    throw uitvoering.leesbareFout(err);
+  }
+});
 
 // ---------- POST /api/agent/actie/{id}/bevestig ----------
-routerAdd(
-  "POST",
-  "/api/agent/actie/{id}/bevestig",
-  (e) => {
-    const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
-    try {
-      const actieId = e.request.pathValue("id");
-      const naam = (e.auth && (e.auth.get("name") || e.auth.get("email"))) || "onbekend";
-      let statusNa = "";
-      let fout = "";
-      let uitgevoerdRecordId = "";
-      let gesprekId = "";
+routerAdd("POST", "/api/agent/actie/{id}/bevestig", (e) => {
+  const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
+  try {
+    const actieId = e.request.pathValue("id");
+    const body = e.requestInfo().body;
+    const naam =
+      body.verantwoordelijke ||
+      (e.auth && (e.auth.get("name") || e.auth.get("email"))) ||
+      "onbekend";
+    let statusNa = "";
+    let fout = "";
+    let uitgevoerdRecordId = "";
+    let gesprekId = "";
 
-      e.app.runInTransaction((txApp) => {
-        const actie = txApp.findRecordById("agent_acties", actieId);
-        if (actie.getString("status") !== "voorgesteld") {
-          throw new Error("Dit voorstel is al verwerkt.");
-        }
-        gesprekId = actie.getString("gesprek_id");
-        actie.set("bevestigd_door", e.auth ? e.auth.id : "");
-        actie.set("bevestigd_op", new Date().toISOString());
-
-        const resultaat = uitvoering.voerBevestigdeActieUit(
-          txApp,
-          actie.getString("actie_type"),
-          uitvoering.leesJsonVeld(actie, "payload"),
-          naam,
-        );
-        if (resultaat.fout) {
-          actie.set("status", "mislukt");
-          actie.set("fout", resultaat.fout);
-          fout = resultaat.fout;
-          statusNa = "mislukt";
-        } else {
-          actie.set("status", "uitgevoerd");
-          actie.set("uitgevoerd_record_id", resultaat.record_id);
-          uitgevoerdRecordId = resultaat.record_id;
-          statusNa = "uitgevoerd";
-        }
-        txApp.save(actie);
-      });
-
-      let vervolg = null;
-      if (statusNa === "mislukt") {
-        // hook-foutmelding terug de loop in, zodat de agent dit in gewone
-        // taal kan uitleggen (kernprincipe: geen ruwe foutmeldingen tonen)
-        const col = e.app.findCollectionByNameOrId("agent_berichten");
-        const rec = new Record(col);
-        rec.set("gesprek_id", gesprekId);
-        rec.set("rol", "tool");
-        rec.set(
-          "inhoud",
-          `Systeemmelding: de voorgestelde actie is geweigerd door het systeem: ${fout}. ` +
-            `Leg dit in gewone taal uit aan de gebruiker en stel een concrete vervolgvraag.`,
-        );
-        e.app.save(rec);
-        vervolg = uitvoering.verwerkBeurt(e.app, {
-          gesprekId,
-          systeemprompt: uitvoering.leesSysteemprompt(),
-          pocketbaseUrl: "http://127.0.0.1:8090",
-          verantwoordelijke: naam,
-        });
-      }
-
-      return e.json(200, {
-        ok: true,
-        status: statusNa,
-        uitgevoerd_record_id: uitgevoerdRecordId,
-        fout,
-        vervolg,
-      });
-    } catch (err) {
-      throw uitvoering.leesbareFout(err);
-    }
-  },
-  $apis.requireAuth(),
-);
-
-// ---------- POST /api/agent/actie/{id}/afwijzen ----------
-routerAdd(
-  "POST",
-  "/api/agent/actie/{id}/afwijzen",
-  (e) => {
-    const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
-    try {
-      const actieId = e.request.pathValue("id");
-      const naam = (e.auth && (e.auth.get("name") || e.auth.get("email"))) || "onbekend";
-      const actie = e.app.findRecordById("agent_acties", actieId);
+    e.app.runInTransaction((txApp) => {
+      const actie = txApp.findRecordById("agent_acties", actieId);
       if (actie.getString("status") !== "voorgesteld") {
-        throw new BadRequestError("Dit voorstel is al verwerkt.");
+        throw new Error("Dit voorstel is al verwerkt.");
       }
-      actie.set("status", "afgewezen");
-      e.app.save(actie);
+      gesprekId = actie.getString("gesprek_id");
+      actie.set("bevestigd_door", e.auth ? e.auth.id : "");
+      actie.set("bevestigd_op", new Date().toISOString());
 
-      const gesprekId = actie.getString("gesprek_id");
+      const resultaat = uitvoering.voerBevestigdeActieUit(
+        txApp,
+        actie.getString("actie_type"),
+        uitvoering.leesJsonVeld(actie, "payload"),
+        naam,
+      );
+      if (resultaat.fout) {
+        actie.set("status", "mislukt");
+        actie.set("fout", resultaat.fout);
+        fout = resultaat.fout;
+        statusNa = "mislukt";
+      } else {
+        actie.set("status", "uitgevoerd");
+        actie.set("uitgevoerd_record_id", resultaat.record_id);
+        uitgevoerdRecordId = resultaat.record_id;
+        statusNa = "uitgevoerd";
+      }
+      txApp.save(actie);
+    });
+
+    let vervolg = null;
+    if (statusNa === "mislukt") {
+      // hook-foutmelding terug de loop in, zodat de agent dit in gewone
+      // taal kan uitleggen (kernprincipe: geen ruwe foutmeldingen tonen)
       const col = e.app.findCollectionByNameOrId("agent_berichten");
       const rec = new Record(col);
       rec.set("gesprek_id", gesprekId);
       rec.set("rol", "tool");
       rec.set(
         "inhoud",
-        `Systeemmelding: de gebruiker heeft het voorstel "${actie.getString("samenvatting")}" afgewezen. ` +
-          `Vraag kort wat er anders moet, of ga door met het gesprek.`,
+        `Systeemmelding: de voorgestelde actie is geweigerd door het systeem: ${fout}. ` +
+          `Leg dit in gewone taal uit aan de gebruiker en stel een concrete vervolgvraag.`,
       );
       e.app.save(rec);
-      const vervolg = uitvoering.verwerkBeurt(e.app, {
+      vervolg = uitvoering.verwerkBeurt(e.app, {
         gesprekId,
         systeemprompt: uitvoering.leesSysteemprompt(),
         pocketbaseUrl: "http://127.0.0.1:8090",
         verantwoordelijke: naam,
       });
-
-      return e.json(200, { ok: true, status: "afgewezen", vervolg });
-    } catch (err) {
-      throw uitvoering.leesbareFout(err);
     }
-  },
-  $apis.requireAuth(),
-);
+
+    return e.json(200, {
+      ok: true,
+      status: statusNa,
+      uitgevoerd_record_id: uitgevoerdRecordId,
+      fout,
+      vervolg,
+    });
+  } catch (err) {
+    throw uitvoering.leesbareFout(err);
+  }
+});
+
+// ---------- POST /api/agent/actie/{id}/afwijzen ----------
+routerAdd("POST", "/api/agent/actie/{id}/afwijzen", (e) => {
+  const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
+  try {
+    const actieId = e.request.pathValue("id");
+    const body = e.requestInfo().body;
+    const naam =
+      body.verantwoordelijke ||
+      (e.auth && (e.auth.get("name") || e.auth.get("email"))) ||
+      "onbekend";
+    const actie = e.app.findRecordById("agent_acties", actieId);
+    if (actie.getString("status") !== "voorgesteld") {
+      throw new BadRequestError("Dit voorstel is al verwerkt.");
+    }
+    actie.set("status", "afgewezen");
+    e.app.save(actie);
+
+    const gesprekId = actie.getString("gesprek_id");
+    const col = e.app.findCollectionByNameOrId("agent_berichten");
+    const rec = new Record(col);
+    rec.set("gesprek_id", gesprekId);
+    rec.set("rol", "tool");
+    rec.set(
+      "inhoud",
+      `Systeemmelding: de gebruiker heeft het voorstel "${actie.getString("samenvatting")}" afgewezen. ` +
+        `Vraag kort wat er anders moet, of ga door met het gesprek.`,
+    );
+    e.app.save(rec);
+    const vervolg = uitvoering.verwerkBeurt(e.app, {
+      gesprekId,
+      systeemprompt: uitvoering.leesSysteemprompt(),
+      pocketbaseUrl: "http://127.0.0.1:8090",
+      verantwoordelijke: naam,
+    });
+
+    return e.json(200, { ok: true, status: "afgewezen", vervolg });
+  } catch (err) {
+    throw uitvoering.leesbareFout(err);
+  }
+});
