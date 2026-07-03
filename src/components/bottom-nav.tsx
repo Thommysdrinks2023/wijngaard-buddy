@@ -12,6 +12,7 @@ import {
   BookOpen,
   Container,
   Sparkles,
+  Package,
 } from "lucide-react";
 
 interface NavItem {
@@ -49,10 +50,17 @@ const ASSISTENT_ITEMS: NavItem[] = [
   { to: "/instellingen", label: "Meer", icon: Settings },
 ];
 
+const VOORRAAD_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/voorraad", label: "Voorraad", icon: Package, exact: true },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
 function itemsVoorPad(pathname: string): NavItem[] | null {
   if (pathname === "/") return null; // modulekiezer = zelf het menu
   if (pathname.startsWith("/kelder")) return KELDER_ITEMS;
   if (pathname.startsWith("/assistent")) return ASSISTENT_ITEMS;
+  if (pathname.startsWith("/voorraad")) return VOORRAAD_ITEMS;
   return WIJNGAARD_ITEMS;
 }
 

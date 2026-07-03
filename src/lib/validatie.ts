@@ -3,10 +3,12 @@ import type { PartijInput } from "./partijen-data";
 import type {
   AnalyseInput,
   BoekingInput,
+  BottelrondeInput,
   KelderlogInput,
   TankInput,
   ToevoegingInput,
   VoedingswaardeInput,
+  VoorraadMutatieInput,
 } from "./kelder-data";
 
 export interface ValidatieFout {
@@ -258,6 +260,37 @@ export function valideerVoedingswaarde(input: Partial<VoedingswaardeInput>): Val
         bericht: `Vul een geldige waarde in voor ${v.label} (g/L)`,
       });
   }
+  return fouten;
+}
+
+export function valideerBottelronde(input: Partial<BottelrondeInput>): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+  if (!input.partij) fouten.push({ veld: "partij", bericht: "Partij ontbreekt" });
+  if (!input.van_tank) fouten.push({ veld: "van_tank", bericht: "Kies een tank" });
+  checkDatum(input.botteldatum, fouten);
+  if (!input.aantal_flessen || input.aantal_flessen <= 0)
+    fouten.push({ veld: "aantal_flessen", bericht: "Vul een geldig aantal flessen in" });
+  if (!input.flesinhoud_ml || input.flesinhoud_ml <= 0)
+    fouten.push({ veld: "flesinhoud_ml", bericht: "Vul een geldige flesinhoud in (ml)" });
+  if (!input.ingevoerd_door?.trim())
+    fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
+  return fouten;
+}
+
+export function valideerVoorraadMutatie(input: Partial<VoorraadMutatieInput>): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+  if (!input.voorraad) fouten.push({ veld: "voorraad", bericht: "Voorraadrecord ontbreekt" });
+  if (!input.mutatie_type) fouten.push({ veld: "mutatie_type", bericht: "Kies een type" });
+  checkDatum(input.datum, fouten);
+  // "correctie" mag negatief zijn (extra afboeken na een telfout); de andere
+  // vier types zijn altijd een afname en de UI vraagt dus altijd een positief
+  // aantal — de server normaliseert dat zelf naar negatief.
+  if (input.aantal == null || Number.isNaN(input.aantal) || input.aantal === 0)
+    fouten.push({ veld: "aantal", bericht: "Vul een geldig, niet-nul aantal in" });
+  else if (input.mutatie_type !== "correctie" && input.aantal < 0)
+    fouten.push({ veld: "aantal", bericht: "Vul een positief aantal in" });
+  if (!input.ingevoerd_door?.trim())
+    fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
   return fouten;
 }
 

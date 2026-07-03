@@ -35,6 +35,13 @@ const TEGELS = [
     label: "Assistent",
     omschrijving: "AI-hulp met je actuele data",
   },
+  {
+    key: "voorraad",
+    to: "/voorraad",
+    emoji: "🍾",
+    label: "Voorraad",
+    omschrijving: "Van fles tot verkoop",
+  },
 ] as const;
 
 function ModuleHub() {
@@ -67,15 +74,6 @@ function ModuleHub() {
               <span className="text-xs text-muted-foreground">{tegel.omschrijving}</span>
             </Link>
           ))}
-          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card p-6 text-center opacity-50">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-3xl">
-              🍾
-            </span>
-            <span className="text-base font-semibold">Voorraad</span>
-            <span className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Binnenkort
-            </span>
-          </div>
         </div>
       </div>
     </>

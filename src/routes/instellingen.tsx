@@ -31,6 +31,8 @@ import {
   History,
   Sparkles,
   Home,
+  Wine,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -139,6 +141,23 @@ const MENU_GROEPEN = [
         label: "Seizoensrapport",
         omschrijving: "Afdrukken of opslaan als PDF",
         icon: FileText,
+      },
+    ],
+  },
+  {
+    kop: "🍾 Botteling & Voorraad",
+    items: [
+      {
+        to: "/voorraad",
+        label: "Voorraad",
+        omschrijving: "Flessenvoorraad per wijn/jaargang",
+        icon: Package,
+      },
+      {
+        to: "/kelder/partijen",
+        label: "Bottelen",
+        omschrijving: "Start een bottelronde vanuit een partij",
+        icon: Wine,
       },
     ],
   },

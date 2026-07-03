@@ -6,6 +6,7 @@ import type { RecordModel } from "pocketbase";
 import type {
   Analyse,
   AnalyseMethode,
+  Bottelronde,
   KelderlogActie,
   KelderlogEenheid,
   KelderlogRegel,
@@ -17,6 +18,9 @@ import type {
   TankStatus,
   ToevoegingEenheid,
   VoedingswaardeBerekening,
+  VoorraadFles,
+  VoorraadMutatie,
+  VoorraadMutatieType,
 } from "./types";
 import type { PartijInput } from "./partijen-data";
 import { ensureOnline, getPb } from "./data";
@@ -421,4 +425,190 @@ export async function createVoedingswaardeBerekening(
   logAudit("aangemaakt", "voedingswaarde_berekeningen", `partij ${input.partij}`);
   const r = await pb.collection("voedingswaarde_berekeningen").create({ ...input });
   return voedingswaardeFromPb(r);
+}
+
+// ============= Bottelrondes (Fase 4) =============
+// Aanmaken loopt uitsluitend via het atomische endpoint (zie
+// bottelronde-aanmaken hieronder), zodat bottelronde + tankboekregel +
+// voorraad_flessen samen slagen of falen — zelfde reden als partijen.
+function bottelrondeFromPb(r: RecordModel): Bottelronde {
+  return {
+    id: r.id,
+    partij: r["partij"],
+    producent: r["producent"] || null,
+    van_tank: r["van_tank"],
+    botteldatum: r["botteldatum"],
+    aantal_flessen: r["aantal_flessen"] ?? 0,
+    flesinhoud_ml: r["flesinhoud_ml"] ?? 0,
+    flestype: r["flestype"] ?? "",
+    kleur_fles: r["kleur_fles"] ?? "",
+    parelwijn: r["parelwijn"] ?? false,
+    lotnummer: r["lotnummer"] ?? "",
+    voedingswaarde_berekening: r["voedingswaarde_berekening"] || null,
+    notities: r["notities"] ?? "",
+    ingevoerd_door: r["ingevoerd_door"] ?? "",
+    deleted: r["deleted"] ?? false,
+    created: r["created"],
+    updated: r["updated"],
+  };
+}
+
+export async function fetchBottelrondes(partijId?: string): Promise<Bottelronde[]> {
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) return [];
+  const records = await pb.collection("bottelrondes").getFullList({
+    sort: "-botteldatum,-created",
+    filter: partijId ? `partij = "${partijId}" && deleted != true` : "deleted != true",
+  });
+  return records.map(bottelrondeFromPb);
+}
+
+export async function fetchBottelrondeById(id: string): Promise<Bottelronde | null> {
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) return null;
+  try {
+    const r = await pb.collection("bottelrondes").getOne(id);
+    return bottelrondeFromPb(r);
+  } catch {
+    return null;
+  }
+}
+
+export interface BottelrondeInput {
+  partij: string;
+  producent?: string | null;
+  van_tank: string;
+  botteldatum: string;
+  aantal_flessen: number;
+  flesinhoud_ml: number;
+  flestype?: string;
+  kleur_fles?: string;
+  parelwijn?: boolean;
+  lotnummer?: string;
+  voedingswaarde_berekening?: string | null;
+  wijnnaam?: string;
+  jaargang?: number;
+  locatie?: string;
+  notities?: string;
+  ingevoerd_door?: string;
+}
+
+export interface BottelrondeResultaat {
+  ok: boolean;
+  id: string;
+  voorraad_id: string;
+  waarschuwing: string;
+}
+
+export async function createBottelrondeViaEndpoint(
+  input: BottelrondeInput,
+): Promise<BottelrondeResultaat> {
+  const pb = await pbOfFout();
+  logAudit("aangemaakt", "bottelrondes", `${input.aantal_flessen} fl. · partij ${input.partij}`);
+  return await pb.send("/api/tappenmars/bottelronde-aanmaken", {
+    method: "POST",
+    body: input,
+  });
+}
+
+// ============= Voorraad (Fase 4) =============
+function voorraadFlesFromPb(r: RecordModel): VoorraadFles {
+  return {
+    id: r.id,
+    bottelronde: r["bottelronde"],
+    partij: r["partij"],
+    producent: r["producent"] || null,
+    wijnnaam: r["wijnnaam"] ?? "",
+    jaargang: r["jaargang"] ?? null,
+    aantal_beginvoorraad: r["aantal_beginvoorraad"] ?? 0,
+    aantal_huidig: r["aantal_huidig"] ?? 0,
+    locatie: r["locatie"] ?? "",
+    status: r["status"],
+    created: r["created"],
+    updated: r["updated"],
+  };
+}
+
+export interface VoorraadFilter {
+  producent?: string;
+  status?: string;
+  partij?: string;
+}
+
+export async function fetchVoorraadFlessen(filter?: VoorraadFilter): Promise<VoorraadFles[]> {
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) return [];
+  const delen: string[] = [];
+  if (filter?.producent) delen.push(`producent = "${filter.producent}"`);
+  if (filter?.status) delen.push(`status = "${filter.status}"`);
+  if (filter?.partij) delen.push(`partij = "${filter.partij}"`);
+  const records = await pb.collection("voorraad_flessen").getFullList({
+    sort: "-created",
+    filter: delen.join(" && "),
+  });
+  return records.map(voorraadFlesFromPb);
+}
+
+export async function fetchVoorraadFlesById(id: string): Promise<VoorraadFles | null> {
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) return null;
+  try {
+    const r = await pb.collection("voorraad_flessen").getOne(id);
+    return voorraadFlesFromPb(r);
+  } catch {
+    return null;
+  }
+}
+
+function voorraadMutatieFromPb(r: RecordModel): VoorraadMutatie {
+  return {
+    id: r.id,
+    voorraad: r["voorraad"],
+    mutatie_type: r["mutatie_type"],
+    aantal: r["aantal"] ?? 0,
+    datum: r["datum"],
+    afnemer_of_reden: r["afnemer_of_reden"] ?? "",
+    ingevoerd_door: r["ingevoerd_door"] ?? "",
+    notities: r["notities"] ?? "",
+    created: r["created"],
+  };
+}
+
+export async function fetchVoorraadMutaties(voorraadId: string): Promise<VoorraadMutatie[]> {
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) return [];
+  const records = await pb.collection("voorraad_mutaties").getFullList({
+    sort: "-datum,-created",
+    filter: `voorraad = "${voorraadId}"`,
+  });
+  return records.map(voorraadMutatieFromPb);
+}
+
+export interface VoorraadMutatieInput {
+  voorraad: string;
+  mutatie_type: VoorraadMutatieType;
+  aantal: number;
+  datum: string;
+  afnemer_of_reden?: string;
+  ingevoerd_door?: string;
+  notities?: string;
+}
+
+export interface VoorraadMutatieResultaat {
+  ok: boolean;
+  waarschuwing: string;
+  regelId: string;
+  aantal_huidig: number;
+  status: string;
+}
+
+export async function boekVoorraadMutatie(
+  input: VoorraadMutatieInput,
+): Promise<VoorraadMutatieResultaat> {
+  const pb = await pbOfFout();
+  logAudit("aangemaakt", "voorraad_mutaties", `${input.mutatie_type} · ${input.aantal}`);
+  return await pb.send("/api/tappenmars/voorraad-mutatie", {
+    method: "POST",
+    body: input,
+  });
 }

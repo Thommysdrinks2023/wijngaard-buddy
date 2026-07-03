@@ -3,18 +3,20 @@
 
 import { readLs, writeLs } from "./opslag";
 
-export type ModuleKeuze = "wijngaard" | "kelder" | "assistent";
+export type ModuleKeuze = "wijngaard" | "kelder" | "assistent" | "voorraad";
 
 export const MODULE_ROUTES: Record<ModuleKeuze, string> = {
   wijngaard: "/wijngaard",
   kelder: "/kelder",
   assistent: "/assistent",
+  voorraad: "/voorraad",
 };
 
 export const MODULE_LABELS: Record<ModuleKeuze, string> = {
   wijngaard: "Wijngaard",
   kelder: "Kelder",
   assistent: "Assistent",
+  voorraad: "Voorraad",
 };
 
 const LS_LAATSTE_MODULE = "wg.instellingen.laatste_module.v1";

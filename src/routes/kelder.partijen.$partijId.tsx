@@ -10,12 +10,14 @@ import {
   createToevoeging,
   createVoedingswaardeBerekening,
   fetchAnalyses,
+  fetchBottelrondes,
   fetchKelderlog,
   fetchProducenten,
   fetchTankboek,
   fetchTanks,
   fetchToevoegingen,
   fetchVoedingswaardeBerekeningen,
+  fetchVoorraadFlessen,
 } from "@/lib/kelder-data";
 import { fetchPartijById, updatePartij } from "@/lib/partijen-data";
 import {
@@ -48,7 +50,15 @@ import {
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { ArrowLeftRight, Beaker, Copy, FlaskConical, Loader2, NotebookPen } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Beaker,
+  Copy,
+  FlaskConical,
+  Loader2,
+  NotebookPen,
+  Wine,
+} from "lucide-react";
 
 export const Route = createFileRoute("/kelder/partijen/$partijId")({
   component: PartijDetailPage,
@@ -86,6 +96,19 @@ function PartijDetailPage() {
     queryKey: ["voedingswaarde", partijId],
     queryFn: () => fetchVoedingswaardeBerekeningen(partijId),
   });
+  const bottelrondesQ = useQuery({
+    queryKey: ["bottelrondes", partijId],
+    queryFn: () => fetchBottelrondes(partijId),
+  });
+  const voorraadVanPartijQ = useQuery({
+    queryKey: ["voorraad", "partij", partijId],
+    queryFn: () => fetchVoorraadFlessen({ partij: partijId }),
+  });
+  const voorraadPerBottelronde = useMemo(() => {
+    const m = new Map<string, string>();
+    voorraadVanPartijQ.data?.forEach((v) => m.set(v.bottelronde, v.id));
+    return m;
+  }, [voorraadVanPartijQ.data]);
 
   const partij = partijQ.data;
   const producentNaam = useMemo(
@@ -456,7 +479,7 @@ function PartijDetailPage() {
         </section>
 
         {/* Acties */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Link
             to="/kelder/overhevelen"
             search={{ partij: partijId }}
@@ -497,6 +520,14 @@ function PartijDetailPage() {
             <Beaker className="h-5 w-5" />
             Toevoeging
           </button>
+          <Link
+            to="/kelder/partijen/$partijId/bottelen"
+            params={{ partijId }}
+            className="flex h-16 flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-card text-xs font-semibold active:scale-[0.98]"
+          >
+            <Wine className="h-5 w-5" />
+            Bottelen
+          </Link>
         </div>
 
         {/* Status wijzigen */}
@@ -861,6 +892,55 @@ function PartijDetailPage() {
                     <span className="shrink-0 text-sm font-semibold tabular-nums">
                       {r.volume_l > 0 ? `${r.volume_l} L` : "—"}
                     </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/* Botteling */}
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Botteling ({bottelrondesQ.data?.length ?? 0})
+          </h2>
+          {(bottelrondesQ.data ?? []).length === 0 ? (
+            <EmptyState message="Nog niet gebotteld." icon={<Wine className="h-6 w-6" />} />
+          ) : (
+            <ul className="space-y-1.5">
+              {(bottelrondesQ.data ?? []).map((b) => {
+                const voorraadId = voorraadPerBottelronde.get(b.id);
+                const inhoud = (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">
+                        {b.aantal_flessen} flessen × {b.flesinhoud_ml} ml
+                        {b.flestype ? ` · ${b.flestype}` : ""}
+                        {b.parelwijn ? " · parelwijn" : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(parseISO(b.botteldatum), "d MMM yyyy", { locale: nl })}
+                        {b.lotnummer ? ` · lot ${b.lotnummer}` : ""}
+                      </p>
+                    </div>
+                    {voorraadId && <span className="text-muted-foreground">→</span>}
+                  </>
+                );
+                return (
+                  <li key={b.id}>
+                    {voorraadId ? (
+                      <Link
+                        to="/voorraad/$voorraadId"
+                        params={{ voorraadId }}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2 active:scale-[0.99]"
+                      >
+                        {inhoud}
+                      </Link>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
+                        {inhoud}
+                      </div>
+                    )}
                   </li>
                 );
               })}
