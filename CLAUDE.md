@@ -107,7 +107,17 @@ Get-Process pocketbase -ErrorAction SilentlyContinue | Stop-Process -Force
 **Let op — twee bekende valkuils bij herstarten:**
 
 1. **`/End` (of `Stop-ScheduledTask`) beëindigt soms alleen de cmd.exe-wrapper, niet het onderliggende `pocketbase.exe`-proces** (blijft dan als wees doordraaien — bijv. gemerkt na een `.env`-wijziging die niet doorkwam). Controleer met `Get-Process pocketbase`; zo nodig `Get-Process pocketbase | Stop-Process -Force` vóór je opnieuw start.
-2. **`schtasks /Run` kan blijven hangen op status "Queued" en dan nooit echt starten** — waargenomen nadat `pocketbase.exe` handmatig met `Stop-Process -Force` was afgesloten in plaats van via de taak zelf beëindigd (Task Scheduler's eigen boekhouding — `MultipleInstancesPolicy: IgnoreNew` in de taakdefinitie — dacht toen nog dat er een instantie liep). Oplossing die wél betrouwbaar werkte: gebruik de PowerShell-cmdlets (`Start-ScheduledTask`/`Stop-ScheduledTask`) in plaats van het oudere `schtasks.exe`-commando; controleer de status met `(Get-ScheduledTask -TaskName "PocketBase Tappenmars").State` (moet `Running` of `Ready` zijn, niet `Queued`) en `Get-Process pocketbase` (moet een proces met een recente `StartTime` tonen). Was dit een eenmalige sessie-eigenaardigheid of een structureel `schtasks.exe`-probleem op deze machine is niet honderd procent zeker — maar de PowerShell-route werkte in alle herhaalde tests wél consistent, dus die is nu de aanbevolen route.
+2. **`schtasks /Run` kan blijven hangen op status "Queued" en dan nooit echt starten.** Twee bevestigde oorzaken:
+   - **Boekhouding van Task Scheduler raakt in de war** nadat `pocketbase.exe` handmatig met `Stop-Process -Force` is afgesloten i.p.v. via de taak zelf beëindigd (`MultipleInstancesPolicy: IgnoreNew` in de taakdefinitie denkt dan nog dat er een instantie loopt). Eerst netjes `schtasks /End /TN "PocketBase Tappenmars"` draaien lost dit meestal op.
+   - **De laptop draait op accu.** De taak had oorspronkelijk `DisallowStartIfOnBatteries: true` / `StopIfGoingOnBatteries: true` (Taakplanner-standaardinstellingen) — op accu weigert hij dan te starten en blijft "Queued" hangen zonder duidelijke foutmelding. **Dit is inmiddels permanent uitgezet** (bevestigd met Thomas: PocketBase is de backend van de app en moet niet uitvallen zodra de laptop van de lader gaat):
+     ```powershell
+     $task = Get-ScheduledTask -TaskName "PocketBase Tappenmars"
+     $settings = $task.Settings
+     $settings.DisallowStartIfOnBatteries = $false
+     $settings.StopIfGoingOnBatteries = $false
+     Set-ScheduledTask -TaskName "PocketBase Tappenmars" -Settings $settings
+     ```
+   - **Algemene aanpak bij "Queued"**: gebruik de PowerShell-cmdlets (`Start-ScheduledTask`/`Stop-ScheduledTask`) i.p.v. `schtasks.exe`; controleer `(Get-ScheduledTask -TaskName "PocketBase Tappenmars").State` (moet `Running`/`Ready` zijn, niet `Queued`) en `Get-Process pocketbase` (recente `StartTime`). Blijft hij ondanks bovenstaande hangen: check `Get-CimInstance -ClassName Win32_Battery | Select BatteryStatus` (1 = op accu) en of er nog een oud proces leeft dat eerst `Stop-Process -Force` nodig heeft.
 
 **Logs bekijken:** de taak draait zonder zichtbaar venster, dus er is geen live logvenster. Om output te zien: stop de taak (hierboven) en draai het bat-bestand tijdelijk handmatig in een terminal:
 
