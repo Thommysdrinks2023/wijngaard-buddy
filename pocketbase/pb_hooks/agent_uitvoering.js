@@ -337,10 +337,12 @@ function bouwActieVoorstel(app, naam, input) {
       const rij = logica.vindRij(app, input.rijnummer);
       if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
       const notitie = input.beschrijving + (input.ernst ? ` (ernst: ${input.ernst})` : "");
+      const datum = logica.vandaagStr();
       const payload = {
         rij: rij.id,
         plant: input.plant || null,
-        datum: logica.vandaagStr(),
+        datum,
+        seizoen: Number(datum.slice(0, 4)),
         type: input.type,
         notitie,
       };
@@ -354,9 +356,11 @@ function bouwActieVoorstel(app, naam, input) {
       const rij = logica.vindRij(app, input.rijnummer);
       if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
       const notitie = `Uitval: ${input.aantal} planten. Reden: ${input.reden}`;
+      const datumUitval = logica.vandaagStr();
       const payload = {
         rij: rij.id,
-        datum: logica.vandaagStr(),
+        datum: datumUitval,
+        seizoen: Number(datumUitval.slice(0, 4)),
         type: "uitval",
         notitie,
       };
@@ -427,6 +431,7 @@ function voerBevestigdeActieUit(txApp, actieType, payload, verantwoordelijke) {
       rec.set("rij", payload.rij);
       if (payload.plant) rec.set("plant", payload.plant);
       rec.set("datum", payload.datum);
+      if (payload.seizoen) rec.set("seizoen", payload.seizoen);
       rec.set("type", payload.type);
       rec.set("notitie", payload.notitie);
       rec.set("ingevoerd_door", verantwoordelijke);

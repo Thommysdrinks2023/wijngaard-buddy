@@ -65,7 +65,12 @@ routerAdd("POST", "/api/agent/actie/{id}/bevestig", (e) => {
         throw new Error("Dit voorstel is al verwerkt.");
       }
       gesprekId = actie.getString("gesprek_id");
-      actie.set("bevestigd_door", e.auth ? e.auth.id : "");
+      // bevestigd_door is een relatie naar "users" - een superuser-token (bv.
+      // bij handmatig testen/support via de admin-API) zit in _superusers en
+      // faalt dan op de relatie-validatie ("Failed to find all relation
+      // records"). isSuperuser() sluit dat geval uit; anonieme/normale
+      // gebruikers-auth blijft ongewijzigd.
+      actie.set("bevestigd_door", e.auth && !e.auth.isSuperuser() ? e.auth.id : "");
       actie.set("bevestigd_op", new Date().toISOString());
 
       const resultaat = uitvoering.voerBevestigdeActieUit(
