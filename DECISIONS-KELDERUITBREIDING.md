@@ -79,3 +79,36 @@ Bevat te verwaarlozen hoeveelheden vet, verzadigd vet, eiwit en zout
 **Dit komt exact overeen met de handmatige natelling vooraf** (`kcal_totaal = 64`, `kj_totaal = 272`, koolhydraten 1,0 gram, waarvan suiker 0,2 gram) — geen enkele afwijking.
 
 Voorinvullen getest met een analyse (alcohol 13,5 %vol, restsuiker 3 g/L, totaalzuur 5,5 g/L): "Vul in vanuit laatste analyse" zette de velden op alcohol **106,5** g/L (= 13,5 × 7,89, afgerond op 1 decimaal), restsuiker **3**, zuur **5,5** — allemaal correct. "Kopieer"-knop getest (schrijft naar het klembord via `navigator.clipboard`). Testpartij, testanalyse en testberekening achteraf verwijderd.
+
+**Tooling-kanttekening**: het model werd tijdens deze sessie twee keer kort "temporarily unavailable" gemeld door de auto-mode classifier (bij een Bash-aanroep en bij een preview-eval), losstaand van de applicatiecode — na een korte herhaling werkte de aanroep meteen weer. Er kwam ook één keer een `[vite] server connection lost. Polling for restart...`-melding voor, gevolgd door een tijdelijke "Offline"-badge in de app; een paginaherlaad bevestigde dat dit een voorbijgaand ontwikkelserver-hikje was en geen echte regressie (PocketBase bleef gewoon gezond volgens `/api/health`).
+
+## Rooktest bestaande routes
+
+Uitgevoerd in de browserpreview (mobiel, 375×812) met een tijdelijk testaccount (`kelder-preview@tappenmars.nl`, aangemaakt met expliciete toestemming van Thomas omdat het bestaande `thomas@tappenmars.nl`-account alleen een PocketBase-superuser is — geen `users`-record — en de wachtwoorden van de drie bestaande invoerder-accounts onbekend zijn; achteraf weer verwijderd): `/`, `/perceelkaart`, `/dashboard`, `/oogst`, `/instellingen`, `/kelder`, `/kelder/tanks`, `/kelder/tankboek`, `/kelder/partijen`, `/assistent`, plus een losse rooktest-partij op `/kelder/partijen/$partijId` (alle nieuwe Blok 1–3-secties zichtbaar, geen "Verwerking"-ruis dankzij de bugfix, "Voedingswaarde berekenen" rendert). Geen enkele console-fout op welke pagina dan ook. Rooktest-partij en testaccount achteraf verwijderd — databank staat weer op nul testrecords in alle geraakte collecties (`partijen`, `analyses`, `partij_toevoegingen`, `voedingswaarde_berekeningen`), alle 48 tanks weer "leeg".
+
+## Oplevering
+
+### Wat werkt (geverifieerd, niet alleen gebouwd)
+
+- **Blok 1**: alle 48 tanks tonen hun herkenbare type-label (`soort`, al sinds Fase 0–2 correct geseed); "IM = zwemdekseltank" nu zichtbaar in de tanklijst en op de tankdetailpagina.
+- **Blok 2**: 6 nieuwe partijvelden end-to-end getest (formulier → server-endpoint → partijdetail); `partij_toevoegingen` volledig functioneel met drie verschillende eenheden getest; tankboek-historie bleek al prominent aanwezig.
+- **Blok 3**: voedingswaarde-/etiketberekening geeft voor de testcase uit de opdracht exact de handmatig natelde uitkomst (`kcal_totaal 64`, `kj_totaal 272`); voorinvullen vanuit een analyse werkt inclusief de nieuwe alcohol-%→g/L-omrekening; kopiëren naar klembord werkt; elke berekening blijft als los historisch record bewaard.
+- **Eén echte bug gevonden en gefixt** (zie Blok 3): de "Verwerking"-sectie toonde onterecht "pH 0 · Totaal zuur 0" voor partijen zonder die velden — trof potentieel alle bestaande partijen, nu gecorrigeerd.
+- **Bestaande Wijngaard-, Kelder- en Assistent-functionaliteit ongebroken** — zie de rooktest hierboven.
+
+### Toegepaste tanktype-normalisaties (Blok 1)
+
+Geen — de 48 tanks waren al 1-op-1 correct geseed uit dezelfde Excel tijdens Fase 0–2 (zie `SEED_TANKS` in `setup-pocketbase.mjs`), inclusief de twee losse compartimenten "525 onder"/"525 boven" als aparte tankrecords. Er was dus niets te normaliseren of te corrigeren in de data zelf; de enige toevoeging was de zichtbaarheid van de IM-toelichting in de UI.
+
+### Nagerekende testuitkomst voedingswaardeberekening
+
+Testinvoer: alcohol 85 g/L, restsuiker 2 g/L, zuur 6 g/L, glycerine 8 g/L (default).
+
+| Grootheid                 | Handmatige natelling (vooraf) | Live UI-uitkomst (na implementatie) |
+| ------------------------- | ----------------------------- | ----------------------------------- |
+| `kcal_totaal`             | 64                            | 64                                  |
+| `kj_totaal`               | 272                           | 272                                 |
+| Koolhydraten per 100 ml   | 1,0 gram                      | 1,0 gram                            |
+| Waarvan suiker per 100 ml | 0,2 gram                      | 0,2 gram                            |
+
+Volledige match, geen enkele afwijking.
