@@ -90,20 +90,24 @@ Op deze dev-machine draait PocketBase niet meer als los terminalproces (dat stie
 - **Herstelgedrag**: bij een crash 3 herstartpogingen met 1 minuut interval; geen tijdslimiet op de taak (server mag onbeperkt blijven draaien)
 - **`pb_data`-backup**: `pocketbase/pb_data_backup_<datum>` (gemaakt vóór de omzetting naar de Taakplanner)
 
-**Herstarten:**
+**Herstarten (aanbevolen — de PowerShell-cmdlets, niet `schtasks.exe`):**
 
 ```powershell
-schtasks /End /TN "PocketBase Tappenmars"
-schtasks /Run /TN "PocketBase Tappenmars"
+Get-Process pocketbase -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-ScheduledTask -TaskName "PocketBase Tappenmars"
 ```
 
 **Stoppen** (zonder de taak zelf te verwijderen):
 
 ```powershell
-schtasks /End /TN "PocketBase Tappenmars"
+Stop-ScheduledTask -TaskName "PocketBase Tappenmars"
+Get-Process pocketbase -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 
-**Let op:** `/End` beëindigt soms alleen de cmd.exe-wrapper, niet het onderliggende `pocketbase.exe`-proces (blijft dan als wees doordraaien — bijv. gemerkt na een `.env`-wijziging die niet doorkwam). Controleer met `Get-Process pocketbase.exe`; zo nodig `Get-Process pocketbase | Stop-Process -Force` vóór je opnieuw start.
+**Let op — twee bekende valkuils bij herstarten:**
+
+1. **`/End` (of `Stop-ScheduledTask`) beëindigt soms alleen de cmd.exe-wrapper, niet het onderliggende `pocketbase.exe`-proces** (blijft dan als wees doordraaien — bijv. gemerkt na een `.env`-wijziging die niet doorkwam). Controleer met `Get-Process pocketbase`; zo nodig `Get-Process pocketbase | Stop-Process -Force` vóór je opnieuw start.
+2. **`schtasks /Run` kan blijven hangen op status "Queued" en dan nooit echt starten** — waargenomen nadat `pocketbase.exe` handmatig met `Stop-Process -Force` was afgesloten in plaats van via de taak zelf beëindigd (Task Scheduler's eigen boekhouding — `MultipleInstancesPolicy: IgnoreNew` in de taakdefinitie — dacht toen nog dat er een instantie liep). Oplossing die wél betrouwbaar werkte: gebruik de PowerShell-cmdlets (`Start-ScheduledTask`/`Stop-ScheduledTask`) in plaats van het oudere `schtasks.exe`-commando; controleer de status met `(Get-ScheduledTask -TaskName "PocketBase Tappenmars").State` (moet `Running` of `Ready` zijn, niet `Queued`) en `Get-Process pocketbase` (moet een proces met een recente `StartTime` tonen). Was dit een eenmalige sessie-eigenaardigheid of een structureel `schtasks.exe`-probleem op deze machine is niet honderd procent zeker — maar de PowerShell-route werkte in alle herhaalde tests wél consistent, dus die is nu de aanbevolen route.
 
 **Logs bekijken:** de taak draait zonder zichtbaar venster, dus er is geen live logvenster. Om output te zien: stop de taak (hierboven) en draai het bat-bestand tijdelijk handmatig in een terminal:
 
