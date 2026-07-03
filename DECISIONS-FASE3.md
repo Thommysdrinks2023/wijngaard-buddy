@@ -8,7 +8,7 @@ Autonome bouwsessie. Elke zelfstandige beslissing, afwijking en eigenaardigheid 
 2. **"Hergebruik de bestaande omgevingsvariabele die assistent.pb.js al gebruikt" is daardoor niet uitvoerbaar** — die hook en dus die variabele bestaan niet. Bovendien is `VITE_ANTHROPIC_API_KEY` sowieso ongeschikt voor servergebruik: het is een Vite-buildtime-var (frontendbundel), geen OS-omgevingsvariabele die het PocketBase-proces kan lezen. **Beslissing**: nieuwe server-only variabele `ANTHROPIC_API_KEY` (geen `VITE_`-prefix) toegevoegd. PocketBase leest omgevingsvariabelen via `$os.getenv()` (bevestigd in `pb_data/types.d.ts`), maar laadt zelf geen `.env`-bestand. `deploy/start-pocketbase.bat` is daarom uitgebreid om `.env` in de projectroot in te lezen en te exporteren vóór het starten van `pocketbase.exe` — zonder het bestand zelf aan te raken qua git-status (blijft genegeerd).
 3. **`VITE_ANTHROPIC_API_KEY` staat in `.env` maar is LEEG.** CLAUDE.md klopt hier dus wel: er is geen werkende sleutel. **Belangrijke consequentie**: de agent-loop kan tijdens deze sessie niet end-to-end tegen de echte Anthropic API getest worden — zie "Open punten". Ik heb `ANTHROPIC_API_KEY=` (leeg, met toelichting) toegevoegd aan `.env` en `.env.example` zodat Thomas alleen die ene regel hoeft in te vullen. `VITE_ANTHROPIC_API_KEY` wordt na Fase 3 niet meer gebruikt (browser-implementatie vervangen door de serverhook) maar laat ik ongemoeid staan — verwijderen is cosmetisch.
 4. **PocketBase JSVM-mogelijkheden geverifieerd vóór het bouwen** (voorkomt de eigenaardigheden uit CLAUDE.md): `$http.send()` bestaat voor uitgaande calls (nodig voor de Anthropic-aanroep vanaf de server), `$os.getenv()` voor omgevingsvariabelen. Geen ingebouwde base64-encoder gevonden in de JSVM-globals — voor `analyseer_foto` is een handgeschreven base64-encoder nodig (zie Blok C).
-5b. **`schtasks /End /TN "..."` stopt niet altijd het echte `pocketbase.exe`-proces.** De taak zelf rapporteert "terminated successfully", maar het onderliggende `pocketbase.exe` (gestart via het bat-bestand) bleef als wees-proces doordraaien — waarschijnlijk omdat Task Scheduler alleen de directe cmd.exe-wrapper beëindigt, niet het kleinkind-proces. Voor een écht herstart (bijv. na een `.env`-wijziging): `Get-Process pocketbase | Stop-Process -Force` vóór `schtasks /Run`. Toegevoegd aan CLAUDE.md.
+   5b. **`schtasks /End /TN "..."` stopt niet altijd het echte `pocketbase.exe`-proces.** De taak zelf rapporteert "terminated successfully", maar het onderliggende `pocketbase.exe` (gestart via het bat-bestand) bleef als wees-proces doordraaien — waarschijnlijk omdat Task Scheduler alleen de directe cmd.exe-wrapper beëindigt, niet het kleinkind-proces. Voor een écht herstart (bijv. na een `.env`-wijziging): `Get-Process pocketbase | Stop-Process -Force` vóór `schtasks /Run`. Toegevoegd aan CLAUDE.md.
 5. **Twee bekende PocketBase-eigenaardigheden uit CLAUDE.md blijven van kracht** en zijn vanaf het begin verwerkt in `agent.pb.js`/`agent_logica.js`: (a) gedeelde code via `require()` binnen elke handler, nooit top-level in het `.pb.js`-bestand; (b) fouten binnen `runInTransaction` verliezen hun boodschap — valideren zonder te gooien, `{ fout }` teruggeven.
 
 ## Blok A — Schema
@@ -19,22 +19,37 @@ Autonome bouwsessie. Elke zelfstandige beslissing, afwijking en eigenaardigheid 
 - **Oude `ai_gesprekken`-collectie (client-side chatgeschiedenis) blijft ongemoeid staan**, ook al vervangt Fase 3 die functionaliteit volledig. Verwijderen is destructief en niet expliciet gevraagd — "niet slopen"-principe. Kan later opgeruimd worden.
 - Twee testruns (create + idempotent) + curl-check van `agent_acties`-API-rules: geslaagd.
 
-## Blok B+C — Agent-loop + tools
-_(wordt aangevuld tijdens het bouwen)_
+## Bouwvolgorde: afwijking van de opdracht
 
-## Blok D — Bevestigingsflow
-_(wordt aangevuld tijdens het bouwen)_
+De opdracht schrijft volgorde A → B → C → D → G → H → E → F voor. Ik heb **G vóór B/C/D** gebouwd (de systeemprompt heeft geen enkele afhankelijkheid van de loop-code en moest sowieso af zijn vóórdat `agent_uitvoering.js` hem kan inlezen), en **B, C en D zijn in één implementatiepas gecombineerd** in plaats van als drie aparte commits: de tool-loop (B), de tooldefinities/uitvoering (C) en de bevestigingsflow (D) raken dezelfde drie bestanden (`agent.pb.js`, `agent_logica.js`, `agent_uitvoering.js`) zo nauw dat ze niet los te testen zijn — een tool-loop zonder bevestigingsendpoints kan geen enkele schrijfactie afronden, dus "B werkt" was pas aantoonbaar zodra D er ook was. Functioneel is er niets overgeslagen; alle Blok D-endpoints (`/bevestig`, `/afwijzen`) staan er, alleen de commit-granulariteit wijkt af.
 
 ## Blok G — Systeemprompt
-_(wordt aangevuld tijdens het bouwen)_
+
+- `pocketbase/pb_hooks/agent_systeemprompt.md` bevat de volledige Nederlandse systeemprompt (Rol, Bedrijfscontext, Vocabulaire, 9 Gedragsregels, Datumcontext) exact per opdracht-spec. Als los `.md`-bestand naast de `.js`-hooks in plaats van een inline string: makkelijker te lezen/bewerken voor Thomas zonder JS te hoeven aanraken, en `$os.readFile()` kan het probleemloos inlezen (geverifieerd in Blok C).
+- De datumcontext wordt **niet** in dit bestand hardcoded, maar door `agent_uitvoering.js` als losse tekst achter de systeemprompt geplakt bij elke aanroep (huidige datum verandert per verzoek) — zie Blok B+C.
+
+## Blok B+C+D — Agent-loop, tools en bevestigingsflow
+
+- **Bestandsindeling**: `agent_logica.js` (pure definities: model/limieten, dichtheidsconversie, base64-encoder, resolvers voor partij/tank/rij, de 16 tool-schema's) + `agent_uitvoering.js` (alle uitvoeringslogica: read-tools, schrijf-voorstellen, bevestigde uitvoering, de Anthropic-aanroep, de hoofdloop `verwerkBeurt`) + `agent.pb.js` (alleen de drie dunne `routerAdd`-endpoints). Zelfde scheiding als `kelder_logica.js`/`kelder.pb.js` uit Fase 2 — bewust hergebruikt patroon, geen nieuwe conventie.
+- **JSVM-bug #1 (opnieuw dezelfde categorie als in Fase 2, CLAUDE.md-eigenaardigheid (1))**: `leesbareFout()` en `leesSysteemprompt()` stonden aanvankelijk als top-level `function`-declaraties in `agent.pb.js` zelf (niet in een apart `require()`-bestand, omdat het triviale one-off-helpers leken die alleen dit bestand gebruikt). Resultaat: `ReferenceError: leesbareFout is not defined` binnen de `routerAdd`-handler, want handlers draaien in een aparte executor-VM-pool waar top-level declaraties uit het eigen `.pb.js`-bestand niet bestaan — alleen `require()`-modules zijn zichtbaar. **Fix**: beide functies verplaatst naar `agent_uitvoering.js` en toegevoegd aan `module.exports`; aangeroepen als `uitvoering.leesbareFout(err)` / `uitvoering.leesSysteemprompt()`. **Les, toegevoegd aan CLAUDE.md-eigenaardigheid (1)**: dit geldt dus niet alleen voor gedeelde logica tússen bestanden, maar voor élke top-level declaratie in een `.pb.js`-bestand, inclusief helpers die maar op één plek gebruikt worden.
+- **JSVM-bug #2 (zelfde oorzaak, nieuwe variant)**: een top-level `const POCKETBASE_URL = "http://127.0.0.1:8090";` in `agent.pb.js` gaf `AI-agent fout: POCKETBASE_URL is not defined.` — dezelfde VM-pool-isolatie geldt dus ook voor `const`, niet alleen voor `function`. **Fix**: de const verwijderd; de literal staat nu rechtstreeks in elke handler (3 plekken). Voor een lokale dev-only waarde die toch ooit naar `$os.getenv("POCKETBASE_URL")` moet verhuizen (Pi/VPS-deploy) is dit acceptabel — het alternatief (een vierde require-bestand voor één string) woog niet op tegen de duplicatie van drie regels.
+- **Conversatiegeschiedenis**: alleen de tekst van eerdere beurten wordt gerepliceerd naar de Anthropic-call (geen volledige tool_use/tool_result-blokken over beurten heen) — voorkomt dat oude tool-schema's van vorige berichten opnieuw gevalideerd moeten worden en houdt de opgeslagen-bericht-naar-API-bericht-mapping simpel. Voldoet aan "stuur altijd de relevante geschiedenis mee" (max 30 berichten, hard afgekapt, geen samenvatting — expliciet Fase 4).
+- **Foto-flow**: de agent ziet een foto pas als hij zelf `analyseer_foto` aanroept met het `bericht_id`. Bij een user-bericht met foto wordt een tekst-hint in de gerepliceerde inhoud gezet ("gebruiker heeft een foto toegevoegd, roep analyseer_foto aan met bericht_id=..."). Voorkomt dat elke afbeelding bij elke beurt opnieuw als vision-content meegestuurd wordt (kosten/tokens) en houdt de architectuur consistent met het tool-gebaseerde ontwerp.
+- **Schrijfacties**: `bouwActieVoorstel()` lost partij/tank/rij op en bouwt de payload, maar **schrijft niets weg** — de loop verzamelt voorstellen in-memory en pas ná het opslaan van het definitieve assistant-bericht worden de bijbehorende `agent_acties`-records aangemaakt (met het juiste `bericht_id`), alles binnen dezelfde `runInTransaction`. Lost de kip-ei-afhankelijkheid op (een actie verwijst naar een bericht dat pas na de loop bestaat).
+- **Bevestigde tankboek-boekingen roepen `kelder_logica.js`'s `voerBoekingUit()` rechtstreeks aan via `require()`** — geen interne HTTP-round-trip naar het bestaande `/api/tappenmars/tankboek-boeking`-endpoint. Dit hergebruikt alle Fase 2-validatie (capaciteit, volume, status) zonder duplicatie en respecteert het kernprincipe "de agent roept die endpoints niet zelf aan — de bevestigde actie doet dat" (de bevestigde actie ÍS hier code die dezelfde functie aanroept als het endpoint, niet de agent).
+- **Bij een geweigerd voorstel of een afwijzing door Thomas** wordt een synthetisch `agent_berichten`-record met `rol: "tool"` aangemaakt met een systeeminstructie, en direct `verwerkBeurt()` opnieuw aangeroepen zodat de agent in gewone taal reageert (Gedragsregel 5 uit de systeemprompt) — nooit de ruwe hook-foutmelding tonen.
+- **Structureel getest** (zie "Open punten" voor de reden dat dit niet end-to-end kan): testscript met 6 checks — login, gesprek/bericht aanmaken via de gewone client-flow, `/api/agent/bericht` geeft een nette Nederlandse 400 met "ANTHROPIC_API_KEY" erin (geen "panic"/"goja" — dus geen kale JSVM-crash lekt door), bevestigen van een niet-bestaand actie-id geeft een nette 4xx, en een directe client-`POST` op `agent_acties` wordt geweigerd door de API-rule. **6/6 geslaagd.**
 
 ## Blok H — Frontend
+
 _(wordt aangevuld tijdens het bouwen)_
 
 ## Blok E — Inzichten
+
 _(wordt aangevuld tijdens het bouwen)_
 
 ## Blok F — Web search
+
 _(wordt aangevuld tijdens het bouwen)_
 
 ## Open punten
@@ -42,4 +57,5 @@ _(wordt aangevuld tijdens het bouwen)_
 - **Geen werkende Anthropic API-sleutel beschikbaar** (`.env` heeft `VITE_ANTHROPIC_API_KEY=` leeg, en er is nog geen `ANTHROPIC_API_KEY`). Alle onderdelen die een echte Claude-aanroep vereisen (agent-loop, tool-gebruik, foto-analyse, de meeste testchecklist-punten) zijn daarom gebouwd en zo goed mogelijk statisch/structureel getest (schema, endpoints bestaan en valideren correct, foutafhandeling bij ontbrekende sleutel), maar NIET end-to-end geverifieerd tegen de echte API. Zodra Thomas een sleutel invult bij `ANTHROPIC_API_KEY` in `.env` (en de Taakplanner-taak herstart, zie CLAUDE.md), is dat de eerste test.
 
 ## Oplevering
+
 _(aan het eind ingevuld)_

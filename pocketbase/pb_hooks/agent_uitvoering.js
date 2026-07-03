@@ -1,0 +1,712 @@
+// Uitvoeringslogica voor de AI-agent: lees-tools direct bevragen,
+// schrijf-tools omzetten naar een voorstel (agent_acties), bevestigde
+// voorstellen daadwerkelijk boeken, en de Anthropic-aanroep zelf.
+// Via require() geladen binnen elke handler (zie CLAUDE.md/kelder_logica.js).
+
+const logica = require(`${__hooks}/agent_logica.js`);
+
+// ============= Lees-tools: direct uitvoeren =============
+
+function voerLeesToolUit(app, naam, input) {
+  switch (naam) {
+    case "zoek_partijen": {
+      const delen = [];
+      if (input.zoekterm) delen.push(`(naam ~ {:z} || lotnummer ~ {:z})`);
+      if (input.status) delen.push(`status = {:status}`);
+      if (input.jaargang) delen.push(`jaargang = {:jaargang}`);
+      const partijen = app.findRecordsByFilter(
+        "partijen",
+        delen.join(" && ") || "id != ''",
+        "-jaargang",
+        20,
+        0,
+        { z: input.zoekterm, status: input.status, jaargang: input.jaargang },
+      );
+      return partijen.map(partijSamenvatting);
+    }
+    case "partij_detail": {
+      const partij = logica.vindPartij(app, input.partij);
+      if (!partij)
+        return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
+      const analyses = app.findRecordsByFilter("analyses", "partij = {:p}", "-datum", 5, 0, {
+        p: partij.id,
+      });
+      const tankboek = app.findRecordsByFilter(
+        "tankboek",
+        "partij = {:p}",
+        "-datum,-created",
+        20,
+        0,
+        {
+          p: partij.id,
+        },
+      );
+      const tanks = app.findRecordsByFilter("tanks", "huidige_partij = {:p}", "code", 10, 0, {
+        p: partij.id,
+      });
+      return {
+        gevonden: true,
+        partij: partijSamenvatting(partij),
+        huidige_tanks: tanks.map((t) => ({
+          code: t.getString("code"),
+          volume_l: t.getFloat("huidig_volume_l"),
+        })),
+        laatste_analyses: analyses.map(analyseSamenvatting),
+        tankboek_historie: tankboek.map(tankboekregelSamenvatting),
+      };
+    }
+    case "zoek_tanks": {
+      const delen = [];
+      if (input.code) delen.push(`code = {:code}`);
+      if (input.status) delen.push(`status = {:status}`);
+      if (input.locatie) delen.push(`locatie ~ {:locatie}`);
+      const tanks = app.findRecordsByFilter(
+        "tanks",
+        delen.join(" && ") || "id != ''",
+        "code",
+        50,
+        0,
+        { code: input.code, status: input.status, locatie: input.locatie },
+      );
+      return tanks.map((t) => ({
+        code: t.getString("code"),
+        soort: t.getString("soort"),
+        capaciteit_l: t.getFloat("capaciteit_l"),
+        status: t.getString("status"),
+        huidig_volume_l: t.getFloat("huidig_volume_l"),
+        locatie: t.getString("locatie"),
+      }));
+    }
+    case "zoek_metingen": {
+      const delen = [];
+      if (input.ras) delen.push(`rij.ras = {:ras}`);
+      if (input.rijnummer) delen.push(`rij.rijnummer = {:rijnummer}`);
+      if (input.van) delen.push(`datum >= {:van}`);
+      if (input.tot) delen.push(`datum <= {:tot}`);
+      const metingen = app.findRecordsByFilter(
+        "metingen",
+        delen.join(" && ") || "id != ''",
+        "-datum",
+        30,
+        0,
+        { ras: input.ras, rijnummer: input.rijnummer, van: input.van, tot: input.tot },
+      );
+      return metingen.map((m) => ({
+        datum: m.getString("datum"),
+        rij: m.getString("rij"),
+        brix: m.getFloat("brix") || null,
+        ph: m.getFloat("ph") || null,
+        zuurgraad: m.getFloat("zuurgraad") || null,
+        rijpheid_score: m.getFloat("rijpheid_score") || null,
+      }));
+    }
+    case "zoek_observaties": {
+      const delen = [];
+      if (input.ras) delen.push(`rij.ras = {:ras}`);
+      if (input.rijnummer) delen.push(`rij.rijnummer = {:rijnummer}`);
+      if (input.type) delen.push(`type = {:type}`);
+      if (input.van) delen.push(`datum >= {:van}`);
+      if (input.tot) delen.push(`datum <= {:tot}`);
+      const obs = app.findRecordsByFilter(
+        "observaties",
+        delen.join(" && ") || "id != ''",
+        "-datum",
+        30,
+        0,
+        {
+          ras: input.ras,
+          rijnummer: input.rijnummer,
+          type: input.type,
+          van: input.van,
+          tot: input.tot,
+        },
+      );
+      return obs.map((o) => ({
+        datum: o.getString("datum"),
+        rij: o.getString("rij"),
+        type: o.getString("type"),
+        notitie: o.getString("notitie"),
+      }));
+    }
+    case "zoek_oogst": {
+      const delen = [];
+      if (input.ras) delen.push(`ras = {:ras}`);
+      if (input.jaar) delen.push(`seizoen = {:jaar}`);
+      const oogst = app.findRecordsByFilter(
+        "oogst",
+        delen.join(" && ") || "id != ''",
+        "datum",
+        50,
+        0,
+        { ras: input.ras, jaar: input.jaar },
+      );
+      return oogst.map((o) => ({
+        datum: o.getString("datum"),
+        ras: o.getString("ras"),
+        kg: o.getFloat("kg"),
+        seizoen: o.getFloat("seizoen"),
+      }));
+    }
+    case "zoek_fenologie": {
+      const delen = [];
+      if (input.ras) delen.push(`ras = {:ras}`);
+      if (input.jaar) delen.push(`seizoen = {:jaar}`);
+      const fen = app.findRecordsByFilter(
+        "fenologie",
+        delen.join(" && ") || "id != ''",
+        "datum",
+        50,
+        0,
+        { ras: input.ras, jaar: input.jaar },
+      );
+      return fen.map((f) => ({
+        datum: f.getString("datum"),
+        ras: f.getString("ras"),
+        moment: f.getString("moment"),
+        seizoen: f.getFloat("seizoen"),
+      }));
+    }
+    case "zoek_tankboek": {
+      const delen = [];
+      const params = {};
+      if (input.tank) {
+        const tank = logica.vindTank(app, input.tank);
+        if (!tank) return { gevonden: false, notitie: `Geen tank gevonden voor "${input.tank}".` };
+        delen.push(`(van_tank = {:t} || naar_tank = {:t})`);
+        params.t = tank.id;
+      }
+      if (input.partij) {
+        const partij = logica.vindPartij(app, input.partij);
+        if (!partij)
+          return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
+        delen.push(`partij = {:p}`);
+        params.p = partij.id;
+      }
+      if (input.van) {
+        delen.push(`datum >= {:van}`);
+        params.van = input.van;
+      }
+      if (input.tot) {
+        delen.push(`datum <= {:tot}`);
+        params.tot = input.tot;
+      }
+      const regels = app.findRecordsByFilter(
+        "tankboek",
+        delen.join(" && ") || "id != ''",
+        "-datum,-created",
+        50,
+        0,
+        params,
+      );
+      return regels.map(tankboekregelSamenvatting);
+    }
+    case "zoek_inzichten": {
+      const delen = [];
+      if (input.inzicht_type) delen.push(`inzicht_type = {:t}`);
+      if (input.onderwerp) delen.push(`onderwerp ~ {:o}`);
+      const inzichten = app.findRecordsByFilter(
+        "inzichten",
+        delen.join(" && ") || "id != ''",
+        "-berekend_op",
+        20,
+        0,
+        { t: input.inzicht_type, o: input.onderwerp },
+      );
+      return inzichten.map((i) => ({
+        inzicht_type: i.getString("inzicht_type"),
+        onderwerp: i.getString("onderwerp"),
+        periode: i.getString("periode"),
+        samenvatting_nl: i.getString("samenvatting_nl"),
+        waarde: i.get("waarde"),
+      }));
+    }
+    case "zoek_advies_feedback": {
+      // advies_feedback verwijst naar agent_berichten; onderwerp is niet direct
+      // een veld op advies_feedback, dus we zoeken via de inhoud van het bericht.
+      const berichten = input.onderwerp
+        ? app.findRecordsByFilter(
+            "agent_berichten",
+            "inhoud ~ {:o} && rol = 'assistant'",
+            "-created",
+            10,
+            0,
+            {
+              o: input.onderwerp,
+            },
+          )
+        : [];
+      const berichtIds = berichten.map((b) => b.id);
+      if (berichtIds.length === 0) return [];
+      const filter = berichtIds.map((_, i) => `bericht_id = {:id${i}}`).join(" || ");
+      const params = {};
+      berichtIds.forEach((id, i) => (params[`id${i}`] = id));
+      const feedback = app.findRecordsByFilter(
+        "advies_feedback",
+        filter,
+        "-created",
+        10,
+        0,
+        params,
+      );
+      return feedback.map((f) => ({
+        oordeel: f.getString("oordeel"),
+        toelichting: f.getString("toelichting"),
+      }));
+    }
+    case "analyseer_foto": {
+      return {
+        notitie: "wordt door de hoofdlus afgehandeld (heeft een aparte Anthropic-aanroep nodig)",
+      };
+    }
+    default:
+      return { fout: `Onbekende lees-tool: ${naam}` };
+  }
+}
+
+function partijSamenvatting(p) {
+  return {
+    id: p.id,
+    naam: p.getString("naam"),
+    jaargang: p.getFloat("jaargang"),
+    type: p.getString("type"),
+    status: p.getString("status"),
+    lotnummer: p.getString("lotnummer"),
+    samenstelling: p.getString("samenstelling"),
+  };
+}
+function analyseSamenvatting(a) {
+  return {
+    datum: a.getString("datum"),
+    dichtheid_oechsle: a.getFloat("dichtheid_oechsle") || null,
+    ph: a.getFloat("ph") || null,
+    alcohol_pct: a.getFloat("alcohol_pct") || null,
+    so2_vrij: a.getFloat("so2_vrij") || null,
+    so2_totaal: a.getFloat("so2_totaal") || null,
+  };
+}
+function tankboekregelSamenvatting(r) {
+  return {
+    datum: r.getString("datum"),
+    actie: r.getString("actie"),
+    volume_l: r.getFloat("volume_l"),
+    van_tank: r.getString("van_tank"),
+    naar_tank: r.getString("naar_tank"),
+    verantwoordelijke: r.getString("verantwoordelijke"),
+    notitie: r.getString("notitie"),
+  };
+}
+
+// ============= Schrijf-tools: omzetten naar een voorstel =============
+
+// Retourneert { actie_type, payload, samenvatting } of { fout }. Schrijft NIETS.
+function bouwActieVoorstel(app, naam, input) {
+  switch (naam) {
+    case "stel_tankboek_boeking_voor": {
+      const partij = logica.vindPartij(app, input.partij);
+      if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+      let vanTank = null;
+      let naarTank = null;
+      if (input.van_tank) {
+        vanTank = logica.vindTank(app, input.van_tank);
+        if (!vanTank) return { fout: `Geen tank gevonden voor "${input.van_tank}".` };
+      }
+      if (input.naar_tank) {
+        naarTank = logica.vindTank(app, input.naar_tank);
+        if (!naarTank) return { fout: `Geen tank gevonden voor "${input.naar_tank}".` };
+      }
+      const payload = {
+        datum: input.datum || logica.vandaagStr(),
+        partij: partij.id,
+        producent: partij.getString("producent"),
+        actie: input.actie,
+        van_tank: vanTank ? vanTank.id : "",
+        naar_tank: naarTank ? naarTank.id : "",
+        volume_l: input.volume_l,
+        notitie: input.notitie || "",
+      };
+      const samenvatting =
+        `Tankboek-boeking: ${input.actie}, partij ${partij.getString("naam")}` +
+        `${partij.getString("lotnummer") ? " (" + partij.getString("lotnummer") + ")" : ""}, ` +
+        `${input.volume_l} L` +
+        `${vanTank ? `, tank ${vanTank.getString("code")}` : ""}` +
+        `${naarTank ? ` -> tank ${naarTank.getString("code")}` : ""}` +
+        `${input.notitie ? `, reden: ${input.notitie}` : ""}`;
+      return { actie_type: "tankboek_boeking", payload, samenvatting };
+    }
+    case "stel_observatie_voor": {
+      const rij = logica.vindRij(app, input.rijnummer);
+      if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+      const notitie = input.beschrijving + (input.ernst ? ` (ernst: ${input.ernst})` : "");
+      const payload = {
+        rij: rij.id,
+        plant: input.plant || null,
+        datum: logica.vandaagStr(),
+        type: input.type,
+        notitie,
+      };
+      const samenvatting =
+        `Observatie: rij ${input.rijnummer} (${rij.getString("ras")})` +
+        `${input.plant ? `, plant ${input.plant}` : ""} - ${input.type}: ${input.beschrijving}` +
+        `${input.ernst ? ` (ernst: ${input.ernst})` : ""}`;
+      return { actie_type: "observatie", payload, samenvatting };
+    }
+    case "stel_uitval_voor": {
+      const rij = logica.vindRij(app, input.rijnummer);
+      if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+      const notitie = `Uitval: ${input.aantal} planten. Reden: ${input.reden}`;
+      const payload = {
+        rij: rij.id,
+        datum: logica.vandaagStr(),
+        type: "uitval",
+        notitie,
+      };
+      const samenvatting = `Uitval: rij ${input.rijnummer} (${rij.getString("ras")}), ${input.aantal} planten, reden: ${input.reden}`;
+      return { actie_type: "uitval", payload, samenvatting };
+    }
+    case "stel_kelderlog_voor": {
+      const partij = logica.vindPartij(app, input.partij);
+      if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+      const payload = {
+        datum: logica.vandaagStr(),
+        partij: partij.id,
+        actie: input.taak_type,
+        notitie: input.beschrijving,
+      };
+      const samenvatting = `Kelderlog: ${input.taak_type} bij partij ${partij.getString("naam")} - ${input.beschrijving}`;
+      return { actie_type: "kelderlog", payload, samenvatting };
+    }
+    case "stel_analyse_voor": {
+      const partij = logica.vindPartij(app, input.partij);
+      if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+      let dichtheid = null;
+      if (input.oechsle != null) dichtheid = logica.dichtheidVanOechsle(input.oechsle);
+      else if (input.brix != null) dichtheid = logica.dichtheidVanBrix(input.brix);
+      const payload = {
+        datum: logica.vandaagStr(),
+        partij: partij.id,
+        dichtheid_oechsle: dichtheid ? dichtheid.oechsle : null,
+        dichtheid_brix: dichtheid ? dichtheid.brix : null,
+        dichtheid_sg: dichtheid ? dichtheid.sg : null,
+        ph: input.ph != null ? input.ph : null,
+        alcohol_pct: input.alcohol_pct != null ? input.alcohol_pct : null,
+        restsuiker_g_l: input.restsuiker_g_l != null ? input.restsuiker_g_l : null,
+        totaalzuur_g_l: input.totaalzuur_g_l != null ? input.totaalzuur_g_l : null,
+        vluchtig_zuur_g_l: input.vluchtig_zuur_g_l != null ? input.vluchtig_zuur_g_l : null,
+        so2_vrij: input.so2_vrij != null ? input.so2_vrij : null,
+        so2_totaal: input.so2_totaal != null ? input.so2_totaal : null,
+        methode: "eigen_meting",
+      };
+      const samenvatting =
+        `Analyse: partij ${partij.getString("naam")}` +
+        `${dichtheid ? `, ${dichtheid.oechsle} °Oe / ${dichtheid.brix} °Bx` : ""}` +
+        `${input.ph != null ? `, pH ${input.ph}` : ""}`;
+      return { actie_type: "analyse", payload, samenvatting };
+    }
+    default:
+      return { fout: `Onbekende schrijf-tool: ${naam}` };
+  }
+}
+
+// ============= Bevestigde actie daadwerkelijk uitvoeren =============
+// Retourneert { record_id } of { fout }. Schrijft binnen txApp (transactie).
+function voerBevestigdeActieUit(txApp, actieType, payload, verantwoordelijke) {
+  switch (actieType) {
+    case "tankboek_boeking": {
+      const kelder = require(`${__hooks}/kelder_logica.js`);
+      const resultaat = kelder.voerBoekingUit(txApp, {
+        ...payload,
+        verantwoordelijke,
+      });
+      if (resultaat.fout) return { fout: resultaat.fout };
+      return { record_id: resultaat.regelId };
+    }
+    case "observatie":
+    case "uitval": {
+      const col = txApp.findCollectionByNameOrId("observaties");
+      const rec = new Record(col);
+      rec.set("rij", payload.rij);
+      if (payload.plant) rec.set("plant", payload.plant);
+      rec.set("datum", payload.datum);
+      rec.set("type", payload.type);
+      rec.set("notitie", payload.notitie);
+      rec.set("ingevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
+    }
+    case "kelderlog": {
+      const col = txApp.findCollectionByNameOrId("kelderlog");
+      const rec = new Record(col);
+      rec.set("datum", payload.datum);
+      rec.set("partij", payload.partij);
+      rec.set("actie", payload.actie);
+      rec.set("notitie", payload.notitie);
+      rec.set("ingevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
+    }
+    case "analyse": {
+      const col = txApp.findCollectionByNameOrId("analyses");
+      const rec = new Record(col);
+      for (const veld of Object.keys(payload)) {
+        if (payload[veld] != null) rec.set(veld, payload[veld]);
+      }
+      rec.set("ingevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
+    }
+    default:
+      return { fout: `Onbekend actietype: ${actieType}` };
+  }
+}
+
+// ============= Anthropic API =============
+
+function roepAnthropicAan(apiKey, systeemprompt, berichten, tools) {
+  const res = $http.send({
+    url: logica.ANTHROPIC_ENDPOINT,
+    method: "POST",
+    timeout: 60,
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: logica.MODEL,
+      max_tokens: logica.MAX_TOKENS,
+      system: systeemprompt,
+      messages: berichten,
+      tools: tools,
+    }),
+  });
+  if (res.statusCode >= 400) {
+    const msg =
+      (res.json && res.json.error && res.json.error.message) || `Anthropic-fout ${res.statusCode}`;
+    throw new Error(msg);
+  }
+  return res.json;
+}
+
+function leesSysteemprompt() {
+  const inhoud = $os.readFile(`${__hooks}/agent_systeemprompt.md`);
+  return typeof inhoud === "string" ? inhoud : String.fromCharCode.apply(null, inhoud);
+}
+
+function leesbareFout(err) {
+  if (err && err.status) return err;
+  return new BadRequestError("AI-agent fout: " + (err && err.message ? err.message : String(err)));
+}
+
+function haalFotoBase64Op(app, berichtId, pocketbaseUrl, apiKey) {
+  try {
+    const bericht = app.findRecordById("agent_berichten", berichtId);
+    const bestand = bericht.getString("foto");
+    if (!bestand) return null;
+    const url = `${pocketbaseUrl}/api/files/${bericht.baseFilesPath()}/${bestand}`;
+    const res = $http.send({ url, method: "GET", timeout: 30 });
+    if (res.statusCode >= 400) return null;
+    const mediaType = bestand.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+    return { base64: logica.bytesNaarBase64(res.body), mediaType };
+  } catch (e) {
+    return null;
+  }
+}
+
+// ============= Eén volledige beurt verwerken =============
+// Vertrekpunt: gesprek_id + het al opgeslagen laatste bericht in dat gesprek
+// (een echt user-bericht, of een synthetisch "tool"-systeembericht na een
+// mislukte/afgewezen actie). Retourneert { antwoord, acties, bericht_id }
+// of { fout } (bv. geen API-sleutel geconfigureerd).
+function verwerkBeurt(app, opties) {
+  const { gesprekId, systeemprompt, pocketbaseUrl, verantwoordelijke } = opties;
+  const apiKey = $os.getenv("ANTHROPIC_API_KEY");
+  if (!apiKey) {
+    return { fout: "De AI-agent is niet ingesteld: ANTHROPIC_API_KEY ontbreekt op de server." };
+  }
+
+  const historie = app.findRecordsByFilter(
+    "agent_berichten",
+    "gesprek_id = {:g}",
+    "created",
+    logica.MAX_GESCHIEDENIS_BERICHTEN,
+    0,
+    { g: gesprekId },
+  );
+
+  // alleen user/assistant-tekstwisselingen repliceren; tool-detail van eerdere
+  // beurten zit al samengevat in het opgeslagen assistant-antwoord van die beurt
+  const berichten = [];
+  for (const b of historie) {
+    const rol = b.getString("rol");
+    if (rol === "user") {
+      let tekst = b.getString("inhoud") || "";
+      if (b.getString("foto")) {
+        tekst += `\n\n[Gebruiker heeft een foto bijgevoegd bij dit bericht - gebruik analyseer_foto met bericht_id "${b.id}" om te bekijken]`;
+      }
+      berichten.push({ role: "user", content: tekst });
+    } else if (rol === "assistant") {
+      berichten.push({ role: "assistant", content: b.getString("inhoud") || "(geen antwoord)" });
+    } else if (rol === "tool") {
+      // synthetische systeemmelding (bv. na een mislukte actie) - als user-beurt
+      // aanbieden, want Anthropic staat geen "tool"-rol zonder voorgaande
+      // tool_use toe in de vervangen geschiedenis.
+      berichten.push({ role: "user", content: b.getString("inhoud") || "" });
+    }
+  }
+
+  const tools = logica.bouwTools();
+  const systeem = [
+    { type: "text", text: systeemprompt, cache_control: { type: "ephemeral" } },
+    { type: "text", text: `HUIDIGE DATUM: ${logica.vandaagStr()}` },
+  ];
+
+  const alleToolCalls = [];
+  const alleToolResultaten = [];
+  const voorgesteldeActies = [];
+  let laatsteAntwoord = null;
+  let teBreedGeworden = false;
+
+  for (let iteratie = 0; iteratie < logica.MAX_TOOL_ITERATIES; iteratie++) {
+    let antwoord;
+    try {
+      antwoord = roepAnthropicAan(apiKey, systeem, berichten, tools);
+    } catch (e) {
+      return { fout: `Kon de AI-agent niet bereiken: ${e.message}` };
+    }
+    laatsteAntwoord = antwoord;
+    if (antwoord.stop_reason !== "tool_use") break;
+
+    berichten.push({ role: "assistant", content: antwoord.content });
+    const toolResultaten = [];
+    for (const blok of antwoord.content) {
+      if (blok.type !== "tool_use") continue;
+      alleToolCalls.push({ naam: blok.name, input: blok.input });
+
+      let resultaatTekst;
+      if (blok.name === "analyseer_foto") {
+        const foto = haalFotoBase64Op(app, blok.input.bericht_id, pocketbaseUrl, apiKey);
+        if (!foto) {
+          resultaatTekst = "Kon de foto niet ophalen of dit bericht heeft geen foto.";
+        } else {
+          try {
+            const visieRes = roepAnthropicAan(
+              apiKey,
+              [
+                {
+                  type: "text",
+                  text: "Analyseer deze foto van een wijngaard/kelder-onderwerp (blad, druif, stok, wijn) op gezondheid, verkleuring, vermoede ziekte of rijpheidsindruk. Geef een kort, concreet Nederlands oordeel, geen voorzichtigheidsclausules.",
+                },
+              ],
+              [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "image",
+                      source: { type: "base64", media_type: foto.mediaType, data: foto.base64 },
+                    },
+                    { type: "text", text: "Analyseer deze foto." },
+                  ],
+                },
+              ],
+              [],
+            );
+            resultaatTekst = (visieRes.content || [])
+              .filter((c) => c.type === "text")
+              .map((c) => c.text)
+              .join("\n");
+          } catch (e) {
+            resultaatTekst = `Foto-analyse mislukt: ${e.message}`;
+          }
+        }
+      } else if (logica.LEES_TOOLS.has(blok.name)) {
+        try {
+          resultaatTekst = JSON.stringify(voerLeesToolUit(app, blok.name, blok.input));
+        } catch (e) {
+          resultaatTekst = `Fout bij opzoeken: ${e.message}`;
+        }
+      } else if (logica.SCHRIJF_TOOL_INFO[blok.name]) {
+        const voorstel = bouwActieVoorstel(app, blok.name, blok.input);
+        if (voorstel.fout) {
+          resultaatTekst = `Kan geen voorstel maken: ${voorstel.fout}`;
+        } else {
+          voorgesteldeActies.push(voorstel);
+          resultaatTekst = `Voorstel klaar: "${voorstel.samenvatting}". Dit wordt als bevestigingskaart getoond - wacht op bevestiging van de gebruiker, voer het niet uit.`;
+        }
+      } else {
+        resultaatTekst = `Onbekende tool: ${blok.name}`;
+      }
+      alleToolResultaten.push({ naam: blok.name, resultaat: resultaatTekst });
+      toolResultaten.push({ type: "tool_result", tool_use_id: blok.id, content: resultaatTekst });
+    }
+    berichten.push({ role: "user", content: toolResultaten });
+
+    if (iteratie === logica.MAX_TOOL_ITERATIES - 1) teBreedGeworden = true;
+  }
+
+  let tekst = ((laatsteAntwoord && laatsteAntwoord.content) || [])
+    .filter((c) => c.type === "text")
+    .map((c) => c.text)
+    .join("\n")
+    .trim();
+  if (teBreedGeworden) {
+    tekst +=
+      "\n\n(Dit was een brede vraag met veel stappen - ik geef je wat ik tot nu toe heb. Vraag gerust gerichter door.)";
+  }
+  if (!tekst) tekst = "(geen antwoord)";
+
+  let assistantBerichtId = null;
+  let aangemaakteActies = [];
+  app.runInTransaction((txApp) => {
+    const col = txApp.findCollectionByNameOrId("agent_berichten");
+    const rec = new Record(col);
+    rec.set("gesprek_id", gesprekId);
+    rec.set("rol", "assistant");
+    rec.set("inhoud", tekst);
+    rec.set("tool_calls", alleToolCalls);
+    rec.set("tool_resultaten", alleToolResultaten);
+    txApp.save(rec);
+    assistantBerichtId = rec.id;
+
+    for (const voorstel of voorgesteldeActies) {
+      const actieCol = txApp.findCollectionByNameOrId("agent_acties");
+      const actieRec = new Record(actieCol);
+      actieRec.set("gesprek_id", gesprekId);
+      actieRec.set("bericht_id", assistantBerichtId);
+      actieRec.set("actie_type", voorstel.actie_type);
+      actieRec.set("payload", voorstel.payload);
+      actieRec.set("samenvatting", voorstel.samenvatting);
+      actieRec.set("status", "voorgesteld");
+      txApp.save(actieRec);
+      aangemaakteActies.push({
+        id: actieRec.id,
+        actie_type: voorstel.actie_type,
+        samenvatting: voorstel.samenvatting,
+        status: "voorgesteld",
+      });
+    }
+
+    const gesprek = txApp.findRecordById("agent_gesprekken", gesprekId);
+    gesprek.set("laatste_bericht_op", new Date().toISOString());
+    if (!gesprek.getString("titel") || gesprek.getString("titel") === "Nieuw gesprek") {
+      const eersteUser = historie.find((b) => b.getString("rol") === "user");
+      if (eersteUser) {
+        gesprek.set("titel", (eersteUser.getString("inhoud") || "Nieuw gesprek").slice(0, 60));
+      }
+    }
+    txApp.save(gesprek);
+  });
+
+  return { antwoord: tekst, acties: aangemaakteActies, bericht_id: assistantBerichtId };
+}
+
+module.exports = {
+  voerLeesToolUit,
+  bouwActieVoorstel,
+  voerBevestigdeActieUit,
+  roepAnthropicAan,
+  haalFotoBase64Op,
+  verwerkBeurt,
+  leesSysteemprompt,
+  leesbareFout,
+};
