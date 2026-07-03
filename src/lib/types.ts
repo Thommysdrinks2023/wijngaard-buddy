@@ -347,6 +347,25 @@ export interface PartijToevoeging {
   created: string;
 }
 
+// ============= Voedingswaarde-/etiketberekening (kelderuitbreiding) =============
+// Losstaande rekentool gekoppeld aan een partij; elke berekening is een los,
+// nooit overschreven record (historie) — zie src/lib/voedingswaarde.ts voor de
+// rekenlogica.
+export interface VoedingswaardeBerekening {
+  id: string;
+  partij: string; // partij id
+  berekening_datum: string;
+  alcohol_gram_liter?: number | null;
+  restsuiker_gram_liter?: number | null;
+  zuur_gram_liter?: number | null;
+  glycerine_gram_liter?: number | null;
+  kcal_totaal?: number | null;
+  kj_totaal?: number | null;
+  etiket_tekst?: string;
+  ingevoerd_door?: string;
+  created: string;
+}
+
 // ============= AI-agent (Fase 3) =============
 
 export type AgentRol = "user" | "assistant" | "tool";

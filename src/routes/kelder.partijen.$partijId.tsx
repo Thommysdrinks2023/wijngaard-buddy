@@ -8,12 +8,14 @@ import {
   createAnalyse,
   createKelderlog,
   createToevoeging,
+  createVoedingswaardeBerekening,
   fetchAnalyses,
   fetchKelderlog,
   fetchProducenten,
   fetchTankboek,
   fetchTanks,
   fetchToevoegingen,
+  fetchVoedingswaardeBerekeningen,
 } from "@/lib/kelder-data";
 import { fetchPartijById, updatePartij } from "@/lib/partijen-data";
 import {
@@ -22,8 +24,14 @@ import {
   valideerAnalyse,
   valideerKelderlog,
   valideerToevoeging,
+  valideerVoedingswaarde,
 } from "@/lib/validatie";
 import { vanBrix, vanOechsle } from "@/lib/dichtheid";
+import {
+  alcoholPctNaarGramLiter,
+  berekenVoedingswaarde,
+  GLYCERINE_DEFAULT_GRAM_LITER,
+} from "@/lib/voedingswaarde";
 import { useInvoerder } from "@/lib/use-invoerder";
 import {
   KELDERLOG_ACTIES,
@@ -40,7 +48,7 @@ import {
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { ArrowLeftRight, Beaker, FlaskConical, Loader2, NotebookPen } from "lucide-react";
+import { ArrowLeftRight, Beaker, Copy, FlaskConical, Loader2, NotebookPen } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/partijen/$partijId")({
   component: PartijDetailPage,
@@ -73,6 +81,10 @@ function PartijDetailPage() {
   const toevoegingenQ = useQuery({
     queryKey: ["toevoegingen", partijId],
     queryFn: () => fetchToevoegingen(partijId),
+  });
+  const voedingswaardeQ = useQuery({
+    queryKey: ["voedingswaarde", partijId],
+    queryFn: () => fetchVoedingswaardeBerekeningen(partijId),
   });
 
   const partij = partijQ.data;
@@ -271,6 +283,78 @@ function PartijDetailPage() {
     toevoegingM.mutate();
   };
 
+  // ---------- voedingswaarde-/etiketberekening ----------
+  const [vAlcohol, setVAlcohol] = useState("");
+  const [vRestsuiker, setVRestsuiker] = useState("");
+  const [vZuur, setVZuur] = useState("");
+  const [vGlycerine, setVGlycerine] = useState(String(GLYCERINE_DEFAULT_GRAM_LITER));
+  const [vFouten, setVFouten] = useState<Record<string, string>>({});
+
+  const vulInVanuitAnalyse = () => {
+    if (!laatsteAnalyse) return;
+    if (laatsteAnalyse.alcohol_pct != null)
+      setVAlcohol(
+        String(Math.round(alcoholPctNaarGramLiter(laatsteAnalyse.alcohol_pct) * 10) / 10),
+      );
+    if (laatsteAnalyse.restsuiker_g_l != null)
+      setVRestsuiker(String(laatsteAnalyse.restsuiker_g_l));
+    if (laatsteAnalyse.totaalzuur_g_l != null) setVZuur(String(laatsteAnalyse.totaalzuur_g_l));
+  };
+
+  const voedingswaardeM = useMutation({
+    mutationFn: () => {
+      const invoer = {
+        alcohol_gram_liter: Number(vAlcohol),
+        restsuiker_gram_liter: Number(vRestsuiker),
+        zuur_gram_liter: Number(vZuur),
+        glycerine_gram_liter: Number(vGlycerine),
+      };
+      const resultaat = berekenVoedingswaarde(invoer);
+      return createVoedingswaardeBerekening({
+        partij: partijId,
+        berekening_datum: format(new Date(), "yyyy-MM-dd"),
+        ...invoer,
+        kcal_totaal: resultaat.kcal_totaal,
+        kj_totaal: resultaat.kj_totaal,
+        etiket_tekst: resultaat.etiket_tekst,
+        ingevoerd_door: invoerder,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Berekening opgeslagen ✓");
+      qc.invalidateQueries({ queryKey: ["voedingswaarde", partijId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bewaarVoedingswaarde = () => {
+    if (voedingswaardeM.isPending) return;
+    const validatie = valideerVoedingswaarde({
+      partij: partijId,
+      berekening_datum: format(new Date(), "yyyy-MM-dd"),
+      alcohol_gram_liter: vAlcohol ? Number(vAlcohol) : undefined,
+      restsuiker_gram_liter: vRestsuiker ? Number(vRestsuiker) : undefined,
+      zuur_gram_liter: vZuur ? Number(vZuur) : undefined,
+      glycerine_gram_liter: vGlycerine ? Number(vGlycerine) : undefined,
+    });
+    if (!isGeldig(validatie)) {
+      setVFouten(foutenPerVeld(validatie));
+      toast.error(validatie[0].bericht);
+      return;
+    }
+    setVFouten({});
+    voedingswaardeM.mutate();
+  };
+
+  const kopieerEtiket = async (tekst: string) => {
+    try {
+      await navigator.clipboard.writeText(tekst);
+      toast.success("Etikettekst gekopieerd ✓");
+    } catch {
+      toast.error("Kopiëren mislukt — selecteer en kopieer de tekst handmatig.");
+    }
+  };
+
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
   if (partijQ.isError || (partijQ.isFetched && !partij)) {
@@ -439,12 +523,15 @@ function PartijDetailPage() {
           </div>
         </section>
 
-        {/* Verwerking: velden uit Logboek_leeg.xlsx, alleen tonen als er iets ingevuld is */}
+        {/* Verwerking: velden uit Logboek_leeg.xlsx, alleen tonen als er iets ingevuld is.
+            Let op: PocketBase-nummervelden die nooit expliciet gezet zijn staan op 0,
+            niet op null — pH/zuur van 0 komt in de praktijk nooit voor (echte pH ligt
+            altijd > 2), dus > 0 is hier de betrouwbare "is ingevuld"-check. */}
         {partij &&
           (partij.ontstelen ||
             partij.voorklaren ||
-            partij.ph_bij_aanmaak != null ||
-            partij.totaal_zuur_bij_aanmaak != null ||
+            (partij.ph_bij_aanmaak ?? 0) > 0 ||
+            (partij.totaal_zuur_bij_aanmaak ?? 0) > 0 ||
             partij.standtijd ||
             partij.koeling) && (
             <section className="rounded-2xl border border-border bg-card p-3">
@@ -455,8 +542,8 @@ function PartijDetailPage() {
                 {[
                   partij.ontstelen ? "Ontsteeld" : null,
                   partij.voorklaren ? "Voorgeklaard" : null,
-                  partij.ph_bij_aanmaak != null ? `pH ${partij.ph_bij_aanmaak}` : null,
-                  partij.totaal_zuur_bij_aanmaak != null
+                  (partij.ph_bij_aanmaak ?? 0) > 0 ? `pH ${partij.ph_bij_aanmaak}` : null,
+                  (partij.totaal_zuur_bij_aanmaak ?? 0) > 0
                     ? `Totaal zuur ${partij.totaal_zuur_bij_aanmaak}`
                     : null,
                   partij.standtijd ? `Standtijd ${partij.standtijd}` : null,
@@ -886,6 +973,121 @@ function PartijDetailPage() {
                 );
               })}
             </ul>
+          )}
+        </section>
+
+        {/* Voedingswaarde-/etiketberekening */}
+        <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Voedingswaarde berekenen
+          </h2>
+          {laatsteAnalyse && (
+            <button
+              type="button"
+              onClick={vulInVanuitAnalyse}
+              className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+            >
+              Vul in vanuit laatste analyse
+            </button>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Alcohol (g/L)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={vAlcohol}
+                onChange={(e) => setVAlcohol(e.target.value)}
+                className={`${veldClass} ${vFouten.alcohol_gram_liter ? "border-destructive" : ""}`}
+                placeholder="bijv. 85"
+              />
+              {vFouten.alcohol_gram_liter && (
+                <span className="mt-1 block text-xs text-destructive">
+                  {vFouten.alcohol_gram_liter}
+                </span>
+              )}
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Restsuiker (g/L)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={vRestsuiker}
+                onChange={(e) => setVRestsuiker(e.target.value)}
+                className={`${veldClass} ${vFouten.restsuiker_gram_liter ? "border-destructive" : ""}`}
+                placeholder="bijv. 2"
+              />
+              {vFouten.restsuiker_gram_liter && (
+                <span className="mt-1 block text-xs text-destructive">
+                  {vFouten.restsuiker_gram_liter}
+                </span>
+              )}
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Zuur (g/L)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={vZuur}
+                onChange={(e) => setVZuur(e.target.value)}
+                className={`${veldClass} ${vFouten.zuur_gram_liter ? "border-destructive" : ""}`}
+                placeholder="bijv. 6"
+              />
+              {vFouten.zuur_gram_liter && (
+                <span className="mt-1 block text-xs text-destructive">
+                  {vFouten.zuur_gram_liter}
+                </span>
+              )}
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Glycerine (g/L)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={vGlycerine}
+                onChange={(e) => setVGlycerine(e.target.value)}
+                className={`${veldClass} ${vFouten.glycerine_gram_liter ? "border-destructive" : ""}`}
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={bewaarVoedingswaarde}
+            disabled={voedingswaardeM.isPending}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            {voedingswaardeM.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Bereken
+          </button>
+
+          {(voedingswaardeQ.data ?? []).length > 0 && (
+            <div className="space-y-2 pt-1">
+              {(voedingswaardeQ.data ?? []).map((v, i) => (
+                <div key={v.id} className="rounded-xl border border-border bg-background p-3">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      {i === 0 ? "Laatste berekening" : "Eerdere berekening"} ·{" "}
+                      {format(parseISO(v.berekening_datum), "d MMM yyyy", { locale: nl })}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => kopieerEtiket(v.etiket_tekst ?? "")}
+                      className="flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-xs font-medium"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Kopieer
+                    </button>
+                  </div>
+                  <pre className="whitespace-pre-wrap font-sans text-sm">{v.etiket_tekst}</pre>
+                </div>
+              ))}
+            </div>
           )}
         </section>
       </div>

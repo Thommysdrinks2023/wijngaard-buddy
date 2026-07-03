@@ -6,6 +6,7 @@ import type {
   KelderlogInput,
   TankInput,
   ToevoegingInput,
+  VoedingswaardeInput,
 } from "./kelder-data";
 
 export interface ValidatieFout {
@@ -236,6 +237,27 @@ export function valideerToevoeging(input: Partial<ToevoegingInput>): ValidatieFo
     fouten.push({ veld: "hoeveelheid", bericht: "Vul een geldige hoeveelheid in" });
   if (!input.eenheid) fouten.push({ veld: "eenheid", bericht: "Kies een eenheid" });
   checkDatum(input.datum, fouten);
+  return fouten;
+}
+
+export function valideerVoedingswaarde(input: Partial<VoedingswaardeInput>): ValidatieFout[] {
+  const fouten: ValidatieFout[] = [];
+  if (!input.partij) fouten.push({ veld: "partij", bericht: "Kies een partij" });
+  checkDatum(input.berekening_datum, fouten);
+  const velden: { key: keyof VoedingswaardeInput; label: string }[] = [
+    { key: "alcohol_gram_liter", label: "alcohol" },
+    { key: "restsuiker_gram_liter", label: "restsuiker" },
+    { key: "zuur_gram_liter", label: "zuur" },
+    { key: "glycerine_gram_liter", label: "glycerine" },
+  ];
+  for (const v of velden) {
+    const waarde = input[v.key];
+    if (typeof waarde !== "number" || Number.isNaN(waarde) || waarde < 0)
+      fouten.push({
+        veld: v.key,
+        bericht: `Vul een geldige waarde in voor ${v.label} (g/L)`,
+      });
+  }
   return fouten;
 }
 

@@ -1051,6 +1051,40 @@ async function main() {
     deleteRule: AUTH_RULE,
   });
 
+  // 3a-8d. Voedingswaarde-/etiketberekening — losstaande rekentool gekoppeld aan
+  // een partij (voor het energielabel bij botteling), géén bottelfunctionaliteit
+  // zelf. Elke berekening is een los, nooit overschreven record (historie).
+  // Zelfde AUTH_RULE-niveau als analyses/kelderlog/partij_toevoegingen.
+  await ensureCollection({
+    name: "voedingswaarde_berekeningen",
+    type: "base",
+    fields: [
+      {
+        name: "partij",
+        type: "relation",
+        required: true,
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "berekening_datum", type: "text", required: true },
+      { name: "alcohol_gram_liter", type: "number" },
+      { name: "restsuiker_gram_liter", type: "number" },
+      { name: "zuur_gram_liter", type: "number" },
+      { name: "glycerine_gram_liter", type: "number" },
+      { name: "kcal_totaal", type: "number" },
+      { name: "kj_totaal", type: "number" },
+      { name: "etiket_tekst", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
   // corrigeert = zelfverwijzing; kan pas ná aanmaak (id nog onbekend in de definitie)
   await ensureVelden("tankboek", [
     {
@@ -1320,6 +1354,7 @@ async function main() {
     "kelderlog",
     "regelgeving_instellingen",
     "partij_toevoegingen",
+    "voedingswaarde_berekeningen",
     "agent_gesprekken",
     "agent_berichten",
     "agent_acties",

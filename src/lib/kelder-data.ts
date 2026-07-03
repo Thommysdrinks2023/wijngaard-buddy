@@ -16,6 +16,7 @@ import type {
   TankboekRegel,
   TankStatus,
   ToevoegingEenheid,
+  VoedingswaardeBerekening,
 } from "./types";
 import type { PartijInput } from "./partijen-data";
 import { ensureOnline, getPb } from "./data";
@@ -366,4 +367,58 @@ export async function createToevoeging(input: ToevoegingInput): Promise<PartijTo
   );
   const r = await pb.collection("partij_toevoegingen").create({ ...input });
   return toevoegingFromPb(r);
+}
+
+// ============= Voedingswaarde-/etiketberekeningen =============
+// Zelfde patroon als analyses/kelderlog/partij_toevoegingen: vrij toevoegen,
+// nooit bewerken/verwijderen — elke berekening is een los historisch record.
+function voedingswaardeFromPb(r: RecordModel): VoedingswaardeBerekening {
+  return {
+    id: r.id,
+    partij: r["partij"],
+    berekening_datum: r["berekening_datum"],
+    alcohol_gram_liter: r["alcohol_gram_liter"] ?? null,
+    restsuiker_gram_liter: r["restsuiker_gram_liter"] ?? null,
+    zuur_gram_liter: r["zuur_gram_liter"] ?? null,
+    glycerine_gram_liter: r["glycerine_gram_liter"] ?? null,
+    kcal_totaal: r["kcal_totaal"] ?? null,
+    kj_totaal: r["kj_totaal"] ?? null,
+    etiket_tekst: r["etiket_tekst"] ?? "",
+    ingevoerd_door: r["ingevoerd_door"] ?? "",
+    created: r["created"],
+  };
+}
+
+export async function fetchVoedingswaardeBerekeningen(
+  partijId: string,
+): Promise<VoedingswaardeBerekening[]> {
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) return [];
+  const records = await pb.collection("voedingswaarde_berekeningen").getFullList({
+    sort: "-berekening_datum,-created",
+    filter: `partij = "${partijId}"`,
+  });
+  return records.map(voedingswaardeFromPb);
+}
+
+export interface VoedingswaardeInput {
+  partij: string;
+  berekening_datum: string;
+  alcohol_gram_liter?: number | null;
+  restsuiker_gram_liter?: number | null;
+  zuur_gram_liter?: number | null;
+  glycerine_gram_liter?: number | null;
+  kcal_totaal?: number | null;
+  kj_totaal?: number | null;
+  etiket_tekst?: string;
+  ingevoerd_door?: string;
+}
+
+export async function createVoedingswaardeBerekening(
+  input: VoedingswaardeInput,
+): Promise<VoedingswaardeBerekening> {
+  const pb = await pbOfFout();
+  logAudit("aangemaakt", "voedingswaarde_berekeningen", `partij ${input.partij}`);
+  const r = await pb.collection("voedingswaarde_berekeningen").create({ ...input });
+  return voedingswaardeFromPb(r);
 }
