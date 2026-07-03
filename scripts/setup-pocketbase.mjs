@@ -159,6 +159,9 @@ const ANALYSE_METHODEN = ["eigen_meting", "extern_lab"];
 // voluit geschreven set i.p.v. hergebruik van KELDERLOG_EENHEDEN (andere
 // collectie, geen gedeelde betekenis nodig).
 const TOEVOEGING_EENHEDEN = ["gram", "kilogram", "ml", "liter", "mg_per_liter"];
+// Fase 4 — Botteling & Voorraad
+const VOORRAAD_STATUSSEN = ["op_voorraad", "uitverkocht"];
+const VOORRAAD_MUTATIE_TYPES = ["verkocht", "eigen_gebruik", "kapot", "weggegeven", "correctie"];
 
 // Tankinventaris van De Tappenmars — overgenomen uit "Tankboek Leeg.xlsx".
 // IM = zwemdekseltank; capaciteit afgeleid uit de typecode. Pulptank/koeltank
@@ -1055,7 +1058,7 @@ async function main() {
   // een partij (voor het energielabel bij botteling), géén bottelfunctionaliteit
   // zelf. Elke berekening is een los, nooit overschreven record (historie).
   // Zelfde AUTH_RULE-niveau als analyses/kelderlog/partij_toevoegingen.
-  await ensureCollection({
+  const voedingswaardeCol = await ensureCollection({
     name: "voedingswaarde_berekeningen",
     type: "base",
     fields: [
@@ -1083,6 +1086,145 @@ async function main() {
     createRule: AUTH_RULE,
     updateRule: AUTH_RULE,
     deleteRule: AUTH_RULE,
+  });
+
+  // 3a-9. Fase 4 — Botteling & Voorraad. Zie DECISIONS-FASE4.md voor de
+  // afwijkingen t.o.v. de letterlijke opdracht (Nederlandse veldnamen,
+  // van_tank toegevoegd, geen "operator"-relatie naar users, geen
+  // "deleted"-veld op voorraad_mutaties). createRule = null op alle drie:
+  // schrijven kan uitsluitend via de atomische server-endpoints hieronder.
+  const bottelrondesCol = await ensureCollection({
+    name: "bottelrondes",
+    type: "base",
+    fields: [
+      {
+        name: "partij",
+        type: "relation",
+        required: true,
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "producent",
+        type: "relation",
+        collectionId: producentenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "van_tank",
+        type: "relation",
+        required: true,
+        collectionId: tanksCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "botteldatum", type: "text", required: true },
+      { name: "aantal_flessen", type: "number", required: true, onlyInt: true },
+      { name: "flesinhoud_ml", type: "number", required: true },
+      { name: "flestype", type: "text" },
+      { name: "kleur_fles", type: "text" },
+      { name: "parelwijn", type: "bool" },
+      { name: "lotnummer", type: "text" },
+      {
+        name: "voedingswaarde_berekening",
+        type: "relation",
+        collectionId: voedingswaardeCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "notities", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      { name: "deleted", type: "bool" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: null,
+    updateRule: null,
+    deleteRule: null,
+  });
+
+  const voorraadFlessenCol = await ensureCollection({
+    name: "voorraad_flessen",
+    type: "base",
+    fields: [
+      {
+        name: "bottelronde",
+        type: "relation",
+        required: true,
+        collectionId: bottelrondesCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "partij",
+        type: "relation",
+        required: true,
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "producent",
+        type: "relation",
+        collectionId: producentenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "wijnnaam", type: "text", required: true },
+      { name: "jaargang", type: "number", onlyInt: true },
+      { name: "aantal_beginvoorraad", type: "number", required: true, onlyInt: true },
+      { name: "aantal_huidig", type: "number", required: true, onlyInt: true },
+      { name: "locatie", type: "text" },
+      {
+        name: "status",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: VOORRAAD_STATUSSEN,
+      },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: null,
+    updateRule: null,
+    deleteRule: null,
+  });
+
+  await ensureCollection({
+    name: "voorraad_mutaties",
+    type: "base",
+    fields: [
+      {
+        name: "voorraad",
+        type: "relation",
+        required: true,
+        collectionId: voorraadFlessenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "mutatie_type",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: VOORRAAD_MUTATIE_TYPES,
+      },
+      { name: "aantal", type: "number", required: true, onlyInt: true },
+      { name: "datum", type: "text", required: true },
+      { name: "afnemer_of_reden", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      { name: "notities", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: null,
+    updateRule: null,
+    deleteRule: null,
   });
 
   // corrigeert = zelfverwijzing; kan pas ná aanmaak (id nog onbekend in de definitie)
@@ -1355,6 +1497,9 @@ async function main() {
     "regelgeving_instellingen",
     "partij_toevoegingen",
     "voedingswaarde_berekeningen",
+    "bottelrondes",
+    "voorraad_flessen",
+    "voorraad_mutaties",
     "agent_gesprekken",
     "agent_berichten",
     "agent_acties",

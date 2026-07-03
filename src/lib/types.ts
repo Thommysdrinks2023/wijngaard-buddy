@@ -366,6 +366,95 @@ export interface VoedingswaardeBerekening {
   created: string;
 }
 
+// ============= Botteling & Voorraad (Fase 4) =============
+// Bottelen is een tankboek-mutatie (actie "botteling", bestond al) plus een
+// atomische cascade die er een bottelronde- en voorraadrecord bij aanmaakt —
+// zie DECISIONS-FASE4.md. Alle drie collecties zijn endpoint-only voor
+// schrijven (createRule/updateRule/deleteRule = null), zelfde patroon als
+// tankboek: nooit rechtstreeks via de PocketBase-SDK aanmaken/wijzigen.
+
+export interface Bottelronde {
+  id: string;
+  partij: string; // partij id
+  producent?: string | null;
+  van_tank: string; // tank id
+  botteldatum: string;
+  aantal_flessen: number;
+  flesinhoud_ml: number;
+  flestype?: string;
+  kleur_fles?: string;
+  parelwijn?: boolean;
+  lotnummer?: string;
+  voedingswaarde_berekening?: string | null; // voedingswaarde_berekeningen id
+  notities?: string;
+  ingevoerd_door?: string;
+  deleted?: boolean;
+  created: string;
+  updated?: string;
+}
+
+export type VoorraadStatus = "op_voorraad" | "uitverkocht";
+export const VOORRAAD_STATUSSEN: { value: VoorraadStatus; label: string; emoji: string }[] = [
+  { value: "op_voorraad", label: "Op voorraad", emoji: "🍾" },
+  { value: "uitverkocht", label: "Uitverkocht", emoji: "🚫" },
+];
+
+export interface VoorraadFles {
+  id: string;
+  bottelronde: string; // bottelronde id
+  partij: string; // partij id
+  producent?: string | null;
+  wijnnaam: string;
+  jaargang?: number | null;
+  aantal_beginvoorraad: number;
+  aantal_huidig: number; // cache — waarheid is voorraad_mutaties; nooit direct aanpasbaar
+  locatie?: string;
+  status: VoorraadStatus;
+  created: string;
+  updated?: string;
+}
+
+export type VoorraadMutatieType =
+  | "verkocht"
+  | "eigen_gebruik"
+  | "kapot"
+  | "weggegeven"
+  | "correctie";
+export const VOORRAAD_MUTATIE_TYPES: {
+  value: VoorraadMutatieType;
+  label: string;
+  emoji: string;
+}[] = [
+  { value: "verkocht", label: "Verkocht", emoji: "💶" },
+  { value: "eigen_gebruik", label: "Eigen gebruik", emoji: "🍷" },
+  { value: "kapot", label: "Kapot", emoji: "💔" },
+  { value: "weggegeven", label: "Weggegeven", emoji: "🎁" },
+  { value: "correctie", label: "Correctie", emoji: "✏️" },
+];
+
+export interface VoorraadMutatie {
+  id: string;
+  voorraad: string; // voorraad_flessen id
+  mutatie_type: VoorraadMutatieType;
+  aantal: number; // getekend — negatief bij afname
+  datum: string;
+  afnemer_of_reden?: string;
+  ingevoerd_door?: string;
+  notities?: string;
+  created: string;
+}
+
+// Suggesties voor autocomplete (vrije tekst, geen enum — zelfde patroon als
+// VEELGEBRUIKTE_TOEVOEGINGEN uit de kelder-uitbreiding).
+export const VEELGEBRUIKTE_FLESINHOUD_ML = [375, 500, 750, 1500];
+export const VEELGEBRUIKTE_FLESTYPES = [
+  "Bordeaux-fles",
+  "Bourgogne-fles",
+  "Slank-fles",
+  "Bocksbeutel",
+];
+export const VEELGEBRUIKTE_FLESKLEUREN = ["Antiek groen", "Wit", "Bruin", "Transparant"];
+
 // ============= AI-agent (Fase 3) =============
 
 export type AgentRol = "user" | "assistant" | "tool";
