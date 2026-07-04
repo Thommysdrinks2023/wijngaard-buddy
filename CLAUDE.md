@@ -1,6 +1,6 @@
 # Wijngaard Buddy — CLAUDE.md
 
-Projectinstructies voor Claude Code. Lees dit aan het begin van elke sessie. Lees ook `ARCHITECTURE.md` — het autoritatieve systeemontwerp voor de uitbouw naar **Tappenmars Buddy** (modulair bedrijfsdashboard met Wijngaard/Kelder/Voorraad). Kelder Fase 0–2 is gebouwd (partijen, tankbeheer, tankboek met validatieregels, analyses, kelderlog); botteling en voorraad (Fase 3+) nog niet.
+Projectinstructies voor Claude Code. Lees dit aan het begin van elke sessie. Lees ook `ARCHITECTURE.md` — het autoritatieve systeemontwerp voor de uitbouw naar **Tappenmars Buddy** (modulair bedrijfsdashboard met Wijngaard/Kelder/Voorraad). Kelder Fase 0–2, de kelder-uitbreiding, AI-agent Fase 3 én Botteling & Voorraad (Fase 4) zijn gebouwd — zie de `DECISIONS-*.md`-bestanden voor de precieze, geteste staat per onderdeel (deze wijkt op punten af van `ARCHITECTURE.md`, dat het oorspronkelijke ontwerp beschrijft, niet altijd de uiteindelijk gebouwde versie).
 
 ## Wat is dit?
 
@@ -127,6 +127,24 @@ Get-Process pocketbase -ErrorAction SilentlyContinue | Stop-Process -Force
 Sluit dat venster (Ctrl+C) en start de Taakplanner-taak weer op zodra je klaar bent met kijken.
 
 **Bekende valkuil — `NoDefaultCurrentDirectoryInExePath`:** deze machine heeft een Windows-hardeningsvariabele actief (vaak door beveiligingssoftware gezet) die voorkomt dat `cmd.exe` een kale bestandsnaam (`pocketbase.exe`) in de huidige werkmap zoekt — alleen nog op het PATH. Resultaat: `"pocketbase.exe is not recognized"` ondanks dat het bestand er echt staat. Daarom gebruikt `start-pocketbase.bat` bewust `.\pocketbase.exe` (expliciet relatief pad) in plaats van de kale bestandsnaam. Kom je deze foutmelding ergens anders tegen in een `.bat`-bestand: zelfde fix.
+
+## Backup (`scripts/backup-pocketbase.ps1` + Taakplanner-taak "Wijngaard PocketBase Backup")
+
+Draait dagelijks om 20:00, maakt een zip van `pb_data` (via PocketBase's eigen backup-API als de server draait, anders een directe bestandskopie) in `C:\Users\Gebruiker\Documents\Tappenmars\Wijngaard\Backups`, bewaart de laatste 14. **Let op — dit is nog altijd dezelfde schijf/machine als de server zelf**, geen externe locatie; zie het "Niet doen zonder toestemming"-punt over off-site backup in eventuele vervolgopdrachten.
+
+**Zelfde accu-valkuil als de PocketBase-taak (zie hierboven) trof ook deze taak** (ontdekt op 4 juli 2026: de dagelijkse backup van die dag bleef "Queued" hangen omdat de laptop op accu draaide). Op dezelfde manier permanent uitgezet:
+
+```powershell
+$task = Get-ScheduledTask -TaskName "Wijngaard PocketBase Backup"
+$settings = $task.Settings
+$settings.DisallowStartIfOnBatteries = $false
+$settings.StopIfGoingOnBatteries = $false
+Set-ScheduledTask -TaskName "Wijngaard PocketBase Backup" -Settings $settings
+```
+
+**Handmatig een backup afdwingen** (bijv. na een risicovolle sessie): `Start-ScheduledTask -TaskName "Wijngaard PocketBase Backup"`, daarna `Get-Content "...\Backups\backup-log.txt" -Tail 3` om te bevestigen dat hij is gelukt.
+
+**C-schijf kan onopgemerkt vollopen door OneDrive-updateresten.** Op 4 juli 2026 raakte de C-schijf twee keer bijna/helemaal vol (0 bytes vrij, later opnieuw tot 1,2GB) door **~14GB aan verweesde `OneDriveDeltaPatch`/`NewCabinet`-mappen in `AppData\Local\Temp`** — tijdelijke uitpakmappen van OneDrive's eigen updater die na een update nooit worden opgeruimd en zich over maanden opstapelen (sommige dateerden van oktober 2025). Dit veroorzaakte zowel een PocketBase-crash als een mislukte dagelijkse backup. Bij een onverklaarbaar volle C-schijf: controleer eerst `du -sh /c/Users/Gebruiker/AppData/Local/Temp/*/ | sort -rh | head -20` op mappen met een `OneDriveDeltaPatch`- of `NewCabinet`-submap — die zijn veilig te verwijderen (OneDrive downloadt ze desnoods opnieuw).
 
 ## Codeerconventies
 
