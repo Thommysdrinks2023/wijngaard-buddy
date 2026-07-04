@@ -1,7 +1,9 @@
 # Tappenmars Buddy — Systeemontwerp
 
-**Versie 1.0 — 2 juli 2026**
+**Versie 1.1 — 4 juli 2026** (v1.0: 2 juli 2026)
 Technische specificatie voor de uitbouw van Wijngaard Buddy naar een modulair bedrijfsdashboard voor De Tappenmars (Den Ham). Bedoeld als werkdocument voor ontwikkelsessies met Claude Code / Claude Cowork.
+
+> **Let op — dit document beschrijft het oorspronkelijke ontwerp, niet altijd de uiteindelijk gebouwde versie.** Sinds v1.0 zijn Fase 0–2, de kelder-uitbreiding, AI-agent Fase 3 en Fase 4 (botteling & voorraad) gebouwd, soms met bewuste afwijkingen van dit document (bijv. het drie-collecties-model voor botteling i.p.v. de `bottelingen`+`voorraad_mutaties`-schets in §1.7, en overhevelen als één tankboekregel i.p.v. twee in §1.4). Bij tegenspraak wint de werkelijke, geteste codebase — zie `WERKLOG.md` (Blok 0, nulmeting) en de `DECISIONS-*.md`-bestanden voor de precieze, geverifieerde staat. Het changelog onderaan dit document volgt vanaf v1.1 de daadwerkelijke ontwerpbeslissingen.
 
 ---
 
@@ -309,9 +311,24 @@ Met 10+ tools wordt één groot hook-bestand onhandelbaar. Structureer `assisten
 
 ## Open vragen (beslissen vóór fase 0)
 
-1. Oogstrecord splitsbaar over partijen? (§1.2 — advies: nee, relatieveld volstaat)
-2. Dichtheid in SG of °Oechsle? (§1.5)
-3. Offline invoer voor `kelderlog`/`analyses` gewenst? (§4)
-4. Lotnummerconventie akkoord? (§5)
-5. Valt De Tappenmars onder de EU-vrijstelling voor kleine producenten, en is er een AGP-traject nodig? (§5 — bepaalt of extra velden nodig zijn)
-6. Hook-migratie van de assistent (weg van browser-API-key) vóór of ín fase 6? (§6.1 — advies: uiterlijk vóór de Pi live gaat)
+**Bijgewerkt in v1.1 — zie het changelog hieronder voor hoe deze in de praktijk zijn beslist.**
+
+1. ~~Oogstrecord splitsbaar over partijen?~~ **Beslist (v1.1): nee**, relatieveld volstaat — nooit een `partij_oogst`-koppeltabel gebouwd, geen vraag naar splitsen ontstaan.
+2. ~~Dichtheid in SG of °Oechsle?~~ **Beslist (v1.1): °Oechsle als primaire invoereenheid**, met Brix én SG als afgeleide/opgeslagen weergave (`analyses.dichtheid_oechsle`/`_brix`/`_sg`, zie `src/lib/dichtheid.ts` — de SG-gebaseerde formule, niet de grovere lineaire benadering uit de allereerste Fase 0–2-prompt).
+3. ~~Offline invoer voor `kelderlog`/`analyses` gewenst?~~ **Beslist (v1.1): ja, zoals geadviseerd — nog niet uitgevoerd.** `src/lib/sync.ts`'s `SyncSoort` dekt vandaag geen enkele kelder-collectie, ook `kelderlog`/`analyses` niet. Terecht wél buiten de wachtrij: `tankboek`/`bottelrondes` (atomiciteit, §7.6). Openstaande implementatietaak, zie `WERKLOG.md`.
+4. ~~Lotnummerconventie akkoord?~~ **Beslist (v1.1): ja, `L<jj>-<PARTIJCODE>-<volgnr>` blijft de conventie** (bijv. "L26-JOH-01"). `partijen.lotnummer` is vrije tekst; `bottelrondes.lotnummer` valt automatisch terug op `partij.lotnummer` als de client niets meestuurt (Fase 4, DECISIONS-FASE4.md). Er is nog geen generator die de conventie zelf afdwingt/voorstelt — openstaande implementatietaak.
+5. Valt De Tappenmars onder de EU-vrijstelling voor kleine producenten, en is er een AGP-traject nodig? (§5 — bepaalt of extra velden nodig zijn) — **nog steeds open, bij Thomas/Douane/RVO, geen appbeslissing.**
+6. ~~Hook-migratie van de assistent (weg van browser-API-key) vóór of ín fase 6?~~ **Gedaan** — `src/lib/assistent.ts` bestaat niet meer, alle Anthropic-aanroepen lopen server-side via `pb_hooks/agent*.js` (Fase 3). Geverifieerd opnieuw in `WERKLOG.md` Blok 0 (4 juli 2026): geen `VITE_ANTHROPIC_API_KEY`-referentie meer in de broncode.
+
+---
+
+## Changelog
+
+### v1.1 — 4 juli 2026 (Blok A, mega-prompt-traject "MVP naar écht goed")
+
+**A1 — `kelderlog` vs. `partij_toevoegingen` samengevoegd.** Er bestonden twee parallelle ontwerpen voor hetzelfde concept: deze §1.6 beschrijft `kelderlog` met een `toevoeging`-actie, maar de kelder-uitbreiding (DECISIONS-KELDERUITBREIDING.md) bouwde daarnaast een aparte `partij_toevoegingen`-collectie met een eigen `TOEVOEGING_EENHEDEN`-enum en een `VEELGEBRUIKTE_TOEVOEGINGEN`-datalist (Bentoniet, Oenopur, Go-Ferm, Pro-ferm, Sulfiet, Aktivkohle, Panzym extract, Ao/Fo). **Besluit**: `kelderlog` (met `actie: "toevoeging"`) is vanaf nu de enige weg om een toevoeging te registreren. De "Toevoeging"-sneltoets op het partijdetailscherm (`src/routes/kelder.partijen.$partijId.tsx`) opent nu hetzelfde logboekformulier met `actie` voorgezet op `"toevoeging"`; het `Middel`-veld van dát formulier kreeg de `VEELGEBRUIKTE_TOEVOEGINGEN`-datalist (voorheen alleen op het losse toevoeging-formulier). De bestaande `KELDERLOG_EENHEDEN`-enum (afgekort: g/kg/ml/l/g_hl/mg_l) blijft de eenheid voor álle kelderlog-acties, inclusief toevoeging — geen aparte, voluit-geschreven eenhedenlijst meer voor dit ene actietype.
+
+- **Collectie `partij_toevoegingen` NIET verwijderd of leeggehaald.** Er was geen manier om zonder inlog-credentials te verifiëren of er al echte (niet-test) invoer van Thomas in staat — DECISIONS-KELDERUITBREIDING.md documenteert dat de rooktest-data is opgeruimd, maar dat garandeert niet dat de collectie sindsdien nooit is gebruikt. Conform de regel "collecties met productiedata niet samenvoegen zonder toestemming" is de create-functie (`createToevoeging` in `kelder-data.ts`, `valideerToevoeging` in `validatie.ts`) verwijderd (dode code na de UI-wijziging), maar de collectie zelf, het schema, `fetchToevoegingen` en het `PartijToevoeging`-type blijven bestaan. Het partijdetailscherm toont eventuele oude records nog steeds, nu als alleen-lezen sectie "Toevoegingen (oud, N)" die vanzelf verdwijnt zodra een partij geen data in die collectie heeft.
+- **VRAAG VOOR THOMAS** (zie ook `WERKLOG.md`): staat er in `partij_toevoegingen` nog echte invoer van jou in? Zo nee: de collectie kan in een latere sessie veilig verwijderd worden uit `scripts/setup-pocketbase.mjs`. Zo ja: die data moet eerst als `kelderlog`-records gemigreerd worden vóór verwijdering.
+
+**A2 — open vragen beslist**, zie de bijgewerkte lijst hierboven. Geen schemawijzigingen nodig; twee items (offline-sync voor kelderlog/analyses, lotnummer-autosuggestie) zijn bevestigd nog niet gebouwd en blijven als openstaande taak in `WERKLOG.md` staan voor Blok D/E.

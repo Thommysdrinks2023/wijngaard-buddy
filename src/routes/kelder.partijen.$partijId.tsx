@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import {
   createAnalyse,
   createKelderlog,
-  createToevoeging,
   createVoedingswaardeBerekening,
   fetchAnalyses,
   fetchBottelrondes,
@@ -25,7 +24,6 @@ import {
   isGeldig,
   valideerAnalyse,
   valideerKelderlog,
-  valideerToevoeging,
   valideerVoedingswaarde,
 } from "@/lib/validatie";
 import { vanBrix, vanOechsle } from "@/lib/dichtheid";
@@ -45,7 +43,6 @@ import {
   type KelderlogActie,
   type KelderlogEenheid,
   type PartijStatus,
-  type ToevoegingEenheid,
 } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
@@ -258,54 +255,6 @@ function PartijDetailPage() {
     logM.mutate();
   };
 
-  // ---------- toevoeging-invoer ----------
-  const [toonToevoeging, setToonToevoeging] = useState(false);
-  const [tDatum, setTDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
-  const [tNaam, setTNaam] = useState("");
-  const [tHoeveelheid, setTHoeveelheid] = useState("");
-  const [tEenheid, setTEenheid] = useState<ToevoegingEenheid>("gram");
-  const [tNotities, setTNotities] = useState("");
-  const [tFouten, setTFouten] = useState<Record<string, string>>({});
-
-  const toevoegingM = useMutation({
-    mutationFn: () =>
-      createToevoeging({
-        partij: partijId,
-        naam: tNaam,
-        hoeveelheid: Number(tHoeveelheid),
-        eenheid: tEenheid,
-        datum: tDatum,
-        notities: tNotities,
-        ingevoerd_door: invoerder,
-      }),
-    onSuccess: () => {
-      toast.success("Toevoeging opgeslagen ✓");
-      qc.invalidateQueries({ queryKey: ["toevoegingen", partijId] });
-      setTNaam("");
-      setTHoeveelheid("");
-      setTNotities("");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const bewaarToevoeging = () => {
-    if (toevoegingM.isPending) return;
-    const validatie = valideerToevoeging({
-      partij: partijId,
-      naam: tNaam,
-      hoeveelheid: tHoeveelheid ? Number(tHoeveelheid) : undefined,
-      eenheid: tEenheid,
-      datum: tDatum,
-    });
-    if (!isGeldig(validatie)) {
-      setTFouten(foutenPerVeld(validatie));
-      toast.error(validatie[0].bericht);
-      return;
-    }
-    setTFouten({});
-    toevoegingM.mutate();
-  };
-
   // ---------- voedingswaarde-/etiketberekening ----------
   const [vAlcohol, setVAlcohol] = useState("");
   const [vRestsuiker, setVRestsuiker] = useState("");
@@ -510,9 +459,12 @@ function PartijDetailPage() {
           </button>
           <button
             type="button"
-            onClick={() => setToonToevoeging((v) => !v)}
+            onClick={() => {
+              setLActie("toevoeging");
+              setToonLog(true);
+            }}
             className={`flex h-16 flex-col items-center justify-center gap-1 rounded-2xl border text-xs font-semibold active:scale-[0.98] ${
-              toonToevoeging
+              toonLog && lActie === "toevoeging"
                 ? "border-primary bg-primary-soft text-primary"
                 : "border-border bg-card"
             }`}
@@ -720,11 +672,17 @@ function PartijDetailPage() {
               <label className="col-span-1 block">
                 <span className="mb-1.5 block text-sm font-medium">Middel</span>
                 <input
+                  list="veelgebruikte-toevoegingen"
                   value={lMiddel}
                   onChange={(e) => setLMiddel(e.target.value)}
                   className={veldClass}
                   placeholder="bijv. sulfiet"
                 />
+                <datalist id="veelgebruikte-toevoegingen">
+                  {VEELGEBRUIKTE_TOEVOEGINGEN.map((naam) => (
+                    <option key={naam} value={naam} />
+                  ))}
+                </datalist>
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium">Hoeveelheid</span>
@@ -770,93 +728,6 @@ function PartijDetailPage() {
             >
               {logM.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Logregel opslaan
-            </button>
-          </section>
-        )}
-
-        {/* Toevoeging-invoer */}
-        {toonToevoeging && (
-          <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Nieuwe toevoeging
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium">Datum</span>
-                <input
-                  type="date"
-                  value={tDatum}
-                  onChange={(e) => setTDatum(e.target.value)}
-                  className={veldClass}
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium">Naam</span>
-                <input
-                  list="veelgebruikte-toevoegingen"
-                  value={tNaam}
-                  onChange={(e) => setTNaam(e.target.value)}
-                  className={`${veldClass} ${tFouten.naam ? "border-destructive" : ""}`}
-                  placeholder="bijv. Bentoniet"
-                />
-                <datalist id="veelgebruikte-toevoegingen">
-                  {VEELGEBRUIKTE_TOEVOEGINGEN.map((naam) => (
-                    <option key={naam} value={naam} />
-                  ))}
-                </datalist>
-                {tFouten.naam && (
-                  <span className="mt-1 block text-xs text-destructive">{tFouten.naam}</span>
-                )}
-              </label>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium">Hoeveelheid</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  value={tHoeveelheid}
-                  onChange={(e) => setTHoeveelheid(e.target.value)}
-                  className={`${veldClass} ${tFouten.hoeveelheid ? "border-destructive" : ""}`}
-                  placeholder="—"
-                />
-                {tFouten.hoeveelheid && (
-                  <span className="mt-1 block text-xs text-destructive">{tFouten.hoeveelheid}</span>
-                )}
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium">Eenheid</span>
-                <select
-                  value={tEenheid}
-                  onChange={(e) => setTEenheid(e.target.value as ToevoegingEenheid)}
-                  className={veldClass}
-                >
-                  {TOEVOEGING_EENHEDEN.map((e2) => (
-                    <option key={e2.value} value={e2.value}>
-                      {e2.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium">Notities</span>
-              <input
-                value={tNotities}
-                onChange={(e) => setTNotities(e.target.value)}
-                className={veldClass}
-                placeholder="Optioneel…"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={bewaarToevoeging}
-              disabled={toevoegingM.isPending}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              {toevoegingM.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Toevoeging opslaan
             </button>
           </section>
         )}
@@ -986,14 +857,15 @@ function PartijDetailPage() {
           )}
         </section>
 
-        {/* Toevoegingen */}
-        <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Toevoegingen ({toevoegingenQ.data?.length ?? 0})
-          </h2>
-          {(toevoegingenQ.data ?? []).length === 0 ? (
-            <EmptyState message="Nog geen toevoegingen." icon={<Beaker className="h-6 w-6" />} />
-          ) : (
+        {/* Toevoegingen (oud systeem, alleen-lezen): sinds Blok A (WERKLOG.md) gaan
+            nieuwe toevoegingen via het Logboek hieronder (actie "toevoeging"). Deze
+            sectie toont alleen nog records uit vóór die samenvoeging, en verdwijnt
+            vanzelf zodra een partij daar geen data van heeft. */}
+        {(toevoegingenQ.data ?? []).length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Toevoegingen (oud, {toevoegingenQ.data?.length})
+            </h2>
             <ul className="space-y-1.5">
               {(toevoegingenQ.data ?? []).map((t) => {
                 const eenheid = TOEVOEGING_EENHEDEN.find((e2) => e2.value === t.eenheid);
@@ -1015,8 +887,8 @@ function PartijDetailPage() {
                 );
               })}
             </ul>
-          )}
-        </section>
+          </section>
+        )}
 
         {/* Kelderlog */}
         <section>

@@ -66,3 +66,23 @@ Tijdens Blok 0 bleek de C-schijf van de Windows-devmachine twee keer bijna/helem
 **Definition of Done Blok 0:** gehaald. Geen enkele codewijziging aan de applicatie zelf; de enige wijziging is de CLAUDE.md-ops-notitie hierboven (buiten de mega-prompt-scope, apart gecommit).
 
 ---
+
+## 2026-07-04 — Blok A: Ontwerpconflicten oplossen
+
+Backup vooraf: dagelijkse backup was toch al net gedraaid tijdens het oplossen van het Zijspoor hierboven (`wijngaard_backup_20260704_222215.zip`) — geen aparte `pb_data_backup_blokA_...` nodig, deze dekt dezelfde staat.
+
+**A1 — `kelderlog` vs. `partij_toevoegingen` samengevoegd.** Zie `ARCHITECTURE.md` v1.1-changelog voor de volledige motivatie. Kort: de "Toevoeging"-sneltoets op `/kelder/partijen/$partijId` opent nu het bestaande Kelderlog-formulier met `actie` voorgezet op `"toevoeging"`, en het `Middel`-veld van dát formulier kreeg de `VEELGEBRUIKTE_TOEVOEGINGEN`-datalist (Bentoniet, Oenopur, Go-Ferm, Pro-ferm, Sulfiet, Aktivkohle, Panzym extract, Ao/Fo) die eerder alleen op het losse toevoeging-formulier stond. Het aparte formulier, de bijbehorende state (`tDatum`/`tNaam`/`tHoeveelheid`/`tEenheid`/`tNotities`/`tFouten`), de mutatie en `createToevoeging`/`valideerToevoeging` zijn verwijderd (dode code na de UI-wijziging).
+
+- **`partij_toevoegingen` (collectie + data) NIET verwijderd.** Kon niet geverifieerd worden of er al echte invoer van Thomas in staat (geen inlog-credentials beschikbaar in deze sessie om de collectie te bevragen; DECISIONS-KELDERUITBREIDING.md documenteert alleen dat rooktest-data is opgeruimd, niet dat de collectie sindsdien nooit is gebruikt). Conform regel 11 (geen samenvoeging van collecties met productiedata zonder toestemming) is de veiligste route gekozen: schrijven stopt, lezen blijft. Het partijdetailscherm toont eventuele bestaande records nu als alleen-lezen sectie "Toevoegingen (oud, N)", die vanzelf wegvalt zodra een partij niets in die collectie heeft.
+- **VRAAG VOOR THOMAS:** staat er in `partij_toevoegingen` nog echte invoer van jou in (dus niet alleen de testdata die na Blok 2 van de kelder-uitbreiding is opgeruimd)? Zo nee: mag in een volgende sessie de collectie zelf uit `scripts/setup-pocketbase.mjs` en de database. Zo ja: eerst een migratiescript naar `kelderlog`-records vóór verwijdering.
+- **Geverifieerd:** `tsc --noEmit` en `eslint` schoon op de drie aangepaste bestanden (`kelder.partijen.$partijId.tsx`, `kelder-data.ts`, `validatie.ts`); browserpreview van `/kelder/partijen` en de modulehub laat geen consolefouten zien. **Niet visueel doorgeklikt op een echte partijdetailpagina** — er bestaat momenteel geen enkele partij in de database (alle eerdere sessies ruimen hun testdata op, en het aanmaken van een nieuwe partij vereist login waarvoor geen testaccount is aangemaakt in deze sessie, dezelfde grens als eerdere sessies). De code is wel gelezen en nagelopen op structurele correctheid (JSX-nesting, state-referenties, importa's) vóór en ná de wijziging.
+
+**A2 — open vragen beslist**, vastgelegd in `ARCHITECTURE.md` v1.1 (zie "Open vragen"-sectie, nu met doorgestreepte + beantwoorde punten). Samengevat: oogstrecord-splitsing en dichtheidseenheid waren al impliciet correct volgens eerdere sessies (geen wijziging nodig); offline-sync voor `kelderlog`/`analyses` en een lotnummer-autosuggestiegenerator zijn bevestigd nog niet gebouwd en blijven expliciet openstaand voor Blok D/E; de AGP/vrijstellingsvraag blijft terecht bij Thomas/Douane/RVO liggen (geen appbeslissing).
+
+**Definition of Done Blok A:** gehaald — geen dubbele ontwerpen meer, `ARCHITECTURE.md` is v1.1, beslissingen staan hierboven met motivatie.
+
+### Volgende stap (niet in deze sessie gedaan)
+
+**Blok B (gebruikers & rollen)** is de volgende in de rij. Dit is een fundamentele koerswijziging: schrijven op gedeelde serverdata gaat overal login vereisen (nu nog alleen bij `/kelder/*`/`/voorraad`, straks ook — impliciet via hetzelfde principe — relevant voor de agent-schrijfacties). **Let op vóór dat blok start:** `agent_acties` bevat al échte, niet-testdata sinds 3 juli 2026 (zie Blok 0) — de agent-schrijfflow wordt dus per direct gebruikt. Blok B raakt de bestaande 3 accounts (migratie naar een `rol`-veld) en moet zorgvuldig, met een verse `pb_data`-backup vooraf (regel 10), in een aparte sessie gebeuren — niet toevallig aan het einde van een al lange sessie erbij gepakt.
+
+---

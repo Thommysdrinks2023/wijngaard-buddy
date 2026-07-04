@@ -352,26 +352,9 @@ export async function fetchToevoegingen(partijId: string): Promise<PartijToevoeg
   return records.map(toevoegingFromPb);
 }
 
-export interface ToevoegingInput {
-  partij: string;
-  naam: string;
-  hoeveelheid: number;
-  eenheid: ToevoegingEenheid;
-  datum: string;
-  notities?: string;
-  ingevoerd_door?: string;
-}
-
-export async function createToevoeging(input: ToevoegingInput): Promise<PartijToevoeging> {
-  const pb = await pbOfFout();
-  logAudit(
-    "aangemaakt",
-    "partij_toevoegingen",
-    `${input.naam} · ${input.hoeveelheid} ${input.eenheid}`,
-  );
-  const r = await pb.collection("partij_toevoegingen").create({ ...input });
-  return toevoegingFromPb(r);
-}
+// `partij_toevoegingen` heeft geen create-functie meer — nieuwe toevoegingen
+// gaan sinds Blok A (WERKLOG.md) via `createKelderlog` met `actie: "toevoeging"`.
+// `fetchToevoegingen` blijft bestaan zodat eventuele oudere records leesbaar blijven.
 
 // ============= Voedingswaarde-/etiketberekeningen =============
 // Zelfde patroon als analyses/kelderlog/partij_toevoegingen: vrij toevoegen,

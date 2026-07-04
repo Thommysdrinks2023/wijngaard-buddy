@@ -6,7 +6,6 @@ import type {
   BottelrondeInput,
   KelderlogInput,
   TankInput,
-  ToevoegingInput,
   VoedingswaardeInput,
   VoorraadMutatieInput,
 } from "./kelder-data";
@@ -228,17 +227,6 @@ export function valideerKelderlog(input: Partial<KelderlogInput>): ValidatieFout
     fouten.push({ veld: "hoeveelheid", bericht: "Hoeveelheid kan niet negatief zijn" });
   if (!input.ingevoerd_door?.trim())
     fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
-  return fouten;
-}
-
-export function valideerToevoeging(input: Partial<ToevoegingInput>): ValidatieFout[] {
-  const fouten: ValidatieFout[] = [];
-  if (!input.partij) fouten.push({ veld: "partij", bericht: "Kies een partij" });
-  if (!input.naam?.trim()) fouten.push({ veld: "naam", bericht: "Naam is verplicht" });
-  if (input.hoeveelheid == null || Number.isNaN(input.hoeveelheid) || input.hoeveelheid <= 0)
-    fouten.push({ veld: "hoeveelheid", bericht: "Vul een geldige hoeveelheid in" });
-  if (!input.eenheid) fouten.push({ veld: "eenheid", bericht: "Kies een eenheid" });
-  checkDatum(input.datum, fouten);
   return fouten;
 }
 
