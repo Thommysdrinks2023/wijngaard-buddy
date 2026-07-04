@@ -4,13 +4,14 @@ import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
-import { fetchTankboek, fetchTanks, updateTank } from "@/lib/kelder-data";
+import { boekTankboek, fetchTankboek, fetchTanks, updateTank } from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
+import { useInvoerder } from "@/lib/use-invoerder";
 import { TANK_STATUSSEN, TANKBOEK_ACTIES, type TankStatus } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, Loader2, Ruler } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/tanks/$tankId")({
   component: TankDetailPage,
@@ -41,6 +42,7 @@ function TankDetailPage() {
 
   const [notitie, setNotitie] = useState<string | null>(null);
   const [capaciteit, setCapaciteit] = useState<string | null>(null);
+  const [invoerder, setInvoerder] = useInvoerder();
 
   const updateM = useMutation({
     mutationFn: (input: Parameters<typeof updateTank>[1]) => updateTank(tankId, input),
@@ -52,6 +54,51 @@ function TankDetailPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // ---------- peiling / correctieboeking (ARCHITECTURE.md §7.3) ----------
+  const [toonPeiling, setToonPeiling] = useState(false);
+  const [gemeten, setGemeten] = useState("");
+  const [peilingNotitie, setPeilingNotitie] = useState("");
+  const huidigVolume = tank?.huidig_volume_l ?? 0;
+  const verschil = gemeten !== "" ? Number(gemeten) - huidigVolume : null;
+
+  const peilingM = useMutation({
+    mutationFn: () => {
+      if (!tank || !tank.huidige_partij || verschil == null)
+        throw new Error("Vul eerst een gemeten volume in.");
+      const datum = format(new Date(), "yyyy-MM-dd");
+      const basisNotitie = `Peiling: systeem toonde ${huidigVolume} L, gemeten ${Number(gemeten)} L.`;
+      return boekTankboek({
+        datum,
+        partij: tank.huidige_partij,
+        actie: "correctie",
+        van_tank: verschil < 0 ? tankId : undefined,
+        naar_tank: verschil > 0 ? tankId : undefined,
+        volume_l: Math.abs(verschil),
+        verantwoordelijke: invoerder,
+        notitie: peilingNotitie ? `${basisNotitie} ${peilingNotitie}` : basisNotitie,
+      });
+    },
+    onSuccess: (r) => {
+      toast.success("Correctie geboekt ✓");
+      if (r.waarschuwing) toast.warning(r.waarschuwing);
+      qc.invalidateQueries({ queryKey: ["tanks"] });
+      qc.invalidateQueries({ queryKey: ["tankboek", "tank", tankId] });
+      setToonPeiling(false);
+      setGemeten("");
+      setPeilingNotitie("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const boekPeiling = () => {
+    if (peilingM.isPending || verschil == null || verschil === 0) return;
+    if (!invoerder.trim()) {
+      toast.error("Vul je naam in als verantwoordelijke");
+      return;
+    }
+    peilingM.mutate();
+  };
 
   const info = TANK_STATUSSEN.find((s) => s.value === tank?.status);
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
@@ -109,14 +156,30 @@ function TankDetailPage() {
                 {tank?.locatie ? ` · ${tank.locatie}` : ""}
               </p>
             </div>
-            <Link
-              to="/kelder/overhevelen"
-              search={{ van: tankId }}
-              className="flex h-11 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground"
-            >
-              <ArrowLeftRight className="h-4 w-4" />
-              Overhevelen
-            </Link>
+            <div className="flex shrink-0 gap-2">
+              {tank?.huidige_partij && (
+                <button
+                  type="button"
+                  onClick={() => setToonPeiling((v) => !v)}
+                  className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold ${
+                    toonPeiling
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  <Ruler className="h-4 w-4" />
+                  Peiling
+                </button>
+              )}
+              <Link
+                to="/kelder/overhevelen"
+                search={{ van: tankId }}
+                className="flex h-11 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground"
+              >
+                <ArrowLeftRight className="h-4 w-4" />
+                Overhevelen
+              </Link>
+            </div>
           </div>
           {tank && tank.capaciteit_l > 0 && tank.huidig_volume_l > 0 && (
             <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
@@ -130,6 +193,71 @@ function TankDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Peiling: gemeten volume invoeren → app stelt de correctieboeking voor
+            (ARCHITECTURE.md §7.3). Alleen zinvol met een gekoppelde partij. */}
+        {toonPeiling && tank && (
+          <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Peiling
+            </h2>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Gemeten volume (L)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={gemeten}
+                onChange={(e) => setGemeten(e.target.value)}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+                placeholder={`systeem toont ${Math.round(huidigVolume)}`}
+              />
+            </label>
+            {verschil != null &&
+              (verschil === 0 ? (
+                <p className="rounded-lg bg-primary-soft px-3 py-2 text-sm">
+                  Klopt precies — geen correctie nodig.
+                </p>
+              ) : (
+                <p className="rounded-lg bg-primary-soft px-3 py-2 text-sm">
+                  Verschil:{" "}
+                  <strong>
+                    {verschil > 0 ? "+" : ""}
+                    {Math.round(verschil * 10) / 10} L
+                  </strong>{" "}
+                  — er wordt een correctie {verschil > 0 ? "naar boven" : "naar beneden"}{" "}
+                  voorgesteld.
+                </p>
+              ))}
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Verantwoordelijke</span>
+              <input
+                value={invoerder}
+                onChange={(e) => setInvoerder(e.target.value)}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+                placeholder="Je naam"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium">Notitie</span>
+              <input
+                value={peilingNotitie}
+                onChange={(e) => setPeilingNotitie(e.target.value)}
+                className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+                placeholder="Optioneel — bijv. reden van het verschil"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={boekPeiling}
+              disabled={peilingM.isPending || verschil == null || verschil === 0}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {peilingM.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Correctie boeken
+            </button>
+          </section>
+        )}
 
         {/* Beheer: status (alleen zonder inhoud), capaciteit, notitie */}
         <section className="space-y-3 rounded-2xl border border-border bg-card p-4">

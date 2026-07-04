@@ -179,10 +179,13 @@ routerAdd(
           const van = regel.getString("van_tank");
           const naar = regel.getString("naar_tank");
           const partij = regel.getString("partij");
-          const uitBron = ["overhevelen", "aftappen", "botteling", "verlies", "monster"].includes(
-            actie,
-          );
-          const naarDoel = ["vullen", "overhevelen"].includes(actie);
+          // Zelfde categorisering als voerBoekingUit() in kelder_logica.js —
+          // "correctie" is richtingafhankelijk (Regel D1), niet statisch.
+          const uitBron =
+            ["overhevelen", "aftappen", "botteling", "verlies", "monster"].includes(actie) ||
+            (actie === "correctie" && !!van);
+          const naarDoel =
+            ["vullen", "overhevelen"].includes(actie) || (actie === "correctie" && !!naar);
           if (van && uitBron) {
             perTank[van] = perTank[van] || { volume: 0, partij: "" };
             perTank[van].volume -= vol;

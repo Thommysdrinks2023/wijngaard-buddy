@@ -66,9 +66,30 @@ function voerBoekingUit(txApp, b) {
     }
   }
 
+  // Regel D1 (peiling/correctie, ARCHITECTURE.md §7.3) — "correctie" bestond al
+  // als actie-waarde maar bewoog vóór deze fix geen enkele liter (stond niet in
+  // uitBron/naarDoel hieronder, en dus ook niet in de tanks-herbereken-reconstructie
+  // in kelder.pb.js — beide moeten hierop in lijn blijven). Een correctie krijgt nu
+  // wél cache-effect, gestuurd door welke van de twee tankvelden is ingevuld:
+  // van_tank = naar beneden bijstellen (peiling toont minder dan het systeem),
+  // naar_tank = naar boven bijstellen. Nooit allebei of geen van beide.
+  if (b.actie === "correctie") {
+    if (!b.van_tank && !b.naar_tank)
+      return {
+        fout: "Correctie vereist een tank: van_tank om naar beneden bij te stellen, naar_tank om naar boven bij te stellen.",
+      };
+    if (b.van_tank && b.naar_tank)
+      return {
+        fout: "Correctie kan niet tegelijk van_tank én naar_tank hebben — kies één richting.",
+      };
+  }
+
   // welke acties bewegen volume in welke richting?
-  const uitBron = ["overhevelen", "aftappen", "botteling", "verlies", "monster"].includes(b.actie);
-  const naarDoel = ["vullen", "overhevelen"].includes(b.actie);
+  const uitBron =
+    ["overhevelen", "aftappen", "botteling", "verlies", "monster"].includes(b.actie) ||
+    (b.actie === "correctie" && !!b.van_tank);
+  const naarDoel =
+    ["vullen", "overhevelen"].includes(b.actie) || (b.actie === "correctie" && !!b.naar_tank);
 
   if (b.actie === "overhevelen" && (!vanTank || !naarTank))
     return { fout: "Overhevelen vereist een van-tank én een naar-tank." };
