@@ -66,3 +66,16 @@ Testpartij "Johanniter 2026" met 150 L in tank 7 → bottelronde 150 flessen × 
 4. **Vervolg met correct volume**: _"bottel de resterende 37,5 liter, 50 flessen van 750 ml"_ → voorstel `bottelronde: partij Johanniter 2026, 50 flessen x 750 ml (37,5 L) uit tank 7` → bevestigen → tweede bottelronde + tweede voorraadrecord (50 flessen) aangemaakt, tank 7 correct naar 0 L/leeg. Dit test tegelijk testchecklist-item "één partij in twee losse bottelrondes" via het agent-pad.
 
 Alle testdata (2 gesprekken, 2 bottelrondes, 2 voorraadrecords, partij, tankboekregels) achteraf opgeruimd; tanks herberekend.
+
+## Blok F — Koppeling, rooktest en oplevering
+
+**Alle schrijfpaden (Blok B–E) waren al grondig via de API geverifieerd** (zie hierboven) — inclusief de atomiciteits-, capaciteits- en volume-checks. Wat nog ontbrak was een browserregressietest van de complete, gekoppelde app na alle Fase 4-wijzigingen. Uitgevoerd met een draaiende dev-server + lokale PocketBase:
+
+- **Rooktest zonder sessie** (bewust, zelfde aanvaarde deelverificatie als Blok C+D — schrijfendpoints vereisen `$apis.requireAuth()`, dus interactief door een bottel-/mutatieformulier heen posten kan alleen ingelogd): `/`, `/wijngaard` (redirect naar `/perceelkaart`), `/perceelkaart`, `/instellingen`, `/kelder`, `/kelder/partijen`, `/kelder/partijen/nieuw`, `/kelder/tanks`, `/kelder/tankboek`, `/kelder/overhevelen`, `/voorraad`, `/assistent` — allemaal bezocht, geen consolefouten, geen crashes, lege/foutstaten renderen netjes.
+- **Koppeling bevestigd**: de nieuwe menugroep "🍾 Botteling & Voorraad" op `/instellingen` toont en linkt correct naar `/voorraad` en `/kelder/partijen` (Bottelen-ingang); de hub-tegel "Voorraad" op `/` gaat naar de echte module i.p.v. de oude "Binnenkort"-placeholder; `/voorraad` toont de juiste lege-staat-tekst ("Nog geen voorraad. Bottel een partij vanuit de partijdetailpagina.") wanneer er (na opruiming van alle testdata) niets in voorraad staat.
+- **Geen regressie** in de bestaande wijngaardmodule: perceelkaart met alle 69 rijen, rassenlegenda en navigatiebalk renderen ongewijzigd.
+- **Lint** (`eslint .`): 0 errors, 8 pre-existing warnings (ongerelateerde shadcn/ui-`react-refresh`-warnings, niet door Fase 4 geïntroduceerd). **Format** (`prettier --check .`): alle bestanden voldoen.
+
+**Niet opnieuw geprobeerd**: een tijdelijk testaccount aanmaken om de bottelronde-/mutatie-formulieren zelf in te vullen en te versturen — dat verzoek werd in Blok B/C+D al twee keer afgewezen door de permissie-classifier binnen dezelfde sessie-grens, en de onderliggende logica die zo'n formulier zou aanroepen is al dekkend getest via directe API-aanroepen. Een nieuwe poging zou hetzelfde resultaat geven.
+
+**Conclusie**: Fase 4 (Botteling & Voorraad) is functioneel compleet en verifieerd — datamodel, atomische server-endpoints, frontend-flow, voorraad-UI, agent-integratie en volledige app-koppeling. Buiten scope (ongewijzigd, zie opdracht): cuvée/splitsing-UI, genealogie-UI, accijnsberekening, RVO/NVWA-exports, verkoop/financieel.
