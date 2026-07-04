@@ -188,4 +188,78 @@ function voerBoekingUit(txApp, b) {
   return { waarschuwing: waarschuwing, regelId: regel.id };
 }
 
-module.exports = { leesbareFout, voerBoekingUit };
+/**
+ * Fase 4 (Botteling & Voorraad, zie DECISIONS-FASE4.md): één bottelronde ->
+ * drie samenhangende records atomisch (tankboekregel + bottelrondes +
+ * voorraad_flessen). Hergebruikt voerBoekingUit() voor de tankboekregel
+ * (geen aparte "botteling"-validatietak nodig, zie discrepantie 1) zodat de
+ * server-endpoint (kelder.pb.js) en de bevestigde AI-agent-actie
+ * (agent_uitvoering.js) exact dezelfde logica delen i.p.v. hem te dupliceren.
+ * Retourneert { fout } (nog niets geschreven) of { waarschuwing,
+ * bottelrondeId, voorraadId }. Gooit zelf nooit (transactiegrens-regel).
+ */
+function voerBottelrondeUit(txApp, b) {
+  if (!b.partij) return { fout: "partij is verplicht" };
+  if (!b.van_tank) return { fout: "van_tank is verplicht" };
+  const aantalFlessen = Number(b.aantal_flessen);
+  const flesinhoudMl = Number(b.flesinhoud_ml);
+  if (!aantalFlessen || aantalFlessen <= 0) return { fout: "aantal_flessen moet positief zijn" };
+  if (!flesinhoudMl || flesinhoudMl <= 0) return { fout: "flesinhoud_ml moet positief zijn" };
+  const volumeL = (aantalFlessen * flesinhoudMl) / 1000;
+
+  const resultaat = voerBoekingUit(txApp, {
+    datum: b.botteldatum,
+    partij: b.partij,
+    producent: b.producent,
+    actie: "botteling",
+    van_tank: b.van_tank,
+    volume_l: volumeL,
+    verantwoordelijke: b.ingevoerd_door || "onbekend",
+    notitie: `Bottelronde: ${aantalFlessen} x ${flesinhoudMl} ml`,
+    vineyard_id: b.vineyard_id,
+  });
+  if (resultaat.fout) return { fout: resultaat.fout };
+
+  const partijRecord = txApp.findRecordById("partijen", b.partij);
+
+  const bcol = txApp.findCollectionByNameOrId("bottelrondes");
+  const bottelronde = new Record(bcol);
+  bottelronde.set("partij", b.partij);
+  if (b.producent) bottelronde.set("producent", b.producent);
+  bottelronde.set("van_tank", b.van_tank);
+  bottelronde.set("botteldatum", b.botteldatum);
+  bottelronde.set("aantal_flessen", aantalFlessen);
+  bottelronde.set("flesinhoud_ml", flesinhoudMl);
+  bottelronde.set("flestype", b.flestype || "");
+  bottelronde.set("kleur_fles", b.kleur_fles || "");
+  bottelronde.set("parelwijn", !!b.parelwijn);
+  bottelronde.set("lotnummer", b.lotnummer || partijRecord.getString("lotnummer") || "");
+  if (b.voedingswaarde_berekening)
+    bottelronde.set("voedingswaarde_berekening", b.voedingswaarde_berekening);
+  bottelronde.set("notities", b.notities || "");
+  bottelronde.set("ingevoerd_door", b.ingevoerd_door || "onbekend");
+  bottelronde.set("vineyard_id", b.vineyard_id || "");
+  txApp.save(bottelronde);
+
+  const vcol = txApp.findCollectionByNameOrId("voorraad_flessen");
+  const voorraad = new Record(vcol);
+  voorraad.set("bottelronde", bottelronde.id);
+  voorraad.set("partij", b.partij);
+  if (b.producent) voorraad.set("producent", b.producent);
+  voorraad.set("wijnnaam", b.wijnnaam || partijRecord.getString("naam"));
+  voorraad.set("jaargang", b.jaargang || partijRecord.getFloat("jaargang"));
+  voorraad.set("aantal_beginvoorraad", aantalFlessen);
+  voorraad.set("aantal_huidig", aantalFlessen);
+  voorraad.set("locatie", b.locatie || "");
+  voorraad.set("status", "op_voorraad");
+  voorraad.set("vineyard_id", b.vineyard_id || "");
+  txApp.save(voorraad);
+
+  return {
+    waarschuwing: resultaat.waarschuwing || "",
+    bottelrondeId: bottelronde.id,
+    voorraadId: voorraad.id,
+  };
+}
+
+module.exports = { leesbareFout, voerBoekingUit, voerBottelrondeUit };

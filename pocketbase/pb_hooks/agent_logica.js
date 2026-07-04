@@ -92,6 +92,23 @@ function vindRij(app, rijnummer) {
   }
 }
 
+// Fase 4: net als partij_detail zoekt dit op leesbare tekst (wijnnaam), nooit
+// op een kaal PocketBase-record-id — de agent kent geen id's uit vrije tekst.
+function vindVoorraad(app, wijnnaam, jaargang) {
+  if (!wijnnaam) return null;
+  try {
+    if (jaargang) {
+      return app.findFirstRecordByFilter("voorraad_flessen", "wijnnaam ~ {:w} && jaargang = {:j}", {
+        w: wijnnaam,
+        j: Number(jaargang),
+      });
+    }
+    return app.findFirstRecordByFilter("voorraad_flessen", "wijnnaam ~ {:w}", { w: wijnnaam });
+  } catch (e) {
+    return null;
+  }
+}
+
 // ============= Tooldefinities (Anthropic tool-schema) =============
 
 const LEES_TOOLS = new Set([
@@ -106,6 +123,8 @@ const LEES_TOOLS = new Set([
   "zoek_inzichten",
   "zoek_advies_feedback",
   "analyseer_foto",
+  "zoek_voorraad",
+  "voorraad_detail",
 ]);
 
 // welke actie_type + welke collectie hoort bij welke schrijf-tool
@@ -115,6 +134,8 @@ const SCHRIJF_TOOL_INFO = {
   stel_uitval_voor: { actie_type: "uitval" },
   stel_kelderlog_voor: { actie_type: "kelderlog" },
   stel_analyse_voor: { actie_type: "analyse" },
+  stel_bottelronde_voor: { actie_type: "bottelronde" },
+  stel_voorraad_mutatie_voor: { actie_type: "voorraad_mutatie" },
 };
 
 function bouwTools() {
@@ -384,6 +405,76 @@ function bouwTools() {
         required: ["partij"],
       },
     },
+    {
+      name: "zoek_voorraad",
+      description:
+        "Zoek flessenvoorraad op wijnnaam, jaargang en/of status (op_voorraad/uitverkocht).",
+      input_schema: {
+        type: "object",
+        properties: {
+          wijnnaam: { type: "string" },
+          jaargang: { type: "integer" },
+          status: { type: "string", enum: ["op_voorraad", "uitverkocht"] },
+        },
+      },
+    },
+    {
+      name: "voorraad_detail",
+      description:
+        "Volledige details van één wijn op voorraad: aantal huidig/beginvoorraad, herkomst (bottelronde, partij, tank) en mutatiehistorie.",
+      input_schema: {
+        type: "object",
+        properties: {
+          wijnnaam: { type: "string", description: "Naam van de wijn, bv. 'Johanniter 2026'" },
+          jaargang: { type: "integer" },
+        },
+        required: ["wijnnaam"],
+      },
+    },
+    {
+      name: "stel_bottelronde_voor",
+      description:
+        "Stel een bottelronde voor een partij voor (bottelt vanuit een tank, maakt tankboekregel + voorraadrecord aan). Wordt NOOIT direct uitgevoerd - altijd eerst een voorstel dat Thomas bevestigt.",
+      input_schema: {
+        type: "object",
+        properties: {
+          partij: { type: "string", description: "Naam of lotnummer van de partij" },
+          van_tank: { type: "string", description: "Tankcode waaruit gebotteld wordt" },
+          aantal_flessen: { type: "integer" },
+          flesinhoud_ml: { type: "number", description: "bv. 750" },
+          flestype: { type: "string" },
+          kleur_fles: { type: "string" },
+          parelwijn: { type: "boolean" },
+          lotnummer: { type: "string", description: "Standaard het lotnummer van de partij" },
+          botteldatum: { type: "string", description: "yyyy-MM-dd, standaard vandaag" },
+        },
+        required: ["partij", "van_tank", "aantal_flessen", "flesinhoud_ml"],
+      },
+    },
+    {
+      name: "stel_voorraad_mutatie_voor",
+      description:
+        "Stel een voorraadmutatie voor (verkocht, eigen gebruik, kapot, weggegeven, correctie). Wordt NOOIT direct uitgevoerd - altijd eerst een voorstel dat Thomas bevestigt.",
+      input_schema: {
+        type: "object",
+        properties: {
+          wijnnaam: { type: "string" },
+          jaargang: { type: "integer" },
+          mutatie_type: {
+            type: "string",
+            enum: ["verkocht", "eigen_gebruik", "kapot", "weggegeven", "correctie"],
+          },
+          aantal: {
+            type: "integer",
+            description:
+              "Positief aantal flessen (bij correctie: mag negatief zijn om extra af te boeken)",
+          },
+          afnemer_of_reden: { type: "string" },
+          datum: { type: "string", description: "yyyy-MM-dd, standaard vandaag" },
+        },
+        required: ["wijnnaam", "mutatie_type", "aantal"],
+      },
+    },
     // Blok F: Anthropics ingebouwde server-side web-search-tool. Anders dan de
     // tools hierboven wordt deze NIET door onze code uitgevoerd - Anthropic
     // doet de zoekopdracht zelf en levert het resultaat binnen dezelfde
@@ -416,5 +507,6 @@ module.exports = {
   vindPartij,
   vindTank,
   vindRij,
+  vindVoorraad,
   bouwTools,
 };

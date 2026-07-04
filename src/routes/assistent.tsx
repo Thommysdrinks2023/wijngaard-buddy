@@ -178,6 +178,16 @@ function aanpasBestemming(actie: AgentActie): {
         to: "/kelder/partijen/$partijId",
         params: { partijId: String(payload.partij ?? "") },
       };
+    case "bottelronde":
+      return {
+        to: "/kelder/partijen/$partijId/bottelen",
+        params: { partijId: String(payload.partij ?? "") },
+      };
+    case "voorraad_mutatie":
+      return {
+        to: "/voorraad/$voorraadId",
+        params: { voorraadId: String(payload.voorraad ?? "") },
+      };
   }
 }
 

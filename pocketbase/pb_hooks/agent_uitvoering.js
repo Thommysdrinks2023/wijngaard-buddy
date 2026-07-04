@@ -258,6 +258,57 @@ function voerLeesToolUit(app, naam, input) {
         notitie: "wordt door de hoofdlus afgehandeld (heeft een aparte Anthropic-aanroep nodig)",
       };
     }
+    case "zoek_voorraad": {
+      const delen = [];
+      if (input.wijnnaam) delen.push(`wijnnaam ~ {:w}`);
+      if (input.jaargang) delen.push(`jaargang = {:j}`);
+      if (input.status) delen.push(`status = {:s}`);
+      const voorraad = app.findRecordsByFilter(
+        "voorraad_flessen",
+        delen.join(" && ") || "id != ''",
+        "-created",
+        20,
+        0,
+        { w: input.wijnnaam, j: input.jaargang, s: input.status },
+      );
+      return voorraad.map(voorraadSamenvatting);
+    }
+    case "voorraad_detail": {
+      const voorraad = logica.vindVoorraad(app, input.wijnnaam, input.jaargang);
+      if (!voorraad)
+        return { gevonden: false, notitie: `Geen voorraad gevonden voor "${input.wijnnaam}".` };
+      let bottelronde = null;
+      let tank = null;
+      try {
+        bottelronde = app.findRecordById("bottelrondes", voorraad.getString("bottelronde"));
+        if (bottelronde.getString("van_tank"))
+          tank = app.findRecordById("tanks", bottelronde.getString("van_tank"));
+      } catch (e) {
+        // bottelronde/tank kan ontbreken bij handmatig aangepaste data - geen harde fout
+      }
+      const mutaties = app.findRecordsByFilter(
+        "voorraad_mutaties",
+        "voorraad = {:v}",
+        "-datum,-created",
+        20,
+        0,
+        { v: voorraad.id },
+      );
+      return {
+        gevonden: true,
+        voorraad: voorraadSamenvatting(voorraad),
+        herkomst: bottelronde
+          ? {
+              botteldatum: bottelronde.getString("botteldatum"),
+              aantal_flessen: bottelronde.getFloat("aantal_flessen"),
+              flesinhoud_ml: bottelronde.getFloat("flesinhoud_ml"),
+              lotnummer: bottelronde.getString("lotnummer"),
+              van_tank: tank ? tank.getString("code") : null,
+            }
+          : null,
+        mutatiehistorie: mutaties.map(voorraadMutatieSamenvatting),
+      };
+    }
     default:
       return { fout: `Onbekende lees-tool: ${naam}` };
   }
@@ -293,6 +344,25 @@ function tankboekregelSamenvatting(r) {
     naar_tank: r.getString("naar_tank"),
     verantwoordelijke: r.getString("verantwoordelijke"),
     notitie: r.getString("notitie"),
+  };
+}
+function voorraadSamenvatting(v) {
+  return {
+    id: v.id,
+    wijnnaam: v.getString("wijnnaam"),
+    jaargang: v.getFloat("jaargang") || null,
+    aantal_huidig: v.getFloat("aantal_huidig"),
+    aantal_beginvoorraad: v.getFloat("aantal_beginvoorraad"),
+    status: v.getString("status"),
+    locatie: v.getString("locatie"),
+  };
+}
+function voorraadMutatieSamenvatting(m) {
+  return {
+    datum: m.getString("datum"),
+    mutatie_type: m.getString("mutatie_type"),
+    aantal: m.getFloat("aantal"),
+    afnemer_of_reden: m.getString("afnemer_of_reden"),
   };
 }
 
@@ -406,6 +476,48 @@ function bouwActieVoorstel(app, naam, input) {
         `${input.ph != null ? `, pH ${input.ph}` : ""}`;
       return { actie_type: "analyse", payload, samenvatting };
     }
+    case "stel_bottelronde_voor": {
+      const partij = logica.vindPartij(app, input.partij);
+      if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+      const tank = logica.vindTank(app, input.van_tank);
+      if (!tank) return { fout: `Geen tank gevonden voor "${input.van_tank}".` };
+      const payload = {
+        partij: partij.id,
+        producent: partij.getString("producent"),
+        van_tank: tank.id,
+        botteldatum: input.botteldatum || logica.vandaagStr(),
+        aantal_flessen: input.aantal_flessen,
+        flesinhoud_ml: input.flesinhoud_ml,
+        flestype: input.flestype || "",
+        kleur_fles: input.kleur_fles || "",
+        parelwijn: !!input.parelwijn,
+        lotnummer: input.lotnummer || partij.getString("lotnummer") || "",
+      };
+      const volumeL = logica.round1((input.aantal_flessen * input.flesinhoud_ml) / 1000);
+      const samenvatting =
+        `Bottelronde: partij ${partij.getString("naam")}, ${input.aantal_flessen} flessen x ${input.flesinhoud_ml} ml ` +
+        `(${volumeL} L) uit tank ${tank.getString("code")}` +
+        `${payload.lotnummer ? `, lot ${payload.lotnummer}` : ""}`;
+      return { actie_type: "bottelronde", payload, samenvatting };
+    }
+    case "stel_voorraad_mutatie_voor": {
+      const voorraad = logica.vindVoorraad(app, input.wijnnaam, input.jaargang);
+      if (!voorraad) return { fout: `Geen voorraad gevonden voor "${input.wijnnaam}".` };
+      const afnameTypes = ["verkocht", "eigen_gebruik", "kapot", "weggegeven"];
+      let aantal = Number(input.aantal);
+      if (afnameTypes.indexOf(input.mutatie_type) !== -1) aantal = -Math.abs(aantal);
+      const payload = {
+        voorraad: voorraad.id,
+        mutatie_type: input.mutatie_type,
+        aantal,
+        datum: input.datum || logica.vandaagStr(),
+        afnemer_of_reden: input.afnemer_of_reden || "",
+      };
+      const samenvatting =
+        `Voorraadmutatie: ${input.mutatie_type}, ${voorraad.getString("wijnnaam")}, ${Math.abs(aantal)} flessen` +
+        `${input.afnemer_of_reden ? `, ${input.afnemer_of_reden}` : ""}`;
+      return { actie_type: "voorraad_mutatie", payload, samenvatting };
+    }
     default:
       return { fout: `Onbekende schrijf-tool: ${naam}` };
   }
@@ -458,6 +570,24 @@ function voerBevestigdeActieUit(txApp, actieType, payload, verantwoordelijke) {
       rec.set("ingevoerd_door", verantwoordelijke);
       txApp.save(rec);
       return { record_id: rec.id };
+    }
+    case "bottelronde": {
+      const kelder = require(`${__hooks}/kelder_logica.js`);
+      const resultaat = kelder.voerBottelrondeUit(txApp, {
+        ...payload,
+        ingevoerd_door: verantwoordelijke,
+      });
+      if (resultaat.fout) return { fout: resultaat.fout };
+      return { record_id: resultaat.bottelrondeId };
+    }
+    case "voorraad_mutatie": {
+      const voorraad = require(`${__hooks}/voorraad_logica.js`);
+      const resultaat = voorraad.voerMutatieUit(txApp, {
+        ...payload,
+        ingevoerd_door: verantwoordelijke,
+      });
+      if (resultaat.fout) return { fout: resultaat.fout };
+      return { record_id: resultaat.regelId };
     }
     default:
       return { fout: `Onbekend actietype: ${actieType}` };

@@ -227,7 +227,15 @@ const SEED_PRODUCENTEN = [
 
 // Fase 3 — AI-agent
 const AGENT_ROLLEN = ["user", "assistant", "tool"];
-const AGENT_ACTIE_TYPES = ["tankboek_boeking", "observatie", "uitval", "kelderlog", "analyse"];
+const AGENT_ACTIE_TYPES = [
+  "tankboek_boeking",
+  "observatie",
+  "uitval",
+  "kelderlog",
+  "analyse",
+  "bottelronde",
+  "voorraad_mutatie",
+];
 const AGENT_ACTIE_STATUSSEN = ["voorgesteld", "bevestigd", "afgewezen", "uitgevoerd", "mislukt"];
 const INZICHT_TYPES = [
   "brix_verloop",

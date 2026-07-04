@@ -459,7 +459,14 @@ export const VEELGEBRUIKTE_FLESKLEUREN = ["Antiek groen", "Wit", "Bruin", "Trans
 
 export type AgentRol = "user" | "assistant" | "tool";
 
-export type AgentActieType = "tankboek_boeking" | "observatie" | "uitval" | "kelderlog" | "analyse";
+export type AgentActieType =
+  | "tankboek_boeking"
+  | "observatie"
+  | "uitval"
+  | "kelderlog"
+  | "analyse"
+  | "bottelronde"
+  | "voorraad_mutatie";
 
 export type AgentActieStatus = "voorgesteld" | "bevestigd" | "afgewezen" | "uitgevoerd" | "mislukt";
 
@@ -526,4 +533,6 @@ export const AGENT_ACTIE_CONFIG: Record<
   uitval: { label: "Uitval", emoji: "💀", randKlasse: "border-destructive" },
   kelderlog: { label: "Kelderlog", emoji: "📓", randKlasse: "border-accent-gold" },
   analyse: { label: "Analyse", emoji: "🧪", randKlasse: "border-success" },
+  bottelronde: { label: "Bottelronde", emoji: "🍾", randKlasse: "border-primary" },
+  voorraad_mutatie: { label: "Voorraadmutatie", emoji: "📦", randKlasse: "border-accent-gold" },
 };

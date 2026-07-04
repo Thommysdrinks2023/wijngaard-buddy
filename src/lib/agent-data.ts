@@ -308,5 +308,9 @@ export function actieTypeNaarLijstNaam(actieType: AgentActieType): string {
       return "kelderlog";
     case "analyse":
       return "analyses";
+    case "bottelronde":
+      return "bottelrondes";
+    case "voorraad_mutatie":
+      return "voorraad";
   }
 }
