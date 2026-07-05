@@ -296,12 +296,30 @@ function kelderlogFromPb(r: RecordModel): KelderlogRegel {
   };
 }
 
-export async function fetchKelderlog(partijId?: string): Promise<KelderlogRegel[]> {
+export interface KelderlogFilter {
+  partij?: string;
+  tank?: string;
+  actie?: string;
+  vanaf?: string; // datum >=
+  tot?: string; // datum <=
+}
+
+// Blok F — uitgebreid van een kale partijId-parameter naar een filterobject
+// (zelfde patroon als fetchTankboek) zodat /kelder/logboek net als het
+// tankboek filterbaar kan zijn op tank/actie/periode, niet alleen partij.
+export async function fetchKelderlog(filter?: string | KelderlogFilter): Promise<KelderlogRegel[]> {
   const pb = getPb();
   if (!pb || !(await ensureOnline())) return [];
+  const f: KelderlogFilter = typeof filter === "string" ? { partij: filter } : (filter ?? {});
+  const delen: string[] = [];
+  if (f.partij) delen.push(`partij = "${f.partij}"`);
+  if (f.tank) delen.push(`tank = "${f.tank}"`);
+  if (f.actie) delen.push(`actie = "${f.actie}"`);
+  if (f.vanaf) delen.push(`datum >= "${f.vanaf}"`);
+  if (f.tot) delen.push(`datum <= "${f.tot}"`);
   const records = await pb.collection("kelderlog").getFullList({
     sort: "-datum,-created",
-    filter: partijId ? `partij = "${partijId}"` : "",
+    filter: delen.join(" && "),
   });
   return records.map(kelderlogFromPb);
 }

@@ -8,7 +8,7 @@ import { PARTIJ_STATUSSEN, TANK_STATUSSEN, type Partij, type Tank } from "@/lib/
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { ArrowLeftRight, BookOpen, Container, Plus, Wine } from "lucide-react";
+import { ArrowLeftRight, BookOpen, Container, NotebookPen, Plus, Wine } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/")({
   component: KelderDashboard,
@@ -139,7 +139,7 @@ function KelderDashboard() {
         </section>
 
         {/* Snelkoppelingen */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <Link
             to="/kelder/overhevelen"
             className="flex h-16 flex-col items-center justify-center gap-1 rounded-2xl bg-primary text-xs font-semibold text-primary-foreground active:scale-[0.98]"
@@ -153,6 +153,13 @@ function KelderDashboard() {
           >
             <BookOpen className="h-5 w-5" />
             Tankboek
+          </Link>
+          <Link
+            to="/kelder/logboek"
+            className="flex h-16 flex-col items-center justify-center gap-1 rounded-2xl border border-border bg-card text-xs font-semibold active:scale-[0.98]"
+          >
+            <NotebookPen className="h-5 w-5" />
+            Logboek
           </Link>
           <Link
             to="/kelder/tanks"

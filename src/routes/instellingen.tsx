@@ -33,6 +33,8 @@ import {
   Home,
   Wine,
   Package,
+  BookOpen,
+  NotebookPen,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -141,6 +143,29 @@ const MENU_GROEPEN = [
         label: "Seizoensrapport",
         omschrijving: "Afdrukken of opslaan als PDF",
         icon: FileText,
+      },
+    ],
+  },
+  {
+    kop: "🍷 Kelder",
+    items: [
+      {
+        to: "/kelder/tankboek",
+        label: "Tankboek",
+        omschrijving: "Onwijzigbaar register van keldermutaties",
+        icon: BookOpen,
+      },
+      {
+        to: "/kelder/logboek",
+        label: "Logboek",
+        omschrijving: "Alle kelderwerkzaamheden, filterbaar",
+        icon: NotebookPen,
+      },
+      {
+        to: "/kelder/jaaroverzicht",
+        label: "Jaaroverzicht",
+        omschrijving: "Oogst, productie en botteling per jaargang",
+        icon: BarChart3,
       },
     ],
   },

@@ -40,6 +40,8 @@ import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.be
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
 import { Route as KelderTankboekRouteImport } from './routes/kelder.tankboek'
 import { Route as KelderOverhevelenRouteImport } from './routes/kelder.overhevelen'
+import { Route as KelderLogboekRouteImport } from './routes/kelder.logboek'
+import { Route as KelderJaaroverzichtRouteImport } from './routes/kelder.jaaroverzicht'
 import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
 import { Route as KelderTanksIndexRouteImport } from './routes/kelder.tanks.index'
 import { Route as KelderPartijenIndexRouteImport } from './routes/kelder.partijen.index'
@@ -209,6 +211,16 @@ const KelderOverhevelenRoute = KelderOverhevelenRouteImport.update({
   path: '/overhevelen',
   getParentRoute: () => KelderRoute,
 } as any)
+const KelderLogboekRoute = KelderLogboekRouteImport.update({
+  id: '/logboek',
+  path: '/logboek',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderJaaroverzichtRoute = KelderJaaroverzichtRouteImport.update({
+  id: '/jaaroverzicht',
+  path: '/jaaroverzicht',
+  getParentRoute: () => KelderRoute,
+} as any)
 const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -301,6 +313,8 @@ export interface FileRoutesByFullPath {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
+  '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
@@ -345,6 +359,8 @@ export interface FileRoutesByTo {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
+  '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
@@ -391,6 +407,8 @@ export interface FileRoutesById {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
+  '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
@@ -439,6 +457,8 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/kelder/jaaroverzicht'
+    | '/kelder/logboek'
     | '/kelder/overhevelen'
     | '/kelder/tankboek'
     | '/rij/$rijId'
@@ -483,6 +503,8 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/kelder/jaaroverzicht'
+    | '/kelder/logboek'
     | '/kelder/overhevelen'
     | '/kelder/tankboek'
     | '/steekproeven/beheer'
@@ -528,6 +550,8 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/kelder/jaaroverzicht'
+    | '/kelder/logboek'
     | '/kelder/overhevelen'
     | '/kelder/tankboek'
     | '/rij/$rijId'
@@ -801,6 +825,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KelderOverhevelenRouteImport
       parentRoute: typeof KelderRoute
     }
+    '/kelder/logboek': {
+      id: '/kelder/logboek'
+      path: '/logboek'
+      fullPath: '/kelder/logboek'
+      preLoaderRoute: typeof KelderLogboekRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/jaaroverzicht': {
+      id: '/kelder/jaaroverzicht'
+      path: '/jaaroverzicht'
+      fullPath: '/kelder/jaaroverzicht'
+      preLoaderRoute: typeof KelderJaaroverzichtRouteImport
+      parentRoute: typeof KelderRoute
+    }
     '/rij/$rijId/': {
       id: '/rij/$rijId/'
       path: '/'
@@ -896,6 +934,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface KelderRouteChildren {
+  KelderJaaroverzichtRoute: typeof KelderJaaroverzichtRoute
+  KelderLogboekRoute: typeof KelderLogboekRoute
   KelderOverhevelenRoute: typeof KelderOverhevelenRoute
   KelderTankboekRoute: typeof KelderTankboekRoute
   KelderIndexRoute: typeof KelderIndexRoute
@@ -908,6 +948,8 @@ interface KelderRouteChildren {
 }
 
 const KelderRouteChildren: KelderRouteChildren = {
+  KelderJaaroverzichtRoute: KelderJaaroverzichtRoute,
+  KelderLogboekRoute: KelderLogboekRoute,
   KelderOverhevelenRoute: KelderOverhevelenRoute,
   KelderTankboekRoute: KelderTankboekRoute,
   KelderIndexRoute: KelderIndexRoute,

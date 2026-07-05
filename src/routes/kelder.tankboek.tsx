@@ -5,11 +5,12 @@ import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { fetchProducenten, fetchTankboek, fetchTanks } from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
+import { exporteerCsv } from "@/lib/csv-export";
 import { TANKBOEK_ACTIES } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { BookOpen, Printer } from "lucide-react";
+import { BookOpen, Printer, Sheet } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/tankboek")({
   component: TankboekPage,
@@ -72,13 +73,54 @@ function TankboekPage() {
               Regels zijn onwijzigbaar; fouten herstel je met een correctieboeking.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium"
-          >
-            <Printer className="h-4 w-4" /> Print
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                exporteerCsv(
+                  `tankboek_${format(new Date(), "yyyy-MM-dd")}`,
+                  [
+                    "Datum",
+                    "Tijd",
+                    "Actie",
+                    "Partij",
+                    "Producent",
+                    "Van",
+                    "Naar",
+                    "Liters",
+                    "Middel",
+                    "Dosering",
+                    "Verantwoordelijke",
+                    "Notitie",
+                  ],
+                  (tankboekQ.data ?? []).map((r) => [
+                    r.datum,
+                    r.tijd ?? "",
+                    TANKBOEK_ACTIES.find((a) => a.value === r.actie)?.label ?? r.actie,
+                    partijNaam.get(r.partij) ?? "",
+                    r.producent ? (producentNaam.get(r.producent) ?? "") : "",
+                    r.van_tank ? (tankCode.get(r.van_tank) ?? "") : "",
+                    r.naar_tank ? (tankCode.get(r.naar_tank) ?? "") : "",
+                    r.volume_l,
+                    r.middel ?? "",
+                    r.dosering ?? "",
+                    r.verantwoordelijke,
+                    r.notitie ?? "",
+                  ]),
+                )
+              }
+              className="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium"
+            >
+              <Sheet className="h-4 w-4" /> Excel
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium"
+            >
+              <Printer className="h-4 w-4" /> Print
+            </button>
+          </div>
         </div>
 
         {/* Filters */}

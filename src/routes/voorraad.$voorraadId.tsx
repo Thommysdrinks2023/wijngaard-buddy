@@ -19,7 +19,7 @@ import { VOORRAAD_MUTATIE_TYPES, VOORRAAD_STATUSSEN, type VoorraadMutatieType } 
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/voorraad/$voorraadId")({
   component: VoorraadDetailPage,
@@ -58,8 +58,10 @@ function VoorraadDetailPage() {
     () => (tanksQ.data ?? []).find((t) => t.id === bottelrondeQ.data?.van_tank),
     [tanksQ.data, bottelrondeQ.data],
   );
-  const rijVanPartij = useMemo(
-    () => (oogstQ.data ?? []).find((o) => o.partij === voorraad?.partij && o.rij),
+  // Blok F — traceerbaarheidsrapport: alle oogstregels van deze partij, niet
+  // alleen de eerste (een partij kan uit meerdere rijen/rassen bestaan).
+  const oogstVanPartij = useMemo(
+    () => (oogstQ.data ?? []).filter((o) => o.partij === voorraad?.partij),
     [oogstQ.data, voorraad],
   );
 
@@ -137,16 +139,27 @@ function VoorraadDetailPage() {
         title={voorraad?.wijnnaam ?? "Voorraad"}
         subtitle={voorraad ? `${voorraad.jaargang ?? ""}` : ""}
       />
-      <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+      <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4 print:max-w-none">
+        <div className="flex justify-end print:hidden">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex h-10 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium"
+          >
+            <Printer className="h-4 w-4" /> Traceerbaarheidsrapport printen
+          </button>
+        </div>
         {/* Statuspaneel */}
         <section
-          className="rounded-xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+          className="rounded-xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] print:border print:bg-white print:text-black"
           style={{ backgroundColor: "var(--nav)" }}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="truncate text-lg font-bold text-white">{voorraad?.wijnnaam}</p>
-              <p className="text-xs text-white/80">
+              <p className="truncate text-lg font-bold text-white print:text-black">
+                {voorraad?.wijnnaam}
+              </p>
+              <p className="text-xs text-white/80 print:text-black/70">
                 {voorraad?.locatie || "Geen locatie ingesteld"}
               </p>
             </div>
@@ -165,7 +178,7 @@ function VoorraadDetailPage() {
               >
                 Nu op voorraad
               </p>
-              <p className="mt-0.5 text-xl font-bold tabular-nums text-white">
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-white print:text-black">
                 {voorraad?.aantal_huidig}
               </p>
             </div>
@@ -176,7 +189,7 @@ function VoorraadDetailPage() {
               >
                 Beginvoorraad
               </p>
-              <p className="mt-0.5 text-xl font-bold tabular-nums text-white">
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-white print:text-black">
                 {voorraad?.aantal_beginvoorraad}
               </p>
             </div>
@@ -221,18 +234,25 @@ function VoorraadDetailPage() {
                 </Link>
               </li>
             )}
-            {rijVanPartij?.rij && (
-              <li>
-                Geoogst uit:{" "}
-                <Link
-                  to="/rij/$rijId"
-                  params={{ rijId: rijVanPartij.rij }}
-                  className="text-primary underline-offset-2 hover:underline"
-                >
-                  Rij bekijken
-                </Link>
+            {oogstVanPartij.map((o) => (
+              <li key={o.id}>
+                Geoogst: {o.kg} kg {o.ras} op{" "}
+                {format(parseISO(o.datum), "d MMM yyyy", { locale: nl })}
+                {o.rij ? (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <Link
+                      to="/rij/$rijId"
+                      params={{ rijId: o.rij }}
+                      className="text-primary underline-offset-2 hover:underline print:text-black print:no-underline"
+                    >
+                      rij bekijken
+                    </Link>
+                  </>
+                ) : null}
               </li>
-            )}
+            ))}
           </ul>
         </section>
 
@@ -240,7 +260,7 @@ function VoorraadDetailPage() {
         <button
           type="button"
           onClick={() => setToonMutatie((v) => !v)}
-          className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold active:scale-[0.98] ${
+          className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold active:scale-[0.98] print:hidden ${
             toonMutatie
               ? "border border-primary bg-primary-soft text-primary"
               : "bg-primary text-primary-foreground"
@@ -251,7 +271,7 @@ function VoorraadDetailPage() {
         </button>
 
         {toonMutatie && (
-          <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4">
+          <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4 print:hidden">
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium">Type</span>
