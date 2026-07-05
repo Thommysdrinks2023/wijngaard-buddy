@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { createPartijViaEndpoint, fetchProducenten, fetchTanks } from "@/lib/kelder-data";
+import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerPartij } from "@/lib/validatie";
 import { vanBrix, vanOechsle } from "@/lib/dichtheid";
+import { genereerLotnummer } from "@/lib/lotnummer";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
 import {
@@ -31,6 +33,7 @@ function NieuwePartijPage() {
   const [invoerder, setInvoerder] = useInvoerder();
   const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
+  const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
 
   const [naam, setNaam] = useState("");
   const [jaargang, setJaargang] = useState(String(jaar));
@@ -61,6 +64,16 @@ function NieuwePartijPage() {
     if (brixInvoer) return vanBrix(Number(brixInvoer));
     return null;
   }, [oechsle, brixInvoer]);
+
+  // Blok E — lotnummer-autosuggestie (ARCHITECTURE.md v1.1, besluit A2).
+  // Alleen een voorstel: overschrijft nooit wat de gebruiker al intypte.
+  const lotnummerSuggestie = useMemo(() => {
+    if (!naam.trim() || !jaargang) return "";
+    const bestaande = (partijenQ.data ?? [])
+      .map((p) => p.lotnummer)
+      .filter((l): l is string => !!l);
+    return genereerLotnummer(naam, Number(jaargang), bestaande);
+  }, [naam, jaargang, partijenQ.data]);
 
   const wisFout = (veld: string) =>
     setFouten((f) => {
@@ -252,6 +265,15 @@ function NieuwePartijPage() {
                 className={veldClass}
                 placeholder="bijv. L26-JOH-01"
               />
+              {!lotnummer && lotnummerSuggestie && (
+                <button
+                  type="button"
+                  onClick={() => setLotnummer(lotnummerSuggestie)}
+                  className="mt-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Voorstel: {lotnummerSuggestie} — gebruiken
+                </button>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Persdatum</span>

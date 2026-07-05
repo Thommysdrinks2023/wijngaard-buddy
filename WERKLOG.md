@@ -103,4 +103,13 @@ Backup vooraf: dagelijkse backup was toch al net gedraaid tijdens het oplossen v
 
 **Definition of Done Blok D:** functioneel gehaald (regressie van de bestaande keten was al bevestigd in Blok 0/eerdere sessies; peiling-flow en consistentiecheck zijn nu gebouwd) — met de expliciete kanttekening dat de nieuwe stukken alleen structureel, niet live-met-inlog getest zijn.
 
+### Blok E — Fermentatiecurve, analysegrafieken, lotnummer-autosuggestie
+
+- **4 grafieken op `/kelder/partijen/$partijId`** (recharts, al in de stack — zelfde kaartpatroon als `src/routes/grafieken.tsx`, lokaal gehouden zolang alleen deze pagina het nodig heeft): fermentatiecurve (dichtheid °Oe), SO₂ vrij/totaal, restsuiker+totaalzuur+vluchtig zuur (g/L, vergelijkbare schaal), en pH apart (andere schaal). Verschijnen pas vanaf 2 analyses (anders een rechte lijn zonder informatiewaarde). **Temperatuur wordt niet getekend** — `analyses` heeft geen temperatuurveld; dat is een schema-uitbreiding (Blok B/C/G-categorie, zie hieronder) en geen bug van dit blok.
+- **Lotnummer-autosuggestie**: nieuwe pure functie `src/lib/lotnummer.ts` (`genereerLotnummer(naam, jaargang, bestaandeLotnummers)`) implementeert `L<jj>-<CODE>-<volgnr>` exact conform ARCHITECTURE.md v1.1/§5 (`code` = eerste 3 letters van het eerste woord in `naam`, bijv. "Johanniter 2026" → "JOH"; volgnummer = laagste vrije nummer binnen dezelfde jaargang+code). Gebruikt op `/kelder/partijen/nieuw`: een niet-opdringerige link "Voorstel: L26-JOH-01 — gebruiken" onder het lotnummerveld, overschrijft nooit een al ingevulde waarde.
+- **Volledig getest** (in tegenstelling tot de rest van dit blok): dit is een pure functie zonder serverstaat, dus wél rechtstreeks met Node te draaien zonder in te loggen. Zes gevallen gecontroleerd, inclusief het exacte voorbeeld uit ARCHITECTURE.md §5 ("Johanniter 2026" → `L26-JOH-01`) en oplopende volgnummers bij al bezette lotnummers — allemaal correct.
+- **Niet getest**: de grafieken zelf met echte data (geen partijen in de database, zie Blok 0/D) — wel bevestigd dat de pagina zonder data en zonder consolefouten rendert, en `tsc`/`eslint` zijn schoon.
+
+**Definition of Done Blok E (kernstuk):** gehaald voor de in dit blok toegevoegde extra's. Het fundament (bottelrondes/voorraad, agent-tools) was al vóór dit traject gebouwd en getest — zie Blok 0. De "voedingswaarde herbedraden naar het A1-model"-taak uit de oorspronkelijke opdracht is bewust **niet** opgepakt: dat vereist eerst dat Thomas bevestigt of `partij_toevoegingen` leeg is (zie Blok A) vóórdat er iets op die databron herbouwd wordt.
+
 ---

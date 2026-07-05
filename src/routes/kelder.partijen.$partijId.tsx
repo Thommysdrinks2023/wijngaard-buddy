@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
@@ -56,6 +56,16 @@ import {
   NotebookPen,
   Wine,
 } from "lucide-react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export const Route = createFileRoute("/kelder/partijen/$partijId")({
   component: PartijDetailPage,
@@ -121,6 +131,27 @@ function PartijDetailPage() {
     tanksQ.data?.forEach((t) => m.set(t.id, t.code));
     return m;
   }, [tanksQ.data]);
+
+  // Blok E — fermentatiecurve + analysewaarden over tijd (recharts, zit al in de
+  // stack). analysesQ is gesorteerd nieuw->oud (fetchAnalyses); voor een grafiek
+  // van links (oud) naar rechts (nieuw) wordt hij hier omgedraaid.
+  const analyseSerie = useMemo(
+    () =>
+      (analysesQ.data ?? [])
+        .slice()
+        .reverse()
+        .map((a) => ({
+          datum: a.datum,
+          dichtheid_oechsle: a.dichtheid_oechsle ?? undefined,
+          ph: a.ph ?? undefined,
+          so2_vrij: a.so2_vrij ?? undefined,
+          so2_totaal: a.so2_totaal ?? undefined,
+          restsuiker_g_l: a.restsuiker_g_l ?? undefined,
+          totaalzuur_g_l: a.totaalzuur_g_l ?? undefined,
+          vluchtig_zuur_g_l: a.vluchtig_zuur_g_l ?? undefined,
+        })),
+    [analysesQ.data],
+  );
 
   const huidigVolume = Math.round(tanksVanPartij.reduce((acc, t) => acc + t.huidig_volume_l, 0));
   const dagenInKelder = partij?.pers_datum
@@ -819,6 +850,153 @@ function PartijDetailPage() {
           )}
         </section>
 
+        {/* Fermentatiecurve + analysewaarden over tijd (Blok E). Temperatuur wordt
+            momenteel niet vastgelegd in `analyses` — alleen dichtheid. */}
+        {analyseSerie.length >= 2 && (
+          <>
+            <ChartCard title="Fermentatiecurve — dichtheid (°Oe)">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={analyseSerie} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
+                  <XAxis
+                    dataKey="datum"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => format(parseISO(v), "d MMM", { locale: nl })}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    labelFormatter={(v) =>
+                      format(parseISO(String(v)), "d MMM yyyy", { locale: nl })
+                    }
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="dichtheid_oechsle"
+                    name="°Oechsle"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="SO₂ (mg/L)">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={analyseSerie} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
+                  <XAxis
+                    dataKey="datum"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => format(parseISO(v), "d MMM", { locale: nl })}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    labelFormatter={(v) =>
+                      format(parseISO(String(v)), "d MMM yyyy", { locale: nl })
+                    }
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="so2_vrij"
+                    name="Vrij"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="so2_totaal"
+                    name="Totaal"
+                    stroke="var(--accent-gold)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="Restsuiker, zuur (g/L)">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={analyseSerie} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
+                  <XAxis
+                    dataKey="datum"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => format(parseISO(v), "d MMM", { locale: nl })}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    labelFormatter={(v) =>
+                      format(parseISO(String(v)), "d MMM yyyy", { locale: nl })
+                    }
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="restsuiker_g_l"
+                    name="Restsuiker"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="totaalzuur_g_l"
+                    name="Totaalzuur"
+                    stroke="var(--accent-gold)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="vluchtig_zuur_g_l"
+                    name="Vluchtig zuur"
+                    stroke="var(--destructive)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+
+            <ChartCard title="pH">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={analyseSerie} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
+                  <XAxis
+                    dataKey="datum"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => format(parseISO(v), "d MMM", { locale: nl })}
+                  />
+                  <YAxis domain={[2, 5]} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    labelFormatter={(v) =>
+                      format(parseISO(String(v)), "d MMM yyyy", { locale: nl })
+                    }
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="ph"
+                    name="pH"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </>
+        )}
+
         {/* Analyses */}
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1044,5 +1222,26 @@ function PartijDetailPage() {
         </section>
       </div>
     </>
+  );
+}
+
+// Zelfde compacte kaart-patroon als src/routes/grafieken.tsx — bewust lokaal
+// gehouden (geen gedeeld component) zolang alleen deze pagina grafieken toont.
+function ChartCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h2>
+      <div className="h-56 w-full">{children}</div>
+    </section>
+  );
+}
+
+function ChartEmpty({ msg }: { msg: string }) {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <EmptyState message={msg} className="w-full" />
+    </div>
   );
 }
