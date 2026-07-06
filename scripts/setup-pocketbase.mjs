@@ -1447,6 +1447,268 @@ async function main() {
     deleteRule: OPEN_RULE,
   });
 
+  // 3a-EINDSPRINT. Blokken B/G/K/L/M/O uit de eindsprint-prompt (juli 2026).
+  // Zelfde idempotente patroon als alles hierboven; zie WERKLOG.md.
+
+  // Blok B — rollen op de bestaande auth-collectie. Bestaande accounts krijgen
+  // via de migratie hieronder "beheerder" (géén functionaliteitsverlies t.o.v.
+  // vandaag, waar iedereen alles mag); Thomas degradeert zelf wie medewerker
+  // of alleen_lezen moet worden. Handhaving zit in de hook-endpoints, niet
+  // alleen in de UI.
+  await ensureVelden("users", [
+    {
+      name: "rol",
+      type: "select",
+      maxSelect: 1,
+      values: ["beheerder", "medewerker", "alleen_lezen"],
+    },
+    { name: "weergavenaam", type: "text" },
+  ]);
+  {
+    const zonderRol = await api(
+      `/api/collections/users/records?perPage=200&filter=${encodeURIComponent("rol = ''")}`,
+    );
+    for (const u of zonderRol.items) {
+      await api(`/api/collections/users/records/${u.id}`, {
+        method: "PATCH",
+        body: { rol: "beheerder", weergavenaam: u.name || u.email },
+      });
+    }
+    if (zonderRol.items.length > 0)
+      console.log(`  + ${zonderRol.items.length} bestaande account(s) op rol "beheerder" gezet`);
+  }
+
+  // Blok G — bodemgezondheid, uitbreiding binnen de wijngaardmodule.
+  await ensureCollection({
+    name: "bodem_observaties",
+    type: "base",
+    fields: [
+      {
+        name: "rij",
+        type: "relation",
+        collectionId: rijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "blok", type: "text" },
+      { name: "datum", type: "text", required: true },
+      { name: "seizoen", type: "number", onlyInt: true },
+      {
+        name: "bodemvocht",
+        type: "select",
+        maxSelect: 1,
+        values: ["droog", "vochtig", "nat", "verzadigd"],
+      },
+      { name: "bodemvocht_pct", type: "number" },
+      { name: "ph_veld", type: "number" },
+      { name: "organische_stof", type: "text" },
+      { name: "structuur", type: "text" },
+      { name: "verslemping", type: "bool" },
+      { name: "bodemleven", type: "text" },
+      {
+        name: "gebreksverschijnselen",
+        type: "select",
+        maxSelect: 7,
+        values: ["N", "Mg", "K", "Fe", "B", "Zn", "Mn"],
+      },
+      { name: "drainage", type: "text" },
+      fotoVeld,
+      { name: "notitie", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // Blok L — verkoop licht. Orders muteren voorraad UITSLUITEND via het
+  // server-endpoint (order-leveren, voorraad.pb.js) — de orderregels zelf
+  // zijn concept-administratie en mogen vrij bewerkt worden zolang de order
+  // niet geleverd is (dat bewaakt het endpoint).
+  const klantenCol = await ensureCollection({
+    name: "klanten",
+    type: "base",
+    fields: [
+      { name: "naam", type: "text", required: true },
+      {
+        name: "type",
+        type: "select",
+        maxSelect: 1,
+        values: ["particulier", "horeca", "winkel", "evenement"],
+      },
+      { name: "contact", type: "text" },
+      { name: "notities", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+  await ensureCollection({
+    name: "orders",
+    type: "base",
+    fields: [
+      {
+        name: "klant",
+        type: "relation",
+        required: true,
+        collectionId: klantenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "datum", type: "text", required: true },
+      { name: "regels", type: "json", required: true },
+      {
+        name: "status",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: ["concept", "geleverd", "betaald"],
+      },
+      { name: "notities", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // Blok M — materieel & onderhoud (logboek, geen assetmanagement).
+  const materieelCol = await ensureCollection({
+    name: "materieel",
+    type: "base",
+    fields: [
+      { name: "naam", type: "text", required: true },
+      {
+        name: "type",
+        type: "select",
+        maxSelect: 1,
+        values: ["tractor", "spuit", "bottellijn", "koeling", "overig"],
+      },
+      { name: "bouwjaar", type: "number", onlyInt: true },
+      { name: "notities", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+  await ensureCollection({
+    name: "onderhoudslog",
+    type: "base",
+    fields: [
+      {
+        name: "materieel",
+        type: "relation",
+        required: true,
+        collectionId: materieelCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "datum", type: "text", required: true },
+      {
+        name: "type",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: ["onderhoud", "reparatie", "keuring"],
+      },
+      { name: "omschrijving", type: "text", required: true },
+      { name: "kosten", type: "number" },
+      { name: "volgende_keer", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // Blok O — archief voor jaarafsluitingen: alleen vastleggen, nooit wijzigen
+  // (zelfde append-only-principe als tankboek; een fout archief vervang je
+  // door een nieuw record, niet door bewerken).
+  await ensureCollection({
+    name: "archief",
+    type: "base",
+    fields: [
+      { name: "jaar", type: "number", required: true, onlyInt: true },
+      {
+        name: "type",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: ["jaaroverzicht", "overig"],
+      },
+      {
+        name: "bestand",
+        type: "file",
+        maxSelect: 1,
+        maxSize: 20971520,
+        mimeTypes: ["application/pdf"],
+      },
+      { name: "samenvatting", type: "json" },
+      { name: "notitie", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: null,
+    deleteRule: null,
+  });
+
+  // Blok K — regelgeving-seeds: sleutels aanmaken ZONDER bedragen. De echte
+  // tarieven vult Thomas in na verificatie bij de Douane; de app rekent pas
+  // als waarde > 0 én laatst_gecontroleerd ingevuld is (zie accijns-UI).
+  const REGELGEVING_SEEDS = [
+    {
+      sleutel: "agent_berichten_per_uur_per_ip",
+      waarde: 30,
+      eenheid: "berichten/uur",
+      bron: "Eindsprint Blok C — kostenrem AI-agent",
+    },
+    {
+      sleutel: "accijns_stille_wijn_per_hl",
+      eenheid: "EUR/hl",
+      bron: "Invullen na verificatie bij de Douane (tarief stille wijn)",
+    },
+    {
+      sleutel: "accijns_mousserende_wijn_per_hl",
+      eenheid: "EUR/hl",
+      bron: "Invullen na verificatie bij de Douane (tarief mousserende wijn)",
+    },
+    {
+      sleutel: "agp_drempel_liters_per_jaar",
+      eenheid: "L/jaar",
+      bron: "Invullen na verificatie: AGP-/vrijstellingsdrempel",
+    },
+  ];
+  for (const seed of REGELGEVING_SEEDS) {
+    const bestaand = await api(
+      `/api/collections/regelgeving_instellingen/records?perPage=1&filter=${encodeURIComponent(`sleutel='${seed.sleutel}'`)}`,
+    );
+    if (bestaand.totalItems === 0) {
+      await api("/api/collections/regelgeving_instellingen/records", {
+        method: "POST",
+        body: seed,
+      });
+      console.log(`  + regelgeving-sleutel "${seed.sleutel}" aangemaakt`);
+    }
+  }
+
   // 3b. Wijngaard-instellingen (vineyard_settings) + eerste configuratie
   await ensureCollection({
     name: "vineyard_settings",
@@ -1515,6 +1777,13 @@ async function main() {
     "agent_acties",
     "inzichten",
     "advies_feedback",
+    // Eindsprint B/G/K/L/M/O
+    "bodem_observaties",
+    "klanten",
+    "orders",
+    "materieel",
+    "onderhoudslog",
+    "archief",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);
