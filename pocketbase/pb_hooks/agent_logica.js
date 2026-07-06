@@ -174,6 +174,43 @@ const KELDER_TOOLS = [
   {
     lezen: true,
     schema: {
+      name: "zoek_kelderlog",
+      description:
+        "Werklogboek van de kelder (roeren, filtreren, klaring, toevoegingen, proeven, ...) op partij, tank, actie en/of periode. Compacte samenvatting per regel.",
+      input_schema: {
+        type: "object",
+        properties: {
+          partij: { type: "string", description: "Naam of lotnummer" },
+          tank: { type: "string", description: "Tankcode, bv. '16'" },
+          actie: {
+            type: "string",
+            enum: [
+              "ontstelen",
+              "persen",
+              "voorklaren",
+              "gisting_start",
+              "gisting_einde",
+              "roeren",
+              "overhevelen",
+              "filtreren",
+              "klaring",
+              "toevoeging",
+              "koeling",
+              "proeven",
+              "reiniging",
+              "botteling",
+              "overig",
+            ],
+          },
+          van: { type: "string", description: "yyyy-MM-dd" },
+          tot: { type: "string", description: "yyyy-MM-dd" },
+        },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
       name: "zoek_tankboek",
       description: "Mutatiehistorie uit het tankboek, op tank, partij en/of periode.",
       input_schema: {

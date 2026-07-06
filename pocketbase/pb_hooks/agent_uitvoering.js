@@ -169,6 +169,51 @@ const LEES_HANDLERS = {
       seizoen: f.getFloat("seizoen"),
     }));
   },
+  zoek_kelderlog(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.partij) {
+      const partij = logica.vindPartij(app, input.partij);
+      if (!partij)
+        return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
+      delen.push(`partij = {:p}`);
+      params.p = partij.id;
+    }
+    if (input.tank) {
+      const tank = logica.vindTank(app, input.tank);
+      if (!tank) return { gevonden: false, notitie: `Geen tank gevonden voor "${input.tank}".` };
+      delen.push(`tank = {:t}`);
+      params.t = tank.id;
+    }
+    if (input.actie) {
+      delen.push(`actie = {:a}`);
+      params.a = input.actie;
+    }
+    if (input.van) {
+      delen.push(`datum >= {:van}`);
+      params.van = input.van;
+    }
+    if (input.tot) {
+      delen.push(`datum <= {:tot}`);
+      params.tot = input.tot;
+    }
+    const regels = app.findRecordsByFilter(
+      "kelderlog",
+      delen.join(" && ") || "id != ''",
+      "-datum,-created",
+      30,
+      0,
+      params,
+    );
+    return regels.map((r) => ({
+      datum: r.getString("datum"),
+      actie: r.getString("actie"),
+      middel: r.getString("middel") || null,
+      hoeveelheid: r.getFloat("hoeveelheid") || null,
+      eenheid: r.getString("eenheid") || null,
+      notitie: r.getString("notitie") || null,
+    }));
+  },
   zoek_tankboek(app, input) {
     const delen = [];
     const params = {};
