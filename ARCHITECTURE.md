@@ -307,6 +307,10 @@ Met 10+ tools wordt één groot hook-bestand onhandelbaar. Structureer `assisten
 
 **7.8 Wettelijke eisen achteraf inpassen.** Als uit de checks van §5 extra velden volgen (bijv. accijnscodes), is dat met `ensureVelden` triviaal — mits de tankboekregels tegen die tijd volledig en onwijzigbaar zijn bijgehouden. Begin dus vanaf dag één met de correctieboeking-discipline, ook al voelt regel-editen makkelijker.
 
+**7.9 Backup (toegevoegd in v1.1, Eindsprint Blok C).** `pb_data` wordt dagelijks gezipt met 7-daagse/4-wekelijkse/12-maandelijkse rotatie (`scripts/backup-pocketbase.ps1`, Taakplanner-taak "Wijngaard PocketBase Backup"). De herstelprocedure is gedocumenteerd én daadwerkelijk getest (wegwerpinstantie, collecties geverifieerd) — zie `docs/backup.md`. Openstaand risico: de backups staan nog op dezelfde schijf als de server; de offsite-scenario's (externe schijf, Pi→VPS, VPS→Storage Box) staan klaar in datzelfde document maar vereisen hardware/toegang die Thomas moet regelen.
+
+**7.10 Rate limiting op de AI-agent (toegevoegd in v1.1, Eindsprint Blok C).** Alle drie de `/api/agent/*`-endpoints (bericht, bevestig, afwijzen — elk kost een betaalde Claude-aanroep) tellen per IP in het gedeelde Go-side app-store: standaard 30 per uur, instelbaar via een `regelgeving_instellingen`-record met sleutel `agent_berichten_per_uur_per_ip`. Overschrijding geeft HTTP 429 met een Nederlandse melding inclusief wachttijd; ook ongeldige requests tellen mee (probing is niet gratis). De teller reset bij een PocketBase-herstart — acceptabel voor een kostenrem. Curl-getest met een tijdelijk verlaagde limiet: 3 pogingen passeren, de vierde krijgt 429, en bevestig/afwijzen delen aantoonbaar dezelfde teller. Hiermee is het "AI-agent-endpoint zonder rate-limit"-risico uit CLAUDE.md/STATUS-RAPPORT gedekt vóór publieke bereikbaarheid.
+
 ---
 
 ## Open vragen (beslissen vóór fase 0)

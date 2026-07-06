@@ -632,6 +632,62 @@ function leesbareFout(err) {
   return new BadRequestError("AI-agent fout: " + (err && err.message ? err.message : String(err)));
 }
 
+// ============= Rate limit (Eindsprint Blok C / mega-prompt-v2 Blok C) =============
+// Elke aanroep van de drie agent-endpoints kost een betaalde Claude-aanroep
+// (ook bevestig/afwijzen: die draaien verwerkBeurt() opnieuw). Dit is het
+// enige bekende financiële risico van de app (CLAUDE.md/STATUS-RAPPORT) en
+// moest af vóór de server ooit publiek wordt. Telling per IP in het gedeelde
+// Go-side app-store (overleeft de JSVM-VM-pool, reset bij PocketBase-herstart
+// — acceptabel voor een kostenrem). De limiet is instelbaar via een
+// regelgeving_instellingen-record met sleutel "agent_berichten_per_uur_per_ip";
+// zonder record geldt RATE_LIMIT_STANDAARD. De check telt élke poging mee
+// (ook ongeldige requests), zodat probing niet gratis is.
+const RATE_LIMIT_STANDAARD = 30; // berichten per uur per IP
+const RATE_LIMIT_VENSTER_MS = 60 * 60 * 1000;
+
+function rateLimietPerUur(app) {
+  try {
+    const rec = app.findFirstRecordByFilter(
+      "regelgeving_instellingen",
+      "sleutel = 'agent_berichten_per_uur_per_ip'",
+    );
+    const waarde = rec.getFloat("waarde");
+    if (waarde > 0) return Math.floor(waarde);
+  } catch (e) {
+    /* geen instelling -> standaard */
+  }
+  return RATE_LIMIT_STANDAARD;
+}
+
+// Retourneert null als de aanroep mag, anders een nette Nederlandse melding.
+function controleerRateLimit(app, ip) {
+  const sleutel = "agent_ratelimit_" + (ip || "onbekend");
+  const nu = Date.now();
+  const store = app.store();
+  let stempels = [];
+  try {
+    const bestaand = store.get(sleutel);
+    if (Array.isArray(bestaand)) stempels = bestaand;
+  } catch (e) {
+    /* leeg store-slot */
+  }
+  stempels = stempels.filter((t) => nu - t < RATE_LIMIT_VENSTER_MS);
+  const limiet = rateLimietPerUur(app);
+  if (stempels.length >= limiet) {
+    const minutenTotVrij = Math.ceil((RATE_LIMIT_VENSTER_MS - (nu - stempels[0])) / 60000);
+    return (
+      "Je hebt de limiet van " +
+      limiet +
+      " assistent-berichten per uur bereikt. Probeer het over ongeveer " +
+      minutenTotVrij +
+      " minuten opnieuw."
+    );
+  }
+  stempels.push(nu);
+  store.set(sleutel, stempels);
+  return null;
+}
+
 // record.get("jsonveld") levert in de JSVM een types.JSONRaw op - dat is GEEN
 // parsed object en ook geen string, maar een byte-array (Array<number>).
 // {...ruw} spreidt dan numerieke indices i.p.v. de echte sleutels (kostte een
@@ -885,4 +941,5 @@ module.exports = {
   verwerkBeurt,
   leesSysteemprompt,
   leesbareFout,
+  controleerRateLimit,
 };

@@ -24,6 +24,10 @@
 routerAdd("POST", "/api/agent/bericht", (e) => {
   const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
   try {
+    // Rate limit vóór alles (Blok C): elke aanroep kost een betaalde
+    // Claude-call, dus ook ongeldige requests tellen mee tegen de limiet.
+    const limietFout = uitvoering.controleerRateLimit(e.app, e.realIP());
+    if (limietFout) return e.json(429, { message: limietFout });
     const b = e.requestInfo().body;
     if (!b.bericht_id) throw new BadRequestError("bericht_id is verplicht.");
     const bericht = e.app.findRecordById("agent_berichten", b.bericht_id);
@@ -48,6 +52,10 @@ routerAdd("POST", "/api/agent/bericht", (e) => {
 routerAdd("POST", "/api/agent/actie/{id}/bevestig", (e) => {
   const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
   try {
+    // Zelfde rate limit als /bericht: een mislukte bevestiging draait
+    // verwerkBeurt() opnieuw en kost dus ook een betaalde Claude-call.
+    const limietFout = uitvoering.controleerRateLimit(e.app, e.realIP());
+    if (limietFout) return e.json(429, { message: limietFout });
     const actieId = e.request.pathValue("id");
     const body = e.requestInfo().body;
     const naam =
@@ -131,6 +139,9 @@ routerAdd("POST", "/api/agent/actie/{id}/bevestig", (e) => {
 routerAdd("POST", "/api/agent/actie/{id}/afwijzen", (e) => {
   const uitvoering = require(`${__hooks}/agent_uitvoering.js`);
   try {
+    // Afwijzen triggert ook een nieuwe agent-beurt (uitleg in gewone taal).
+    const limietFout = uitvoering.controleerRateLimit(e.app, e.realIP());
+    if (limietFout) return e.json(429, { message: limietFout });
     const actieId = e.request.pathValue("id");
     const body = e.requestInfo().body;
     const naam =
