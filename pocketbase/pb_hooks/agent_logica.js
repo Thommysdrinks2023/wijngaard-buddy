@@ -109,38 +109,18 @@ function vindVoorraad(app, wijnnaam, jaargang) {
   }
 }
 
-// ============= Tooldefinities (Anthropic tool-schema) =============
+// ============= Tool-registry (H2, ARCHITECTURE.md §6.3) =============
+// Eén array per module; een nieuwe module toevoegen = hier één blok bijzetten
+// (+ de bijbehorende handlers in agent_uitvoering.js). bouwTools(), LEES_TOOLS
+// en SCHRIJF_TOOL_INFO worden hieruit afgeleid — geen chirurgie in de
+// hoofdlus. Elke entry heeft óf { lezen: true } (direct uitvoerbare lees-tool)
+// óf { actie_type: "..." } (schrijf-tool die een bevestigbaar voorstel wordt),
+// plus het letterlijke Anthropic-toolschema.
 
-const LEES_TOOLS = new Set([
-  "zoek_partijen",
-  "partij_detail",
-  "zoek_tanks",
-  "zoek_metingen",
-  "zoek_observaties",
-  "zoek_oogst",
-  "zoek_fenologie",
-  "zoek_tankboek",
-  "zoek_inzichten",
-  "zoek_advies_feedback",
-  "analyseer_foto",
-  "zoek_voorraad",
-  "voorraad_detail",
-]);
-
-// welke actie_type + welke collectie hoort bij welke schrijf-tool
-const SCHRIJF_TOOL_INFO = {
-  stel_tankboek_boeking_voor: { actie_type: "tankboek_boeking" },
-  stel_observatie_voor: { actie_type: "observatie" },
-  stel_uitval_voor: { actie_type: "uitval" },
-  stel_kelderlog_voor: { actie_type: "kelderlog" },
-  stel_analyse_voor: { actie_type: "analyse" },
-  stel_bottelronde_voor: { actie_type: "bottelronde" },
-  stel_voorraad_mutatie_voor: { actie_type: "voorraad_mutatie" },
-};
-
-function bouwTools() {
-  return [
-    {
+const KELDER_TOOLS = [
+  {
+    lezen: true,
+    schema: {
       name: "zoek_partijen",
       description: "Zoek partijen op producent, ras/type, status of lotnummer.",
       input_schema: {
@@ -162,7 +142,10 @@ function bouwTools() {
         },
       },
     },
-    {
+  },
+  {
+    lezen: true,
+    schema: {
       name: "partij_detail",
       description:
         "Volledige details van één partij: basisgegevens, laatste analyses, tankboek-historie, huidige tank.",
@@ -172,7 +155,10 @@ function bouwTools() {
         required: ["partij"],
       },
     },
-    {
+  },
+  {
+    lezen: true,
+    schema: {
       name: "zoek_tanks",
       description: "Zoek tanks op code, status, locatie of inhoud.",
       input_schema: {
@@ -184,55 +170,10 @@ function bouwTools() {
         },
       },
     },
-    {
-      name: "zoek_metingen",
-      description: "Wijngaardmetingen (Brix/°Oe, pH, zuurgraad) op ras, rijnummer en/of periode.",
-      input_schema: {
-        type: "object",
-        properties: {
-          ras: { type: "string" },
-          rijnummer: { type: "integer" },
-          van: { type: "string", description: "yyyy-MM-dd" },
-          tot: { type: "string", description: "yyyy-MM-dd" },
-        },
-      },
-    },
-    {
-      name: "zoek_observaties",
-      description:
-        "Wijngaardobservaties (ziekte, schade, uitval, groei, ...) op ras, rij, type en/of periode.",
-      input_schema: {
-        type: "object",
-        properties: {
-          ras: { type: "string" },
-          rijnummer: { type: "integer" },
-          type: {
-            type: "string",
-            enum: ["gezond", "groei", "ziekte", "schade", "uitval", "anders"],
-          },
-          van: { type: "string" },
-          tot: { type: "string" },
-        },
-      },
-    },
-    {
-      name: "zoek_oogst",
-      description: "Oogstrecords op ras en/of jaar.",
-      input_schema: {
-        type: "object",
-        properties: { ras: { type: "string" }, jaar: { type: "integer" } },
-      },
-    },
-    {
-      name: "zoek_fenologie",
-      description:
-        "Fenologiemomenten (knopbreek, bloei, zetting, veraison, oogstrijp) op ras en/of jaar, ook jaar-op-jaar.",
-      input_schema: {
-        type: "object",
-        properties: { ras: { type: "string" }, jaar: { type: "integer" } },
-      },
-    },
-    {
+  },
+  {
+    lezen: true,
+    schema: {
       name: "zoek_tankboek",
       description: "Mutatiehistorie uit het tankboek, op tank, partij en/of periode.",
       input_schema: {
@@ -245,48 +186,10 @@ function bouwTools() {
         },
       },
     },
-    {
-      name: "zoek_inzichten",
-      description:
-        "Eerder berekende patronen (brix-verloop, gistingssnelheid, uitval-clusters, GDD-afwijking, fenologievergelijking).",
-      input_schema: {
-        type: "object",
-        properties: {
-          inzicht_type: {
-            type: "string",
-            enum: [
-              "brix_verloop",
-              "gisting_snelheid",
-              "uitval_cluster",
-              "gdd_afwijking",
-              "fenologie_vergelijking",
-              "spuit_effectiviteit",
-            ],
-          },
-          onderwerp: { type: "string", description: "Ras, rij, partij of tank waar het over gaat" },
-        },
-      },
-    },
-    {
-      name: "zoek_advies_feedback",
-      description:
-        "Eerder gegeven adviezen en Thomas' oordeel daarover (klopte/klopte niet/deels), zodat je je eigen track record kent.",
-      input_schema: {
-        type: "object",
-        properties: { onderwerp: { type: "string" } },
-      },
-    },
-    {
-      name: "analyseer_foto",
-      description:
-        "Analyseer de foto uit een specifiek bericht (blad, druif, stok) op gezondheid, verkleuring, vermoede ziekte of rijpheidsindruk.",
-      input_schema: {
-        type: "object",
-        properties: { bericht_id: { type: "string" } },
-        required: ["bericht_id"],
-      },
-    },
-    {
+  },
+  {
+    actie_type: "tankboek_boeking",
+    schema: {
       name: "stel_tankboek_boeking_voor",
       description:
         "Stel een tankboek-boeking voor (vullen, overhevelen, toevoeging, monster, botteling, verlies, correctie). Wordt NOOIT direct uitgevoerd - altijd eerst een voorstel dat Thomas bevestigt.",
@@ -322,36 +225,10 @@ function bouwTools() {
         required: ["actie", "partij", "volume_l"],
       },
     },
-    {
-      name: "stel_observatie_voor",
-      description:
-        "Stel een wijngaardobservatie voor (ziekte, schade, groei, gezond, anders) voor een specifieke rij/plant.",
-      input_schema: {
-        type: "object",
-        properties: {
-          rijnummer: { type: "integer" },
-          plant: { type: "integer", description: "Plantnummer binnen de rij, optioneel" },
-          type: { type: "string", enum: ["gezond", "groei", "ziekte", "schade", "anders"] },
-          ernst: { type: "string", description: "Korte inschatting van de ernst, optioneel" },
-          beschrijving: { type: "string" },
-        },
-        required: ["rijnummer", "type", "beschrijving"],
-      },
-    },
-    {
-      name: "stel_uitval_voor",
-      description: "Stel een uitvalregistratie voor (dode planten) voor een specifieke rij.",
-      input_schema: {
-        type: "object",
-        properties: {
-          rijnummer: { type: "integer" },
-          aantal: { type: "integer" },
-          reden: { type: "string" },
-        },
-        required: ["rijnummer", "aantal", "reden"],
-      },
-    },
-    {
+  },
+  {
+    actie_type: "kelderlog",
+    schema: {
       name: "stel_kelderlog_voor",
       description:
         "Stel een kelderlogregel voor (werkzaamheid zonder per se een volume-effect: roeren, filtreren, klaring, proeven, reiniging, ...).",
@@ -384,7 +261,10 @@ function bouwTools() {
         required: ["partij", "taak_type", "beschrijving"],
       },
     },
-    {
+  },
+  {
+    actie_type: "analyse",
+    schema: {
       name: "stel_analyse_voor",
       description:
         "Stel een wijnanalyse voor een partij voor. Geef dichtheid als oechsle OF brix (niet beide nodig) - de conversie gebeurt automatisch.",
@@ -405,7 +285,111 @@ function bouwTools() {
         required: ["partij"],
       },
     },
-    {
+  },
+];
+
+const WIJNGAARD_TOOLS = [
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_metingen",
+      description: "Wijngaardmetingen (Brix/°Oe, pH, zuurgraad) op ras, rijnummer en/of periode.",
+      input_schema: {
+        type: "object",
+        properties: {
+          ras: { type: "string" },
+          rijnummer: { type: "integer" },
+          van: { type: "string", description: "yyyy-MM-dd" },
+          tot: { type: "string", description: "yyyy-MM-dd" },
+        },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_observaties",
+      description:
+        "Wijngaardobservaties (ziekte, schade, uitval, groei, ...) op ras, rij, type en/of periode.",
+      input_schema: {
+        type: "object",
+        properties: {
+          ras: { type: "string" },
+          rijnummer: { type: "integer" },
+          type: {
+            type: "string",
+            enum: ["gezond", "groei", "ziekte", "schade", "uitval", "anders"],
+          },
+          van: { type: "string" },
+          tot: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_oogst",
+      description: "Oogstrecords op ras en/of jaar.",
+      input_schema: {
+        type: "object",
+        properties: { ras: { type: "string" }, jaar: { type: "integer" } },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_fenologie",
+      description:
+        "Fenologiemomenten (knopbreek, bloei, zetting, veraison, oogstrijp) op ras en/of jaar, ook jaar-op-jaar.",
+      input_schema: {
+        type: "object",
+        properties: { ras: { type: "string" }, jaar: { type: "integer" } },
+      },
+    },
+  },
+  {
+    actie_type: "observatie",
+    schema: {
+      name: "stel_observatie_voor",
+      description:
+        "Stel een wijngaardobservatie voor (ziekte, schade, groei, gezond, anders) voor een specifieke rij/plant.",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          plant: { type: "integer", description: "Plantnummer binnen de rij, optioneel" },
+          type: { type: "string", enum: ["gezond", "groei", "ziekte", "schade", "anders"] },
+          ernst: { type: "string", description: "Korte inschatting van de ernst, optioneel" },
+          beschrijving: { type: "string" },
+        },
+        required: ["rijnummer", "type", "beschrijving"],
+      },
+    },
+  },
+  {
+    actie_type: "uitval",
+    schema: {
+      name: "stel_uitval_voor",
+      description: "Stel een uitvalregistratie voor (dode planten) voor een specifieke rij.",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          aantal: { type: "integer" },
+          reden: { type: "string" },
+        },
+        required: ["rijnummer", "aantal", "reden"],
+      },
+    },
+  },
+];
+
+const VOORRAAD_TOOLS = [
+  {
+    lezen: true,
+    schema: {
       name: "zoek_voorraad",
       description:
         "Zoek flessenvoorraad op wijnnaam, jaargang en/of status (op_voorraad/uitverkocht).",
@@ -418,7 +402,10 @@ function bouwTools() {
         },
       },
     },
-    {
+  },
+  {
+    lezen: true,
+    schema: {
       name: "voorraad_detail",
       description:
         "Volledige details van één wijn op voorraad: aantal huidig/beginvoorraad, herkomst (bottelronde, partij, tank) en mutatiehistorie.",
@@ -431,7 +418,10 @@ function bouwTools() {
         required: ["wijnnaam"],
       },
     },
-    {
+  },
+  {
+    actie_type: "bottelronde",
+    schema: {
       name: "stel_bottelronde_voor",
       description:
         "Stel een bottelronde voor een partij voor (bottelt vanuit een tank, maakt tankboekregel + voorraadrecord aan). Wordt NOOIT direct uitgevoerd - altijd eerst een voorstel dat Thomas bevestigt.",
@@ -451,7 +441,10 @@ function bouwTools() {
         required: ["partij", "van_tank", "aantal_flessen", "flesinhoud_ml"],
       },
     },
-    {
+  },
+  {
+    actie_type: "voorraad_mutatie",
+    schema: {
       name: "stel_voorraad_mutatie_voor",
       description:
         "Stel een voorraadmutatie voor (verkocht, eigen gebruik, kapot, weggegeven, correctie). Wordt NOOIT direct uitgevoerd - altijd eerst een voorstel dat Thomas bevestigt.",
@@ -475,18 +468,110 @@ function bouwTools() {
         required: ["wijnnaam", "mutatie_type", "aantal"],
       },
     },
-    // Blok F: Anthropics ingebouwde server-side web-search-tool. Anders dan de
-    // tools hierboven wordt deze NIET door onze code uitgevoerd - Anthropic
-    // doet de zoekopdracht zelf en levert het resultaat binnen dezelfde
-    // aanroep terug als server_tool_use/web_search_tool_result-blokken (zie
-    // verwerkBeurt() in agent_uitvoering.js). Wanneer/waarvoor de agent dit
-    // wel of niet mag gebruiken staat in Gedragsregel 9 van de systeemprompt.
-    {
-      type: "web_search_20250305",
-      name: "web_search",
-      max_uses: MAX_WEB_SEARCHES,
+  },
+];
+
+const ALGEMEEN_TOOLS = [
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_inzichten",
+      description:
+        "Eerder berekende patronen (brix-verloop, gistingssnelheid, uitval-clusters, GDD-afwijking, fenologievergelijking).",
+      input_schema: {
+        type: "object",
+        properties: {
+          inzicht_type: {
+            type: "string",
+            enum: [
+              "brix_verloop",
+              "gisting_snelheid",
+              "uitval_cluster",
+              "gdd_afwijking",
+              "fenologie_vergelijking",
+              "spuit_effectiviteit",
+            ],
+          },
+          onderwerp: { type: "string", description: "Ras, rij, partij of tank waar het over gaat" },
+        },
+      },
     },
-  ];
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_advies_feedback",
+      description:
+        "Eerder gegeven adviezen en Thomas' oordeel daarover (klopte/klopte niet/deels), zodat je je eigen track record kent.",
+      input_schema: {
+        type: "object",
+        properties: { onderwerp: { type: "string" } },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "analyseer_foto",
+      description:
+        "Analyseer de foto uit een specifiek bericht (blad, druif, stok) op gezondheid, verkleuring, vermoede ziekte of rijpheidsindruk.",
+      input_schema: {
+        type: "object",
+        properties: { bericht_id: { type: "string" } },
+        required: ["bericht_id"],
+      },
+    },
+  },
+];
+
+const TOOL_MODULES = {
+  kelder: KELDER_TOOLS,
+  wijngaard: WIJNGAARD_TOOLS,
+  voorraad: VOORRAAD_TOOLS,
+  algemeen: ALGEMEEN_TOOLS,
+};
+
+function alleToolDefinities() {
+  const alles = [];
+  for (const moduleNaam in TOOL_MODULES) {
+    const defs = TOOL_MODULES[moduleNaam];
+    for (let i = 0; i < defs.length; i++) alles.push(defs[i]);
+  }
+  return alles;
+}
+
+// Afgeleid uit de registry — niet meer met de hand bijhouden.
+const LEES_TOOLS = new Set(
+  alleToolDefinities()
+    .filter(function (d) {
+      return d.lezen;
+    })
+    .map(function (d) {
+      return d.schema.name;
+    }),
+);
+
+const SCHRIJF_TOOL_INFO = {};
+for (const def of alleToolDefinities()) {
+  if (def.actie_type) SCHRIJF_TOOL_INFO[def.schema.name] = { actie_type: def.actie_type };
+}
+
+function bouwTools() {
+  const tools = alleToolDefinities().map(function (d) {
+    return d.schema;
+  });
+  // Blok F: Anthropics ingebouwde server-side web-search-tool. Anders dan de
+  // tools hierboven wordt deze NIET door onze code uitgevoerd - Anthropic
+  // doet de zoekopdracht zelf en levert het resultaat binnen dezelfde
+  // aanroep terug als server_tool_use/web_search_tool_result-blokken (zie
+  // verwerkBeurt() in agent_uitvoering.js). Wanneer/waarvoor de agent dit
+  // wel of niet mag gebruiken staat in Gedragsregel 9 van de systeemprompt.
+  tools.push({
+    type: "web_search_20250305",
+    name: "web_search",
+    max_uses: MAX_WEB_SEARCHES,
+  });
+  return tools;
 }
 
 module.exports = {
@@ -496,6 +581,7 @@ module.exports = {
   MAX_GESCHIEDENIS_BERICHTEN,
   MAX_TOKENS,
   MAX_WEB_SEARCHES,
+  TOOL_MODULES,
   LEES_TOOLS,
   SCHRIJF_TOOL_INFO,
   vandaagStr,

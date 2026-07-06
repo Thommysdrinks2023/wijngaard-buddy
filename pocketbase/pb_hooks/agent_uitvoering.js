@@ -6,312 +6,311 @@
 const logica = require(`${__hooks}/agent_logica.js`);
 
 // ============= Lees-tools: direct uitvoeren =============
+// H2 (§6.3): dispatch is een lookup in deze handler-map, geen switch meer.
+// Een tool toevoegen = schema in agent_logica.js (TOOL_MODULES) + één handler
+// hier; een ontbrekende handler wordt door de dispatcher als nette fout aan
+// het model teruggemeld i.p.v. een crash.
 
-function voerLeesToolUit(app, naam, input) {
-  switch (naam) {
-    case "zoek_partijen": {
-      const delen = [];
-      if (input.zoekterm) delen.push(`(naam ~ {:z} || lotnummer ~ {:z})`);
-      if (input.status) delen.push(`status = {:status}`);
-      if (input.jaargang) delen.push(`jaargang = {:jaargang}`);
-      const partijen = app.findRecordsByFilter(
-        "partijen",
-        delen.join(" && ") || "id != ''",
-        "-jaargang",
-        20,
-        0,
-        { z: input.zoekterm, status: input.status, jaargang: input.jaargang },
-      );
-      return partijen.map(partijSamenvatting);
+const LEES_HANDLERS = {
+  zoek_partijen(app, input) {
+    const delen = [];
+    if (input.zoekterm) delen.push(`(naam ~ {:z} || lotnummer ~ {:z})`);
+    if (input.status) delen.push(`status = {:status}`);
+    if (input.jaargang) delen.push(`jaargang = {:jaargang}`);
+    const partijen = app.findRecordsByFilter(
+      "partijen",
+      delen.join(" && ") || "id != ''",
+      "-jaargang",
+      20,
+      0,
+      { z: input.zoekterm, status: input.status, jaargang: input.jaargang },
+    );
+    return partijen.map(partijSamenvatting);
+  },
+  partij_detail(app, input) {
+    const partij = logica.vindPartij(app, input.partij);
+    if (!partij)
+      return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
+    const analyses = app.findRecordsByFilter("analyses", "partij = {:p}", "-datum", 5, 0, {
+      p: partij.id,
+    });
+    const tankboek = app.findRecordsByFilter(
+      "tankboek",
+      "partij = {:p}",
+      "-datum,-created",
+      20,
+      0,
+      {
+        p: partij.id,
+      },
+    );
+    const tanks = app.findRecordsByFilter("tanks", "huidige_partij = {:p}", "code", 10, 0, {
+      p: partij.id,
+    });
+    return {
+      gevonden: true,
+      partij: partijSamenvatting(partij),
+      huidige_tanks: tanks.map((t) => ({
+        code: t.getString("code"),
+        volume_l: t.getFloat("huidig_volume_l"),
+      })),
+      laatste_analyses: analyses.map(analyseSamenvatting),
+      tankboek_historie: tankboek.map(tankboekregelSamenvatting),
+    };
+  },
+  zoek_tanks(app, input) {
+    const delen = [];
+    if (input.code) delen.push(`code = {:code}`);
+    if (input.status) delen.push(`status = {:status}`);
+    if (input.locatie) delen.push(`locatie ~ {:locatie}`);
+    const tanks = app.findRecordsByFilter(
+      "tanks",
+      delen.join(" && ") || "id != ''",
+      "code",
+      50,
+      0,
+      { code: input.code, status: input.status, locatie: input.locatie },
+    );
+    return tanks.map((t) => ({
+      code: t.getString("code"),
+      soort: t.getString("soort"),
+      capaciteit_l: t.getFloat("capaciteit_l"),
+      status: t.getString("status"),
+      huidig_volume_l: t.getFloat("huidig_volume_l"),
+      locatie: t.getString("locatie"),
+    }));
+  },
+  zoek_metingen(app, input) {
+    const delen = [];
+    if (input.ras) delen.push(`rij.ras = {:ras}`);
+    if (input.rijnummer) delen.push(`rij.rijnummer = {:rijnummer}`);
+    if (input.van) delen.push(`datum >= {:van}`);
+    if (input.tot) delen.push(`datum <= {:tot}`);
+    const metingen = app.findRecordsByFilter(
+      "metingen",
+      delen.join(" && ") || "id != ''",
+      "-datum",
+      30,
+      0,
+      { ras: input.ras, rijnummer: input.rijnummer, van: input.van, tot: input.tot },
+    );
+    return metingen.map((m) => ({
+      datum: m.getString("datum"),
+      rij: m.getString("rij"),
+      brix: m.getFloat("brix") || null,
+      ph: m.getFloat("ph") || null,
+      zuurgraad: m.getFloat("zuurgraad") || null,
+      rijpheid_score: m.getFloat("rijpheid_score") || null,
+    }));
+  },
+  zoek_observaties(app, input) {
+    const delen = [];
+    if (input.ras) delen.push(`rij.ras = {:ras}`);
+    if (input.rijnummer) delen.push(`rij.rijnummer = {:rijnummer}`);
+    if (input.type) delen.push(`type = {:type}`);
+    if (input.van) delen.push(`datum >= {:van}`);
+    if (input.tot) delen.push(`datum <= {:tot}`);
+    const obs = app.findRecordsByFilter(
+      "observaties",
+      delen.join(" && ") || "id != ''",
+      "-datum",
+      30,
+      0,
+      {
+        ras: input.ras,
+        rijnummer: input.rijnummer,
+        type: input.type,
+        van: input.van,
+        tot: input.tot,
+      },
+    );
+    return obs.map((o) => ({
+      datum: o.getString("datum"),
+      rij: o.getString("rij"),
+      type: o.getString("type"),
+      notitie: o.getString("notitie"),
+    }));
+  },
+  zoek_oogst(app, input) {
+    const delen = [];
+    if (input.ras) delen.push(`ras = {:ras}`);
+    if (input.jaar) delen.push(`seizoen = {:jaar}`);
+    const oogst = app.findRecordsByFilter(
+      "oogst",
+      delen.join(" && ") || "id != ''",
+      "datum",
+      50,
+      0,
+      { ras: input.ras, jaar: input.jaar },
+    );
+    return oogst.map((o) => ({
+      datum: o.getString("datum"),
+      ras: o.getString("ras"),
+      kg: o.getFloat("kg"),
+      seizoen: o.getFloat("seizoen"),
+    }));
+  },
+  zoek_fenologie(app, input) {
+    const delen = [];
+    if (input.ras) delen.push(`ras = {:ras}`);
+    if (input.jaar) delen.push(`seizoen = {:jaar}`);
+    const fen = app.findRecordsByFilter(
+      "fenologie",
+      delen.join(" && ") || "id != ''",
+      "datum",
+      50,
+      0,
+      { ras: input.ras, jaar: input.jaar },
+    );
+    return fen.map((f) => ({
+      datum: f.getString("datum"),
+      ras: f.getString("ras"),
+      moment: f.getString("moment"),
+      seizoen: f.getFloat("seizoen"),
+    }));
+  },
+  zoek_tankboek(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.tank) {
+      const tank = logica.vindTank(app, input.tank);
+      if (!tank) return { gevonden: false, notitie: `Geen tank gevonden voor "${input.tank}".` };
+      delen.push(`(van_tank = {:t} || naar_tank = {:t})`);
+      params.t = tank.id;
     }
-    case "partij_detail": {
+    if (input.partij) {
       const partij = logica.vindPartij(app, input.partij);
       if (!partij)
         return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
-      const analyses = app.findRecordsByFilter("analyses", "partij = {:p}", "-datum", 5, 0, {
-        p: partij.id,
-      });
-      const tankboek = app.findRecordsByFilter(
-        "tankboek",
-        "partij = {:p}",
-        "-datum,-created",
-        20,
-        0,
-        {
-          p: partij.id,
-        },
-      );
-      const tanks = app.findRecordsByFilter("tanks", "huidige_partij = {:p}", "code", 10, 0, {
-        p: partij.id,
-      });
-      return {
-        gevonden: true,
-        partij: partijSamenvatting(partij),
-        huidige_tanks: tanks.map((t) => ({
-          code: t.getString("code"),
-          volume_l: t.getFloat("huidig_volume_l"),
-        })),
-        laatste_analyses: analyses.map(analyseSamenvatting),
-        tankboek_historie: tankboek.map(tankboekregelSamenvatting),
-      };
+      delen.push(`partij = {:p}`);
+      params.p = partij.id;
     }
-    case "zoek_tanks": {
-      const delen = [];
-      if (input.code) delen.push(`code = {:code}`);
-      if (input.status) delen.push(`status = {:status}`);
-      if (input.locatie) delen.push(`locatie ~ {:locatie}`);
-      const tanks = app.findRecordsByFilter(
-        "tanks",
-        delen.join(" && ") || "id != ''",
-        "code",
-        50,
-        0,
-        { code: input.code, status: input.status, locatie: input.locatie },
-      );
-      return tanks.map((t) => ({
-        code: t.getString("code"),
-        soort: t.getString("soort"),
-        capaciteit_l: t.getFloat("capaciteit_l"),
-        status: t.getString("status"),
-        huidig_volume_l: t.getFloat("huidig_volume_l"),
-        locatie: t.getString("locatie"),
-      }));
+    if (input.van) {
+      delen.push(`datum >= {:van}`);
+      params.van = input.van;
     }
-    case "zoek_metingen": {
-      const delen = [];
-      if (input.ras) delen.push(`rij.ras = {:ras}`);
-      if (input.rijnummer) delen.push(`rij.rijnummer = {:rijnummer}`);
-      if (input.van) delen.push(`datum >= {:van}`);
-      if (input.tot) delen.push(`datum <= {:tot}`);
-      const metingen = app.findRecordsByFilter(
-        "metingen",
-        delen.join(" && ") || "id != ''",
-        "-datum",
-        30,
-        0,
-        { ras: input.ras, rijnummer: input.rijnummer, van: input.van, tot: input.tot },
-      );
-      return metingen.map((m) => ({
-        datum: m.getString("datum"),
-        rij: m.getString("rij"),
-        brix: m.getFloat("brix") || null,
-        ph: m.getFloat("ph") || null,
-        zuurgraad: m.getFloat("zuurgraad") || null,
-        rijpheid_score: m.getFloat("rijpheid_score") || null,
-      }));
+    if (input.tot) {
+      delen.push(`datum <= {:tot}`);
+      params.tot = input.tot;
     }
-    case "zoek_observaties": {
-      const delen = [];
-      if (input.ras) delen.push(`rij.ras = {:ras}`);
-      if (input.rijnummer) delen.push(`rij.rijnummer = {:rijnummer}`);
-      if (input.type) delen.push(`type = {:type}`);
-      if (input.van) delen.push(`datum >= {:van}`);
-      if (input.tot) delen.push(`datum <= {:tot}`);
-      const obs = app.findRecordsByFilter(
-        "observaties",
-        delen.join(" && ") || "id != ''",
-        "-datum",
-        30,
-        0,
-        {
-          ras: input.ras,
-          rijnummer: input.rijnummer,
-          type: input.type,
-          van: input.van,
-          tot: input.tot,
-        },
-      );
-      return obs.map((o) => ({
-        datum: o.getString("datum"),
-        rij: o.getString("rij"),
-        type: o.getString("type"),
-        notitie: o.getString("notitie"),
-      }));
+    const regels = app.findRecordsByFilter(
+      "tankboek",
+      delen.join(" && ") || "id != ''",
+      "-datum,-created",
+      50,
+      0,
+      params,
+    );
+    return regels.map(tankboekregelSamenvatting);
+  },
+  zoek_inzichten(app, input) {
+    const delen = [];
+    if (input.inzicht_type) delen.push(`inzicht_type = {:t}`);
+    if (input.onderwerp) delen.push(`onderwerp ~ {:o}`);
+    const inzichten = app.findRecordsByFilter(
+      "inzichten",
+      delen.join(" && ") || "id != ''",
+      "-berekend_op",
+      20,
+      0,
+      { t: input.inzicht_type, o: input.onderwerp },
+    );
+    return inzichten.map((i) => ({
+      inzicht_type: i.getString("inzicht_type"),
+      onderwerp: i.getString("onderwerp"),
+      periode: i.getString("periode"),
+      samenvatting_nl: i.getString("samenvatting_nl"),
+      waarde: leesJsonVeld(i, "waarde"),
+    }));
+  },
+  zoek_advies_feedback(app, input) {
+    // advies_feedback verwijst naar agent_berichten; onderwerp is niet direct
+    // een veld op advies_feedback, dus we zoeken via de inhoud van het bericht.
+    const berichten = input.onderwerp
+      ? app.findRecordsByFilter(
+          "agent_berichten",
+          "inhoud ~ {:o} && rol = 'assistant'",
+          "-created",
+          10,
+          0,
+          {
+            o: input.onderwerp,
+          },
+        )
+      : [];
+    const berichtIds = berichten.map((b) => b.id);
+    if (berichtIds.length === 0) return [];
+    const filter = berichtIds.map((_, i) => `bericht_id = {:id${i}}`).join(" || ");
+    const params = {};
+    berichtIds.forEach((id, i) => (params[`id${i}`] = id));
+    const feedback = app.findRecordsByFilter("advies_feedback", filter, "-created", 10, 0, params);
+    return feedback.map((f) => ({
+      oordeel: f.getString("oordeel"),
+      toelichting: f.getString("toelichting"),
+    }));
+  },
+  analyseer_foto(app, input) {
+    return {
+      notitie: "wordt door de hoofdlus afgehandeld (heeft een aparte Anthropic-aanroep nodig)",
+    };
+  },
+  zoek_voorraad(app, input) {
+    const delen = [];
+    if (input.wijnnaam) delen.push(`wijnnaam ~ {:w}`);
+    if (input.jaargang) delen.push(`jaargang = {:j}`);
+    if (input.status) delen.push(`status = {:s}`);
+    const voorraad = app.findRecordsByFilter(
+      "voorraad_flessen",
+      delen.join(" && ") || "id != ''",
+      "-created",
+      20,
+      0,
+      { w: input.wijnnaam, j: input.jaargang, s: input.status },
+    );
+    return voorraad.map(voorraadSamenvatting);
+  },
+  voorraad_detail(app, input) {
+    const voorraad = logica.vindVoorraad(app, input.wijnnaam, input.jaargang);
+    if (!voorraad)
+      return { gevonden: false, notitie: `Geen voorraad gevonden voor "${input.wijnnaam}".` };
+    let bottelronde = null;
+    let tank = null;
+    try {
+      bottelronde = app.findRecordById("bottelrondes", voorraad.getString("bottelronde"));
+      if (bottelronde.getString("van_tank"))
+        tank = app.findRecordById("tanks", bottelronde.getString("van_tank"));
+    } catch (e) {
+      // bottelronde/tank kan ontbreken bij handmatig aangepaste data - geen harde fout
     }
-    case "zoek_oogst": {
-      const delen = [];
-      if (input.ras) delen.push(`ras = {:ras}`);
-      if (input.jaar) delen.push(`seizoen = {:jaar}`);
-      const oogst = app.findRecordsByFilter(
-        "oogst",
-        delen.join(" && ") || "id != ''",
-        "datum",
-        50,
-        0,
-        { ras: input.ras, jaar: input.jaar },
-      );
-      return oogst.map((o) => ({
-        datum: o.getString("datum"),
-        ras: o.getString("ras"),
-        kg: o.getFloat("kg"),
-        seizoen: o.getFloat("seizoen"),
-      }));
-    }
-    case "zoek_fenologie": {
-      const delen = [];
-      if (input.ras) delen.push(`ras = {:ras}`);
-      if (input.jaar) delen.push(`seizoen = {:jaar}`);
-      const fen = app.findRecordsByFilter(
-        "fenologie",
-        delen.join(" && ") || "id != ''",
-        "datum",
-        50,
-        0,
-        { ras: input.ras, jaar: input.jaar },
-      );
-      return fen.map((f) => ({
-        datum: f.getString("datum"),
-        ras: f.getString("ras"),
-        moment: f.getString("moment"),
-        seizoen: f.getFloat("seizoen"),
-      }));
-    }
-    case "zoek_tankboek": {
-      const delen = [];
-      const params = {};
-      if (input.tank) {
-        const tank = logica.vindTank(app, input.tank);
-        if (!tank) return { gevonden: false, notitie: `Geen tank gevonden voor "${input.tank}".` };
-        delen.push(`(van_tank = {:t} || naar_tank = {:t})`);
-        params.t = tank.id;
-      }
-      if (input.partij) {
-        const partij = logica.vindPartij(app, input.partij);
-        if (!partij)
-          return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
-        delen.push(`partij = {:p}`);
-        params.p = partij.id;
-      }
-      if (input.van) {
-        delen.push(`datum >= {:van}`);
-        params.van = input.van;
-      }
-      if (input.tot) {
-        delen.push(`datum <= {:tot}`);
-        params.tot = input.tot;
-      }
-      const regels = app.findRecordsByFilter(
-        "tankboek",
-        delen.join(" && ") || "id != ''",
-        "-datum,-created",
-        50,
-        0,
-        params,
-      );
-      return regels.map(tankboekregelSamenvatting);
-    }
-    case "zoek_inzichten": {
-      const delen = [];
-      if (input.inzicht_type) delen.push(`inzicht_type = {:t}`);
-      if (input.onderwerp) delen.push(`onderwerp ~ {:o}`);
-      const inzichten = app.findRecordsByFilter(
-        "inzichten",
-        delen.join(" && ") || "id != ''",
-        "-berekend_op",
-        20,
-        0,
-        { t: input.inzicht_type, o: input.onderwerp },
-      );
-      return inzichten.map((i) => ({
-        inzicht_type: i.getString("inzicht_type"),
-        onderwerp: i.getString("onderwerp"),
-        periode: i.getString("periode"),
-        samenvatting_nl: i.getString("samenvatting_nl"),
-        waarde: leesJsonVeld(i, "waarde"),
-      }));
-    }
-    case "zoek_advies_feedback": {
-      // advies_feedback verwijst naar agent_berichten; onderwerp is niet direct
-      // een veld op advies_feedback, dus we zoeken via de inhoud van het bericht.
-      const berichten = input.onderwerp
-        ? app.findRecordsByFilter(
-            "agent_berichten",
-            "inhoud ~ {:o} && rol = 'assistant'",
-            "-created",
-            10,
-            0,
-            {
-              o: input.onderwerp,
-            },
-          )
-        : [];
-      const berichtIds = berichten.map((b) => b.id);
-      if (berichtIds.length === 0) return [];
-      const filter = berichtIds.map((_, i) => `bericht_id = {:id${i}}`).join(" || ");
-      const params = {};
-      berichtIds.forEach((id, i) => (params[`id${i}`] = id));
-      const feedback = app.findRecordsByFilter(
-        "advies_feedback",
-        filter,
-        "-created",
-        10,
-        0,
-        params,
-      );
-      return feedback.map((f) => ({
-        oordeel: f.getString("oordeel"),
-        toelichting: f.getString("toelichting"),
-      }));
-    }
-    case "analyseer_foto": {
-      return {
-        notitie: "wordt door de hoofdlus afgehandeld (heeft een aparte Anthropic-aanroep nodig)",
-      };
-    }
-    case "zoek_voorraad": {
-      const delen = [];
-      if (input.wijnnaam) delen.push(`wijnnaam ~ {:w}`);
-      if (input.jaargang) delen.push(`jaargang = {:j}`);
-      if (input.status) delen.push(`status = {:s}`);
-      const voorraad = app.findRecordsByFilter(
-        "voorraad_flessen",
-        delen.join(" && ") || "id != ''",
-        "-created",
-        20,
-        0,
-        { w: input.wijnnaam, j: input.jaargang, s: input.status },
-      );
-      return voorraad.map(voorraadSamenvatting);
-    }
-    case "voorraad_detail": {
-      const voorraad = logica.vindVoorraad(app, input.wijnnaam, input.jaargang);
-      if (!voorraad)
-        return { gevonden: false, notitie: `Geen voorraad gevonden voor "${input.wijnnaam}".` };
-      let bottelronde = null;
-      let tank = null;
-      try {
-        bottelronde = app.findRecordById("bottelrondes", voorraad.getString("bottelronde"));
-        if (bottelronde.getString("van_tank"))
-          tank = app.findRecordById("tanks", bottelronde.getString("van_tank"));
-      } catch (e) {
-        // bottelronde/tank kan ontbreken bij handmatig aangepaste data - geen harde fout
-      }
-      const mutaties = app.findRecordsByFilter(
-        "voorraad_mutaties",
-        "voorraad = {:v}",
-        "-datum,-created",
-        20,
-        0,
-        { v: voorraad.id },
-      );
-      return {
-        gevonden: true,
-        voorraad: voorraadSamenvatting(voorraad),
-        herkomst: bottelronde
-          ? {
-              botteldatum: bottelronde.getString("botteldatum"),
-              aantal_flessen: bottelronde.getFloat("aantal_flessen"),
-              flesinhoud_ml: bottelronde.getFloat("flesinhoud_ml"),
-              lotnummer: bottelronde.getString("lotnummer"),
-              van_tank: tank ? tank.getString("code") : null,
-            }
-          : null,
-        mutatiehistorie: mutaties.map(voorraadMutatieSamenvatting),
-      };
-    }
-    default:
-      return { fout: `Onbekende lees-tool: ${naam}` };
-  }
+    const mutaties = app.findRecordsByFilter(
+      "voorraad_mutaties",
+      "voorraad = {:v}",
+      "-datum,-created",
+      20,
+      0,
+      { v: voorraad.id },
+    );
+    return {
+      gevonden: true,
+      voorraad: voorraadSamenvatting(voorraad),
+      herkomst: bottelronde
+        ? {
+            botteldatum: bottelronde.getString("botteldatum"),
+            aantal_flessen: bottelronde.getFloat("aantal_flessen"),
+            flesinhoud_ml: bottelronde.getFloat("flesinhoud_ml"),
+            lotnummer: bottelronde.getString("lotnummer"),
+            van_tank: tank ? tank.getString("code") : null,
+          }
+        : null,
+      mutatiehistorie: mutaties.map(voorraadMutatieSamenvatting),
+    };
+  },
+};
+
+function voerLeesToolUit(app, naam, input) {
+  const handler = LEES_HANDLERS[naam];
+  if (!handler) return { fout: `Onbekende lees-tool: ${naam}` };
+  return handler(app, input);
 }
 
 function partijSamenvatting(p) {
@@ -368,159 +367,163 @@ function voorraadMutatieSamenvatting(m) {
 
 // ============= Schrijf-tools: omzetten naar een voorstel =============
 
-// Retourneert { actie_type, payload, samenvatting } of { fout }. Schrijft NIETS.
+// Elke bouwer retourneert { actie_type, payload, samenvatting } of { fout } en
+// schrijft NIETS — dispatch is een lookup, zelfde registry-patroon als de
+// lees-tools hierboven (H2, §6.3).
+const VOORSTEL_BOUWERS = {
+  stel_tankboek_boeking_voor(app, input) {
+    const partij = logica.vindPartij(app, input.partij);
+    if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+    let vanTank = null;
+    let naarTank = null;
+    if (input.van_tank) {
+      vanTank = logica.vindTank(app, input.van_tank);
+      if (!vanTank) return { fout: `Geen tank gevonden voor "${input.van_tank}".` };
+    }
+    if (input.naar_tank) {
+      naarTank = logica.vindTank(app, input.naar_tank);
+      if (!naarTank) return { fout: `Geen tank gevonden voor "${input.naar_tank}".` };
+    }
+    const payload = {
+      datum: input.datum || logica.vandaagStr(),
+      partij: partij.id,
+      producent: partij.getString("producent"),
+      actie: input.actie,
+      van_tank: vanTank ? vanTank.id : "",
+      naar_tank: naarTank ? naarTank.id : "",
+      volume_l: input.volume_l,
+      notitie: input.notitie || "",
+    };
+    const samenvatting =
+      `Tankboek-boeking: ${input.actie}, partij ${partij.getString("naam")}` +
+      `${partij.getString("lotnummer") ? " (" + partij.getString("lotnummer") + ")" : ""}, ` +
+      `${input.volume_l} L` +
+      `${vanTank ? `, tank ${vanTank.getString("code")}` : ""}` +
+      `${naarTank ? ` -> tank ${naarTank.getString("code")}` : ""}` +
+      `${input.notitie ? `, reden: ${input.notitie}` : ""}`;
+    return { actie_type: "tankboek_boeking", payload, samenvatting };
+  },
+  stel_observatie_voor(app, input) {
+    const rij = logica.vindRij(app, input.rijnummer);
+    if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+    const notitie = input.beschrijving + (input.ernst ? ` (ernst: ${input.ernst})` : "");
+    const datum = logica.vandaagStr();
+    const payload = {
+      rij: rij.id,
+      plant: input.plant || null,
+      datum,
+      seizoen: Number(datum.slice(0, 4)),
+      type: input.type,
+      notitie,
+    };
+    const samenvatting =
+      `Observatie: rij ${input.rijnummer} (${rij.getString("ras")})` +
+      `${input.plant ? `, plant ${input.plant}` : ""} - ${input.type}: ${input.beschrijving}` +
+      `${input.ernst ? ` (ernst: ${input.ernst})` : ""}`;
+    return { actie_type: "observatie", payload, samenvatting };
+  },
+  stel_uitval_voor(app, input) {
+    const rij = logica.vindRij(app, input.rijnummer);
+    if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+    const notitie = `Uitval: ${input.aantal} planten. Reden: ${input.reden}`;
+    const datumUitval = logica.vandaagStr();
+    const payload = {
+      rij: rij.id,
+      datum: datumUitval,
+      seizoen: Number(datumUitval.slice(0, 4)),
+      type: "uitval",
+      notitie,
+    };
+    const samenvatting = `Uitval: rij ${input.rijnummer} (${rij.getString("ras")}), ${input.aantal} planten, reden: ${input.reden}`;
+    return { actie_type: "uitval", payload, samenvatting };
+  },
+  stel_kelderlog_voor(app, input) {
+    const partij = logica.vindPartij(app, input.partij);
+    if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+    const payload = {
+      datum: logica.vandaagStr(),
+      partij: partij.id,
+      actie: input.taak_type,
+      notitie: input.beschrijving,
+    };
+    const samenvatting = `Kelderlog: ${input.taak_type} bij partij ${partij.getString("naam")} - ${input.beschrijving}`;
+    return { actie_type: "kelderlog", payload, samenvatting };
+  },
+  stel_analyse_voor(app, input) {
+    const partij = logica.vindPartij(app, input.partij);
+    if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+    let dichtheid = null;
+    if (input.oechsle != null) dichtheid = logica.dichtheidVanOechsle(input.oechsle);
+    else if (input.brix != null) dichtheid = logica.dichtheidVanBrix(input.brix);
+    const payload = {
+      datum: logica.vandaagStr(),
+      partij: partij.id,
+      dichtheid_oechsle: dichtheid ? dichtheid.oechsle : null,
+      dichtheid_brix: dichtheid ? dichtheid.brix : null,
+      dichtheid_sg: dichtheid ? dichtheid.sg : null,
+      ph: input.ph != null ? input.ph : null,
+      alcohol_pct: input.alcohol_pct != null ? input.alcohol_pct : null,
+      restsuiker_g_l: input.restsuiker_g_l != null ? input.restsuiker_g_l : null,
+      totaalzuur_g_l: input.totaalzuur_g_l != null ? input.totaalzuur_g_l : null,
+      vluchtig_zuur_g_l: input.vluchtig_zuur_g_l != null ? input.vluchtig_zuur_g_l : null,
+      so2_vrij: input.so2_vrij != null ? input.so2_vrij : null,
+      so2_totaal: input.so2_totaal != null ? input.so2_totaal : null,
+      methode: "eigen_meting",
+    };
+    const samenvatting =
+      `Analyse: partij ${partij.getString("naam")}` +
+      `${dichtheid ? `, ${dichtheid.oechsle} °Oe / ${dichtheid.brix} °Bx` : ""}` +
+      `${input.ph != null ? `, pH ${input.ph}` : ""}`;
+    return { actie_type: "analyse", payload, samenvatting };
+  },
+  stel_bottelronde_voor(app, input) {
+    const partij = logica.vindPartij(app, input.partij);
+    if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+    const tank = logica.vindTank(app, input.van_tank);
+    if (!tank) return { fout: `Geen tank gevonden voor "${input.van_tank}".` };
+    const payload = {
+      partij: partij.id,
+      producent: partij.getString("producent"),
+      van_tank: tank.id,
+      botteldatum: input.botteldatum || logica.vandaagStr(),
+      aantal_flessen: input.aantal_flessen,
+      flesinhoud_ml: input.flesinhoud_ml,
+      flestype: input.flestype || "",
+      kleur_fles: input.kleur_fles || "",
+      parelwijn: !!input.parelwijn,
+      lotnummer: input.lotnummer || partij.getString("lotnummer") || "",
+    };
+    const volumeL = logica.round1((input.aantal_flessen * input.flesinhoud_ml) / 1000);
+    const samenvatting =
+      `Bottelronde: partij ${partij.getString("naam")}, ${input.aantal_flessen} flessen x ${input.flesinhoud_ml} ml ` +
+      `(${volumeL} L) uit tank ${tank.getString("code")}` +
+      `${payload.lotnummer ? `, lot ${payload.lotnummer}` : ""}`;
+    return { actie_type: "bottelronde", payload, samenvatting };
+  },
+  stel_voorraad_mutatie_voor(app, input) {
+    const voorraad = logica.vindVoorraad(app, input.wijnnaam, input.jaargang);
+    if (!voorraad) return { fout: `Geen voorraad gevonden voor "${input.wijnnaam}".` };
+    const afnameTypes = ["verkocht", "eigen_gebruik", "kapot", "weggegeven"];
+    let aantal = Number(input.aantal);
+    if (afnameTypes.indexOf(input.mutatie_type) !== -1) aantal = -Math.abs(aantal);
+    const payload = {
+      voorraad: voorraad.id,
+      mutatie_type: input.mutatie_type,
+      aantal,
+      datum: input.datum || logica.vandaagStr(),
+      afnemer_of_reden: input.afnemer_of_reden || "",
+    };
+    const samenvatting =
+      `Voorraadmutatie: ${input.mutatie_type}, ${voorraad.getString("wijnnaam")}, ${Math.abs(aantal)} flessen` +
+      `${input.afnemer_of_reden ? `, ${input.afnemer_of_reden}` : ""}`;
+    return { actie_type: "voorraad_mutatie", payload, samenvatting };
+  },
+};
+
 function bouwActieVoorstel(app, naam, input) {
-  switch (naam) {
-    case "stel_tankboek_boeking_voor": {
-      const partij = logica.vindPartij(app, input.partij);
-      if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
-      let vanTank = null;
-      let naarTank = null;
-      if (input.van_tank) {
-        vanTank = logica.vindTank(app, input.van_tank);
-        if (!vanTank) return { fout: `Geen tank gevonden voor "${input.van_tank}".` };
-      }
-      if (input.naar_tank) {
-        naarTank = logica.vindTank(app, input.naar_tank);
-        if (!naarTank) return { fout: `Geen tank gevonden voor "${input.naar_tank}".` };
-      }
-      const payload = {
-        datum: input.datum || logica.vandaagStr(),
-        partij: partij.id,
-        producent: partij.getString("producent"),
-        actie: input.actie,
-        van_tank: vanTank ? vanTank.id : "",
-        naar_tank: naarTank ? naarTank.id : "",
-        volume_l: input.volume_l,
-        notitie: input.notitie || "",
-      };
-      const samenvatting =
-        `Tankboek-boeking: ${input.actie}, partij ${partij.getString("naam")}` +
-        `${partij.getString("lotnummer") ? " (" + partij.getString("lotnummer") + ")" : ""}, ` +
-        `${input.volume_l} L` +
-        `${vanTank ? `, tank ${vanTank.getString("code")}` : ""}` +
-        `${naarTank ? ` -> tank ${naarTank.getString("code")}` : ""}` +
-        `${input.notitie ? `, reden: ${input.notitie}` : ""}`;
-      return { actie_type: "tankboek_boeking", payload, samenvatting };
-    }
-    case "stel_observatie_voor": {
-      const rij = logica.vindRij(app, input.rijnummer);
-      if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
-      const notitie = input.beschrijving + (input.ernst ? ` (ernst: ${input.ernst})` : "");
-      const datum = logica.vandaagStr();
-      const payload = {
-        rij: rij.id,
-        plant: input.plant || null,
-        datum,
-        seizoen: Number(datum.slice(0, 4)),
-        type: input.type,
-        notitie,
-      };
-      const samenvatting =
-        `Observatie: rij ${input.rijnummer} (${rij.getString("ras")})` +
-        `${input.plant ? `, plant ${input.plant}` : ""} - ${input.type}: ${input.beschrijving}` +
-        `${input.ernst ? ` (ernst: ${input.ernst})` : ""}`;
-      return { actie_type: "observatie", payload, samenvatting };
-    }
-    case "stel_uitval_voor": {
-      const rij = logica.vindRij(app, input.rijnummer);
-      if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
-      const notitie = `Uitval: ${input.aantal} planten. Reden: ${input.reden}`;
-      const datumUitval = logica.vandaagStr();
-      const payload = {
-        rij: rij.id,
-        datum: datumUitval,
-        seizoen: Number(datumUitval.slice(0, 4)),
-        type: "uitval",
-        notitie,
-      };
-      const samenvatting = `Uitval: rij ${input.rijnummer} (${rij.getString("ras")}), ${input.aantal} planten, reden: ${input.reden}`;
-      return { actie_type: "uitval", payload, samenvatting };
-    }
-    case "stel_kelderlog_voor": {
-      const partij = logica.vindPartij(app, input.partij);
-      if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
-      const payload = {
-        datum: logica.vandaagStr(),
-        partij: partij.id,
-        actie: input.taak_type,
-        notitie: input.beschrijving,
-      };
-      const samenvatting = `Kelderlog: ${input.taak_type} bij partij ${partij.getString("naam")} - ${input.beschrijving}`;
-      return { actie_type: "kelderlog", payload, samenvatting };
-    }
-    case "stel_analyse_voor": {
-      const partij = logica.vindPartij(app, input.partij);
-      if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
-      let dichtheid = null;
-      if (input.oechsle != null) dichtheid = logica.dichtheidVanOechsle(input.oechsle);
-      else if (input.brix != null) dichtheid = logica.dichtheidVanBrix(input.brix);
-      const payload = {
-        datum: logica.vandaagStr(),
-        partij: partij.id,
-        dichtheid_oechsle: dichtheid ? dichtheid.oechsle : null,
-        dichtheid_brix: dichtheid ? dichtheid.brix : null,
-        dichtheid_sg: dichtheid ? dichtheid.sg : null,
-        ph: input.ph != null ? input.ph : null,
-        alcohol_pct: input.alcohol_pct != null ? input.alcohol_pct : null,
-        restsuiker_g_l: input.restsuiker_g_l != null ? input.restsuiker_g_l : null,
-        totaalzuur_g_l: input.totaalzuur_g_l != null ? input.totaalzuur_g_l : null,
-        vluchtig_zuur_g_l: input.vluchtig_zuur_g_l != null ? input.vluchtig_zuur_g_l : null,
-        so2_vrij: input.so2_vrij != null ? input.so2_vrij : null,
-        so2_totaal: input.so2_totaal != null ? input.so2_totaal : null,
-        methode: "eigen_meting",
-      };
-      const samenvatting =
-        `Analyse: partij ${partij.getString("naam")}` +
-        `${dichtheid ? `, ${dichtheid.oechsle} °Oe / ${dichtheid.brix} °Bx` : ""}` +
-        `${input.ph != null ? `, pH ${input.ph}` : ""}`;
-      return { actie_type: "analyse", payload, samenvatting };
-    }
-    case "stel_bottelronde_voor": {
-      const partij = logica.vindPartij(app, input.partij);
-      if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
-      const tank = logica.vindTank(app, input.van_tank);
-      if (!tank) return { fout: `Geen tank gevonden voor "${input.van_tank}".` };
-      const payload = {
-        partij: partij.id,
-        producent: partij.getString("producent"),
-        van_tank: tank.id,
-        botteldatum: input.botteldatum || logica.vandaagStr(),
-        aantal_flessen: input.aantal_flessen,
-        flesinhoud_ml: input.flesinhoud_ml,
-        flestype: input.flestype || "",
-        kleur_fles: input.kleur_fles || "",
-        parelwijn: !!input.parelwijn,
-        lotnummer: input.lotnummer || partij.getString("lotnummer") || "",
-      };
-      const volumeL = logica.round1((input.aantal_flessen * input.flesinhoud_ml) / 1000);
-      const samenvatting =
-        `Bottelronde: partij ${partij.getString("naam")}, ${input.aantal_flessen} flessen x ${input.flesinhoud_ml} ml ` +
-        `(${volumeL} L) uit tank ${tank.getString("code")}` +
-        `${payload.lotnummer ? `, lot ${payload.lotnummer}` : ""}`;
-      return { actie_type: "bottelronde", payload, samenvatting };
-    }
-    case "stel_voorraad_mutatie_voor": {
-      const voorraad = logica.vindVoorraad(app, input.wijnnaam, input.jaargang);
-      if (!voorraad) return { fout: `Geen voorraad gevonden voor "${input.wijnnaam}".` };
-      const afnameTypes = ["verkocht", "eigen_gebruik", "kapot", "weggegeven"];
-      let aantal = Number(input.aantal);
-      if (afnameTypes.indexOf(input.mutatie_type) !== -1) aantal = -Math.abs(aantal);
-      const payload = {
-        voorraad: voorraad.id,
-        mutatie_type: input.mutatie_type,
-        aantal,
-        datum: input.datum || logica.vandaagStr(),
-        afnemer_of_reden: input.afnemer_of_reden || "",
-      };
-      const samenvatting =
-        `Voorraadmutatie: ${input.mutatie_type}, ${voorraad.getString("wijnnaam")}, ${Math.abs(aantal)} flessen` +
-        `${input.afnemer_of_reden ? `, ${input.afnemer_of_reden}` : ""}`;
-      return { actie_type: "voorraad_mutatie", payload, samenvatting };
-    }
-    default:
-      return { fout: `Onbekende schrijf-tool: ${naam}` };
-  }
+  const bouwer = VOORSTEL_BOUWERS[naam];
+  if (!bouwer) return { fout: `Onbekende schrijf-tool: ${naam}` };
+  return bouwer(app, input);
 }
 
 // ============= Bevestigde actie daadwerkelijk uitvoeren =============
