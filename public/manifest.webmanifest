@@ -1,7 +1,7 @@
 {
-  "name": "Wijngaard Buddy — De Tappenmars",
-  "short_name": "Wijngaard",
-  "description": "Veld-app voor De Tappenmars: metingen, observaties, oogst en gezondheid per rij",
+  "name": "Tappenmars Buddy — De Tappenmars",
+  "short_name": "Tappenmars",
+  "description": "Bedrijfsdashboard voor De Tappenmars: wijngaard, kelder, botteling en voorraad",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

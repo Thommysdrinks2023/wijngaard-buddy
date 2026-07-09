@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { APP_NAAM } from "@/config/app";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
@@ -341,8 +342,7 @@ function RapportPage() {
         </section>
 
         <p className="pb-4 text-center text-[10px] text-muted-foreground">
-          Wijngaard Buddy · {wijngaard.naam} ·{" "}
-          {format(new Date(), "d MMMM yyyy HH:mm", { locale: nl })}
+          {APP_NAAM} · {wijngaard.naam} · {format(new Date(), "d MMMM yyyy HH:mm", { locale: nl })}
         </p>
       </div>
     </>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { APP_NAAM } from "@/config/app";
 import { Download, X } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -31,7 +32,7 @@ export function InstalleerBanner() {
       <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_4px_20px_rgba(0,0,0,0.12)]">
         <img src="/logo-icon.png" alt="" className="h-10 w-10 object-contain" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground">Installeer Wijngaard Buddy</p>
+          <p className="text-sm font-semibold text-foreground">Installeer {APP_NAAM}</p>
           <p className="text-xs text-muted-foreground">Als app op je beginscherm — ook offline</p>
         </div>
         <button

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { APP_NAAM } from "@/config/app";
 import { Link } from "@tanstack/react-router";
 import { getWijngaardConfig } from "@/lib/wijngaard-config";
 
@@ -8,7 +9,7 @@ const STAPPEN = [
   {
     logo: true,
     emoji: "",
-    titel: "Welkom bij Wijngaard Buddy",
+    titel: `Welkom bij ${APP_NAAM}`,
     tekst: `De veld-app van ${getWijngaardConfig().naam}. Alles wat je in de wijngaard registreert — metingen, observaties, oogst — staat veilig op één plek en werkt ook zonder bereik.`,
   },
   {

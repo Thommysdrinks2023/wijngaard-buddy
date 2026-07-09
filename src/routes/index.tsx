@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { APP_NAAM } from "@/config/app";
 import { useEffect } from "react";
 import { AppHeader } from "@/components/app-header";
 import {
@@ -10,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/")({
   component: ModuleHub,
-  head: () => ({ meta: [{ title: "Tappenmars Buddy" }] }),
+  head: () => ({ meta: [{ title: APP_NAAM }] }),
 });
 
 const TEGELS = [
@@ -57,7 +58,7 @@ function ModuleHub() {
 
   return (
     <>
-      <AppHeader title="Tappenmars Buddy" subtitle="Kies een module" />
+      <AppHeader title={APP_NAAM} subtitle="Kies een module" />
       <div className="mx-auto max-w-screen-md px-3 py-4">
         <div className="grid grid-cols-2 gap-3">
           {TEGELS.map((tegel) => (

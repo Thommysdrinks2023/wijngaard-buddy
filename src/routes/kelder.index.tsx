@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { APP_NAAM } from "@/config/app";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { fetchTanks } from "@/lib/kelder-data";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/kelder/")({
   component: KelderDashboard,
   head: () => ({
     meta: [
-      { title: "Kelder — Tappenmars Buddy" },
+      { title: `Kelder — ${APP_NAAM}` },
       { name: "description", content: "Kelderdashboard: tanks en partijen." },
     ],
   }),

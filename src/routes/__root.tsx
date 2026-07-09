@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { APP_NAAM, APP_NAAM_KORT } from "@/config/app";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstalleerBanner } from "@/components/installeer-banner";
 import { Onboarding } from "@/components/onboarding";
@@ -56,13 +57,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: "theme-color", content: "#2d5a3d" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Wijngaard" },
-      { title: "Wijngaard — Veld-app" },
+      { name: "apple-mobile-web-app-title", content: APP_NAAM_KORT },
+      { title: APP_NAAM },
       {
         name: "description",
-        content: "Mobiele veld-app voor metingen en observaties per wijngaardrij.",
+        content: "Bedrijfsdashboard voor wijngaard, kelder en voorraad van De Tappenmars.",
       },
-      { property: "og:title", content: "Wijngaard" },
+      { property: "og:title", content: APP_NAAM },
       { property: "og:description", content: "Veld-app voor de wijngaard" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
