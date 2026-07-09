@@ -1,7 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { APP_NAAM } from "@/config/app";
 import { useEffect } from "react";
 import { AppHeader } from "@/components/app-header";
+import { fetchRijen } from "@/lib/data";
+import { fetchTanks, fetchVoorraadFlessen } from "@/lib/kelder-data";
 import {
   getAutoStartModule,
   getLaatsteModule,
@@ -48,6 +51,26 @@ const TEGELS = [
 function ModuleHub() {
   const navigate = useNavigate();
 
+  // Blok I.5 (ARCHITECTURE.md §2.3): live kerncijfer per tegel. De queries
+  // geven zonder login/verbinding gewoon [] terug — dan valt de tegel stil
+  // terug op zijn vaste omschrijving, nooit een misleidende "0".
+  const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
+  const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
+  const voorraadQ = useQuery({
+    queryKey: ["voorraad", "hub"],
+    queryFn: () => fetchVoorraadFlessen(),
+  });
+
+  const tanksInGebruik = (tanksQ.data ?? []).filter((t) => t.huidig_volume_l > 0);
+  const volumeInKelder = Math.round(tanksInGebruik.reduce((acc, t) => acc + t.huidig_volume_l, 0));
+  const flessenOpVoorraad = (voorraadQ.data ?? []).reduce((acc, v) => acc + v.aantal_huidig, 0);
+
+  const liveStat: Partial<Record<(typeof TEGELS)[number]["key"], string>> = {};
+  if ((rijenQ.data ?? []).length > 0) liveStat.wijngaard = `${rijenQ.data!.length} rijen`;
+  if (tanksInGebruik.length > 0)
+    liveStat.kelder = `${tanksInGebruik.length} tank${tanksInGebruik.length === 1 ? "" : "s"} in gebruik · ${volumeInKelder} L`;
+  if (flessenOpVoorraad > 0) liveStat.voorraad = `${flessenOpVoorraad} flessen op voorraad`;
+
   // Client-only: localStorage bestaat niet tijdens SSR, dus deze check kan
   // niet in beforeLoad (die draait ook server-side bij een verse paginalaad).
   useEffect(() => {
@@ -72,7 +95,9 @@ function ModuleHub() {
                 {tegel.emoji}
               </span>
               <span className="text-base font-semibold">{tegel.label}</span>
-              <span className="text-xs text-muted-foreground">{tegel.omschrijving}</span>
+              <span className="text-xs text-muted-foreground">
+                {liveStat[tegel.key] ?? tegel.omschrijving}
+              </span>
             </Link>
           ))}
         </div>
