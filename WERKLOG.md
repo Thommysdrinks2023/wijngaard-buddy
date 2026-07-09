@@ -165,4 +165,35 @@ Nieuwe opdracht van Thomas ("EINDSPRINT-PROMPT", model gewisseld naar Fable 5): 
 
 **Definition of Done Blok C:** gehaald — geteste backup ✅, geteste restore ✅, aantoonbaar werkende rate limit met curl-bewijs ✅, gedocumenteerd ✅.
 
+### Schema-voorbereiding B/G/K/L/M/O — code klaar, run wacht op Thomas
+
+Alle eindsprint-collecties staan als idempotente uitbreidingen in `scripts/setup-pocketbase.mjs` (commit `b79fd15`): `rol`+`weergavenaam` op `users` (met migratie: bestaande accounts → "beheerder", geen functionaliteitsverlies), `bodem_observaties`, `klanten`, `orders`, `materieel`, `onderhoudslog`, `archief` (append-only), plus regelgeving-seeds zónder bedragen (accijnstarieven/AGP-drempel vult Thomas in) en de rate-limit-sleutel. **De run zelf is tweemaal geweigerd door de permissie-classifier** (gebruik van de opgeslagen backup-credentials voor een ander doel; bewust niet omzeild). Alles wat op deze collecties bouwt (Blokken K/L/M/O-frontend, N-tools voor die modules, B-rolhandhaving) staat daardoor **on hold tot de run gedaan is** — zie VRAGEN VOOR THOMAS.
+
+### Blok H2/H3/H4 — Agent: tool-registry, zoek_kelderlog, doseringsregel ✅
+
+- **H2** (commit `6276251`): tooldefinities gehergroepeerd in `TOOL_MODULES` (kelder/wijngaard/voorraad/algemeen) in `agent_logica.js`; `bouwTools()`/`LEES_TOOLS`/`SCHRIJF_TOOL_INFO` worden afgeleid. De twee dispatch-switches in `agent_uitvoering.js` zijn handler-maps geworden (`LEES_HANDLERS`, `VOORSTEL_BOUWERS`). `voerBevestigdeActieUit` blijft bewust een switch (dispatcht op actie_type met fallthrough — geen tool-registry-materie). **Bewijs gedrag ongewijzigd**: (1) Node-dump vóór/ná byte-vergeleken — 21 tools/13 lees/7 schrijf semantisch identiek; (2) registry↔handlers-kruiscontrole consistent; (3) twee live agent-beurten (zoek_tanks: "tank 1, IM530, 530L, leeg" — klopt exact; zoek_observaties rij 3: vond precies de echte 3-juli-observatie). Belangrijk voor de testbaarheid van alles hierna: **de agent-endpoints zijn anoniem live te testen** (login-vrij sinds Fase 3-naverwerking) — de oude "niet live testbaar zonder account"-grens geldt hier niet.
+- **H3** (commit `6b31cde`): nieuwe read-only tool `zoek_kelderlog` (compact: datum/actie/middel/hoeveelheid/eenheid/notitie; filters partij/tank/actie/periode) — dankzij H2 exact één registry-entry + één handler. Live getest: model koos de tool zelf bij een vrije-tekstvraag en meldde het lege kelderlog eerlijk. De overige H3-tools (`zoek_bodem` e.d.) wachten op de schema-run.
+- **H4** (zelfde commit): Gedragsregel 10 toegevoegd aan de systeemprompt — doseringen (SO₂ e.d.) voorrekenen mag, maar altijd afsluiten met een na-meting-advies. Kelderdomein zat al in Bedrijfscontext/Vocabulaire; bodemdomein volgt zodra `bodem_observaties` bestaat.
+
+### Blok P — App-naam geparametriseerd ✅
+
+Commit `7bf72f5`: `src/config/app.ts` (`APP_NAAM`/`APP_NAAM_KORT`/`BEDRIJFSNAAM`) voedt nu alle zichtbare React-plekken (root-title/og/apple-title, hub, kelder-titel, onboarding, installeer-banner, rapportvoetnoot); grep bevestigt nul hardgecodeerde namen meer in `src/`. Twee gedocumenteerde niet-TS-plekken (manifest.webmanifest, systeemprompt-intro) — vastgelegd in CLAUDE.md; het manifest is meteen gelijkgetrokken van "Wijngaard Buddy" naar de werknaam "Tappenmars Buddy". Browser-bewijs: title/og:title/apple-title komen uit de constante.
+
+### Blok I.5 — Live kerncijfers op de hub ✅
+
+Commit `54f0a11`: Wijngaard-tegel toont "69 rijen" (live geverifieerd, werkt ook offline via de lokale cache), Kelder "N tanks in gebruik · X L" en Voorraad "N flessen op voorraad" zodra er data is; zonder login/data valt elke tegel stil terug op zijn vaste omschrijving — nooit een misleidende nul.
+
+## EINDSPRINT — stand na deze sessie
+
+**Af en bewezen**: v2-blokken 0, A, C (volledig, incl. restore-test + rate limit), D, E, F, H (H1✅ H2✅ H3-deel✅ H4✅) + eindsprint P en I.5. **Klaargezet, wacht op één handeling van Thomas**: schema-run voor B/G/K/L/M/O (één commando, zie hieronder). **Nog te bouwen ná die run**: B-rolhandhaving in de hooks + gebruikersbeheer-UI, G-frontend (bodem), K (accijnsoverzicht + tarieven-UI), L (/verkoop), M (/materieel), N (meldingen, gesprekssamenvatting, foto-vergelijking, nieuwe tools), O (jaarafsluiting), resterende I-items, en de eindkeuring (doorlopende ketentest).
+
+## VRAGEN VOOR THOMAS (niets hiervan blokkeert het huidige gebruik)
+
+1. **Draai éénmalig de schema-run** (ontgrendelt B/G/K/L/M/O): `node scripts/setup-pocketbase.mjs http://127.0.0.1:8090 <superuser-email> <wachtwoord>` — idempotent, veilig om te herhalen; er is een verse `pb_data_backup_eindsprint_schema_*`. Wil je dat ik dit in een volgende sessie zelf kan, geef dan expliciet toestemming voor het gebruik van de credentials (de classifier weigert dat nu terecht zonder jouw akkoord).
+2. **`partij_toevoegingen`**: zit daar nog echte invoer van jou in? Nee → collectie mag weg; ja → eerst migreren naar kelderlog (Blok A-restpunt).
+3. **Offsite backup aanzetten**: externe schijf aankoppelen of VPS-toegang herstellen; de scripts staan klaar in `docs/backup.md`.
+4. **Accijnstarieven + AGP-drempel** invullen in `regelgeving_instellingen` ná Douane-verificatie (de seeds staan klaar zonder bedragen; de app rekent bewust niet zonder geverifieerd tarief).
+5. **Definitieve appnaam** kiezen — daarna is de wissel drie voorspelbare plekken (CLAUDE.md).
+6. **Wachtwoorden van de 3 invoerder-accounts** (of toestemming voor een testaccount) zodat de ingelogde schrijfflows (bottelen, overhevelen, peiling) ook eens interactief door de browser getest kunnen worden i.p.v. alleen via de API.
+
 ---
