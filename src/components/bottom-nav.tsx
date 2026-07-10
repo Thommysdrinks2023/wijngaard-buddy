@@ -14,6 +14,7 @@ import {
   Sparkles,
   Package,
   ShoppingCart,
+  Wrench,
 } from "lucide-react";
 
 interface NavItem {
@@ -58,11 +59,18 @@ const VOORRAAD_ITEMS: NavItem[] = [
   { to: "/instellingen", label: "Meer", icon: Settings },
 ];
 
+const MATERIEEL_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/materieel", label: "Materieel", icon: Wrench },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
 function itemsVoorPad(pathname: string): NavItem[] | null {
   if (pathname === "/") return null; // modulekiezer = zelf het menu
   if (pathname.startsWith("/kelder")) return KELDER_ITEMS;
   if (pathname.startsWith("/assistent")) return ASSISTENT_ITEMS;
   if (pathname.startsWith("/voorraad") || pathname.startsWith("/verkoop")) return VOORRAAD_ITEMS;
+  if (pathname.startsWith("/materieel")) return MATERIEEL_ITEMS;
   return WIJNGAARD_ITEMS;
 }
 

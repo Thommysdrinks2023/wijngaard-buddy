@@ -36,6 +36,7 @@ import {
   BookOpen,
   NotebookPen,
   ShoppingCart,
+  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -203,6 +204,12 @@ const MENU_GROEPEN = [
     kop: "⚙️ Beheer",
     items: [
       { to: "/kaart", label: "GPS-kaart", omschrijving: "Rijlocaties vastleggen", icon: MapPinned },
+      {
+        to: "/materieel",
+        label: "Materieel",
+        omschrijving: "Machines en onderhoudslog",
+        icon: Wrench,
+      },
       {
         to: "/qr",
         label: "QR-codes printen",

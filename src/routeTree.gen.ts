@@ -23,6 +23,7 @@ import { Route as QrRouteImport } from './routes/qr'
 import { Route as PrullenbakRouteImport } from './routes/prullenbak'
 import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
 import { Route as OogstRouteImport } from './routes/oogst'
+import { Route as MaterieelRouteImport } from './routes/materieel'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as KelderRouteImport } from './routes/kelder'
@@ -126,6 +127,11 @@ const PerceelkaartRoute = PerceelkaartRouteImport.update({
 const OogstRoute = OogstRouteImport.update({
   id: '/oogst',
   path: '/oogst',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MaterieelRoute = MaterieelRouteImport.update({
+  id: '/materieel',
+  path: '/materieel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -312,6 +318,7 @@ export interface FileRoutesByFullPath {
   '/kelder': typeof KelderRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
+  '/materieel': typeof MaterieelRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/prullenbak': typeof PrullenbakRoute
@@ -361,6 +368,7 @@ export interface FileRoutesByTo {
   '/kaart': typeof KaartRoute
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
+  '/materieel': typeof MaterieelRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/prullenbak': typeof PrullenbakRoute
@@ -410,6 +418,7 @@ export interface FileRoutesById {
   '/kelder': typeof KelderRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
+  '/materieel': typeof MaterieelRoute
   '/oogst': typeof OogstRoute
   '/perceelkaart': typeof PerceelkaartRoute
   '/prullenbak': typeof PrullenbakRoute
@@ -462,6 +471,7 @@ export interface FileRouteTypes {
     | '/kelder'
     | '/lab'
     | '/login'
+    | '/materieel'
     | '/oogst'
     | '/perceelkaart'
     | '/prullenbak'
@@ -511,6 +521,7 @@ export interface FileRouteTypes {
     | '/kaart'
     | '/lab'
     | '/login'
+    | '/materieel'
     | '/oogst'
     | '/perceelkaart'
     | '/prullenbak'
@@ -559,6 +570,7 @@ export interface FileRouteTypes {
     | '/kelder'
     | '/lab'
     | '/login'
+    | '/materieel'
     | '/oogst'
     | '/perceelkaart'
     | '/prullenbak'
@@ -610,6 +622,7 @@ export interface RootRouteChildren {
   KelderRoute: typeof KelderRouteWithChildren
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
+  MaterieelRoute: typeof MaterieelRoute
   OogstRoute: typeof OogstRoute
   PerceelkaartRoute: typeof PerceelkaartRoute
   PrullenbakRoute: typeof PrullenbakRoute
@@ -729,6 +742,13 @@ declare module '@tanstack/react-router' {
       path: '/oogst'
       fullPath: '/oogst'
       preLoaderRoute: typeof OogstRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/materieel': {
+      id: '/materieel'
+      path: '/materieel'
+      fullPath: '/materieel'
+      preLoaderRoute: typeof MaterieelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -1050,6 +1070,7 @@ const rootRouteChildren: RootRouteChildren = {
   KelderRoute: KelderRouteWithChildren,
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
+  MaterieelRoute: MaterieelRoute,
   OogstRoute: OogstRoute,
   PerceelkaartRoute: PerceelkaartRoute,
   PrullenbakRoute: PrullenbakRoute,
