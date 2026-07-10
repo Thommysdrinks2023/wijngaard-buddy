@@ -283,4 +283,32 @@ function voerBottelrondeUit(txApp, b) {
   };
 }
 
-module.exports = { leesbareFout, voerBoekingUit, voerBottelrondeUit };
+// ============= Rollen (Eindsprint Blok B) =============
+// Superuser telt als beheerder; een leeg rol-veld telt als medewerker
+// (least privilege zonder de gewone invoer te blokkeren). Handhaving zit
+// hier server-side, niet alleen in de UI. Het login-vrije agent-pad valt
+// hier bewust buiten (Fase 3-beslissing; zie WERKLOG.md).
+function rolVan(auth) {
+  if (!auth) return "";
+  if (typeof auth.isSuperuser === "function" && auth.isSuperuser()) return "beheerder";
+  return auth.getString("rol") || "medewerker";
+}
+// Retourneert null als het mag, anders een nette Nederlandse weigering.
+function eisSchrijfrecht(auth) {
+  if (rolVan(auth) === "alleen_lezen")
+    return "Je account heeft alleen leesrechten — vraag de beheerder om een andere rol.";
+  return null;
+}
+function eisBeheerder(auth, actieNaam) {
+  if (rolVan(auth) !== "beheerder") return "Alleen een beheerder mag " + actieNaam + ".";
+  return null;
+}
+
+module.exports = {
+  leesbareFout,
+  voerBoekingUit,
+  voerBottelrondeUit,
+  rolVan,
+  eisSchrijfrecht,
+  eisBeheerder,
+};

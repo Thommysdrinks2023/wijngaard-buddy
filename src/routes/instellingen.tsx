@@ -778,6 +778,8 @@ function Instellingen() {
           )}
         </section>
 
+        <GebruikersBeheer />
+
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Backup
@@ -826,5 +828,89 @@ function Instellingen() {
         </section>
       </div>
     </>
+  );
+}
+
+// Eindsprint Blok B — gebruikersbeheer, alleen zichtbaar voor de rol
+// "beheerder". Loopt via de beheerder-only endpoints in gebruikers.pb.js;
+// de users-API-rules zelf blijven dicht.
+interface BeheerGebruiker {
+  id: string;
+  email: string;
+  naam: string;
+  weergavenaam: string;
+  rol: "beheerder" | "medewerker" | "alleen_lezen";
+}
+
+const ROL_LABELS: { value: BeheerGebruiker["rol"]; label: string }[] = [
+  { value: "beheerder", label: "Beheerder" },
+  { value: "medewerker", label: "Medewerker" },
+  { value: "alleen_lezen", label: "Alleen lezen" },
+];
+
+function GebruikersBeheer() {
+  const pb = getPb();
+  const eigenRol = (pb?.authStore.record?.["rol"] as string) || "";
+  const [gebruikers, setGebruikers] = useState<BeheerGebruiker[] | null>(null);
+  const [fout, setFout] = useState("");
+
+  useEffect(() => {
+    if (!pb || !pb.authStore.isValid || eigenRol !== "beheerder") return;
+    pb.send("/api/tappenmars/gebruikers", { method: "GET" })
+      .then((r: { gebruikers: BeheerGebruiker[] }) => setGebruikers(r.gebruikers))
+      .catch((e: Error) => setFout(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!pb || !pb.authStore.isValid || eigenRol !== "beheerder") return null;
+
+  const wijzigRol = async (id: string, rol: BeheerGebruiker["rol"]) => {
+    try {
+      await pb.send("/api/tappenmars/gebruiker-rol", {
+        method: "POST",
+        body: { user_id: id, rol },
+      });
+      setGebruikers((lijst) => (lijst ?? []).map((g) => (g.id === id ? { ...g, rol } : g)));
+      toast.success("Rol bijgewerkt ✓");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Gebruikers (beheerder)
+      </h2>
+      {fout && <p className="text-sm text-destructive">{fout}</p>}
+      <ul className="space-y-1.5">
+        {(gebruikers ?? []).map((g) => (
+          <li
+            key={g.id}
+            className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{g.weergavenaam || g.naam || g.email}</p>
+              <p className="truncate text-xs text-muted-foreground">{g.email}</p>
+            </div>
+            <select
+              value={g.rol}
+              onChange={(e) => wijzigRol(g.id, e.target.value as BeheerGebruiker["rol"])}
+              className="h-10 rounded-xl border border-input bg-card px-2 text-sm"
+            >
+              {ROL_LABELS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted-foreground">
+        Medewerkers mogen invoeren maar geen correcties boeken; alleen-lezen kan niets wijzigen. De
+        laatste beheerder kan niet gedegradeerd worden.
+      </p>
+    </section>
   );
 }

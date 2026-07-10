@@ -20,6 +20,13 @@ routerAdd(
     let resultaat = null;
     try {
       const b = e.requestInfo().body;
+      const kelderLogica = require(`${__hooks}/kelder_logica.js`);
+      const schrijfFout = kelderLogica.eisSchrijfrecht(e.auth);
+      if (schrijfFout) return e.json(403, { message: schrijfFout });
+      if (b.mutatie_type === "correctie") {
+        const rolFout = kelderLogica.eisBeheerder(e.auth, "voorraadcorrecties boeken");
+        if (rolFout) return e.json(403, { message: rolFout });
+      }
       e.app.runInTransaction((txApp) => {
         resultaat = logica.voerMutatieUit(txApp, b);
         if (resultaat.fout) throw new Error(resultaat.fout); // rollback

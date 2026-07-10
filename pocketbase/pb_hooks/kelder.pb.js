@@ -17,6 +17,13 @@ routerAdd(
     let resultaat = null;
     try {
       const b = e.requestInfo().body;
+      // Blok B — rolhandhaving vóór alles (dus ook vóór validatie)
+      const schrijfFout = logica.eisSchrijfrecht(e.auth);
+      if (schrijfFout) return e.json(403, { message: schrijfFout });
+      if (b.actie === "correctie" || b.corrigeert) {
+        const rolFout = logica.eisBeheerder(e.auth, "correctieboekingen doen");
+        if (rolFout) return e.json(403, { message: rolFout });
+      }
       e.app.runInTransaction((txApp) => {
         resultaat = logica.voerBoekingUit(txApp, b);
         if (resultaat.fout) throw new Error(resultaat.fout); // rollback
@@ -45,6 +52,8 @@ routerAdd(
     let resultaat = null;
     try {
       const b = e.requestInfo().body;
+      const schrijfFout = logica.eisSchrijfrecht(e.auth);
+      if (schrijfFout) return e.json(403, { message: schrijfFout });
       let partijId = "";
       e.app.runInTransaction((txApp) => {
         const col = txApp.findCollectionByNameOrId("partijen");
@@ -134,6 +143,8 @@ routerAdd(
     let resultaat = null;
     try {
       const b = e.requestInfo().body;
+      const schrijfFout = logica.eisSchrijfrecht(e.auth);
+      if (schrijfFout) return e.json(403, { message: schrijfFout });
       e.app.runInTransaction((txApp) => {
         resultaat = logica.voerBottelrondeUit(txApp, b);
         if (resultaat.fout) throw new Error(resultaat.fout); // rollback
@@ -161,6 +172,8 @@ routerAdd(
   (e) => {
     const logica = require(`${__hooks}/kelder_logica.js`);
     try {
+      const rolFout = logica.eisBeheerder(e.auth, "de herberekening draaien");
+      if (rolFout) return e.json(403, { message: rolFout });
       let bijgewerkt = 0;
       e.app.runInTransaction((txApp) => {
         const tanks = txApp.findRecordsByFilter("tanks", "id != ''", "code", 500, 0);
