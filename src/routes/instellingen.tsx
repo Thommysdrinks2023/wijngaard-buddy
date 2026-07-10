@@ -35,6 +35,7 @@ import {
   Package,
   BookOpen,
   NotebookPen,
+  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -183,6 +184,12 @@ const MENU_GROEPEN = [
         label: "Bottelen",
         omschrijving: "Start een bottelronde vanuit een partij",
         icon: Wine,
+      },
+      {
+        to: "/verkoop",
+        label: "Verkoop",
+        omschrijving: "Klanten, orders en omzet",
+        icon: ShoppingCart,
       },
     ],
   },

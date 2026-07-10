@@ -99,4 +99,14 @@ function voerMutatieUit(txApp, b) {
   };
 }
 
-module.exports = { leesbareFout, voerMutatieUit };
+// record.get("jsonveld") levert in de JSVM een types.JSONRaw (byte-array) op —
+// zelfde valkuil als gedocumenteerd in CLAUDE.md/agent_uitvoering.js.
+function leesJsonVeld(record, veld) {
+  const ruw = record.get(veld);
+  if (ruw == null) return null;
+  if (typeof ruw === "object" && typeof ruw.string === "function") return JSON.parse(ruw.string());
+  if (typeof ruw === "string") return JSON.parse(ruw);
+  return ruw;
+}
+
+module.exports = { leesbareFout, voerMutatieUit, leesJsonVeld };

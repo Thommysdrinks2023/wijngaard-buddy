@@ -13,6 +13,7 @@ import { Route as ZoekenRouteImport } from './routes/zoeken'
 import { Route as WijngaardRouteImport } from './routes/wijngaard'
 import { Route as WerkrapportRouteImport } from './routes/werkrapport'
 import { Route as VoorraadRouteImport } from './routes/voorraad'
+import { Route as VerkoopRouteImport } from './routes/verkoop'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as SnelRouteImport } from './routes/snel'
 import { Route as SeizoenRouteImport } from './routes/seizoen'
@@ -74,6 +75,11 @@ const WerkrapportRoute = WerkrapportRouteImport.update({
 const VoorraadRoute = VoorraadRouteImport.update({
   id: '/voorraad',
   path: '/voorraad',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerkoopRoute = VerkoopRouteImport.update({
+  id: '/verkoop',
+  path: '/verkoop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrendsRoute = TrendsRouteImport.update({
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/seizoen': typeof SeizoenRoute
   '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
+  '/verkoop': typeof VerkoopRoute
   '/voorraad': typeof VoorraadRouteWithChildren
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByTo {
   '/seizoen': typeof SeizoenRoute
   '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
+  '/verkoop': typeof VerkoopRoute
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
@@ -403,6 +411,7 @@ export interface FileRoutesById {
   '/seizoen': typeof SeizoenRoute
   '/snel': typeof SnelRoute
   '/trends': typeof TrendsRoute
+  '/verkoop': typeof VerkoopRoute
   '/voorraad': typeof VoorraadRouteWithChildren
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
@@ -453,6 +462,7 @@ export interface FileRouteTypes {
     | '/seizoen'
     | '/snel'
     | '/trends'
+    | '/verkoop'
     | '/voorraad'
     | '/werkrapport'
     | '/wijngaard'
@@ -500,6 +510,7 @@ export interface FileRouteTypes {
     | '/seizoen'
     | '/snel'
     | '/trends'
+    | '/verkoop'
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
@@ -546,6 +557,7 @@ export interface FileRouteTypes {
     | '/seizoen'
     | '/snel'
     | '/trends'
+    | '/verkoop'
     | '/voorraad'
     | '/werkrapport'
     | '/wijngaard'
@@ -595,6 +607,7 @@ export interface RootRouteChildren {
   SeizoenRoute: typeof SeizoenRoute
   SnelRoute: typeof SnelRoute
   TrendsRoute: typeof TrendsRoute
+  VerkoopRoute: typeof VerkoopRoute
   VoorraadRoute: typeof VoorraadRouteWithChildren
   WerkrapportRoute: typeof WerkrapportRoute
   WijngaardRoute: typeof WijngaardRoute
@@ -634,6 +647,13 @@ declare module '@tanstack/react-router' {
       path: '/voorraad'
       fullPath: '/voorraad'
       preLoaderRoute: typeof VoorraadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verkoop': {
+      id: '/verkoop'
+      path: '/verkoop'
+      fullPath: '/verkoop'
+      preLoaderRoute: typeof VerkoopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/trends': {
@@ -1018,6 +1038,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeizoenRoute: SeizoenRoute,
   SnelRoute: SnelRoute,
   TrendsRoute: TrendsRoute,
+  VerkoopRoute: VerkoopRoute,
   VoorraadRoute: VoorraadRouteWithChildren,
   WerkrapportRoute: WerkrapportRoute,
   WijngaardRoute: WijngaardRoute,

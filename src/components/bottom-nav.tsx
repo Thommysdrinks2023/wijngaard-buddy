@@ -13,6 +13,7 @@ import {
   Container,
   Sparkles,
   Package,
+  ShoppingCart,
 } from "lucide-react";
 
 interface NavItem {
@@ -53,6 +54,7 @@ const ASSISTENT_ITEMS: NavItem[] = [
 const VOORRAAD_ITEMS: NavItem[] = [
   { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/voorraad", label: "Voorraad", icon: Package, exact: true },
+  { to: "/verkoop", label: "Verkoop", icon: ShoppingCart },
   { to: "/instellingen", label: "Meer", icon: Settings },
 ];
 
@@ -60,7 +62,7 @@ function itemsVoorPad(pathname: string): NavItem[] | null {
   if (pathname === "/") return null; // modulekiezer = zelf het menu
   if (pathname.startsWith("/kelder")) return KELDER_ITEMS;
   if (pathname.startsWith("/assistent")) return ASSISTENT_ITEMS;
-  if (pathname.startsWith("/voorraad")) return VOORRAAD_ITEMS;
+  if (pathname.startsWith("/voorraad") || pathname.startsWith("/verkoop")) return VOORRAAD_ITEMS;
   return WIJNGAARD_ITEMS;
 }
 

@@ -515,3 +515,46 @@ export const AGENT_ACTIE_CONFIG: Record<
   bottelronde: { label: "Bottelronde", emoji: "🍾", randKlasse: "border-primary" },
   voorraad_mutatie: { label: "Voorraadmutatie", emoji: "📦", randKlasse: "border-accent-gold" },
 };
+
+// ============= Verkoop licht (Eindsprint Blok L) =============
+// Geen facturatie/btw — de voorraadmutatie blijft de bron van waarheid;
+// de order is administratie eromheen (zie order-leveren in voorraad.pb.js).
+export type KlantType = "particulier" | "horeca" | "winkel" | "evenement";
+export const KLANT_TYPES: { value: KlantType; label: string; emoji: string }[] = [
+  { value: "particulier", label: "Particulier", emoji: "🧑" },
+  { value: "horeca", label: "Horeca", emoji: "🍽️" },
+  { value: "winkel", label: "Winkel", emoji: "🏪" },
+  { value: "evenement", label: "Evenement", emoji: "🎪" },
+];
+
+export interface Klant {
+  id: string;
+  naam: string;
+  type: KlantType | null;
+  contact?: string;
+  notities?: string;
+}
+
+export interface OrderRegel {
+  voorraad: string; // voorraad_flessen id
+  aantal: number;
+  prijs: number; // per fles, EUR
+}
+
+export type OrderStatus = "concept" | "geleverd" | "betaald";
+export const ORDER_STATUSSEN: { value: OrderStatus; label: string; emoji: string }[] = [
+  { value: "concept", label: "Concept", emoji: "📝" },
+  { value: "geleverd", label: "Geleverd", emoji: "🚚" },
+  { value: "betaald", label: "Betaald", emoji: "✅" },
+];
+
+export interface Order {
+  id: string;
+  klant: string; // klant id
+  datum: string;
+  regels: OrderRegel[];
+  status: OrderStatus;
+  notities?: string;
+  ingevoerd_door?: string;
+  created: string;
+}

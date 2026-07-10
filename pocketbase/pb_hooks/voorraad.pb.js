@@ -45,3 +45,83 @@ routerAdd(
   },
   $apis.requireAuth(),
 );
+
+// ---------- POST /api/tappenmars/order-leveren ----------
+// Eindsprint Blok L. Eén gebruikersactie -> per orderregel een
+// voorraad_mutatie (type "verkocht", met order-referentie) + de order op
+// "geleverd", alles in één transactie. De voorraadmutatie blijft de enige
+// bron van waarheid; de order is administratie eromheen. Faalt één regel
+// (bv. te weinig voorraad), dan rolt alles terug en blijft de order concept.
+routerAdd(
+  "POST",
+  "/api/tappenmars/order-leveren",
+  (e) => {
+    const logica = require(`${__hooks}/voorraad_logica.js`);
+    const kelderLogica = require(`${__hooks}/kelder_logica.js`);
+    let fout = "";
+    try {
+      const schrijfFout = kelderLogica.eisSchrijfrecht(e.auth);
+      if (schrijfFout) return e.json(403, { message: schrijfFout });
+      const b = e.requestInfo().body;
+      if (!b.order_id) throw new BadRequestError("order_id is verplicht.");
+      const naam =
+        b.verantwoordelijke ||
+        (e.auth &&
+          !e.auth.isSuperuser() &&
+          (e.auth.getString("name") || e.auth.getString("email"))) ||
+        "onbekend";
+
+      const nu = new Date();
+      const vandaag =
+        nu.getFullYear() +
+        "-" +
+        String(nu.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(nu.getDate()).padStart(2, "0");
+
+      const resultaten = [];
+      e.app.runInTransaction((txApp) => {
+        const order = txApp.findRecordById("orders", b.order_id);
+        if (order.getString("status") !== "concept") {
+          fout = "Deze order is al geleverd of betaald.";
+          throw new Error(fout);
+        }
+        const regels = logica.leesJsonVeld(order, "regels");
+        if (!Array.isArray(regels) || regels.length === 0) {
+          fout = "De order heeft geen regels.";
+          throw new Error(fout);
+        }
+        let klantNaam = "";
+        try {
+          klantNaam = txApp.findRecordById("klanten", order.getString("klant")).getString("naam");
+        } catch (err) {
+          /* klant kan ontbreken bij handmatig gewijzigde data */
+        }
+        for (let i = 0; i < regels.length; i++) {
+          const regel = regels[i];
+          const resultaat = logica.voerMutatieUit(txApp, {
+            voorraad: regel.voorraad,
+            mutatie_type: "verkocht",
+            aantal: regel.aantal,
+            datum: order.getString("datum") <= vandaag ? order.getString("datum") : vandaag,
+            afnemer_of_reden: "Order " + order.id + (klantNaam ? " — " + klantNaam : ""),
+            ingevoerd_door: naam,
+            vineyard_id: order.getString("vineyard_id"),
+          });
+          if (resultaat.fout) {
+            fout = "Regel " + (i + 1) + ": " + resultaat.fout;
+            throw new Error(fout);
+          }
+          resultaten.push({ voorraad: regel.voorraad, aantal_huidig: resultaat.aantal_huidig });
+        }
+        order.set("status", "geleverd");
+        txApp.save(order);
+      });
+      return e.json(200, { ok: true, geleverd: resultaten });
+    } catch (err) {
+      if (fout) throw new BadRequestError(fout);
+      throw logica.leesbareFout(err);
+    }
+  },
+  $apis.requireAuth(),
+);
