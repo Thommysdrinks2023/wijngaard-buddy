@@ -155,10 +155,6 @@ const KELDERLOG_ACTIES = [
 ];
 const KELDERLOG_EENHEDEN = ["g", "kg", "ml", "l", "g_hl", "mg_l"];
 const ANALYSE_METHODEN = ["eigen_meting", "extern_lab"];
-// Kelderuitbreiding: eenheden voor partij_toevoegingen — bewust een eigen,
-// voluit geschreven set i.p.v. hergebruik van KELDERLOG_EENHEDEN (andere
-// collectie, geen gedeelde betekenis nodig).
-const TOEVOEGING_EENHEDEN = ["gram", "kilogram", "ml", "liter", "mg_per_liter"];
 // Fase 4 — Botteling & Voorraad
 const VOORRAAD_STATUSSEN = ["op_voorraad", "uitverkocht"];
 const VOORRAAD_MUTATIE_TYPES = ["verkocht", "eigen_gebruik", "kapot", "weggegeven", "correctie"];
@@ -1025,47 +1021,10 @@ async function main() {
     { name: "koeling", type: "text" },
   ]);
 
-  // 3a-8c. Partij-toevoegingen — vrije lijst i.p.v. vaste velden per middel
-  // (Bentoniet/Oenopur/Go-Ferm/...), zodat Thomas zelf nieuwe toevoegingen kan
-  // invoeren zonder schemawijziging. Zelfde AUTH_RULE-niveau als analyses/
-  // kelderlog (geen wettelijk register zoals tankboek, dus geen lockdown).
-  await ensureCollection({
-    name: "partij_toevoegingen",
-    type: "base",
-    fields: [
-      {
-        name: "partij",
-        type: "relation",
-        required: true,
-        collectionId: partijenCol.id,
-        cascadeDelete: false,
-        maxSelect: 1,
-      },
-      { name: "naam", type: "text", required: true },
-      { name: "hoeveelheid", type: "number", required: true },
-      {
-        name: "eenheid",
-        type: "select",
-        required: true,
-        maxSelect: 1,
-        values: TOEVOEGING_EENHEDEN,
-      },
-      { name: "datum", type: "text", required: true },
-      { name: "notities", type: "text" },
-      { name: "ingevoerd_door", type: "text" },
-      ...autodateFields(),
-    ],
-    listRule: AUTH_RULE,
-    viewRule: AUTH_RULE,
-    createRule: AUTH_RULE,
-    updateRule: AUTH_RULE,
-    deleteRule: AUTH_RULE,
-  });
-
   // 3a-8d. Voedingswaarde-/etiketberekening — losstaande rekentool gekoppeld aan
   // een partij (voor het energielabel bij botteling), géén bottelfunctionaliteit
   // zelf. Elke berekening is een los, nooit overschreven record (historie).
-  // Zelfde AUTH_RULE-niveau als analyses/kelderlog/partij_toevoegingen.
+  // Zelfde AUTH_RULE-niveau als analyses/kelderlog.
   const voedingswaardeCol = await ensureCollection({
     name: "voedingswaarde_berekeningen",
     type: "base",
@@ -1767,7 +1726,6 @@ async function main() {
     "analyses",
     "kelderlog",
     "regelgeving_instellingen",
-    "partij_toevoegingen",
     "voedingswaarde_berekeningen",
     "bottelrondes",
     "voorraad_flessen",

@@ -315,15 +315,6 @@ export interface KelderlogRegel {
 // Vrije lijst i.p.v. vaste velden per middel (Bentoniet/Sulfiet/...): Thomas kan
 // zelf nieuwe toevoegingen invoeren zonder schemawijziging. VEELGEBRUIKTE_TOEVOEGINGEN
 // is puur een autocomplete-suggestielijst, geen enum — het naam-veld blijft vrije tekst.
-export type ToevoegingEenheid = "gram" | "kilogram" | "ml" | "liter" | "mg_per_liter";
-export const TOEVOEGING_EENHEDEN: { value: ToevoegingEenheid; label: string }[] = [
-  { value: "gram", label: "gram" },
-  { value: "kilogram", label: "kilogram" },
-  { value: "ml", label: "ml" },
-  { value: "liter", label: "liter" },
-  { value: "mg_per_liter", label: "mg/liter" },
-];
-
 export const VEELGEBRUIKTE_TOEVOEGINGEN = [
   "Bentoniet",
   "Oenopur",
@@ -334,18 +325,6 @@ export const VEELGEBRUIKTE_TOEVOEGINGEN = [
   "Panzym extract",
   "Ao/Fo",
 ];
-
-export interface PartijToevoeging {
-  id: string;
-  partij: string; // partij id
-  naam: string;
-  hoeveelheid: number;
-  eenheid: ToevoegingEenheid;
-  datum: string;
-  notities?: string;
-  ingevoerd_door?: string;
-  created: string;
-}
 
 // ============= Voedingswaarde-/etiketberekening (kelderuitbreiding) =============
 // Losstaande rekentool gekoppeld aan een partij; elke berekening is een los,

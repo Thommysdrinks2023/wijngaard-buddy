@@ -14,7 +14,6 @@ import {
   fetchProducenten,
   fetchTankboek,
   fetchTanks,
-  fetchToevoegingen,
   fetchVoedingswaardeBerekeningen,
   fetchVoorraadFlessen,
 } from "@/lib/kelder-data";
@@ -38,7 +37,6 @@ import {
   KELDERLOG_EENHEDEN,
   PARTIJ_STATUSSEN,
   TANKBOEK_ACTIES,
-  TOEVOEGING_EENHEDEN,
   VEELGEBRUIKTE_TOEVOEGINGEN,
   type KelderlogActie,
   type KelderlogEenheid,
@@ -94,10 +92,6 @@ function PartijDetailPage() {
   const kelderlogQ = useQuery({
     queryKey: ["kelderlog", partijId],
     queryFn: () => fetchKelderlog(partijId),
-  });
-  const toevoegingenQ = useQuery({
-    queryKey: ["toevoegingen", partijId],
-    queryFn: () => fetchToevoegingen(partijId),
   });
   const voedingswaardeQ = useQuery({
     queryKey: ["voedingswaarde", partijId],
@@ -1034,39 +1028,6 @@ function PartijDetailPage() {
             </ul>
           )}
         </section>
-
-        {/* Toevoegingen (oud systeem, alleen-lezen): sinds Blok A (WERKLOG.md) gaan
-            nieuwe toevoegingen via het Logboek hieronder (actie "toevoeging"). Deze
-            sectie toont alleen nog records uit vóór die samenvoeging, en verdwijnt
-            vanzelf zodra een partij daar geen data van heeft. */}
-        {(toevoegingenQ.data ?? []).length > 0 && (
-          <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Toevoegingen (oud, {toevoegingenQ.data?.length})
-            </h2>
-            <ul className="space-y-1.5">
-              {(toevoegingenQ.data ?? []).map((t) => {
-                const eenheid = TOEVOEGING_EENHEDEN.find((e2) => e2.value === t.eenheid);
-                return (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">
-                        {t.naam} · {t.hoeveelheid} {eenheid?.label ?? t.eenheid}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(parseISO(t.datum), "d MMM yyyy", { locale: nl })}
-                        {t.notities ? ` · ${t.notities}` : ""}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
 
         {/* Kelderlog */}
         <section>

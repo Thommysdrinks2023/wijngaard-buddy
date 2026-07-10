@@ -10,13 +10,11 @@ import type {
   KelderlogActie,
   KelderlogEenheid,
   KelderlogRegel,
-  PartijToevoeging,
   Producent,
   Tank,
   TankboekActie,
   TankboekRegel,
   TankStatus,
-  ToevoegingEenheid,
   VoedingswaardeBerekening,
   VoorraadFles,
   VoorraadMutatie,
@@ -343,39 +341,8 @@ export async function createKelderlog(input: KelderlogInput): Promise<KelderlogR
   return kelderlogFromPb(r);
 }
 
-// ============= Partij-toevoegingen =============
-// Zelfde patroon als analyses/kelderlog: vrij toevoegen, nooit bewerken/
-// verwijderen — het is een historisch registratielijstje, geen beheerlijst.
-function toevoegingFromPb(r: RecordModel): PartijToevoeging {
-  return {
-    id: r.id,
-    partij: r["partij"],
-    naam: r["naam"],
-    hoeveelheid: r["hoeveelheid"],
-    eenheid: r["eenheid"],
-    datum: r["datum"],
-    notities: r["notities"] ?? "",
-    ingevoerd_door: r["ingevoerd_door"] ?? "",
-    created: r["created"],
-  };
-}
-
-export async function fetchToevoegingen(partijId: string): Promise<PartijToevoeging[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("partij_toevoegingen").getFullList({
-    sort: "-datum,-created",
-    filter: `partij = "${partijId}"`,
-  });
-  return records.map(toevoegingFromPb);
-}
-
-// `partij_toevoegingen` heeft geen create-functie meer — nieuwe toevoegingen
-// gaan sinds Blok A (WERKLOG.md) via `createKelderlog` met `actie: "toevoeging"`.
-// `fetchToevoegingen` blijft bestaan zodat eventuele oudere records leesbaar blijven.
-
 // ============= Voedingswaarde-/etiketberekeningen =============
-// Zelfde patroon als analyses/kelderlog/partij_toevoegingen: vrij toevoegen,
+// Zelfde patroon als analyses/kelderlog: vrij toevoegen,
 // nooit bewerken/verwijderen — elke berekening is een los historisch record.
 function voedingswaardeFromPb(r: RecordModel): VoedingswaardeBerekening {
   return {
