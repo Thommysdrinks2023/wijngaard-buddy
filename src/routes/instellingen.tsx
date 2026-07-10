@@ -168,6 +168,12 @@ const MENU_GROEPEN = [
         omschrijving: "Oogst, productie en botteling per jaargang",
         icon: BarChart3,
       },
+      {
+        to: "/kelder/accijns",
+        label: "Accijns",
+        omschrijving: "Indicatief overzicht per aangifteperiode",
+        icon: FileText,
+      },
     ],
   },
   {
