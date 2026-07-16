@@ -9,8 +9,10 @@ import { useState } from "react";
 import { getPb } from "@/lib/data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { fetchMaterieel, fetchOnderhoud, onderhoudBinnenkort } from "@/lib/materieel-data";
+import { fetchKelderlog } from "@/lib/kelder-data";
 import { fetchRegelgevingInstellingen, REGELGEVING_SLEUTELS } from "@/lib/regelgeving-data";
 import { X } from "lucide-react";
+import { addDays, format } from "date-fns";
 
 const LS_AFGEVINKT = "wg.meldingen.afgevinkt.v1";
 
@@ -69,8 +71,27 @@ export function Meldingen() {
     queryKey: ["regelgeving", "meldingen"],
     queryFn: fetchRegelgevingInstellingen,
   });
+  const kelderlogQ = useQuery({
+    queryKey: ["kelderlog", "meldingen"],
+    queryFn: () => fetchKelderlog(),
+  });
 
   const meldingen: Melding[] = [];
+
+  // Kelderlog-taken (Fase 7 Blok C: na-meting SO₂, gistvoedingsschema).
+  // Conventie: notitie begint met "TAAK:"; tonen zodra de datum binnen 7 dagen
+  // ligt of verstreken is. Afvinken gebeurt via het meldingenkruisje.
+  const taakGrens = format(addDays(new Date(), 7), "yyyy-MM-dd");
+  for (const r of kelderlogQ.data ?? []) {
+    if (!r.notitie?.startsWith("TAAK:")) continue;
+    if (r.datum > taakGrens) continue;
+    meldingen.push({
+      id: `taak-${r.id}`,
+      tekst: `${r.datum}: ${r.notitie.slice(5).trim()}`,
+      ernst: r.datum <= format(new Date(), "yyyy-MM-dd") ? "waarschuwing" : "info",
+      link: "/kelder",
+    });
+  }
 
   for (const i of inzichtenQ.data ?? []) {
     meldingen.push({ id: i.id, tekst: i.tekst, ernst: "waarschuwing", link: "/assistent" });

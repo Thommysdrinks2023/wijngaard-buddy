@@ -43,6 +43,7 @@ import {
   type PartijStatus,
 } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
+import { CalculatorsSectie } from "@/components/calculators-sectie";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import {
@@ -451,6 +452,19 @@ function PartijDetailPage() {
             </div>
           </div>
         </section>
+
+        {/* Calculators (Fase 7 Blok C) */}
+        <CalculatorsSectie
+          partijId={partijId}
+          tankId={tanksVanPartij[0]?.id ?? null}
+          volumeL={huidigVolume}
+          laatstePh={laatsteAnalyse?.ph ?? null}
+          laatsteSo2Vrij={laatsteAnalyse?.so2_vrij ?? null}
+          laatsteOechsle={
+            laatsteAnalyse?.dichtheid_oechsle ?? partij?.start_dichtheid_oechsle ?? null
+          }
+          laatsteTotaalzuur={laatsteAnalyse?.totaalzuur_g_l ?? null}
+        />
 
         {/* Acties */}
         <div className="grid grid-cols-3 gap-2">

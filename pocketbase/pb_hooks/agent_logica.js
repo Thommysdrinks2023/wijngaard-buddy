@@ -692,8 +692,85 @@ const MATERIEEL_TOOLS = [
   },
 ];
 
+// Fase 7 Blok C — oenologische reken-tools (lees-only; formules gespiegeld
+// uit src/lib/oenologie.ts, zie docs/oenologie-formules.md). Het resultaat is
+// een advies; een eventuele boeking loopt via stel_kelderlog_voor.
+const OENOLOGIE_TOOLS = [
+  {
+    lezen: true,
+    schema: {
+      name: "bereken_so2",
+      description:
+        "Moleculair SO2 + doseeradvies (gram KMS) uit pH, vrije SO2, volume en streefwaarde (default 0,8 mg/L moleculair). Advies - boeken kan daarna via stel_kelderlog_voor.",
+      input_schema: {
+        type: "object",
+        properties: {
+          ph: { type: "number" },
+          vrij_so2_mg_l: { type: "number" },
+          volume_l: { type: "number" },
+          doel_moleculair_mg_l: { type: "number" },
+        },
+        required: ["ph", "vrij_so2_mg_l", "volume_l"],
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "bereken_yan",
+      description:
+        "YAN-behoefte en gefaseerd voedingsschema uit graden Oechsle, gistklasse (laag/middel/hoog) en volume; optioneel gemeten YAN voor het tekort.",
+      input_schema: {
+        type: "object",
+        properties: {
+          oechsle: { type: "number" },
+          gist_klasse: { type: "string", enum: ["laag", "middel", "hoog"] },
+          volume_l: { type: "number" },
+          gemeten_yan_mg_l: { type: "number" },
+        },
+        required: ["oechsle", "gist_klasse", "volume_l"],
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "bereken_chaptalisatie",
+      description:
+        "Benodigde suiker (16,83 g/L per vol%) uit huidig Oechsle, gewenst alcoholpercentage en volume. Meldt of de zone A-verrijkingslimiet uit regelgeving_instellingen wordt overschreden of niet geverifieerd is.",
+      input_schema: {
+        type: "object",
+        properties: {
+          oechsle: { type: "number" },
+          doel_alcohol_volpct: { type: "number" },
+          volume_l: { type: "number" },
+        },
+        required: ["oechsle", "doel_alcohol_volpct", "volume_l"],
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "bereken_zuurcorrectie",
+      description:
+        "Aanzuren (wijnsteenzuur) of ontzuren (CaCO3/dubbelzout) uit huidig en gewenst totaalzuur (g/L) en volume, met zone A-limietbewaking uit regelgeving_instellingen.",
+      input_schema: {
+        type: "object",
+        properties: {
+          huidig_totaalzuur_g_l: { type: "number" },
+          doel_totaalzuur_g_l: { type: "number" },
+          volume_l: { type: "number" },
+        },
+        required: ["huidig_totaalzuur_g_l", "doel_totaalzuur_g_l", "volume_l"],
+      },
+    },
+  },
+];
+
 const TOOL_MODULES = {
   kelder: KELDER_TOOLS,
+  oenologie: OENOLOGIE_TOOLS,
   wijngaard: WIJNGAARD_TOOLS,
   voorraad: VOORRAAD_TOOLS,
   verkoop: VERKOOP_TOOLS,

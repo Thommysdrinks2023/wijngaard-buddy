@@ -214,6 +214,88 @@ const LEES_HANDLERS = {
       notitie: r.getString("notitie") || null,
     }));
   },
+  // Fase 7 Blok C — oenologische reken-tools (formules: docs/oenologie-formules.md,
+  // versie 2026-07-16.1, gespiegeld uit src/lib/oenologie.ts)
+  bereken_so2(app, input) {
+    const doel = input.doel_moleculair_mg_l || leesLimiet(app, "so2_streef_moleculair_mg_l") || 0.8;
+    const factor = 1 + Math.pow(10, input.ph - 1.81);
+    const molNu = input.vrij_so2_mg_l / factor;
+    const benodigdVrij = doel * factor;
+    const toeTeVoegen = Math.max(0, benodigdVrij - input.vrij_so2_mg_l);
+    const gramSo2 = (toeTeVoegen * input.volume_l) / 1000;
+    return {
+      moleculair_nu_mg_l: logica.round(molNu, 2),
+      doel_moleculair_mg_l: doel,
+      benodigd_vrij_mg_l: logica.round1(benodigdVrij),
+      verhoging_vrij_mg_l: logica.round1(toeTeVoegen),
+      gram_so2: logica.round1(gramSo2),
+      gram_kms: logica.round1(gramSo2 / 0.57),
+      formule_versie: "2026-07-16.1",
+      advies:
+        "Dit is een rekenadvies, geen boeking. Voorstel vastleggen kan via stel_kelderlog_voor; altijd na-meten (3 dagen).",
+    };
+  },
+  bereken_yan(app, input) {
+    const klassen = { laag: 150, middel: 200, hoog: 250 };
+    const basis = klassen[input.gist_klasse];
+    if (!basis) return { fout: "Onbekende gistklasse: " + input.gist_klasse };
+    const potAlc = logica.round1(input.oechsle * 0.125);
+    const behoefte = Math.round(basis + Math.max(0, potAlc - 12) * 25);
+    const tekort =
+      input.gemeten_yan_mg_l != null ? Math.max(0, behoefte - input.gemeten_yan_mg_l) : behoefte;
+    return {
+      potentieel_alcohol_volpct: potAlc,
+      behoefte_mg_n_l: behoefte,
+      tekort_mg_n_l: Math.round(tekort),
+      schema: [
+        "rehydratatievoeding bij het aanmaken van de gist (volgens etiket)",
+        "±helft van de gift na het aanslaan van de gisting",
+        "resterende helft bij 1/3 suikerafbouw; niet meer voeden na 1/2 afbouw",
+      ],
+      formule_versie: "2026-07-16.1",
+    };
+  },
+  bereken_chaptalisatie(app, input) {
+    const potAlcNu = logica.round1(input.oechsle * 0.125);
+    const verhoging = Math.max(0, logica.round(input.doel_alcohol_volpct - potAlcNu, 2));
+    const gramPerL = logica.round1(verhoging * 16.83);
+    const limiet = leesLimiet(app, "verrijking_max_volpct_zone");
+    return {
+      potentieel_alcohol_nu_volpct: potAlcNu,
+      verhoging_volpct: verhoging,
+      suiker_g_per_l: gramPerL,
+      suiker_kg_totaal: logica.round((gramPerL * input.volume_l) / 1000, 2),
+      limiet_zone_a_volpct: limiet,
+      limiet_status:
+        limiet == null
+          ? "NIET GEVERIFIEERD - waarschuw de gebruiker dat de zone A-limiet eerst gecheckt moet worden"
+          : verhoging > limiet
+            ? "OVERSCHREDEN - waarschuw expliciet"
+            : "binnen limiet",
+      formule_versie: "2026-07-16.1",
+    };
+  },
+  bereken_zuurcorrectie(app, input) {
+    const delta = logica.round(input.doel_totaalzuur_g_l - input.huidig_totaalzuur_g_l, 2);
+    const aanzuren = delta >= 0;
+    const gramPerL = aanzuren ? delta : logica.round(Math.abs(delta) * 0.67, 2);
+    const limiet = leesLimiet(app, aanzuren ? "aanzuring_max_g_l" : "ontzuring_max_g_l");
+    return {
+      richting: aanzuren ? "aanzuren" : "ontzuren",
+      middel: aanzuren ? "wijnsteenzuur" : "CaCO3 of dubbelzout",
+      delta_totaalzuur_g_l: delta,
+      dosering_g_per_l: gramPerL,
+      dosering_kg_totaal: logica.round((gramPerL * input.volume_l) / 1000, 2),
+      limiet_zone_a_g_l: limiet,
+      limiet_status:
+        limiet == null
+          ? "NIET GEVERIFIEERD - waarschuw de gebruiker"
+          : Math.abs(delta) > limiet
+            ? "OVERSCHREDEN - waarschuw expliciet"
+            : "binnen limiet",
+      formule_versie: "2026-07-16.1",
+    };
+  },
   zoek_bodem(app, input) {
     const delen = [];
     const params = {};
@@ -914,6 +996,21 @@ function roepAnthropicAan(apiKey, systeemprompt, berichten, tools) {
     throw new Error(msg);
   }
   return res.json;
+}
+
+// Fase 7 Blok C: geverifieerde limiet/instelling uit regelgeving_instellingen
+// (waarde > 0 én laatst_gecontroleerd gezet), anders null.
+function leesLimiet(app, sleutel) {
+  try {
+    const r = app.findFirstRecordByFilter("regelgeving_instellingen", "sleutel = {:s}", {
+      s: sleutel,
+    });
+    const waarde = r.getFloat("waarde");
+    if (waarde > 0 && r.getString("laatst_gecontroleerd")) return waarde;
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
 
 function leesSysteemprompt() {
