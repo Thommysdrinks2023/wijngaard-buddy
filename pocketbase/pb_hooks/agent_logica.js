@@ -92,6 +92,15 @@ function vindRij(app, rijnummer) {
   }
 }
 
+function vindMaterieel(app, naam) {
+  if (!naam) return null;
+  try {
+    return app.findFirstRecordByFilter("materieel", "naam ~ {:n}", { n: naam });
+  } catch (e) {
+    return null;
+  }
+}
+
 // Fase 4: net als partij_detail zoekt dit op leesbare tekst (wijnnaam), nooit
 // op een kaal PocketBase-record-id — de agent kent geen id's uit vrije tekst.
 function vindVoorraad(app, wijnnaam, jaargang) {
@@ -387,6 +396,22 @@ const WIJNGAARD_TOOLS = [
     },
   },
   {
+    lezen: true,
+    schema: {
+      name: "zoek_bodem",
+      description:
+        "Bodemobservaties (vocht, pH-veldmeting, structuur, gebreksverschijnselen) op rij en/of periode.",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          van: { type: "string", description: "yyyy-MM-dd" },
+          tot: { type: "string", description: "yyyy-MM-dd" },
+        },
+      },
+    },
+  },
+  {
     actie_type: "observatie",
     schema: {
       name: "stel_observatie_voor",
@@ -561,10 +586,80 @@ const ALGEMEEN_TOOLS = [
   },
 ];
 
+const VERKOOP_TOOLS = [
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_klanten",
+      description: "Zoek klanten op naam en/of type (particulier/horeca/winkel/evenement).",
+      input_schema: {
+        type: "object",
+        properties: {
+          naam: { type: "string" },
+          type: { type: "string", enum: ["particulier", "horeca", "winkel", "evenement"] },
+        },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_orders",
+      description:
+        "Verkooporders op klantnaam, status (concept/geleverd/betaald) en/of periode; compacte regels met aantallen en bedragen.",
+      input_schema: {
+        type: "object",
+        properties: {
+          klant: { type: "string", description: "Klantnaam (vrij zoeken)" },
+          status: { type: "string", enum: ["concept", "geleverd", "betaald"] },
+          van: { type: "string" },
+          tot: { type: "string" },
+        },
+      },
+    },
+  },
+];
+
+const MATERIEEL_TOOLS = [
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_materieel",
+      description:
+        "Machinepark met per machine de laatste onderhoudsregel en de eerstvolgende geplande onderhoudsdatum.",
+      input_schema: {
+        type: "object",
+        properties: { naam: { type: "string" } },
+      },
+    },
+  },
+  {
+    actie_type: "onderhoud",
+    schema: {
+      name: "stel_onderhoud_voor",
+      description:
+        "Stel een onderhoudsregel voor een machine voor (onderhoud/reparatie/keuring). Wordt NOOIT direct uitgevoerd - altijd eerst een voorstel dat Thomas bevestigt.",
+      input_schema: {
+        type: "object",
+        properties: {
+          machine: { type: "string", description: "Naam van de machine" },
+          type: { type: "string", enum: ["onderhoud", "reparatie", "keuring"] },
+          omschrijving: { type: "string" },
+          kosten: { type: "number" },
+          volgende_keer: { type: "string", description: "yyyy-MM-dd, optioneel" },
+        },
+        required: ["machine", "type", "omschrijving"],
+      },
+    },
+  },
+];
+
 const TOOL_MODULES = {
   kelder: KELDER_TOOLS,
   wijngaard: WIJNGAARD_TOOLS,
   voorraad: VOORRAAD_TOOLS,
+  verkoop: VERKOOP_TOOLS,
+  materieel: MATERIEEL_TOOLS,
   algemeen: ALGEMEEN_TOOLS,
 };
 
@@ -631,5 +726,6 @@ module.exports = {
   vindTank,
   vindRij,
   vindVoorraad,
+  vindMaterieel,
   bouwTools,
 };

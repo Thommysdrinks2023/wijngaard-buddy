@@ -214,6 +214,171 @@ const LEES_HANDLERS = {
       notitie: r.getString("notitie") || null,
     }));
   },
+  zoek_bodem(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.rijnummer) {
+      const rij = logica.vindRij(app, input.rijnummer);
+      if (!rij) return { gevonden: false, notitie: "Geen rij " + input.rijnummer + " gevonden." };
+      delen.push("rij = {:r}");
+      params.r = rij.id;
+    }
+    if (input.van) {
+      delen.push("datum >= {:van}");
+      params.van = input.van;
+    }
+    if (input.tot) {
+      delen.push("datum <= {:tot}");
+      params.tot = input.tot;
+    }
+    const obs = app.findRecordsByFilter(
+      "bodem_observaties",
+      delen.join(" && ") || "id != ''",
+      "-datum",
+      30,
+      0,
+      params,
+    );
+    return obs.map((o) => ({
+      datum: o.getString("datum"),
+      bodemvocht: o.getString("bodemvocht") || null,
+      ph_veld: o.getFloat("ph_veld") || null,
+      structuur: o.getString("structuur") || null,
+      gebreksverschijnselen: o.get("gebreksverschijnselen") || null,
+      notitie: o.getString("notitie") || null,
+    }));
+  },
+  zoek_klanten(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.naam) {
+      delen.push("naam ~ {:n}");
+      params.n = input.naam;
+    }
+    if (input.type) {
+      delen.push("type = {:t}");
+      params.t = input.type;
+    }
+    const klanten = app.findRecordsByFilter(
+      "klanten",
+      delen.join(" && ") || "id != ''",
+      "naam",
+      50,
+      0,
+      params,
+    );
+    return klanten.map((k) => ({
+      naam: k.getString("naam"),
+      type: k.getString("type") || null,
+      contact: k.getString("contact") || null,
+    }));
+  },
+  zoek_orders(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.klant) {
+      let klant = null;
+      try {
+        klant = app.findFirstRecordByFilter("klanten", "naam ~ {:n}", { n: input.klant });
+      } catch (e) {
+        /* geen klant */
+      }
+      if (!klant)
+        return {
+          gevonden: false,
+          notitie: "Geen klant gevonden voor " + JSON.stringify(input.klant) + ".",
+        };
+      delen.push("klant = {:k}");
+      params.k = klant.id;
+    }
+    if (input.status) {
+      delen.push("status = {:s}");
+      params.s = input.status;
+    }
+    if (input.van) {
+      delen.push("datum >= {:van}");
+      params.van = input.van;
+    }
+    if (input.tot) {
+      delen.push("datum <= {:tot}");
+      params.tot = input.tot;
+    }
+    const orders = app.findRecordsByFilter(
+      "orders",
+      delen.join(" && ") || "id != ''",
+      "-datum",
+      30,
+      0,
+      params,
+    );
+    return orders.map((o) => {
+      const regels = leesJsonVeld(o, "regels") || [];
+      let klantNaam = "";
+      try {
+        klantNaam = app.findRecordById("klanten", o.getString("klant")).getString("naam");
+      } catch (e) {
+        /* weesorder */
+      }
+      const bedrag = Array.isArray(regels)
+        ? regels.reduce((acc, r) => acc + (r.aantal || 0) * (r.prijs || 0), 0)
+        : 0;
+      const flessen = Array.isArray(regels)
+        ? regels.reduce((acc, r) => acc + (r.aantal || 0), 0)
+        : 0;
+      return {
+        datum: o.getString("datum"),
+        klant: klantNaam,
+        status: o.getString("status"),
+        flessen: flessen,
+        bedrag_eur: Math.round(bedrag * 100) / 100,
+      };
+    });
+  },
+  zoek_materieel(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.naam) {
+      delen.push("naam ~ {:n}");
+      params.n = input.naam;
+    }
+    const machines = app.findRecordsByFilter(
+      "materieel",
+      delen.join(" && ") || "id != ''",
+      "naam",
+      50,
+      0,
+      params,
+    );
+    return machines.map((m) => {
+      let laatste = null;
+      let volgende = null;
+      try {
+        const log = app.findRecordsByFilter("onderhoudslog", "materieel = {:m}", "-datum", 20, 0, {
+          m: m.id,
+        });
+        if (log.length > 0) {
+          laatste = {
+            datum: log[0].getString("datum"),
+            type: log[0].getString("type"),
+            omschrijving: log[0].getString("omschrijving"),
+          };
+          for (let i = 0; i < log.length; i++) {
+            const vk = log[i].getString("volgende_keer");
+            if (vk && (!volgende || vk < volgende)) volgende = vk;
+          }
+        }
+      } catch (e) {
+        /* geen log */
+      }
+      return {
+        naam: m.getString("naam"),
+        type: m.getString("type") || null,
+        bouwjaar: m.getFloat("bouwjaar") || null,
+        laatste_onderhoud: laatste,
+        volgende_onderhoud: volgende,
+      };
+    });
+  },
   zoek_tankboek(app, input) {
     const delen = [];
     const params = {};
@@ -545,6 +710,23 @@ const VOORSTEL_BOUWERS = {
       `${payload.lotnummer ? `, lot ${payload.lotnummer}` : ""}`;
     return { actie_type: "bottelronde", payload, samenvatting };
   },
+  stel_onderhoud_voor(app, input) {
+    const machine = logica.vindMaterieel(app, input.machine);
+    if (!machine) return { fout: `Geen machine gevonden voor "${input.machine}".` };
+    const payload = {
+      materieel: machine.id,
+      datum: logica.vandaagStr(),
+      type: input.type,
+      omschrijving: input.omschrijving,
+      kosten: input.kosten != null ? input.kosten : null,
+      volgende_keer: input.volgende_keer || "",
+    };
+    const samenvatting =
+      `Onderhoud: ${input.type} bij ${machine.getString("naam")} - ${input.omschrijving}` +
+      `${input.kosten != null ? ` (€${input.kosten})` : ""}` +
+      `${input.volgende_keer ? `, volgende keer ${input.volgende_keer}` : ""}`;
+    return { actie_type: "onderhoud", payload, samenvatting };
+  },
   stel_voorraad_mutatie_voor(app, input) {
     const voorraad = logica.vindVoorraad(app, input.wijnnaam, input.jaargang);
     if (!voorraad) return { fout: `Geen voorraad gevonden voor "${input.wijnnaam}".` };
@@ -627,6 +809,19 @@ function voerBevestigdeActieUit(txApp, actieType, payload, verantwoordelijke) {
       });
       if (resultaat.fout) return { fout: resultaat.fout };
       return { record_id: resultaat.bottelrondeId };
+    }
+    case "onderhoud": {
+      const col = txApp.findCollectionByNameOrId("onderhoudslog");
+      const rec = new Record(col);
+      rec.set("materieel", payload.materieel);
+      rec.set("datum", payload.datum);
+      rec.set("type", payload.type);
+      rec.set("omschrijving", payload.omschrijving);
+      if (payload.kosten != null) rec.set("kosten", payload.kosten);
+      if (payload.volgende_keer) rec.set("volgende_keer", payload.volgende_keer);
+      rec.set("ingevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
     }
     case "voorraad_mutatie": {
       const voorraad = require(`${__hooks}/voorraad_logica.js`);

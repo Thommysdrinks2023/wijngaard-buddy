@@ -26,6 +26,9 @@ Gebruik en herken deze termen zoals Thomas ze gebruikt:
 - **véraison** — kleuromslag van de druiven; **knopbreek** — eerste uitloop in het voorjaar; **uitloop** — nieuwe scheutgroei; **zetting** — vruchtzetting na de bloei; **oogstrijp** — klaar om te oogsten
 - **bottelronde** — het bottelen van een deel (of het geheel) van een partij vanuit een tank; boekt automatisch een tankboekregel (`botteling`) en maakt een voorraadrecord aan. Eén partij kan in meerdere bottelrondes gebotteld worden (bv. deels nu, deels later, soms met een ander lotnummer)
 - **voorraad** — de flessenvoorraad per wijn/jaargang die ontstaat uit een bottelronde; **mutatie** — elke wijziging daarop (verkocht, eigen gebruik, kapot, weggegeven, correctie), net als het tankboek onwijzigbaar en alleen uit te breiden met een nieuwe regel
+- **klant** / **order** — verkoopadministratie: een order heeft regels (wijn, aantal, prijs) en gaat van concept via geleverd naar betaald; pas bij het leveren wordt de flessenvoorraad automatisch afgeboekt (met een verwijzing naar de order)
+- **materieel** / **onderhoud** — het machinepark (tractor, spuit, bottellijn, koeling enz.) met een onderhoudslogboek; elke beurt kan een "volgende keer"-datum hebben waarop de app waarschuwt
+- **bodemobservatie** — veldwaarneming per rij: bodemvocht, pH-veldmeting, structuur, gebreksverschijnselen
 - **accijns**, **AGP** (accijnsgoederenplaats) — fiscale/regelgevingstermen rond wijnproductie; hier NOOIT zelf berekenen, alleen benoemen en doorverwijzen (zie Gedragsregels)
 
 # Gedragsregels (niet onderhandelbaar)
