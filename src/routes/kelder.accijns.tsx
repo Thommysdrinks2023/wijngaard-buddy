@@ -16,7 +16,12 @@ import {
   updateRegelgevingInstelling,
   type RegelgevingInstelling,
 } from "@/lib/regelgeving-data";
-import { fetchAnalyses, fetchBottelrondes, fetchVoorraadFlessen } from "@/lib/kelder-data";
+import {
+  fetchAnalyses,
+  fetchBottelrondes,
+  fetchTankboek,
+  fetchVoorraadFlessen,
+} from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { exporteerCsv } from "@/lib/csv-export";
 import { getPb } from "@/lib/data";
@@ -91,6 +96,8 @@ function AccijnsPage() {
   });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
   const analysesQ = useQuery({ queryKey: ["analyses", "alle"], queryFn: () => fetchAnalyses() });
+  // Fase 7 Blok D — kelderverliezen (tankboek-actie "verlies") in de periode
+  const tankboekQ = useQuery({ queryKey: ["tankboek", "accijns"], queryFn: () => fetchTankboek() });
 
   const instelling = (sleutel: string) =>
     (instellingenQ.data ?? []).find((i) => i.sleutel === sleutel);
@@ -102,6 +109,17 @@ function AccijnsPage() {
 
   const periode =
     soortPeriode === "maand" ? maandPeriode(jaar, maand) : kwartaalPeriode(jaar, kwartaal);
+
+  const kelderverliesRegels = useMemo(
+    () =>
+      (tankboekQ.data ?? []).filter(
+        (r) => r.actie === "verlies" && r.datum >= periode.van && r.datum <= periode.tot,
+      ),
+    [tankboekQ.data, periode.van, periode.tot],
+  );
+  const kelderverliesLiters = Math.round(
+    kelderverliesRegels.reduce((acc, r) => acc + r.volume_l, 0),
+  );
 
   const overzicht = useMemo(() => {
     const bottelrondePerId = new Map((bottelrondesQ.data ?? []).map((b) => [b.id, b]));
@@ -295,6 +313,11 @@ function AccijnsPage() {
               sub: `${overzicht.breuk.regels.length} bewijsregel(s)`,
             },
             {
+              label: "Kelderverlies (tank)",
+              waarde: `${kelderverliesLiters} L`,
+              sub: `${kelderverliesRegels.length} verliesregel(s) in het tankboek`,
+            },
+            {
               label: "Beginvoorraad",
               waarde: `${overzicht.beginvoorraadFlessen} flessen`,
               sub: `per ${periode.van}`,
@@ -367,7 +390,10 @@ function AccijnsPage() {
               Tarieven & drempels (beheerder)
             </h2>
             {(instellingenQ.data ?? [])
-              .filter((i) => i.sleutel !== REGELGEVING_SLEUTELS.agentLimiet)
+              .filter(
+                (i) =>
+                  i.sleutel !== REGELGEVING_SLEUTELS.agentLimiet && i.sleutel !== "laatste_backup",
+              )
               .map((i) => {
                 const b = bewerk[i.id] ?? {
                   waarde: i.waarde != null ? String(i.waarde) : "",

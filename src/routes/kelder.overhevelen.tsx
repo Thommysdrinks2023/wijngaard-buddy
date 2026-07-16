@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { boekTankboek, fetchTanks } from "@/lib/kelder-data";
+import { boekTankboek, fetchKelderlog, fetchTankboek, fetchTanks } from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerBoeking } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
@@ -14,6 +14,8 @@ interface OverhevelenSearch {
   van?: string;
   partij?: string;
 }
+
+const VERLIES_TYPES = ["droesem", "verdamping", "morsen", "overig"] as const;
 
 export const Route = createFileRoute("/kelder/overhevelen")({
   component: OverhevelenPage,
@@ -35,9 +37,21 @@ function OverhevelenPage() {
   const [vanTank, setVanTank] = useState(search.van ?? "");
   const [naarTank, setNaarTank] = useState("");
   const [volume, setVolume] = useState("");
+  const [aangekomen, setAangekomen] = useState("");
+  const [verliesType, setVerliesType] = useState<(typeof VERLIES_TYPES)[number]>("droesem");
   const [datum, setDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [notitie, setNotitie] = useState("");
   const [fouten, setFouten] = useState<Record<string, string>>({});
+
+  // Fase 7 Blok D — verliezenboekhouding: als er minder aankomt dan vertrok,
+  // stellen we het verschil voor als aparte verliesboeking. Opt-in: de
+  // gebruiker ziet en bevestigt het voorstel, er wordt nooit stil geboekt.
+  const volumeN = Number(volume) || 0;
+  const aangekomenN = aangekomen === "" ? null : Number(aangekomen) || 0;
+  const verschil =
+    aangekomenN !== null && volumeN > 0 && aangekomenN < volumeN
+      ? Math.round((volumeN - aangekomenN) * 100) / 100
+      : 0;
 
   const bron = useMemo(() => tanksQ.data?.find((t) => t.id === vanTank), [tanksQ.data, vanTank]);
   // de partij volgt uit de brontank — overhevelen kan alleen wat er echt in zit
@@ -50,6 +64,32 @@ function OverhevelenPage() {
     () => (tanksQ.data ?? []).filter((t) => t.huidig_volume_l > 0),
     [tanksQ.data],
   );
+  // Fase 7 Blok D — hygiëne-waarschuwing (niet blokkerend): doeltank is leeg
+  // maar de laatste reiniging ligt vóór de laatste tankboek-activiteit (of er
+  // is nooit een reiniging gelogd).
+  const doelReinigingQ = useQuery({
+    queryKey: ["kelderlog", "reiniging", naarTank],
+    queryFn: () => fetchKelderlog({ tank: naarTank, actie: "reiniging" }),
+    enabled: !!naarTank,
+  });
+  const doelTankboekQ = useQuery({
+    queryKey: ["tankboek", "tank", naarTank],
+    queryFn: () => fetchTankboek({ tank: naarTank }),
+    enabled: !!naarTank,
+  });
+  const doel = useMemo(() => tanksQ.data?.find((t) => t.id === naarTank), [tanksQ.data, naarTank]);
+  const hygieneWaarschuwing = useMemo(() => {
+    if (!naarTank || !doel || doel.huidige_partij) return null;
+    const laatsteActiviteit = doelTankboekQ.data?.[0]?.datum ?? null;
+    if (!laatsteActiviteit) return null; // nooit gebruikt — geen signaal nodig
+    const laatsteReiniging = doelReinigingQ.data?.[0]?.datum ?? null;
+    if (!laatsteReiniging)
+      return `Tank ${doel.code} is na de laatste lediging (${laatsteActiviteit}) niet als gereinigd gelogd.`;
+    if (laatsteReiniging < laatsteActiviteit)
+      return `Laatste reiniging van tank ${doel.code} (${laatsteReiniging}) ligt vóór de laatste lediging (${laatsteActiviteit}).`;
+    return null;
+  }, [naarTank, doel, doelTankboekQ.data, doelReinigingQ.data]);
+
   const doelTanks = useMemo(
     () =>
       (tanksQ.data ?? []).filter(
@@ -63,20 +103,41 @@ function OverhevelenPage() {
   );
 
   const m = useMutation({
-    mutationFn: () =>
-      boekTankboek({
+    mutationFn: async () => {
+      // met verliesvoorstel: overheveling voor het aangekomen volume + aparte
+      // verliesregel uit de brontank; zonder verschil: één gewone boeking
+      const overhevelVolume = verschil > 0 ? aangekomenN! : Number(volume);
+      const r = await boekTankboek({
         datum,
         partij: partij!.id,
         producent: partij?.producent ?? undefined,
         actie: "overhevelen",
         van_tank: vanTank,
         naar_tank: naarTank,
-        volume_l: Number(volume),
+        volume_l: overhevelVolume,
         verantwoordelijke: invoerder,
         notitie,
-      }),
+      });
+      if (verschil > 0) {
+        await boekTankboek({
+          datum,
+          partij: partij!.id,
+          producent: partij?.producent ?? undefined,
+          actie: "verlies",
+          van_tank: vanTank,
+          volume_l: verschil,
+          verantwoordelijke: invoerder,
+          notitie: `Verlies bij overhevelen naar tank (${verliesType})${notitie ? ` — ${notitie}` : ""}`,
+        });
+      }
+      return r;
+    },
     onSuccess: (r) => {
-      toast.success("Overheveling geboekt ✓");
+      toast.success(
+        verschil > 0
+          ? `Overheveling + verlies (${verschil} L, ${verliesType}) geboekt ✓`
+          : "Overheveling geboekt ✓",
+      );
       if (r.waarschuwing) toast.warning(r.waarschuwing);
       qc.invalidateQueries({ queryKey: ["tanks"] });
       qc.invalidateQueries({ queryKey: ["tankboek"] });
@@ -165,6 +226,13 @@ function OverhevelenPage() {
             </select>
           </label>
 
+          {hygieneWaarschuwing && (
+            <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              🧽 {hygieneWaarschuwing} Vullen kan gewoon, maar log zo nodig eerst een reiniging via
+              het tankdetail.
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Volume (L)</span>
@@ -190,6 +258,49 @@ function OverhevelenPage() {
               />
             </label>
           </div>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">
+              In doeltank aangekomen (L) — optioneel
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={aangekomen}
+              onChange={(e) => setAangekomen(e.target.value)}
+              className={veldClass}
+              placeholder="leeg = gelijk aan verzonden volume"
+            />
+          </label>
+
+          {verschil > 0 && (
+            <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
+              <p className="text-sm font-medium text-amber-900">
+                Verschil van {verschil} L — de app stelt een verliesboeking voor (niets wordt
+                stilzwijgend geboekt):
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {VERLIES_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setVerliesType(t)}
+                    className={`h-9 rounded-lg border px-3 text-xs font-medium ${
+                      verliesType === t
+                        ? "border-amber-600 bg-amber-600 text-white"
+                        : "border-amber-300 bg-white"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-amber-800">
+                Boekt: overheveling van {aangekomenN} L + verliesregel van {verschil} L (
+                {verliesType}) uit tank {bron?.code ?? "?"}. Telt mee in accijns- en jaaroverzicht.
+              </p>
+            </div>
+          )}
+
           {bron && volume && Number(volume) === Math.round(bron.huidig_volume_l) && (
             <p className="text-xs text-muted-foreground">
               Volledig overhevelen: tank {bron.code} komt hiermee leeg te staan.

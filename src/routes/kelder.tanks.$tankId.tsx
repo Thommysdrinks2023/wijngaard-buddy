@@ -4,14 +4,23 @@ import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
-import { boekTankboek, fetchTankboek, fetchTanks, updateTank } from "@/lib/kelder-data";
+import {
+  boekTankboek,
+  createKelderlog,
+  fetchKelderlog,
+  fetchTankboek,
+  fetchTanks,
+  updateTank,
+} from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { TANK_STATUSSEN, TANKBOEK_ACTIES, type TankStatus } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { ArrowLeftRight, Loader2, Ruler } from "lucide-react";
+import { ArrowLeftRight, Loader2, Ruler, SprayCan } from "lucide-react";
+
+const REINIGING_METHODEN = ["heet water", "CIP", "stoom", "sodaoplossing", "handmatig"] as const;
 
 export const Route = createFileRoute("/kelder/tanks/$tankId")({
   component: TankDetailPage,
@@ -27,6 +36,12 @@ function TankDetailPage() {
     queryKey: ["tankboek", "tank", tankId],
     queryFn: () => fetchTankboek({ tank: tankId }),
   });
+  // Fase 7 Blok D — reinigingslog van deze tank (kelderlog-actie "reiniging")
+  const reinigingQ = useQuery({
+    queryKey: ["kelderlog", "reiniging", tankId],
+    queryFn: () => fetchKelderlog({ tank: tankId, actie: "reiniging" }),
+  });
+  const laatstGereinigd = reinigingQ.data?.[0]?.datum ?? null;
 
   const tank = useMemo(() => tanksQ.data?.find((t) => t.id === tankId), [tanksQ.data, tankId]);
   const partijNaam = useMemo(() => {
@@ -100,6 +115,29 @@ function TankDetailPage() {
     peilingM.mutate();
   };
 
+  // ---------- reiniging (Fase 7 Blok D): twee tikken — methode kiezen = loggen
+  const [toonReiniging, setToonReiniging] = useState(false);
+  const [reinigingMiddel, setReinigingMiddel] = useState("");
+  const reinigingM = useMutation({
+    mutationFn: (methode: string) =>
+      createKelderlog({
+        datum: format(new Date(), "yyyy-MM-dd"),
+        tank: tankId,
+        partij: tank?.huidige_partij || null,
+        actie: "reiniging",
+        middel: reinigingMiddel || methode,
+        notitie: `Methode: ${methode}`,
+        ingevoerd_door: invoerder,
+      }),
+    onSuccess: () => {
+      toast.success("Reiniging gelogd ✓");
+      qc.invalidateQueries({ queryKey: ["kelderlog", "reiniging", tankId] });
+      setToonReiniging(false);
+      setReinigingMiddel("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const info = TANK_STATUSSEN.find((s) => s.value === tank?.status);
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
@@ -157,6 +195,18 @@ function TankDetailPage() {
               </p>
             </div>
             <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => setToonReiniging((v) => !v)}
+                className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold ${
+                  toonReiniging
+                    ? "border-primary bg-primary-soft text-primary"
+                    : "border-border bg-card"
+                }`}
+              >
+                <SprayCan className="h-4 w-4" />
+                Reiniging
+              </button>
               {tank?.huidige_partij && (
                 <button
                   type="button"
@@ -181,6 +231,12 @@ function TankDetailPage() {
               </Link>
             </div>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Laatst gereinigd:{" "}
+            {laatstGereinigd
+              ? format(parseISO(laatstGereinigd), "d MMM yyyy", { locale: nl })
+              : "geen reiniging gelogd"}
+          </p>
           {tank && tank.capaciteit_l > 0 && tank.huidig_volume_l > 0 && (
             <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
               <div
@@ -193,6 +249,34 @@ function TankDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Reiniging: twee tikken — methode tikken = loggen (Fase 7 Blok D) */}
+        {toonReiniging && (
+          <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Reiniging loggen — tik de methode
+            </h2>
+            <input
+              value={reinigingMiddel}
+              onChange={(e) => setReinigingMiddel(e.target.value)}
+              className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base"
+              placeholder="Middel (optioneel, bijv. soda 2%)"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              {REINIGING_METHODEN.map((methode) => (
+                <button
+                  key={methode}
+                  type="button"
+                  disabled={reinigingM.isPending}
+                  onClick={() => reinigingM.mutate(methode)}
+                  className="flex h-14 items-center justify-center rounded-xl border border-border bg-background text-sm font-semibold active:scale-[0.98] disabled:opacity-40"
+                >
+                  {reinigingM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : methode}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Peiling: gemeten volume invoeren → app stelt de correctieboeking voor
             (ARCHITECTURE.md §7.3). Alleen zinvol met een gekoppelde partij. */}
@@ -319,11 +403,31 @@ function TankDetailPage() {
           </div>
         </section>
 
-        {/* Tankboek van deze tank */}
+        {/* Tankhistorie: tankboek + reinigingen gemengd op datum (Fase 7 Blok D) */}
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Tankboek van deze tank ({tankboekQ.data?.length ?? 0})
+            Tankhistorie ({(tankboekQ.data?.length ?? 0) + (reinigingQ.data?.length ?? 0)})
           </h2>
+          {(reinigingQ.data ?? []).length > 0 && (
+            <ul className="mb-1.5 space-y-1.5">
+              {(reinigingQ.data ?? []).map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                      🧽 Reiniging{r.middel ? ` · ${r.middel}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(parseISO(r.datum), "d MMM yyyy", { locale: nl })}
+                      {r.notitie ? ` · ${r.notitie}` : ""}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
           {(tankboekQ.data ?? []).length === 0 ? (
             <EmptyState message="Nog geen boekingen voor deze tank." />
           ) : (
