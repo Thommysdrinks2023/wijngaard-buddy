@@ -101,6 +101,15 @@ function vindMaterieel(app, naam) {
   }
 }
 
+function vindKlant(app, naam) {
+  if (!naam) return null;
+  try {
+    return app.findFirstRecordByFilter("klanten", "naam ~ {:n}", { n: naam });
+  } catch (e) {
+    return null;
+  }
+}
+
 // Fase 4: net als partij_detail zoekt dit op leesbare tekst (wijnnaam), nooit
 // op een kaal PocketBase-record-id — de agent kent geen id's uit vrije tekst.
 function vindVoorraad(app, wijnnaam, jaargang) {
@@ -618,6 +627,35 @@ const VERKOOP_TOOLS = [
       },
     },
   },
+  {
+    actie_type: "order",
+    schema: {
+      name: "stel_order_voor",
+      description:
+        "Stel een concept-verkooporder voor (klant + regels met wijn/aantal/prijs per fles). Wordt NOOIT direct uitgevoerd - altijd eerst een voorstel dat Thomas bevestigt. Leveren (voorraad afboeken) gebeurt daarna apart via /verkoop.",
+      input_schema: {
+        type: "object",
+        properties: {
+          klant: { type: "string", description: "Klantnaam (moet al bestaan)" },
+          regels: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                wijn: { type: "string", description: "Wijnnaam uit de voorraad" },
+                jaargang: { type: "number" },
+                aantal: { type: "number", description: "Aantal flessen" },
+                prijs: { type: "number", description: "Prijs per fles in EUR" },
+              },
+              required: ["wijn", "aantal"],
+            },
+          },
+          notities: { type: "string" },
+        },
+        required: ["klant", "regels"],
+      },
+    },
+  },
 ];
 
 const MATERIEEL_TOOLS = [
@@ -727,5 +765,6 @@ module.exports = {
   vindRij,
   vindVoorraad,
   vindMaterieel,
+  vindKlant,
   bouwTools,
 };

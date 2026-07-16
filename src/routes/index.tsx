@@ -12,6 +12,7 @@ import {
   setLaatsteModule,
 } from "@/lib/module-keuze";
 import { fetchRegelgevingInstellingen } from "@/lib/regelgeving-data";
+import { Meldingen } from "@/components/meldingen";
 
 // Fase 7 Blok A: backup-bewaking. Het backupscript schrijft na elke geslaagde
 // run de sleutel "laatste_backup" bij; ouder dan 2 dagen = waarschuwing.
@@ -131,6 +132,7 @@ function ModuleHub() {
             </Link>
           ))}
         </div>
+        <Meldingen />
         <BackupWidget />
       </div>
     </>

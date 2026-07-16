@@ -232,6 +232,7 @@ const AGENT_ACTIE_TYPES = [
   "bottelronde",
   "voorraad_mutatie",
   "onderhoud",
+  "order",
 ];
 const AGENT_ACTIE_STATUSSEN = ["voorgesteld", "bevestigd", "afgewezen", "uitgevoerd", "mislukt"];
 const INZICHT_TYPES = [

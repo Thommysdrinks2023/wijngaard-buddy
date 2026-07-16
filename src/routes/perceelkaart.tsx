@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { differenceInDays, parseISO } from "date-fns";
 import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
+import { fetchBodemObservaties, laatstePerRij, type BodemObservatie } from "@/lib/bodem-data";
 import { RAS_OPTIONS, type Ras } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
 import { WeerKaart } from "@/components/weer-kaart";
@@ -30,6 +31,40 @@ function fysiekeLengteBasis(aantalPlanten: number, plantenPerVak?: number): numb
   return aantalPlanten * (STANDAARD_PER_VAK / (plantenPerVak ?? STANDAARD_PER_VAK));
 }
 
+// Fase 7 Blok B — inkleuringsweergaven op basis van de laatste bodemobservatie
+const WEERGAVEN = [
+  { key: "ras", label: "Ras" },
+  { key: "bodemvocht", label: "Bodemvocht" },
+  { key: "ph", label: "pH (veld)" },
+  { key: "ouderdom", label: "Observatie-ouderdom" },
+] as const;
+type Weergave = (typeof WEERGAVEN)[number]["key"];
+
+const GEEN_DATA_KLEUR = "#d1d5db";
+const BODEMVOCHT_KLEUR: Record<string, string> = {
+  droog: "#f59e0b",
+  vochtig: "#4ade80",
+  nat: "#3b82f6",
+  verzadigd: "#1e3a8a",
+};
+
+function bodemKleur(weergave: Weergave, obs: BodemObservatie | undefined): string {
+  if (!obs) return GEEN_DATA_KLEUR;
+  if (weergave === "bodemvocht")
+    return obs.bodemvocht ? BODEMVOCHT_KLEUR[obs.bodemvocht] : GEEN_DATA_KLEUR;
+  if (weergave === "ph") {
+    if (obs.ph_veld == null) return GEEN_DATA_KLEUR;
+    if (obs.ph_veld < 5.5) return "#ef4444";
+    if (obs.ph_veld > 6.8) return "#3b82f6";
+    return "#4a8c5c";
+  }
+  // ouderdom
+  const dagen = differenceInDays(new Date(), parseISO(obs.datum));
+  if (dagen < 14) return "#4a8c5c";
+  if (dagen < 60) return "#f59e0b";
+  return "#ef4444";
+}
+
 const RAS_KLEUR: Record<Ras, string> = {
   Muscaris: "#fde68a",
   "Souvignier Gris": "#eab308",
@@ -46,6 +81,9 @@ function Perceelkaart() {
   const metingenQ = useQuery({ queryKey: ["metingen"], queryFn: () => fetchMetingen() });
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
+  const bodemQ = useQuery({ queryKey: ["bodem"], queryFn: fetchBodemObservaties });
+  const [weergave, setWeergave] = useState<Weergave>("ras");
+  const bodemPerRij = useMemo(() => laatstePerRij(bodemQ.data ?? []), [bodemQ.data]);
 
   const recencyByRij = useMemo(() => {
     const map = new Map<string, { recentMeting: boolean; recentZiekteSchade: boolean }>();
@@ -204,6 +242,30 @@ function Perceelkaart() {
           ⚡ Snelle meting — Brix in 3 tikken
         </Link>
 
+        {/* Weergave-toggle (Fase 7 Blok B) */}
+        <div className="flex flex-wrap gap-1.5">
+          {WEERGAVEN.map((w) => (
+            <button
+              key={w.key}
+              type="button"
+              onClick={() => setWeergave(w.key)}
+              className={`h-9 rounded-lg border px-3 text-xs font-medium ${
+                weergave === w.key
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card"
+              }`}
+            >
+              {w.label}
+            </button>
+          ))}
+          <Link
+            to="/bodem"
+            className="ml-auto flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium"
+          >
+            + Bodemobservatie
+          </Link>
+        </div>
+
         <div className="overflow-x-auto rounded-2xl border border-border bg-card p-3">
           <svg
             viewBox={`0 0 ${VB_W} ${VB_H}`}
@@ -228,7 +290,8 @@ function Perceelkaart() {
             {/* Rijen — verticaal, hangen vanaf de bovenrand */}
             {rijGeom.map(({ r, x, yTop, yBottom }) => {
               const rec = recencyByRij.get(r.id);
-              const color = RAS_KLEUR[r.ras];
+              const color =
+                weergave === "ras" ? RAS_KLEUR[r.ras] : bodemKleur(weergave, bodemPerRij.get(r.id));
               const showLabel =
                 r.rijnummer % 5 === 0 ||
                 r.rijnummer === 1 ||

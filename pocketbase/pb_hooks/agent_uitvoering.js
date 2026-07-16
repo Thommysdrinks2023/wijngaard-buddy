@@ -710,6 +710,45 @@ const VOORSTEL_BOUWERS = {
       `${payload.lotnummer ? `, lot ${payload.lotnummer}` : ""}`;
     return { actie_type: "bottelronde", payload, samenvatting };
   },
+  stel_order_voor(app, input) {
+    const klant = logica.vindKlant(app, input.klant);
+    if (!klant)
+      return {
+        fout: `Geen klant gevonden voor "${input.klant}" — maak die eerst aan op /verkoop.`,
+      };
+    if (!Array.isArray(input.regels) || input.regels.length === 0)
+      return { fout: "Een order heeft minstens één regel (wijn + aantal) nodig." };
+    const regels = [];
+    const delen = [];
+    for (const r of input.regels) {
+      const voorraad = logica.vindVoorraad(app, r.wijn, r.jaargang);
+      if (!voorraad) return { fout: `Geen voorraad gevonden voor wijn "${r.wijn}".` };
+      const aantal = Number(r.aantal);
+      if (!aantal || aantal <= 0) return { fout: `Ongeldig aantal voor "${r.wijn}".` };
+      const beschikbaar = voorraad.getFloat("aantal_huidig");
+      if (aantal > beschikbaar)
+        return {
+          fout: `Voorraad "${voorraad.getString("wijnnaam")}" heeft maar ${beschikbaar} flessen (gevraagd: ${aantal}).`,
+        };
+      regels.push({
+        voorraad: voorraad.id,
+        aantal: aantal,
+        prijs: r.prijs != null ? Number(r.prijs) : 0,
+      });
+      delen.push(
+        `${aantal}× ${voorraad.getString("wijnnaam")} ${voorraad.getFloat("jaargang") || ""}`.trim() +
+          (r.prijs != null ? ` à €${r.prijs}` : ""),
+      );
+    }
+    const payload = {
+      klant: klant.id,
+      datum: logica.vandaagStr(),
+      regels: regels,
+      notities: input.notities || "",
+    };
+    const samenvatting = `Conceptorder voor ${klant.getString("naam")}: ${delen.join(", ")}`;
+    return { actie_type: "order", payload, samenvatting };
+  },
   stel_onderhoud_voor(app, input) {
     const machine = logica.vindMaterieel(app, input.machine);
     if (!machine) return { fout: `Geen machine gevonden voor "${input.machine}".` };
@@ -809,6 +848,18 @@ function voerBevestigdeActieUit(txApp, actieType, payload, verantwoordelijke) {
       });
       if (resultaat.fout) return { fout: resultaat.fout };
       return { record_id: resultaat.bottelrondeId };
+    }
+    case "order": {
+      const col = txApp.findCollectionByNameOrId("orders");
+      const rec = new Record(col);
+      rec.set("klant", payload.klant);
+      rec.set("datum", payload.datum);
+      rec.set("regels", payload.regels);
+      rec.set("status", "concept");
+      if (payload.notities) rec.set("notities", payload.notities);
+      rec.set("ingevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
     }
     case "onderhoud": {
       const col = txApp.findCollectionByNameOrId("onderhoudslog");

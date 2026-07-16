@@ -32,6 +32,7 @@ import { Route as InstellingenRouteImport } from './routes/instellingen'
 import { Route as GrafiekenRouteImport } from './routes/grafieken'
 import { Route as GezondheidRouteImport } from './routes/gezondheid'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as BodemRouteImport } from './routes/bodem'
 import { Route as AssistentRouteImport } from './routes/assistent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VoorraadIndexRouteImport } from './routes/voorraad.index'
@@ -174,6 +175,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BodemRoute = BodemRouteImport.update({
+  id: '/bodem',
+  path: '/bodem',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AssistentRoute = AssistentRouteImport.update({
   id: '/assistent',
   path: '/assistent',
@@ -310,6 +316,7 @@ const KelderPartijenPartijIdBottelenRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assistent': typeof AssistentRoute
+  '/bodem': typeof BodemRoute
   '/dashboard': typeof DashboardRoute
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
@@ -361,6 +368,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assistent': typeof AssistentRoute
+  '/bodem': typeof BodemRoute
   '/dashboard': typeof DashboardRoute
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
@@ -410,6 +418,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/assistent': typeof AssistentRoute
+  '/bodem': typeof BodemRoute
   '/dashboard': typeof DashboardRoute
   '/gezondheid': typeof GezondheidRoute
   '/grafieken': typeof GrafiekenRoute
@@ -463,6 +472,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/assistent'
+    | '/bodem'
     | '/dashboard'
     | '/gezondheid'
     | '/grafieken'
@@ -514,6 +524,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/assistent'
+    | '/bodem'
     | '/dashboard'
     | '/gezondheid'
     | '/grafieken'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/assistent'
+    | '/bodem'
     | '/dashboard'
     | '/gezondheid'
     | '/grafieken'
@@ -614,6 +626,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssistentRoute: typeof AssistentRoute
+  BodemRoute: typeof BodemRoute
   DashboardRoute: typeof DashboardRoute
   GezondheidRoute: typeof GezondheidRoute
   GrafiekenRoute: typeof GrafiekenRoute
@@ -805,6 +818,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bodem': {
+      id: '/bodem'
+      path: '/bodem'
+      fullPath: '/bodem'
+      preLoaderRoute: typeof BodemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assistent': {
@@ -1062,6 +1082,7 @@ const RijRijIdRouteWithChildren = RijRijIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssistentRoute: AssistentRoute,
+  BodemRoute: BodemRoute,
   DashboardRoute: DashboardRoute,
   GezondheidRoute: GezondheidRoute,
   GrafiekenRoute: GrafiekenRoute,
