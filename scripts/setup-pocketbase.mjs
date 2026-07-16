@@ -1485,6 +1485,58 @@ async function main() {
     deleteRule: AUTH_RULE,
   });
 
+  // Fase 7 Blok F1 — Ctgb-middelen (gevuld via scripts/import-ctgb.mjs uit een
+  // handmatig gedownloade Ctgb-toelatingenexport; geen live koppeling).
+  await ensureCollection({
+    name: "middelen",
+    type: "base",
+    fields: [
+      { name: "naam", type: "text", required: true },
+      { name: "toelatingsnummer", type: "text", required: true },
+      { name: "actieve_stof", type: "text" },
+      { name: "max_dosering", type: "number" },
+      { name: "max_dosering_eenheid", type: "text" },
+      { name: "max_toepassingen_seizoen", type: "number", onlyInt: true },
+      { name: "veiligheidstermijn_dagen", type: "number", onlyInt: true },
+      { name: "herbetreding_uren", type: "number" },
+      { name: "geldig_tot", type: "text" },
+      { name: "bron", type: "text" },
+      { name: "geimporteerd_op", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
+  // Fase 7 Blok F3 — sensor-metingen (IoT-voorbereiding; alleen het endpoint
+  // in pb_hooks/sensor.pb.js schrijft hier, met een apart sensor-token).
+  const tanksColF7 = await api("/api/collections/tanks");
+  await ensureCollection({
+    name: "sensor_metingen",
+    type: "base",
+    fields: [
+      {
+        name: "tank",
+        type: "relation",
+        collectionId: tanksColF7.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "temperatuur_c", type: "number", required: true },
+      { name: "gemeten_op", type: "text", required: true },
+      { name: "sensor_id", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: null,
+    updateRule: null,
+    deleteRule: null,
+  });
+
   // Blok L — verkoop licht. Orders muteren voorraad UITSLUITEND via het
   // server-endpoint (order-leveren, voorraad.pb.js) — de orderregels zelf
   // zijn concept-administratie en mogen vrij bewerkt worden zolang de order
@@ -1779,6 +1831,9 @@ async function main() {
     "materieel",
     "onderhoudslog",
     "archief",
+    // Fase 7
+    "middelen",
+    "sensor_metingen",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);

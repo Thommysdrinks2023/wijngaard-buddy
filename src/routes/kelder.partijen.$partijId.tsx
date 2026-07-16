@@ -17,7 +17,7 @@ import {
   fetchVoedingswaardeBerekeningen,
   fetchVoorraadFlessen,
 } from "@/lib/kelder-data";
-import { fetchPartijById, updatePartij } from "@/lib/partijen-data";
+import { fetchPartijById, fetchPartijen, updatePartij } from "@/lib/partijen-data";
 import {
   foutenPerVeld,
   isGeldig,
@@ -44,6 +44,8 @@ import {
 } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { CalculatorsSectie } from "@/components/calculators-sectie";
+import { berekenVerwachting } from "@/lib/gisting-verwachting";
+import { getPb } from "@/lib/data";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import {
@@ -81,6 +83,7 @@ function PartijDetailPage() {
     queryFn: () => fetchPartijById(partijId),
   });
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
+  const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
   const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
   const tankboekQ = useQuery({
     queryKey: ["tankboek", partijId],
@@ -146,6 +149,75 @@ function PartijDetailPage() {
           vluchtig_zuur_g_l: a.vluchtig_zuur_g_l ?? undefined,
         })),
     [analysesQ.data],
+  );
+
+  // Fase 7 Blok F2 — voorspellende gistingscurve op historie van dezelfde
+  // gist (of hetzelfde wijntype). <2 vergelijkbare partijen = eerlijk "te
+  // weinig historie", geen verzonnen lijn.
+  const alleAnalysesQ = useQuery({
+    queryKey: ["analyses", "alle"],
+    queryFn: () => fetchAnalyses(),
+    enabled: partij?.status === "gisting",
+  });
+  const verwachting = useMemo(() => {
+    if (partij?.status !== "gisting") return null;
+    const vergelijkbaar = new Set(
+      (partijenQ.data ?? [])
+        .filter((p) => (partij.gist ? p.gist === partij.gist : p.type === partij.type))
+        .map((p) => p.id),
+    );
+    const punten = (alleAnalysesQ.data ?? [])
+      .filter((a) => a.dichtheid_oechsle != null)
+      .map((a) => ({ partij: a.partij, datum: a.datum, oechsle: a.dichtheid_oechsle as number }));
+    return berekenVerwachting(partijId, punten, vergelijkbaar);
+  }, [partij, partijenQ.data, alleAnalysesQ.data, partijId]);
+
+  const analyseSerieMetVerwachting = useMemo(() => {
+    if (!verwachting || verwachting.status !== "ok" || !verwachting.verwachting?.length)
+      return analyseSerie;
+    const perDatum = new Map(verwachting.verwachting.map((v) => [v.datum, v.verwacht_oechsle]));
+    return analyseSerie.map((p) => ({ ...p, verwacht_oechsle: perDatum.get(p.datum) }));
+  }, [analyseSerie, verwachting]);
+
+  // Fase 7 Blok F3 — sensor-temperatuur (indien aanwezig) per dag gemiddeld
+  const sensorQ = useQuery({
+    queryKey: ["sensor", tanksVanPartij[0]?.id],
+    queryFn: async () => {
+      const pb = getPb();
+      if (!pb || !tanksVanPartij[0]) return [];
+      try {
+        return await pb.collection("sensor_metingen").getFullList({
+          filter: `tank = "${tanksVanPartij[0].id}"`,
+          sort: "gemeten_op",
+        });
+      } catch {
+        return [];
+      }
+    },
+    enabled: tanksVanPartij.length > 0,
+  });
+  const sensorPerDag = useMemo(() => {
+    const sommen = new Map<string, { som: number; n: number }>();
+    for (const r of sensorQ.data ?? []) {
+      const dag = String(r["gemeten_op"]).slice(0, 10);
+      const cur = sommen.get(dag) ?? { som: 0, n: 0 };
+      cur.som += r["temperatuur_c"] as number;
+      cur.n++;
+      sommen.set(dag, cur);
+    }
+    const m = new Map<string, number>();
+    for (const [dag, { som, n }] of sommen) m.set(dag, Math.round((som / n) * 10) / 10);
+    return m;
+  }, [sensorQ.data]);
+  const serieMetAlles = useMemo(
+    () =>
+      sensorPerDag.size === 0
+        ? analyseSerieMetVerwachting
+        : analyseSerieMetVerwachting.map((p) => ({
+            ...p,
+            temperatuur_c: sensorPerDag.get(p.datum),
+          })),
+    [analyseSerieMetVerwachting, sensorPerDag],
   );
 
   const huidigVolume = Math.round(tanksVanPartij.reduce((acc, t) => acc + t.huidig_volume_l, 0));
@@ -864,7 +936,7 @@ function PartijDetailPage() {
           <>
             <ChartCard title="Fermentatiecurve — dichtheid (°Oe)">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={analyseSerie} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                <LineChart data={serieMetAlles} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8e2" />
                   <XAxis
                     dataKey="datum"
@@ -886,9 +958,47 @@ function PartijDetailPage() {
                     dot={{ r: 3 }}
                     connectNulls
                   />
+                  {verwachting?.status === "ok" && (
+                    <Line
+                      type="monotone"
+                      dataKey="verwacht_oechsle"
+                      name="Verwacht (historie)"
+                      stroke="#9ca3af"
+                      strokeWidth={2}
+                      strokeDasharray="6 4"
+                      dot={false}
+                      connectNulls
+                    />
+                  )}
+                  {sensorPerDag.size > 0 && (
+                    <Line
+                      type="monotone"
+                      dataKey="temperatuur_c"
+                      name="Temp. sensor (°C)"
+                      stroke="#f59e0b"
+                      strokeWidth={1.5}
+                      dot={false}
+                      connectNulls
+                    />
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </ChartCard>
+            {partij?.status === "gisting" && verwachting && (
+              <p
+                className={`-mt-2 text-xs ${
+                  verwachting.status === "ok" && (verwachting.achterstandDagen ?? 0) > 2
+                    ? "rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 font-medium text-amber-900"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {verwachting.status === "te_weinig_historie"
+                  ? `Nog geen verwachtingslijn: pas bij ≥2 vergelijkbare afgeronde gistingen (nu ${verwachting.aantalVergelijkbaar}).`
+                  : (verwachting.achterstandDagen ?? 0) > 2
+                    ? `⚠️ Gisting loopt ±${verwachting.achterstandDagen} dagen achter op de verwachting (gemiddeld ${verwachting.dalingPerDag} °Oe/dag over ${verwachting.aantalVergelijkbaar} eerdere partijen). Check temperatuur en voeding.`
+                    : `Verwachtingslijn: gemiddeld ${verwachting.dalingPerDag} °Oe/dag over ${verwachting.aantalVergelijkbaar} vergelijkbare partijen.`}
+              </p>
+            )}
 
             <ChartCard title="SO₂ (mg/L)">
               <ResponsiveContainer width="100%" height="100%">
