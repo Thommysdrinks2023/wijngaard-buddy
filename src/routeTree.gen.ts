@@ -42,6 +42,7 @@ import { Route as VoorraadVoorraadIdRouteImport } from './routes/voorraad.$voorr
 import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.beheer'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
 import { Route as KelderTankboekRouteImport } from './routes/kelder.tankboek'
+import { Route as KelderQrRouteImport } from './routes/kelder.qr'
 import { Route as KelderOverhevelenRouteImport } from './routes/kelder.overhevelen'
 import { Route as KelderLogboekRouteImport } from './routes/kelder.logboek'
 import { Route as KelderJaaroverzichtRouteImport } from './routes/kelder.jaaroverzicht'
@@ -225,6 +226,11 @@ const KelderTankboekRoute = KelderTankboekRouteImport.update({
   path: '/tankboek',
   getParentRoute: () => KelderRoute,
 } as any)
+const KelderQrRoute = KelderQrRouteImport.update({
+  id: '/qr',
+  path: '/qr',
+  getParentRoute: () => KelderRoute,
+} as any)
 const KelderOverhevelenRoute = KelderOverhevelenRouteImport.update({
   id: '/overhevelen',
   path: '/overhevelen',
@@ -344,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
+  '/kelder/qr': typeof KelderQrRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
@@ -394,6 +401,7 @@ export interface FileRoutesByTo {
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
+  '/kelder/qr': typeof KelderQrRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/voorraad/$voorraadId': typeof VoorraadVoorraadIdRoute
@@ -446,6 +454,7 @@ export interface FileRoutesById {
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
+  '/kelder/qr': typeof KelderQrRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
@@ -500,6 +509,7 @@ export interface FileRouteTypes {
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
     | '/kelder/overhevelen'
+    | '/kelder/qr'
     | '/kelder/tankboek'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
     | '/kelder/overhevelen'
+    | '/kelder/qr'
     | '/kelder/tankboek'
     | '/steekproeven/beheer'
     | '/voorraad/$voorraadId'
@@ -601,6 +612,7 @@ export interface FileRouteTypes {
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
     | '/kelder/overhevelen'
+    | '/kelder/qr'
     | '/kelder/tankboek'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
@@ -890,6 +902,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KelderTankboekRouteImport
       parentRoute: typeof KelderRoute
     }
+    '/kelder/qr': {
+      id: '/kelder/qr'
+      path: '/qr'
+      fullPath: '/kelder/qr'
+      preLoaderRoute: typeof KelderQrRouteImport
+      parentRoute: typeof KelderRoute
+    }
     '/kelder/overhevelen': {
       id: '/kelder/overhevelen'
       path: '/overhevelen'
@@ -1017,6 +1036,7 @@ interface KelderRouteChildren {
   KelderJaaroverzichtRoute: typeof KelderJaaroverzichtRoute
   KelderLogboekRoute: typeof KelderLogboekRoute
   KelderOverhevelenRoute: typeof KelderOverhevelenRoute
+  KelderQrRoute: typeof KelderQrRoute
   KelderTankboekRoute: typeof KelderTankboekRoute
   KelderIndexRoute: typeof KelderIndexRoute
   KelderPartijenPartijIdRoute: typeof KelderPartijenPartijIdRoute
@@ -1032,6 +1052,7 @@ const KelderRouteChildren: KelderRouteChildren = {
   KelderJaaroverzichtRoute: KelderJaaroverzichtRoute,
   KelderLogboekRoute: KelderLogboekRoute,
   KelderOverhevelenRoute: KelderOverhevelenRoute,
+  KelderQrRoute: KelderQrRoute,
   KelderTankboekRoute: KelderTankboekRoute,
   KelderIndexRoute: KelderIndexRoute,
   KelderPartijenPartijIdRoute: KelderPartijenPartijIdRoute,

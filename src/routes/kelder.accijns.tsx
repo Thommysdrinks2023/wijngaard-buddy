@@ -28,7 +28,8 @@ import { getPb } from "@/lib/data";
 import { useSeizoen } from "@/lib/seizoen";
 import { YearSelector } from "@/components/year-selector";
 import { AppHeader } from "@/components/app-header";
-import { AlertTriangle, Printer, Sheet, ShieldAlert } from "lucide-react";
+import { AlertTriangle, FolderArchive, Printer, Sheet, ShieldAlert } from "lucide-react";
+import { maakControlePakket } from "@/lib/controle-pakket";
 import type { RecordModel } from "pocketbase";
 
 // Eindsprint Blok K — accijnsoverzicht per aangifteperiode. ALLES hier is een
@@ -182,6 +183,36 @@ function AccijnsPage() {
   const eigenRol = (getPb()?.authStore.record?.["rol"] as string) || "";
   const isBeheerder = eigenRol === "beheerder";
   const [bewerk, setBewerk] = useState<Record<string, { waarde: string; datum: string }>>({});
+  // Fase 7 Blok E — dezelfde regels als de Excel-export, herbruikt voor het
+  // controle-pakket (bundeling van alle registers over de periode).
+  const accijnsRegels: unknown[][] = [
+    ["Periode", periodeLabel],
+    ["Gebotteld (flessen)", overzicht.gebotteldFlessen],
+    ["Gebotteld (liters)", overzicht.gebotteldLiters],
+    ["Uitslag stil (flessen)", overzicht.uitslagStil.flessen],
+    ["Uitslag stil (liters)", overzicht.uitslagStil.liters],
+    ["Uitslag mousserend (flessen)", overzicht.uitslagMousserend.flessen],
+    ["Uitslag mousserend (liters)", overzicht.uitslagMousserend.liters],
+    ["Breuk (flessen)", overzicht.breuk.flessen],
+    ["Kelderverlies tank (liters)", kelderverliesLiters],
+    ["Beginvoorraad (flessen)", overzicht.beginvoorraadFlessen],
+    ["Eindvoorraad (flessen)", overzicht.eindvoorraadFlessen],
+    ["Accijns stil (indicatie EUR)", overzicht.accijnsStilEur ?? "tarief niet geverifieerd"],
+    [
+      "Accijns mousserend (indicatie EUR)",
+      overzicht.accijnsMousserendEur ?? "tarief niet geverifieerd",
+    ],
+  ];
+  const pakketM = useMutation({
+    mutationFn: () =>
+      maakControlePakket(
+        { van: periode.van, tot: periode.tot, label: periodeLabel },
+        accijnsRegels,
+      ),
+    onSuccess: () => toast.success("Controle-pakket gedownload ✓"),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const tariefM = useMutation({
     mutationFn: ({ id, waarde, datum }: { id: string; waarde: number; datum: string }) =>
       updateRegelgevingInstelling(id, { waarde, laatst_gecontroleerd: datum }),
@@ -284,6 +315,17 @@ function AccijnsPage() {
             >
               <Printer className="h-3.5 w-3.5" /> Print
             </button>
+            {isBeheerder && (
+              <button
+                type="button"
+                disabled={pakketM.isPending}
+                onClick={() => pakketM.mutate()}
+                className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                <FolderArchive className="h-3.5 w-3.5" />
+                {pakketM.isPending ? "Bundelen…" : "Controle-pakket (ZIP)"}
+              </button>
+            )}
           </div>
         </section>
 

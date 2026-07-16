@@ -9,7 +9,7 @@ import { TANK_STATUSSEN, type TankStatus } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { Container, Loader2, RefreshCw } from "lucide-react";
+import { Container, Loader2, QrCode, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/tanks/")({
   component: TanksPage,
@@ -107,6 +107,14 @@ function TanksPage() {
             )}
             Herbereken
           </button>
+          <Link
+            to="/kelder/qr"
+            className="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium"
+            title="QR-printvel voor op de tanks"
+          >
+            <QrCode className="h-4 w-4" />
+            QR
+          </Link>
         </div>
 
         {toonNieuw && (

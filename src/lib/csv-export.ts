@@ -10,6 +10,12 @@ function csvVeld(waarde: unknown): string {
   return tekst;
 }
 
+// Fase 7 Blok E: CSV als string (voor bundeling in het controle-pakket-ZIP)
+export function csvAlsString(kolommen: string[], rijen: unknown[][]): string {
+  const bom = "﻿";
+  return bom + [kolommen, ...rijen].map((rij) => rij.map(csvVeld).join(",")).join("\r\n");
+}
+
 export function exporteerCsv(bestandsnaam: string, kolommen: string[], rijen: unknown[][]) {
   // BOM vooraan zodat Excel op Windows de UTF-8-tekens (bijv. °, €, ë) correct
   // toont in plaats van als rommelige tekens.
