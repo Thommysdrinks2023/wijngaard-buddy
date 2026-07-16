@@ -242,3 +242,18 @@ Volledige keten bewezen: partij "Ketentest Johanniter" (L26-KET-01) → analyses
 - **Ketentest-data staat nog in de database** (opruimen met superuser werd door de permissielaag geweigerd; wacht op expliciet akkoord van Thomas — lijst in het eindrapport).
 - Testaccount roltest@tappenmars.nl (rol medewerker) bestaat nog.
 - Blok G-frontend (bodem-invoer-UI), offsite backup activeren (hardware), accijnstarieven invullen (Thomas + Douane).
+
+# FASE 7 — Kelder Pro (verdieping & afscherming), gestart 16 juli 2026
+
+Vooraf: verse `pb_data`-backup gedraaid (19:01, via de backuptaak). Opmerking: `PROJECT-NOTEBOOK.md` (genoemd in de fase-opdracht) bestaat niet in de repo — CLAUDE.md/WERKLOG/ARCHITECTURE.md gebruikt als bronnen.
+
+### Blok A — Security-achterstallig onderhoud ✅
+
+1. **Admin-UI**: al afgeschermd — PocketBase bindt aan `127.0.0.1` (start-pocketbase.bat), admin-UI is alleen vanaf de machine zelf bereikbaar. Server-migratie-aanpak vastgelegd in `docs/security.md` (reverse-proxy-afscherming van `/_/`; valt onder de toestemmingsregel).
+2. **2FA/OTP**: PocketBase 0.39 ondersteunt OTP/MFA, maar SMTP staat uit (gecontroleerd via /api/settings: `smtp.enabled=false`) — aanzetten zou beheerders buitensluiten omdat OTP-mails niet bezorgd kunnen worden. Bewust niet ingeschakeld; upgrade-route (SMTP → testmail → OTP `_superusers`) + wachtwoordbeleid-tussenmaatregel gedocumenteerd in `docs/security.md`.
+3. **EXIF/GPS-strip**: `foto-compressie.ts` hercodeert nu ALTIJD via canvas (voorheen gingen bestanden <300 KB en groter-uitgevallen hercoderingen ongewijzigd — mét metadata — door). **Bewijs**: zelfgebouwde 310-byte test-JPEG met APP1-Exif + GPS-tag (0x8825, 52°28'N 6°29'E) door de exacte pipeline gehaald in de browser: invoer `{app1:true, exifString:true}` → uitvoer `{app1:false, exifString:false}`. Restrisico (niet-decodeerbare bestanden) gedocumenteerd.
+4. **Backup-monitoring**: `backup-pocketbase.ps1` pingt optioneel een healthcheck-URL (`scripts/healthcheck-url.txt`, in .gitignore; leeg = alleen lokaal) en schrijft na elke geslaagde run het statusrecord `laatste_backup` in `regelgeving_instellingen`. Hub-widget toont "laatste geslaagde backup", rood na >2 dagen. **Bewijs**: echte run → "✓ vandaag"; gesimuleerde 4-dagen-oude datum → "⚠️ 3 dagen geleden — controleer de backuptaak"; daarna hersteld.
+5. **AVG**: `docs/privacy.md` (gegevens/doelen/bewaartermijnen/AI-verwerking via Anthropic API zonder training). Sleutel `klant_bewaartermijn_maanden` (default 24) geseed; /verkoop toont een opschoonlijst van klanten zonder orders ouder dan de termijn — verwijderen is per klant een bewuste klik met confirm, nooit automatisch.
+6. **Agent-context-minimalisatie**: geverifieerd — de systeemprompt is een statisch bestand (`leesSysteemprompt()` leest alleen agent_systeemprompt.md); klantgegevens bereiken het model uitsluitend via `zoek_klanten`/`zoek_orders`-toolaanroepen bij expliciete klant-/ordervragen. Vastgelegd in `docs/security.md` §6.
+
+Testaccount voor Fase 7-browserverificatie: fase7test@tappenmars.nl (rol beheerder) — wordt aan het einde van de fase opgeruimd en in het eindrapport gemeld.

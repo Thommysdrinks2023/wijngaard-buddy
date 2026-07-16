@@ -24,6 +24,7 @@ function klantFromPb(r: RecordModel): Klant {
     type: r["type"] || null,
     contact: r["contact"] ?? "",
     notities: r["notities"] ?? "",
+    created: r["created"],
   };
 }
 
@@ -39,6 +40,29 @@ export async function createKlant(input: Omit<Klant, "id">): Promise<Klant> {
   logAudit("aangemaakt", "klanten", input.naam);
   const r = await pb.collection("klanten").create({ ...input });
   return klantFromPb(r);
+}
+
+export async function verwijderKlant(id: string, naam: string): Promise<void> {
+  const pb = await pbOfFout();
+  logAudit("verwijderd", "klanten", naam);
+  await pb.collection("klanten").delete(id);
+}
+
+// Fase 7 Blok A (AVG): klanten zonder enige order, ouder dan de ingestelde
+// bewaartermijn. Alleen een voorstel-lijst — verwijderen blijft handmatig.
+export function verweesdeKlanten(
+  klanten: Klant[],
+  orders: Order[],
+  bewaartermijnMaanden: number,
+): Klant[] {
+  const metOrder = new Set(orders.map((o) => o.klant));
+  const grens = new Date();
+  grens.setMonth(grens.getMonth() - bewaartermijnMaanden);
+  return klanten.filter((k) => {
+    if (metOrder.has(k.id)) return false;
+    const aangemaakt = k.created ? new Date(k.created.replace(" ", "T")) : null;
+    return aangemaakt !== null && !isNaN(aangemaakt.getTime()) && aangemaakt < grens;
+  });
 }
 
 // ============= Orders =============

@@ -12,8 +12,11 @@ import {
   leverOrder,
   omzetPerSleutel,
   updateOrderStatus,
+  verweesdeKlanten,
   verwijderConceptOrder,
+  verwijderKlant,
 } from "@/lib/verkoop-data";
+import { fetchRegelgevingInstellingen } from "@/lib/regelgeving-data";
 import { fetchVoorraadFlessen } from "@/lib/kelder-data";
 import { exporteerCsv } from "@/lib/csv-export";
 import { useInvoerder } from "@/lib/use-invoerder";
@@ -33,6 +36,64 @@ export const Route = createFileRoute("/verkoop")({
 });
 
 const veldClass = "h-11 w-full rounded-xl border border-input bg-card px-3 text-sm";
+
+// Fase 7 Blok A (AVG): klanten zonder orders ouder dan de bewaartermijn.
+// Alleen een voorstel — verwijderen is altijd een bewuste klik per klant.
+function OpschoonLijst() {
+  const qc = useQueryClient();
+  const klantenQ = useQuery({ queryKey: ["klanten"], queryFn: fetchKlanten });
+  const ordersQ = useQuery({ queryKey: ["orders"], queryFn: fetchOrders });
+  const regelgevingQ = useQuery({
+    queryKey: ["regelgeving", "verkoop"],
+    queryFn: fetchRegelgevingInstellingen,
+  });
+  const verwijderM = useMutation({
+    mutationFn: ({ id, naam }: { id: string; naam: string }) => verwijderKlant(id, naam),
+    onSuccess: () => {
+      toast.success("Klant verwijderd");
+      qc.invalidateQueries({ queryKey: ["klanten"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Verwijderen mislukt"),
+  });
+
+  const termijn =
+    (regelgevingQ.data ?? []).find((r) => r.sleutel === "klant_bewaartermijn_maanden")?.waarde ??
+    24;
+  const verweesd = verweesdeKlanten(klantenQ.data ?? [], ordersQ.data ?? [], termijn);
+  if (verweesd.length === 0) return null;
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Opschoonlijst (AVG)
+      </h2>
+      <p className="text-xs text-muted-foreground">
+        Deze klanten hebben geen enkele order en staan langer dan {termijn} maanden in het systeem.
+        Verwijderen is een voorstel — niets gebeurt automatisch.
+      </p>
+      <ul className="space-y-1">
+        {verweesd.map((k) => (
+          <li
+            key={k.id}
+            className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm"
+          >
+            <span className="truncate">{k.naam}</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(`Klant "${k.naam}" definitief verwijderen?`))
+                  verwijderM.mutate({ id: k.id, naam: k.naam });
+              }}
+              className="flex h-8 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-medium text-red-700"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Verwijderen
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function VerkoopPage() {
   const qc = useQueryClient();
@@ -499,6 +560,8 @@ function VerkoopPage() {
             ))}
           </section>
         )}
+
+        <OpschoonLijst />
 
         <p className="text-xs text-muted-foreground">
           Dit overzicht is géén vervanging van je boekhouding — facturatie en btw blijven daar. Zie{" "}

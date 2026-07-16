@@ -533,6 +533,7 @@ export interface Klant {
   type: KlantType | null;
   contact?: string;
   notities?: string;
+  created?: string;
 }
 
 export interface OrderRegel {

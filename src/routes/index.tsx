@@ -11,6 +11,36 @@ import {
   MODULE_ROUTES,
   setLaatsteModule,
 } from "@/lib/module-keuze";
+import { fetchRegelgevingInstellingen } from "@/lib/regelgeving-data";
+
+// Fase 7 Blok A: backup-bewaking. Het backupscript schrijft na elke geslaagde
+// run de sleutel "laatste_backup" bij; ouder dan 2 dagen = waarschuwing.
+function BackupWidget() {
+  const q = useQuery({
+    queryKey: ["regelgeving", "hub-backup"],
+    queryFn: fetchRegelgevingInstellingen,
+  });
+  const record = (q.data ?? []).find((r) => r.sleutel === "laatste_backup");
+  if (!record?.laatst_gecontroleerd) return null;
+  const laatst = new Date(record.laatst_gecontroleerd.replace(" ", "T"));
+  if (isNaN(laatst.getTime())) return null;
+  const dagen = Math.floor((Date.now() - laatst.getTime()) / (24 * 60 * 60 * 1000));
+  const teOud = dagen > 2;
+  return (
+    <div
+      className={`mt-3 rounded-xl border px-4 py-2.5 text-sm ${
+        teOud
+          ? "border-red-300 bg-red-50 text-red-800"
+          : "border-border bg-card text-muted-foreground"
+      }`}
+    >
+      {teOud ? "⚠️ " : "✓ "}
+      Laatste geslaagde backup:{" "}
+      {dagen === 0 ? "vandaag" : dagen === 1 ? "gisteren" : `${dagen} dagen geleden`}
+      {teOud && " — controleer de backuptaak (zie docs/backup.md)"}
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/")({
   component: ModuleHub,
@@ -101,6 +131,7 @@ function ModuleHub() {
             </Link>
           ))}
         </div>
+        <BackupWidget />
       </div>
     </>
   );

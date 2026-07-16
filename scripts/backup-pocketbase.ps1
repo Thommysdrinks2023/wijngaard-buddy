@@ -72,6 +72,49 @@ if (-not $gelukt) {
     Log "OK  backup via bestandskopie -> $doelZip"
 }
 
+# --- Monitoring (Fase 7 Blok A) ---
+# Externe healthcheck-ping (optioneel): zet een ping-URL (bijv. healthchecks.io)
+# in scripts\healthcheck-url.txt. Leeg of afwezig = alleen lokaal loggen.
+$healthBestand = Join-Path $PSScriptRoot "healthcheck-url.txt"
+if (Test-Path $healthBestand) {
+    $healthUrl = (Get-Content $healthBestand -TotalCount 1)
+    if ($healthUrl) { $healthUrl = $healthUrl.Trim() }
+    if ($healthUrl) {
+        try {
+            $pingUrl = if ($gelukt) { $healthUrl } else { "$healthUrl/fail" }
+            Invoke-RestMethod $pingUrl -TimeoutSec 10 | Out-Null
+            Log "OK  healthcheck-ping verstuurd"
+        } catch {
+            Log "WAARSCHUWING  healthcheck-ping mislukt ($($_.Exception.Message))"
+        }
+    }
+}
+
+# Statusrecord in PocketBase zodat de app "laatste geslaagde backup" kan tonen
+# (regelgeving_instellingen, sleutel 'laatste_backup'). Alleen mogelijk als de
+# server draait en we een API-token hebben; anders is de app toch ook offline.
+if ($gelukt -and $serverDraait -and $headers) {
+    try {
+        $filter = [uri]::EscapeDataString("sleutel='laatste_backup'")
+        $bestaand = Invoke-RestMethod -Uri "$pbUrl/api/collections/regelgeving_instellingen/records?filter=$filter" -Headers $headers
+        $statusBody = ConvertTo-Json @{
+            sleutel             = "laatste_backup"
+            laatst_gecontroleerd = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+            bron                = (Split-Path $doelZip -Leaf)
+        }
+        if ($bestaand.totalItems -gt 0) {
+            Invoke-RestMethod -Method Patch -Uri "$pbUrl/api/collections/regelgeving_instellingen/records/$($bestaand.items[0].id)" `
+                -Headers $headers -ContentType "application/json" -Body $statusBody | Out-Null
+        } else {
+            Invoke-RestMethod -Method Post -Uri "$pbUrl/api/collections/regelgeving_instellingen/records" `
+                -Headers $headers -ContentType "application/json" -Body $statusBody | Out-Null
+        }
+        Log "OK  backup-status naar PocketBase geschreven"
+    } catch {
+        Log "WAARSCHUWING  backup-status schrijven mislukt ($($_.Exception.Message))"
+    }
+}
+
 # --- Rotatie: 7 dagelijks / 4 wekelijks / 12 maandelijks ---
 # Wekelijkse kopie: eerste geslaagde backup van deze ISO-week
 $cal = [System.Globalization.CultureInfo]::InvariantCulture.Calendar

@@ -1655,6 +1655,41 @@ async function main() {
       eenheid: "L/jaar",
       bron: "Invullen na verificatie: AGP-/vrijstellingsdrempel",
     },
+    // Fase 7 Blok A — AVG-bewaartermijn klanten zonder orders (opschoonlijst)
+    {
+      sleutel: "klant_bewaartermijn_maanden",
+      waarde: 24,
+      eenheid: "maanden",
+      bron: "Fase 7 Blok A — AVG: klanten zonder orders ouder dan dit verschijnen in de opschoonlijst op /verkoop",
+    },
+    // Fase 7 Blok C — wijnbouwzone + oenologische limieten (Thomas verifieert en vult)
+    {
+      sleutel: "wijnbouwzone",
+      waarde: 1,
+      eenheid: "zone (1 = A)",
+      bron: "Aanname: Nederland = wijnbouwzone A (EU-verordening 2013/1308 bijlage VII). Instelling, geen code.",
+    },
+    {
+      sleutel: "verrijking_max_volpct_zone",
+      eenheid: "vol% alcohol",
+      bron: "Invullen na verificatie: max. verrijking (chaptalisatie) wijnbouwzone A, EU-verordening",
+    },
+    {
+      sleutel: "aanzuring_max_g_l",
+      eenheid: "g/L wijnsteenzuur",
+      bron: "Invullen na verificatie: max. aanzuring wijnbouwzone A, EU-verordening",
+    },
+    {
+      sleutel: "ontzuring_max_g_l",
+      eenheid: "g/L wijnsteenzuur-equivalent",
+      bron: "Invullen na verificatie: max. ontzuring wijnbouwzone A, EU-verordening",
+    },
+    {
+      sleutel: "so2_streef_moleculair_mg_l",
+      waarde: 0.8,
+      eenheid: "mg/L moleculair SO2",
+      bron: "Gangbare streefwaarde stille wijn (0,8 mg/L); instelbaar per wijnstijl in de calculator",
+    },
   ];
   for (const seed of REGELGEVING_SEEDS) {
     const bestaand = await api(
