@@ -8,7 +8,14 @@ import { exporteerCsv } from "@/lib/csv-export";
 import { useSeizoen } from "@/lib/seizoen";
 import { YearSelector } from "@/components/year-selector";
 import { AppHeader } from "@/components/app-header";
-import { Printer, Sheet } from "lucide-react";
+import { Archive, Loader2, Printer, Sheet } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { useState } from "react";
+import { toast } from "sonner";
+import { getPb } from "@/lib/data";
+import { useInvoerder } from "@/lib/use-invoerder";
+import type { RecordModel } from "pocketbase";
 
 // Blok F — jaaroverzicht per jaargang: geoogst (kg per ras), geproduceerd (L,
 // uit partijen.start_volume_l bij de pers), gebotteld (flessen per lot),
@@ -19,8 +26,54 @@ export const Route = createFileRoute("/kelder/jaaroverzicht")({
   head: () => ({ meta: [{ title: "Jaaroverzicht — Kelder" }] }),
 });
 
+// Blok O — jaarafsluiting: het overzicht van een jaargang definitief
+// vastleggen in de append-only archief-collectie (update/delete = null).
+// Er wordt niets verwijderd of gewijzigd; 2027-invoer kan gewoon doorgaan
+// naast 2026-raadpleging via de bestaande seizoenskiezer.
+async function fetchArchief(jaar: number) {
+  const pb = getPb();
+  if (!pb) return [];
+  const records = await pb.collection("archief").getFullList({
+    filter: `jaar = ${jaar} && type = "jaaroverzicht"`,
+    sort: "-created",
+  });
+  return records as RecordModel[];
+}
+
 function JaaroverzichtPage() {
   const [jaar] = useSeizoen();
+  const [invoerder] = useInvoerder();
+  const [afsluitNotitie, setAfsluitNotitie] = useState("");
+  const archiefQ = useQuery({ queryKey: ["archief", jaar], queryFn: () => fetchArchief(jaar) });
+  const qc = useQueryClient();
+  const afsluitM = useMutation({
+    mutationFn: async () => {
+      const pb = getPb();
+      if (!pb || !pb.authStore.isValid)
+        throw new Error("Log in om een jaar af te sluiten (archief vereist een account).");
+      return pb.collection("archief").create({
+        jaar,
+        type: "jaaroverzicht",
+        notitie: afsluitNotitie,
+        ingevoerd_door: invoerder,
+        samenvatting: {
+          geoogst_kg: Math.round(totaalKg),
+          oogst_per_ras: Object.fromEntries(oogstPerRas.map(([ras, kg]) => [ras, Math.round(kg)])),
+          geproduceerd_l: Math.round(geproduceerdVolume),
+          partijen: partijenVanJaar.length,
+          gebotteld_flessen: totaalFlessen,
+          flessen_per_lot: Object.fromEntries(flessenPerLot),
+          verlies_l: Math.round(verliesVanJaar),
+          afgesloten_op: format(new Date(), "yyyy-MM-dd"),
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success(`Jaar ${jaar} afgesloten en gearchiveerd ✓`);
+      qc.invalidateQueries({ queryKey: ["archief", jaar] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const oogstQ = useQuery({ queryKey: ["oogst-records"], queryFn: fetchOogst });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
   const bottelrondesQ = useQuery({
@@ -199,6 +252,43 @@ function JaaroverzichtPage() {
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+
+        {/* Jaarafsluiting (Blok O) — append-only vastleggen in het archief */}
+        <section className="space-y-2 rounded-2xl border border-border bg-card p-4 print:hidden">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <Archive className="h-4 w-4" /> Jaarafsluiting {jaar}
+          </h2>
+          {(archiefQ.data ?? []).length > 0 ? (
+            <p className="text-sm">
+              ✅ Dit jaar is afgesloten op{" "}
+              {String((archiefQ.data ?? [])[0]?.["created"] ?? "").slice(0, 10)}. Het archiefrecord
+              is onwijzigbaar; een correctie = een nieuwe afsluiting (de nieuwste telt).
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Legt de cijfers hierboven definitief vast in het archief (er wordt niets verwijderd
+                of gewijzigd — {jaar + 1} kan gewoon doorlopen naast {jaar}-raadpleging). Print het
+                overzicht eerst als PDF voor je eigen map.
+              </p>
+              <input
+                value={afsluitNotitie}
+                onChange={(e) => setAfsluitNotitie(e.target.value)}
+                className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm"
+                placeholder="Notitie bij de afsluiting (optioneel)"
+              />
+              <button
+                type="button"
+                onClick={() => afsluitM.mutate()}
+                disabled={afsluitM.isPending}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                {afsluitM.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Sluit {jaar} definitief af
+              </button>
+            </>
           )}
         </section>
       </div>
