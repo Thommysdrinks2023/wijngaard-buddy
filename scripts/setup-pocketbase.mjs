@@ -1511,6 +1511,38 @@ async function main() {
     deleteRule: AUTH_RULE,
   });
 
+  // Fase 7 Blok G — sensoriek: één simpel proefformulier-model per partij.
+  await ensureCollection({
+    name: "proefnotities",
+    type: "base",
+    fields: [
+      {
+        name: "partij",
+        type: "relation",
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+        required: true,
+      },
+      { name: "datum", type: "text", required: true },
+      { name: "proever", type: "text", required: true },
+      { name: "helderheid", type: "text" },
+      { name: "kleur", type: "text" },
+      { name: "geur", type: "text" },
+      { name: "smaak", type: "text" },
+      { name: "balans", type: "text" },
+      { name: "score", type: "number", onlyInt: true, min: 1, max: 10 },
+      { name: "gebotteld_exemplaar", type: "bool" },
+      { name: "notities", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
   // Fase 7 Blok F3 — sensor-metingen (IoT-voorbereiding; alleen het endpoint
   // in pb_hooks/sensor.pb.js schrijft hier, met een apart sensor-token).
   const tanksColF7 = await api("/api/collections/tanks");
@@ -1834,6 +1866,7 @@ async function main() {
     // Fase 7
     "middelen",
     "sensor_metingen",
+    "proefnotities",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);

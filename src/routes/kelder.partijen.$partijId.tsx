@@ -46,6 +46,7 @@ import { AppHeader } from "@/components/app-header";
 import { CalculatorsSectie } from "@/components/calculators-sectie";
 import { berekenVerwachting } from "@/lib/gisting-verwachting";
 import { getPb } from "@/lib/data";
+import { ProefSectie } from "@/components/proef-sectie";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import {
@@ -1114,6 +1115,8 @@ function PartijDetailPage() {
             </ChartCard>
           </>
         )}
+
+        <ProefSectie partijId={partijId} />
 
         {/* Analyses */}
         <section>

@@ -214,6 +214,45 @@ const LEES_HANDLERS = {
       notitie: r.getString("notitie") || null,
     }));
   },
+  zoek_proefnotities(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.partij) {
+      const partij = logica.vindPartij(app, input.partij);
+      if (!partij)
+        return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
+      delen.push("partij = {:p}");
+      params.p = partij.id;
+    }
+    if (input.van) {
+      delen.push("datum >= {:van}");
+      params.van = input.van;
+    }
+    if (input.tot) {
+      delen.push("datum <= {:tot}");
+      params.tot = input.tot;
+    }
+    const regels = app.findRecordsByFilter(
+      "proefnotities",
+      delen.join(" && ") || "id != ''",
+      "-datum,-created",
+      20,
+      0,
+      params,
+    );
+    return regels.map((r) => ({
+      datum: r.getString("datum"),
+      proever: r.getString("proever"),
+      helderheid: r.getString("helderheid") || null,
+      kleur: r.getString("kleur") || null,
+      geur: r.getString("geur") || null,
+      smaak: r.getString("smaak") || null,
+      balans: r.getString("balans") || null,
+      score: r.getFloat("score") || null,
+      gebotteld_exemplaar: r.getBool("gebotteld_exemplaar"),
+      notities: r.getString("notities") || null,
+    }));
+  },
   // Fase 7 Blok C — oenologische reken-tools (formules: docs/oenologie-formules.md,
   // versie 2026-07-16.1, gespiegeld uit src/lib/oenologie.ts)
   bereken_so2(app, input) {

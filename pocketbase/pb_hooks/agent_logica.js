@@ -699,6 +699,22 @@ const OENOLOGIE_TOOLS = [
   {
     lezen: true,
     schema: {
+      name: "zoek_proefnotities",
+      description:
+        "Sensorische proefnotities per partij (datum, proever, helderheid/kleur/geur/smaak/balans, score 1-10, fles of tank).",
+      input_schema: {
+        type: "object",
+        properties: {
+          partij: { type: "string", description: "Partijnaam of lotnummer" },
+          van: { type: "string" },
+          tot: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
       name: "bereken_so2",
       description:
         "Moleculair SO2 + doseeradvies (gram KMS) uit pH, vrije SO2, volume en streefwaarde (default 0,8 mg/L moleculair). Advies - boeken kan daarna via stel_kelderlog_voor.",
