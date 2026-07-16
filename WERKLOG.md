@@ -197,3 +197,48 @@ Commit `54f0a11`: Wijngaard-tegel toont "69 rijen" (live geverifieerd, werkt ook
 6. **Wachtwoorden van de 3 invoerder-accounts** (of toestemming voor een testaccount) zodat de ingelogde schrijfflows (bottelen, overhevelen, peiling) ook eens interactief door de browser getest kunnen worden i.p.v. alleen via de API.
 
 ---
+
+# Sessie 16 juli 2026 — Eindsprint K/L/M/N/O + schema-run + naam definitief
+
+Thomas beantwoordde alle 6 openstaande vragen (zie vorige sectie) en gaf expliciete toestemming voor het gebruik van de superuser-credentials, het verwijderen van `partij_toevoegingen`, offsite-backupvoorbereiding, AGP/accijns-seeds en autonoom testen met testaccounts. Appnaam definitief: **De Tappenmars Buddy**.
+
+### Schema-run + naam + opschoning ✅ (commit `6627aed`)
+
+- `setup-pocketbase.mjs` tweemaal gedraaid (idempotentie bewezen): `rol`/`weergavenaam` op users (3 bestaande accounts → beheerder), nieuwe collecties `bodem_observaties`, `klanten`, `orders`, `materieel`, `onderhoudslog`, `archief` (append-only), 4 regelgeving-seeds (tarieven leeg — Douane-verificatie blijft bij Thomas).
+- `partij_toevoegingen` verwijderd (collectie + scriptdefinitie + types); `VEELGEBRUIKTE_TOEVOEGINGEN` blijft voor kelderlog-autocomplete.
+- Appnaam op de drie gedocumenteerde plekken: `src/config/app.ts`, `manifest.webmanifest`, systeemprompt-intro.
+
+### Blok B — Rolhandhaving server-side ✅ (commit `77d39f1`)
+
+`rolVan`/`eisSchrijfrecht`/`eisBeheerder` in `kelder_logica.js`; guards op tankboek-boeking (correcties → beheerder), partij-aanmaken, bottelronde, tanks-herbereken, voorraad-mutatie (correctie → beheerder). Nieuw `gebruikers.pb.js`: GET gebruikerslijst + POST rolwijziging (beheerder-only, laatste-beheerder-lockout-guard). Gebruikersbeheer-UI in /instellingen. Rolmatrix 9/9 live bewezen via curl met testaccount roltest@tappenmars.nl; rolwijziging werkt direct op bestaande tokens.
+
+### Blok L — /verkoop ✅ (commit `5b16035`)
+
+Klanten + orders (regels: wijn/aantal/prijs), statusflow concept→geleverd→betaald. **Atomisch leveren** via nieuw endpoint `POST /api/tappenmars/order-leveren`: per orderregel een voorraadmutatie (type verkocht, referentie "Order <id> — <klant>") + orderstatus in één transactie; een falende regel rolt alles terug (live bewezen met een 999-flessen-order → 400, order bleef concept). Omzetoverzicht per wijn/klanttype + CSV; boekhouding-disclaimer.
+
+### Blok K — Accijnsoverzicht ✅ (commit `af3e17f`)
+
+Pure rekenlib `src/lib/accijns.ts` (13/13 handgerekende unittests): uitslag stil/mousserend (parelwijn-vlag), breuk, begin-/eindvoorraad; bedragen alleen bij geverifieerd tarief (waarde > 0 én `laatst_gecontroleerd` gezet), anders expliciet "geen geverifieerd tarief". `/kelder/accijns`: periodekiezer (maand/kwartaal), AGP-drempelbanner op jaarproductie, tarievenbeheer alleen voor beheerders, CSV/print. Overal "indicatie — controleer bij je aangifte".
+
+### Blok M — /materieel ✅ (commit `67271cd`)
+
+Machinepark + onderhoudslog; widget "Onderhoud binnenkort (30 dagen)" op basis van `volgende_keer`. Eigen navigatiebalk-sectie.
+
+### Blok O — Jaarafsluiting ✅ (in jaaroverzicht-commit)
+
+Knop "Jaar afsluiten" op /kelder/jaaroverzicht schrijft een `archief`-record (jaaroverzicht-samenvatting als json); archief is append-only (update/delete 403 — live bewezen). Afgesloten jaar toont status i.p.v. knop.
+
+### Blok N — Agent-verdieping ✅ (commit `e836e0f`)
+
+Registry uitgebreid met `zoek_bodem` (wijngaard), module `verkoop` (`zoek_klanten`, `zoek_orders`), module `materieel` (`zoek_materieel`, `stel_onderhoud_voor` → actietype `onderhoud`). Consistentiecheck registry↔handlers: 24 tools, 1-op-1. Systeemprompt-vocabulaire aangevuld (klant/order, materieel/onderhoud, bodemobservatie). **Live bewezen**: vrije-tekstvraag "Welke klanten hebben we?" → model koos `zoek_klanten` en antwoordde correct met bron; "oliebeurt Testtractor, €45, volgende 2027-07-16" → voorstel-kaart → bevestiging → correct `onderhoudslog`-record. Testdata van deze test direct opgeruimd.
+Bewust doorgeschoven N-restpunten: proactieve meldingen, gesprekssamenvatting >30 berichten, foto-vergelijking over jaren, `stel_order_voor`, `zoek_accijns_overzicht`.
+
+### Ketentest ✅ (via API, testaccount)
+
+Volledige keten bewezen: partij "Ketentest Johanniter" (L26-KET-01) → analyses → kelderlog → bottelronde (tank 2: 100→70 L) → klant "Restaurant De Proeverij" → order → atomische levering (voorraad 40→28 met order-referentie) → dubbel leveren geweigerd → handmatige mutatie (→25) → rollback-test → jaarafsluiting 2026 (archiefrecord) → append-only-403's op tankboek/mutaties/archief.
+
+### Openstaand / vragen — zie eindrapport aan Thomas
+
+- **Ketentest-data staat nog in de database** (opruimen met superuser werd door de permissielaag geweigerd; wacht op expliciet akkoord van Thomas — lijst in het eindrapport).
+- Testaccount roltest@tappenmars.nl (rol medewerker) bestaat nog.
+- Blok G-frontend (bodem-invoer-UI), offsite backup activeren (hardware), accijnstarieven invullen (Thomas + Douane).
