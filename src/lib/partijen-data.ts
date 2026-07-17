@@ -5,7 +5,7 @@
 
 import type { RecordModel } from "pocketbase";
 import type { OpdrachtType, Partij, PartijStatus, PartijType } from "./types";
-import { ensureOnline, getPb } from "./data";
+import { ensureOnline, getPb, isIngelogd } from "./data";
 
 function partijFromPb(r: RecordModel): Partij {
   return {
@@ -40,9 +40,19 @@ function partijFromPb(r: RecordModel): Partij {
 
 export async function fetchPartijen(): Promise<Partij[]> {
   const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("partijen").getFullList({ sort: "-jaargang,naam" });
-  return records.map(partijFromPb);
+  if (!pb) return [];
+  // Zie kelder-data.ts (fetchProducenten/fetchTanks): zonder deze check gaf
+  // een niet-ingelogde sessie hier stil een lege lijst terug in plaats van
+  // een herkenbare fout.
+  if (!isIngelogd()) throw new Error("Log opnieuw in om partijen te kunnen laden.");
+  if (!(await ensureOnline()))
+    throw new Error("Geen verbinding met de server — kon partijen niet laden.");
+  try {
+    const records = await pb.collection("partijen").getFullList({ sort: "-jaargang,naam" });
+    return records.map(partijFromPb);
+  } catch {
+    throw new Error("Kon partijen niet laden — probeer het opnieuw.");
+  }
 }
 
 export async function fetchPartijById(id: string): Promise<Partij | null> {

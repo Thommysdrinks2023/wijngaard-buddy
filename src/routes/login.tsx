@@ -4,13 +4,21 @@ import { Loader2 } from "lucide-react";
 import { getPb, isPbConfigured, setInvoerder } from "@/lib/data";
 import { useWijngaardConfig } from "@/lib/use-wijngaard-config";
 
+interface LoginSearch {
+  melding?: string;
+}
+
 export const Route = createFileRoute("/login")({
   component: LoginPage,
+  validateSearch: (search: Record<string, unknown>): LoginSearch => ({
+    melding: typeof search.melding === "string" ? search.melding : undefined,
+  }),
   head: () => ({ meta: [{ title: "Inloggen — Wijngaard" }] }),
 });
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { melding } = Route.useSearch();
   const { naam: wijngaardNaam } = useWijngaardConfig();
   // PocketBase-login wanneer een server is geconfigureerd, anders alleen naam
   const pbActief = isPbConfigured();
@@ -79,6 +87,11 @@ function LoginPage() {
 
         {/* Formulier op lichte ondergrond */}
         <div className="bg-card px-6 pb-8 pt-6">
+          {melding && (
+            <p className="mb-4 rounded-lg bg-primary-soft px-3 py-2 text-sm text-primary">
+              {melding}
+            </p>
+          )}
           <form onSubmit={handleInloggen} className="space-y-4">
             {naamModus ? (
               <label className="block">

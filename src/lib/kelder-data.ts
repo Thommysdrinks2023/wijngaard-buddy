@@ -21,7 +21,7 @@ import type {
   VoorraadMutatieType,
 } from "./types";
 import type { PartijInput } from "./partijen-data";
-import { ensureOnline, getPb } from "./data";
+import { ensureOnline, getPb, isIngelogd } from "./data";
 import { logAudit } from "./audit";
 
 const GEEN_VERBINDING = "Geen verbinding — kelderboekingen vereisen de server.";
@@ -45,9 +45,21 @@ function producentFromPb(r: RecordModel): Producent {
 
 export async function fetchProducenten(): Promise<Producent[]> {
   const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("producenten").getFullList({ sort: "naam" });
-  return records.map(producentFromPb);
+  if (!pb) return [];
+  // Bug gevonden (Fase 7-nazorg): zonder deze expliciete check gaf een
+  // niet-ingelogde sessie hier stil een lege lijst — de PocketBase-listRule
+  // laat het verzoek gewoon door (200, items: []), dus dat werd nergens als
+  // fout herkend. Nu een duidelijke fout die de aanroepende query.isError
+  // maakt (zie kelder.partijen.nieuw.tsx).
+  if (!isIngelogd()) throw new Error("Log opnieuw in om producenten te kunnen laden.");
+  if (!(await ensureOnline()))
+    throw new Error("Geen verbinding met de server — kon producenten niet laden.");
+  try {
+    const records = await pb.collection("producenten").getFullList({ sort: "naam" });
+    return records.map(producentFromPb);
+  } catch {
+    throw new Error("Kon producenten niet laden — probeer het opnieuw.");
+  }
 }
 
 // ============= Tanks =============
@@ -79,9 +91,16 @@ export function tankCodeVergelijk(a: Tank, b: Tank): number {
 
 export async function fetchTanks(): Promise<Tank[]> {
   const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("tanks").getFullList({ sort: "code" });
-  return records.map(tankFromPb).sort(tankCodeVergelijk);
+  if (!pb) return [];
+  if (!isIngelogd()) throw new Error("Log opnieuw in om tanks te kunnen laden.");
+  if (!(await ensureOnline()))
+    throw new Error("Geen verbinding met de server — kon tanks niet laden.");
+  try {
+    const records = await pb.collection("tanks").getFullList({ sort: "code" });
+    return records.map(tankFromPb).sort(tankCodeVergelijk);
+  } catch {
+    throw new Error("Kon tanks niet laden — probeer het opnieuw.");
+  }
 }
 
 export interface TankInput {

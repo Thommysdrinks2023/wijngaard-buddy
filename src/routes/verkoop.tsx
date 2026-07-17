@@ -17,6 +17,7 @@ import {
   verwijderKlant,
 } from "@/lib/verkoop-data";
 import { fetchRegelgevingInstellingen } from "@/lib/regelgeving-data";
+import { vereistIngelogd } from "@/lib/auth-guard";
 import { fetchVoorraadFlessen } from "@/lib/kelder-data";
 import { exporteerCsv } from "@/lib/csv-export";
 import { useInvoerder } from "@/lib/use-invoerder";
@@ -31,6 +32,7 @@ import { Loader2, Plus, Sheet, ShoppingCart, Trash2, Truck, UserPlus } from "luc
 // het atomische order-leveren-endpoint; de voorraadmutatie is de bron van
 // waarheid, dit scherm is de administratie eromheen.
 export const Route = createFileRoute("/verkoop")({
+  beforeLoad: () => vereistIngelogd("Log in om verkoop te beheren."),
   component: VerkoopPage,
   head: () => ({ meta: [{ title: "Verkoop — De Tappenmars Buddy" }] }),
 });

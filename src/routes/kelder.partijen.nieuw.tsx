@@ -160,9 +160,12 @@ function NieuwePartijPage() {
                   setProducent(e.target.value);
                   wisFout("producent");
                 }}
-                className={`${veldClass} ${fouten.producent ? "border-destructive" : ""}`}
+                disabled={producentenQ.isError}
+                className={`${veldClass} ${fouten.producent || producentenQ.isError ? "border-destructive" : ""}`}
               >
-                <option value="">Kies producent…</option>
+                <option value="">
+                  {producentenQ.isError ? "Kon producenten niet laden" : "Kies producent…"}
+                </option>
                 {(producentenQ.data ?? [])
                   .filter((p) => p.actief)
                   .map((p) => (
@@ -171,7 +174,21 @@ function NieuwePartijPage() {
                     </option>
                   ))}
               </select>
-              {fouten.producent && (
+              {producentenQ.isError && (
+                <span className="mt-1 flex items-center justify-between gap-2 text-sm text-destructive">
+                  {producentenQ.error instanceof Error
+                    ? producentenQ.error.message
+                    : "Kon producenten niet laden — probeer opnieuw."}
+                  <button
+                    type="button"
+                    onClick={() => producentenQ.refetch()}
+                    className="shrink-0 underline underline-offset-2"
+                  >
+                    Opnieuw
+                  </button>
+                </span>
+              )}
+              {!producentenQ.isError && fouten.producent && (
                 <span className="mt-1 block text-sm text-destructive">{fouten.producent}</span>
               )}
             </label>
@@ -436,9 +453,12 @@ function NieuwePartijPage() {
               <select
                 value={startTank}
                 onChange={(e) => setStartTank(e.target.value)}
-                className={veldClass}
+                disabled={tanksQ.isError}
+                className={`${veldClass} ${tanksQ.isError ? "border-destructive" : ""}`}
               >
-                <option value="">Nog geen tank</option>
+                <option value="">
+                  {tanksQ.isError ? "Kon tanks niet laden" : "Nog geen tank"}
+                </option>
                 {(tanksQ.data ?? [])
                   .filter((t) => t.status === "leeg" || t.huidige_partij === null)
                   .map((t) => (
@@ -447,6 +467,20 @@ function NieuwePartijPage() {
                     </option>
                   ))}
               </select>
+              {tanksQ.isError && (
+                <span className="mt-1 flex items-center justify-between gap-2 text-sm text-destructive">
+                  {tanksQ.error instanceof Error
+                    ? tanksQ.error.message
+                    : "Kon tanks niet laden — probeer opnieuw."}
+                  <button
+                    type="button"
+                    onClick={() => tanksQ.refetch()}
+                    className="shrink-0 underline underline-offset-2"
+                  >
+                    Opnieuw
+                  </button>
+                </span>
+              )}
             </label>
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Startvolume (L)</span>
