@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { fetchTanks } from "@/lib/kelder-data";
 import { AppHeader } from "@/components/app-header";
+import { ErrorState } from "@/components/error-state";
 import { Printer } from "lucide-react";
 
 // Fase 7 Blok E — QR-printvel: per tank een QR met de URL naar het tankdetail.
@@ -43,6 +44,7 @@ function QrPage() {
         <AppHeader back title="QR-codes" subtitle="Printvel voor op de tanks" />
       </div>
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4 print:max-w-none print:p-0">
+        {tanksQ.isError && <ErrorState error={tanksQ.error} onRetry={() => tanksQ.refetch()} />}
         <div className="flex items-center justify-between print:hidden">
           <p className="text-sm text-muted-foreground">
             {tanks.length} tanks · scan met de telefooncamera → tankdetail met Peiling, Reiniging en

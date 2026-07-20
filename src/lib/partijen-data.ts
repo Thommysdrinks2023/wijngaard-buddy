@@ -57,7 +57,10 @@ export async function fetchPartijen(): Promise<Partij[]> {
 
 export async function fetchPartijById(id: string): Promise<Partij | null> {
   const pb = getPb();
-  if (!pb || !(await ensureOnline())) return null;
+  if (!pb) return null;
+  if (!isIngelogd()) throw new Error(`Log opnieuw in om de partij te kunnen laden.`);
+  if (!(await ensureOnline()))
+    throw new Error(`Geen verbinding met de server — kon de partij niet laden.`);
   try {
     const r = await pb.collection("partijen").getOne(id);
     return partijFromPb(r);

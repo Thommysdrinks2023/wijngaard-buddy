@@ -8,6 +8,7 @@ import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerBoeking } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { ErrorState } from "@/components/error-state";
 import { ArrowDown, Loader2 } from "lucide-react";
 
 interface OverhevelenSearch {
@@ -173,6 +174,15 @@ function OverhevelenPage() {
     <>
       <AppHeader back title="Overhevelen" subtitle="Tank naar tank" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        {(tanksQ.isError || partijenQ.isError) && (
+          <ErrorState
+            error={tanksQ.error || partijenQ.error}
+            onRetry={() => {
+              tanksQ.refetch();
+              partijenQ.refetch();
+            }}
+          />
+        )}
         <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Van tank</span>

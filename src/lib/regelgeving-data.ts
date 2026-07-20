@@ -4,7 +4,7 @@
 // (zie tariefGeverifieerd in accijns.ts).
 
 import type { RecordModel } from "pocketbase";
-import { ensureOnline, getPb } from "./data";
+import { ensureOnline, getPb, haalLijst } from "./data";
 import { logAudit } from "./audit";
 
 export interface RegelgevingInstelling {
@@ -38,10 +38,12 @@ function instellingFromPb(r: RecordModel): RegelgevingInstelling {
 }
 
 export async function fetchRegelgevingInstellingen(): Promise<RegelgevingInstelling[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("regelgeving_instellingen").getFullList({ sort: "sleutel" });
-  return records.map(instellingFromPb);
+  return haalLijst("de regelgeving-instellingen", [], async (pb) => {
+    const records = await pb
+      .collection("regelgeving_instellingen")
+      .getFullList({ sort: "sleutel" });
+    return records.map(instellingFromPb);
+  });
 }
 
 export async function updateRegelgevingInstelling(

@@ -3,7 +3,7 @@
 // proef uit de fles, zodat flesrijping later te volgen is.
 
 import type { RecordModel } from "pocketbase";
-import { ensureOnline, getPb } from "./data";
+import { ensureOnline, getPb, haalLijst } from "./data";
 import { logAudit } from "./audit";
 
 export interface Proefnotitie {
@@ -41,13 +41,13 @@ function fromPb(r: RecordModel): Proefnotitie {
 }
 
 export async function fetchProefnotities(partijId?: string): Promise<Proefnotitie[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("proefnotities").getFullList({
-    sort: "-datum,-created",
-    filter: partijId ? `partij = "${partijId}"` : "",
+  return haalLijst("proefnotities", [], async (pb) => {
+    const records = await pb.collection("proefnotities").getFullList({
+      sort: "-datum,-created",
+      filter: partijId ? `partij = "${partijId}"` : "",
+    });
+    return records.map(fromPb);
   });
-  return records.map(fromPb);
 }
 
 export async function createProefnotitie(

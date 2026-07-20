@@ -17,7 +17,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { fetchRijen } from "@/lib/data";
+import { fetchRijen, isIngelogd } from "@/lib/data";
 import {
   createWerkuur,
   fetchWerkuren,
@@ -109,7 +109,11 @@ function WerkrapportPage() {
   const isSpuiten = taak === "Spuiten";
 
   // Fase 7 Blok F1 — Ctgb-restrictiecheck bij de spuitregistratie
-  const middelenQ = useQuery({ queryKey: ["middelen"], queryFn: fetchMiddelen });
+  const middelenQ = useQuery({
+    queryKey: ["middelen"],
+    queryFn: fetchMiddelen,
+    enabled: isIngelogd(), // auth-only bron; zonder sessie geen Ctgb-check (Fase 8)
+  });
   const ctgbMiddel = isSpuiten ? vindMiddel(middelenQ.data ?? [], middel) : null;
   const ctgbOverschrijding = ctgbMiddel
     ? doseringOverschrijdt(ctgbMiddel, dosering ? Number(dosering) : null, doseringEenheid)

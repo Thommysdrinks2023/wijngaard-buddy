@@ -21,7 +21,7 @@ import type {
   VoorraadMutatieType,
 } from "./types";
 import type { PartijInput } from "./partijen-data";
-import { ensureOnline, getPb, isIngelogd } from "./data";
+import { ensureOnline, getPb, haalLijst, isIngelogd } from "./data";
 import { logAudit } from "./audit";
 
 const GEEN_VERBINDING = "Geen verbinding — kelderboekingen vereisen de server.";
@@ -164,19 +164,19 @@ export interface TankboekFilter {
 }
 
 export async function fetchTankboek(filter?: TankboekFilter): Promise<TankboekRegel[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const delen: string[] = [];
-  if (filter?.partij) delen.push(`partij = "${filter.partij}"`);
-  if (filter?.tank) delen.push(`(van_tank = "${filter.tank}" || naar_tank = "${filter.tank}")`);
-  if (filter?.producent) delen.push(`producent = "${filter.producent}"`);
-  if (filter?.vanaf) delen.push(`datum >= "${filter.vanaf}"`);
-  if (filter?.tot) delen.push(`datum <= "${filter.tot}"`);
-  const records = await pb.collection("tankboek").getFullList({
-    sort: "-datum,-tijd,-created",
-    filter: delen.join(" && "),
+  return haalLijst("het tankboek", [], async (pb) => {
+    const delen: string[] = [];
+    if (filter?.partij) delen.push(`partij = "${filter.partij}"`);
+    if (filter?.tank) delen.push(`(van_tank = "${filter.tank}" || naar_tank = "${filter.tank}")`);
+    if (filter?.producent) delen.push(`producent = "${filter.producent}"`);
+    if (filter?.vanaf) delen.push(`datum >= "${filter.vanaf}"`);
+    if (filter?.tot) delen.push(`datum <= "${filter.tot}"`);
+    const records = await pb.collection("tankboek").getFullList({
+      sort: "-datum,-tijd,-created",
+      filter: delen.join(" && "),
+    });
+    return records.map(tankboekFromPb);
   });
-  return records.map(tankboekFromPb);
 }
 
 export interface BoekingInput {
@@ -259,13 +259,13 @@ function analyseFromPb(r: RecordModel): Analyse {
 }
 
 export async function fetchAnalyses(partijId?: string): Promise<Analyse[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("analyses").getFullList({
-    sort: "-datum,-tijd,-created",
-    filter: partijId ? `partij = "${partijId}"` : "",
+  return haalLijst("analyses", [], async (pb) => {
+    const records = await pb.collection("analyses").getFullList({
+      sort: "-datum,-tijd,-created",
+      filter: partijId ? `partij = "${partijId}"` : "",
+    });
+    return records.map(analyseFromPb);
   });
-  return records.map(analyseFromPb);
 }
 
 export interface AnalyseInput {
@@ -325,20 +325,20 @@ export interface KelderlogFilter {
 // (zelfde patroon als fetchTankboek) zodat /kelder/logboek net als het
 // tankboek filterbaar kan zijn op tank/actie/periode, niet alleen partij.
 export async function fetchKelderlog(filter?: string | KelderlogFilter): Promise<KelderlogRegel[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const f: KelderlogFilter = typeof filter === "string" ? { partij: filter } : (filter ?? {});
-  const delen: string[] = [];
-  if (f.partij) delen.push(`partij = "${f.partij}"`);
-  if (f.tank) delen.push(`tank = "${f.tank}"`);
-  if (f.actie) delen.push(`actie = "${f.actie}"`);
-  if (f.vanaf) delen.push(`datum >= "${f.vanaf}"`);
-  if (f.tot) delen.push(`datum <= "${f.tot}"`);
-  const records = await pb.collection("kelderlog").getFullList({
-    sort: "-datum,-created",
-    filter: delen.join(" && "),
+  return haalLijst("het kelderlog", [], async (pb) => {
+    const f: KelderlogFilter = typeof filter === "string" ? { partij: filter } : (filter ?? {});
+    const delen: string[] = [];
+    if (f.partij) delen.push(`partij = "${f.partij}"`);
+    if (f.tank) delen.push(`tank = "${f.tank}"`);
+    if (f.actie) delen.push(`actie = "${f.actie}"`);
+    if (f.vanaf) delen.push(`datum >= "${f.vanaf}"`);
+    if (f.tot) delen.push(`datum <= "${f.tot}"`);
+    const records = await pb.collection("kelderlog").getFullList({
+      sort: "-datum,-created",
+      filter: delen.join(" && "),
+    });
+    return records.map(kelderlogFromPb);
   });
-  return records.map(kelderlogFromPb);
 }
 
 export interface KelderlogInput {
@@ -383,13 +383,13 @@ function voedingswaardeFromPb(r: RecordModel): VoedingswaardeBerekening {
 export async function fetchVoedingswaardeBerekeningen(
   partijId: string,
 ): Promise<VoedingswaardeBerekening[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("voedingswaarde_berekeningen").getFullList({
-    sort: "-berekening_datum,-created",
-    filter: `partij = "${partijId}"`,
+  return haalLijst("voedingswaardeberekeningen", [], async (pb) => {
+    const records = await pb.collection("voedingswaarde_berekeningen").getFullList({
+      sort: "-berekening_datum,-created",
+      filter: `partij = "${partijId}"`,
+    });
+    return records.map(voedingswaardeFromPb);
   });
-  return records.map(voedingswaardeFromPb);
 }
 
 export interface VoedingswaardeInput {
@@ -441,18 +441,21 @@ function bottelrondeFromPb(r: RecordModel): Bottelronde {
 }
 
 export async function fetchBottelrondes(partijId?: string): Promise<Bottelronde[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("bottelrondes").getFullList({
-    sort: "-botteldatum,-created",
-    filter: partijId ? `partij = "${partijId}" && deleted != true` : "deleted != true",
+  return haalLijst("bottelrondes", [], async (pb) => {
+    const records = await pb.collection("bottelrondes").getFullList({
+      sort: "-botteldatum,-created",
+      filter: partijId ? `partij = "${partijId}" && deleted != true` : "deleted != true",
+    });
+    return records.map(bottelrondeFromPb);
   });
-  return records.map(bottelrondeFromPb);
 }
 
 export async function fetchBottelrondeById(id: string): Promise<Bottelronde | null> {
   const pb = getPb();
-  if (!pb || !(await ensureOnline())) return null;
+  if (!pb) return null;
+  if (!isIngelogd()) throw new Error(`Log opnieuw in om de bottelronde te kunnen laden.`);
+  if (!(await ensureOnline()))
+    throw new Error(`Geen verbinding met de server — kon de bottelronde niet laden.`);
   try {
     const r = await pb.collection("bottelrondes").getOne(id);
     return bottelrondeFromPb(r);
@@ -523,22 +526,25 @@ export interface VoorraadFilter {
 }
 
 export async function fetchVoorraadFlessen(filter?: VoorraadFilter): Promise<VoorraadFles[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const delen: string[] = [];
-  if (filter?.producent) delen.push(`producent = "${filter.producent}"`);
-  if (filter?.status) delen.push(`status = "${filter.status}"`);
-  if (filter?.partij) delen.push(`partij = "${filter.partij}"`);
-  const records = await pb.collection("voorraad_flessen").getFullList({
-    sort: "-created",
-    filter: delen.join(" && "),
+  return haalLijst("de voorraad", [], async (pb) => {
+    const delen: string[] = [];
+    if (filter?.producent) delen.push(`producent = "${filter.producent}"`);
+    if (filter?.status) delen.push(`status = "${filter.status}"`);
+    if (filter?.partij) delen.push(`partij = "${filter.partij}"`);
+    const records = await pb.collection("voorraad_flessen").getFullList({
+      sort: "-created",
+      filter: delen.join(" && "),
+    });
+    return records.map(voorraadFlesFromPb);
   });
-  return records.map(voorraadFlesFromPb);
 }
 
 export async function fetchVoorraadFlesById(id: string): Promise<VoorraadFles | null> {
   const pb = getPb();
-  if (!pb || !(await ensureOnline())) return null;
+  if (!pb) return null;
+  if (!isIngelogd()) throw new Error(`Log opnieuw in om de voorraad te kunnen laden.`);
+  if (!(await ensureOnline()))
+    throw new Error(`Geen verbinding met de server — kon de voorraad niet laden.`);
   try {
     const r = await pb.collection("voorraad_flessen").getOne(id);
     return voorraadFlesFromPb(r);
@@ -562,13 +568,13 @@ function voorraadMutatieFromPb(r: RecordModel): VoorraadMutatie {
 }
 
 export async function fetchVoorraadMutaties(voorraadId: string): Promise<VoorraadMutatie[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("voorraad_mutaties").getFullList({
-    sort: "-datum,-created",
-    filter: `voorraad = "${voorraadId}"`,
+  return haalLijst("voorraadmutaties", [], async (pb) => {
+    const records = await pb.collection("voorraad_mutaties").getFullList({
+      sort: "-datum,-created",
+      filter: `voorraad = "${voorraadId}"`,
+    });
+    return records.map(voorraadMutatieFromPb);
   });
-  return records.map(voorraadMutatieFromPb);
 }
 
 export interface VoorraadMutatieInput {

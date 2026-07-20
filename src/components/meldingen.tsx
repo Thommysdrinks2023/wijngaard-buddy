@@ -6,7 +6,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { getPb } from "@/lib/data";
+import { getPb, isIngelogd } from "@/lib/data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { fetchMaterieel, fetchOnderhoud, onderhoudBinnenkort } from "@/lib/materieel-data";
 import { fetchKelderlog } from "@/lib/kelder-data";
@@ -61,19 +61,33 @@ export function Meldingen() {
     queryKey: ["meldingen", "inzichten"],
     queryFn: fetchKritiekeInzichten,
   });
-  const partijenQ = useQuery({ queryKey: ["partijen", "meldingen"], queryFn: fetchPartijen });
-  const materieelQ = useQuery({ queryKey: ["materieel", "meldingen"], queryFn: fetchMaterieel });
+  // De hub is publiek; deze bronnen zijn auth-only en zouden zonder sessie
+  // een fout gooien (Fase 8) — dus alleen bevragen mét sessie.
+  const ingelogd = isIngelogd();
+  const partijenQ = useQuery({
+    queryKey: ["partijen", "meldingen"],
+    queryFn: fetchPartijen,
+    enabled: ingelogd,
+  });
+  const materieelQ = useQuery({
+    queryKey: ["materieel", "meldingen"],
+    queryFn: fetchMaterieel,
+    enabled: ingelogd,
+  });
   const onderhoudQ = useQuery({
     queryKey: ["onderhoud", "meldingen"],
     queryFn: () => fetchOnderhoud(),
+    enabled: ingelogd,
   });
   const regelgevingQ = useQuery({
     queryKey: ["regelgeving", "meldingen"],
     queryFn: fetchRegelgevingInstellingen,
+    enabled: ingelogd,
   });
   const kelderlogQ = useQuery({
     queryKey: ["kelderlog", "meldingen"],
     queryFn: () => fetchKelderlog(),
+    enabled: ingelogd,
   });
 
   const meldingen: Melding[] = [];

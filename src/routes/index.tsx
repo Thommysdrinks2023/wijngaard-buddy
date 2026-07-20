@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { APP_NAAM } from "@/config/app";
 import { useEffect } from "react";
 import { AppHeader } from "@/components/app-header";
-import { fetchRijen } from "@/lib/data";
+import { fetchRijen, isIngelogd } from "@/lib/data";
 import { fetchTanks, fetchVoorraadFlessen } from "@/lib/kelder-data";
 import {
   getAutoStartModule,
@@ -20,6 +20,7 @@ function BackupWidget() {
   const q = useQuery({
     queryKey: ["regelgeving", "hub-backup"],
     queryFn: fetchRegelgevingInstellingen,
+    enabled: isIngelogd(), // hub is publiek; zonder sessie geen (falende) fetch
   });
   const record = (q.data ?? []).find((r) => r.sleutel === "laatste_backup");
   if (!record?.laatst_gecontroleerd) return null;
@@ -86,10 +87,11 @@ function ModuleHub() {
   // geven zonder login/verbinding gewoon [] terug — dan valt de tegel stil
   // terug op zijn vaste omschrijving, nooit een misleidende "0".
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
-  const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
+  const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks, enabled: isIngelogd() });
   const voorraadQ = useQuery({
     queryKey: ["voorraad", "hub"],
     queryFn: () => fetchVoorraadFlessen(),
+    enabled: isIngelogd(),
   });
 
   const tanksInGebruik = (tanksQ.data ?? []).filter((t) => t.huidig_volume_l > 0);

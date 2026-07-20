@@ -5,7 +5,7 @@
 
 import type { RecordModel } from "pocketbase";
 import type { Klant, Order, OrderRegel, OrderStatus } from "./types";
-import { ensureOnline, getPb } from "./data";
+import { ensureOnline, getPb, haalLijst } from "./data";
 import { logAudit } from "./audit";
 
 const GEEN_VERBINDING = "Geen verbinding — verkoopacties vereisen de server.";
@@ -29,10 +29,10 @@ function klantFromPb(r: RecordModel): Klant {
 }
 
 export async function fetchKlanten(): Promise<Klant[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("klanten").getFullList({ sort: "naam" });
-  return records.map(klantFromPb);
+  return haalLijst("klanten", [], async (pb) => {
+    const records = await pb.collection("klanten").getFullList({ sort: "naam" });
+    return records.map(klantFromPb);
+  });
 }
 
 export async function createKlant(input: Omit<Klant, "id">): Promise<Klant> {
@@ -80,10 +80,10 @@ function orderFromPb(r: RecordModel): Order {
 }
 
 export async function fetchOrders(): Promise<Order[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("orders").getFullList({ sort: "-datum,-created" });
-  return records.map(orderFromPb);
+  return haalLijst("orders", [], async (pb) => {
+    const records = await pb.collection("orders").getFullList({ sort: "-datum,-created" });
+    return records.map(orderFromPb);
+  });
 }
 
 export interface OrderInput {

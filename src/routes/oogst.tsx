@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
-import { fetchRijen } from "@/lib/data";
+import { fetchRijen, isIngelogd } from "@/lib/data";
 import { createOogstRecord, fetchOogst, VERWACHTE_KG_PER_PLANT } from "@/lib/extra-data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerOogst } from "@/lib/validatie";
@@ -44,7 +44,13 @@ function OogstPage() {
   const [invoerder, setInvoerder] = useInvoerder();
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const oogstQ = useQuery({ queryKey: ["oogst-records"], queryFn: fetchOogst });
-  const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
+  // partijen zijn auth-only (Fase 8): zonder sessie niet bevragen — de
+  // oogstinvoer zelf blijft offline-first gewoon werken
+  const partijenQ = useQuery({
+    queryKey: ["partijen"],
+    queryFn: fetchPartijen,
+    enabled: isIngelogd(),
+  });
 
   const [rijId, setRijId] = useState("");
   const [kg, setKg] = useState("");

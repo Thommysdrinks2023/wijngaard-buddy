@@ -2,7 +2,7 @@
 // geen assetmanagement: twee collecties, vrij invoeren, nooit bewerken nodig.
 
 import type { RecordModel } from "pocketbase";
-import { ensureOnline, getPb } from "./data";
+import { ensureOnline, getPb, haalLijst } from "./data";
 import { logAudit } from "./audit";
 
 export type MaterieelType = "tractor" | "spuit" | "bottellijn" | "koeling" | "overig";
@@ -66,10 +66,10 @@ function onderhoudFromPb(r: RecordModel): OnderhoudsRegel {
 }
 
 export async function fetchMaterieel(): Promise<Materieel[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("materieel").getFullList({ sort: "naam" });
-  return records.map(materieelFromPb);
+  return haalLijst("het machinepark", [], async (pb) => {
+    const records = await pb.collection("materieel").getFullList({ sort: "naam" });
+    return records.map(materieelFromPb);
+  });
 }
 
 export async function createMaterieel(input: Omit<Materieel, "id">): Promise<Materieel> {
@@ -81,13 +81,13 @@ export async function createMaterieel(input: Omit<Materieel, "id">): Promise<Mat
 }
 
 export async function fetchOnderhoud(materieelId?: string): Promise<OnderhoudsRegel[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("onderhoudslog").getFullList({
-    sort: "-datum,-created",
-    filter: materieelId ? `materieel = "${materieelId}"` : "",
+  return haalLijst("het onderhoudslog", [], async (pb) => {
+    const records = await pb.collection("onderhoudslog").getFullList({
+      sort: "-datum,-created",
+      filter: materieelId ? `materieel = "${materieelId}"` : "",
+    });
+    return records.map(onderhoudFromPb);
   });
-  return records.map(onderhoudFromPb);
 }
 
 export async function createOnderhoud(

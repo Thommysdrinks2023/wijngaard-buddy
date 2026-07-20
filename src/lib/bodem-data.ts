@@ -2,7 +2,7 @@
 // eindsprint-schema-run). Online-only, zelfde patroon als kelder-data.ts.
 
 import type { RecordModel } from "pocketbase";
-import { ensureOnline, getPb } from "./data";
+import { ensureOnline, getPb, haalLijst } from "./data";
 import { logAudit } from "./audit";
 
 export const BODEMVOCHT_OPTIES = ["droog", "vochtig", "nat", "verzadigd"] as const;
@@ -47,10 +47,12 @@ function fromPb(r: RecordModel): BodemObservatie {
 }
 
 export async function fetchBodemObservaties(): Promise<BodemObservatie[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("bodem_observaties").getFullList({ sort: "-datum,-created" });
-  return records.map(fromPb);
+  return haalLijst("bodemobservaties", [], async (pb) => {
+    const records = await pb
+      .collection("bodem_observaties")
+      .getFullList({ sort: "-datum,-created" });
+    return records.map(fromPb);
+  });
 }
 
 export interface BodemObservatieInput {

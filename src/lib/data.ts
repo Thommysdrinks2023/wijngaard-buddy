@@ -100,6 +100,35 @@ export function isIngelogd(): boolean {
   return Boolean(pb?.authStore.isValid);
 }
 
+// Fase 8 — gedeelde leeshelper voor de ONLINE-ONLY datalagen (kelder, verkoop,
+// materieel, regelgeving, bodem, middelen, proefnotities, partijen). Root
+// cause van de dropdown-bug: PocketBase's listRule ("@request.auth.id != ''")
+// beantwoordt een anoniem verzoek met een geldige 200 + lege items-lijst, en
+// het oude patroon `if (!pb || !(await ensureOnline())) return []` gaf dat
+// stil door — react-query zag een geslaagde lege query, nooit een fout.
+// Deze helper gooit in plaats daarvan een leesbare Nederlandse Error bij een
+// ontbrekende sessie, een onbereikbare server of een mislukte fetch, zodat
+// de aanroepende query.isError wordt en de UI het kan tonen.
+// NB: bewust NIET gebruiken voor de offline-first wijngaard-datalagen
+// (data.ts/extra-data.ts/steekproef.ts/…) — stil terugvallen op localStorage
+// is dáár het ontwerp. Ook niet voor agent-data.ts (bewust login-vrij).
+export async function haalLijst<T>(
+  wat: string,
+  leeg: T,
+  lees: (pb: PocketBase) => Promise<T>,
+): Promise<T> {
+  const pb = getPb();
+  if (!pb) return leeg; // geen server geconfigureerd — lege staat is dan correct
+  if (!isIngelogd()) throw new Error(`Log opnieuw in om ${wat} te kunnen laden.`);
+  if (!(await ensureOnline()))
+    throw new Error(`Geen verbinding met de server — kon ${wat} niet laden.`);
+  try {
+    return await lees(pb);
+  } catch {
+    throw new Error(`Kon ${wat} niet laden — probeer het opnieuw.`);
+  }
+}
+
 // ---------- localStorage helpers ----------
 // v3: actuele rijdata (69 rijen, juiste plantaantallen + notities). Het ophogen
 // van de versie zorgt dat bestaande apparaten de oude seed automatisch vervangen.

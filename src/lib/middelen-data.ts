@@ -4,7 +4,7 @@
 // (vrije invoer) maar dan zonder check.
 
 import type { RecordModel } from "pocketbase";
-import { ensureOnline, getPb } from "./data";
+import { ensureOnline, getPb, haalLijst } from "./data";
 
 export interface Middel {
   id: string;
@@ -39,10 +39,10 @@ function fromPb(r: RecordModel): Middel {
 }
 
 export async function fetchMiddelen(): Promise<Middel[]> {
-  const pb = getPb();
-  if (!pb || !(await ensureOnline())) return [];
-  const records = await pb.collection("middelen").getFullList({ sort: "naam" });
-  return records.map(fromPb);
+  return haalLijst("de Ctgb-middelenlijst", [], async (pb) => {
+    const records = await pb.collection("middelen").getFullList({ sort: "naam" });
+    return records.map(fromPb);
+  });
 }
 
 // Vind het Ctgb-middel dat bij een vrij ingetypte naam hoort (ruime match)

@@ -2,7 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { differenceInDays, parseISO } from "date-fns";
-import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
+import {
+  fetchFenologie,
+  fetchMetingen,
+  fetchObservaties,
+  fetchRijen,
+  isIngelogd,
+} from "@/lib/data";
 import { fetchBodemObservaties, laatstePerRij, type BodemObservatie } from "@/lib/bodem-data";
 import { RAS_OPTIONS, type Ras } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
@@ -81,7 +87,11 @@ function Perceelkaart() {
   const metingenQ = useQuery({ queryKey: ["metingen"], queryFn: () => fetchMetingen() });
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
-  const bodemQ = useQuery({ queryKey: ["bodem"], queryFn: fetchBodemObservaties });
+  const bodemQ = useQuery({
+    queryKey: ["bodem"],
+    queryFn: fetchBodemObservaties,
+    enabled: isIngelogd(), // auth-only bron; anoniem kleurt de kaart gewoon op ras (Fase 8)
+  });
   const [weergave, setWeergave] = useState<Weergave>("ras");
   const bodemPerRij = useMemo(() => laatstePerRij(bodemQ.data ?? []), [bodemQ.data]);
 
