@@ -403,3 +403,24 @@ Vitest toegevoegd (`npm install -D vitest`, geen aparte vitest-config nodig — 
 **DoD-verificatie**: `npm test` → 39/39 groen, `npx tsc --noEmit` schoon, `npx eslint` op alle 4 testbestanden schoon (na 1× `--fix`), `npm run build` slaagt.
 
 **Commit**: `fase 9 blok c: vitest + 39 tests op de rekenlibs (dichtheid, oenologie, accijns, gisting-verwachting)`.
+
+### Blok D — Sessie behouden bij hard verversen ✅
+
+De Fase 8-routeguard gaf een écht ingelogde gebruiker toch een redirect naar `/login` bij een harde refresh (F5) op een gegidste route, omdat `isIngelogd()` de PocketBase-`authStore` (localStorage) leest, en localStorage niet bestaat tijdens SSR. Opgelost met een `pb_auth`-cookie die de authStore spiegelt:
+
+- `src/lib/data.ts`: nieuwe `syncAuthCookie()`, aangeroepen bij elke `authStore.onChange` én meteen bij het aanmaken van de PocketBase-instantie in `getPb()`. Gebruikt `pb.authStore.exportToCookie({ httpOnly: false, secure, sameSite: "Lax", path: "/" })` — `secure` alleen `true` op https (lokaal nog http).
+- `src/lib/auth-guard.ts`: nieuwe `leesPbAuthCookie` via `createIsomorphicFn().server(() => getCookie("pb_auth")).client(() => undefined)` uit `@tanstack/react-start`/`@tanstack/react-start/server` — de server-only `getCookie`-import wordt zo door de bundler nooit in de clientbundel meegenomen (rechtstreeks importeren zonder de isomorphic-wrapper brak de build met een "Import denied in client environment"-fout van TanStack Start's import-protection-plugin; dat is meteen ontdekt via `npm run build`, niet pas live). `laadServerSessieUitCookie()` laadt de cookie in de authStore vóórdat `vereistIngelogd` op `isIngelogd()` checkt.
+- De volledige afweging (waarom niet-httpOnly, SameSite/Secure-keuzes, de singleton-`getPb()`-trade-off voor een toekomstige multi-user server) staat uitgeschreven in `ARCHITECTURE.md` §7.11.
+
+**Onverwachte zijsprong tijdens dit blok**: bij het draaien van de productie-build liep de C-schijf van deze machine leeg tot **~147 MB vrij van de 237 GB** (100% vol) — buiten deze taak om ontdekt via een mislukte `du`-scan. Dit veroorzaakte één transiënte SSR-build-fout (`realpath` op `utils.ts`, "unknown error") die bij een herhaalde build vanzelf verdween (schijf had blijkbaar nog net genoeg lucht). **Niet zelf opgeruimd** — geen `OneDriveDeltaPatch`/`NewCabinet`-mappen gevonden zoals de vorige keer (zie CLAUDE.md), dus de oorzaak is dit keer anders en vraagt onderzoek door Thomas zelf voordat er iets verwijderd wordt. Zie VRAGEN VOOR THOMAS.
+
+**Tests**: `npx tsc --noEmit` schoon, `npx eslint` op `auth-guard.ts`/`data.ts` schoon, `npm run build` slaagt (na de transiënte schijfruimte-hik hierboven), `npx vitest run` nog steeds 39/39 groen (deze wijziging raakt de rekenlibs niet, maar bevestigt dat er geen zijeffecten zijn). Browser: uitgelogd + hard navigeren naar `/kelder` → nog steeds correcte redirect naar `/login` met de juiste melding (regressie op het onveranderde deel bevestigd). **Niet live getest met een echte sessie** (geen PocketBase-credentials in deze sessie beschikbaar) — de ingelogd-blijft-ingelogd-kant van de DoD kon daarom niet met een echte browser-F5 worden bevestigd; wel is de cookie-schrijf/leescode zelf type- en build-geverifieerd en volgt exact het door PocketBase gedocumenteerde `exportToCookie`/`loadFromCookie`-contract.
+
+**Commit**: `fase 9 blok d: pb_auth-cookie voor ssr-sessieherkenning bij hard verversen`.
+
+## VRAGEN VOOR THOMAS (Fase 9)
+
+1. **Urgent, los van deze fase — volle C-schijf.** Tijdens Blok D bleek de C-schijf nog maar **~147 MB vrij van de 237 GB** (100% vol) te hebben. Dit is dezelfde soort risico dat in `CLAUDE.md` al staat gedocumenteerd (eerdere OneDriveDeltaPatch-crash), maar deze keer zijn die specifieke mappen leeg — de oorzaak is dus iets anders en moet met eigen ogen bekeken worden voordat er iets verwijderd wordt. Controleer op zijn minst: grote nieuwe bestanden in Downloads/Documenten, browser-cache, Windows Update-cache (`cleanmgr`), en OneDrive-syncstatus. Dit kan zonder waarschuwing PocketBase laten crashen of de dagelijkse backup laten mislukken.
+2. **Blok D niet live bevestigd**: kun je bij gelegenheid inloggen en op `/kelder/partijen/nieuw` een harde refresh (F5) doen? Verwacht: je blijft ingelogd en de dropdowns blijven gevuld. Uitgelogd moet dezelfde URL je nog steeds netjes naar `/login` sturen.
+3. **Blok A, controle-pakket-ZIP**: de jszip-lazy-load kon niet live doorgeklikt worden zonder inlog-sessie. Eén keer een controle-pakket exporteren op `/kelder/accijns` ter bevestiging is voldoende.
+4. **Blok B, filters**: kort een tankboek-filter (bijv. op tank of periode) en een steekproef-verwijdering beproeven — de omzetting naar `pb.filter()` is type-/build-geverifieerd maar niet met een live sessie doorlopen.

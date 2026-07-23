@@ -28,9 +28,36 @@ const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
 let pbInstance: PocketBase | null = null;
 let pbStatus: "unknown" | "online" | "offline" = "unknown";
 
+// Fase 9 Blok D: de PocketBase-sessie ook in een cookie spiegelen, zodat
+// SSR (waar localStorage niet bestaat) een ingelogde gebruiker herkent bij
+// een harde refresh op een gegidste route (zie auth-guard.ts). Cookie is
+// bewust NIET httpOnly — dat kan niet vanuit een client-side authStore, en
+// de PocketBase-authtoken staat toch al leesbaar in localStorage op dit
+// device; het is geen extra blootstelling. Wel SameSite=Lax altijd, en
+// Secure zodra de app over https draait (lokaal nog http).
+function syncAuthCookie(pb: PocketBase) {
+  if (typeof document === "undefined") return;
+  const secure = typeof location !== "undefined" && location.protocol === "https:";
+  // expires wordt door exportToCookie zelf al goed gezet: token-vervaldatum
+  // bij een geldige sessie, 1-1-1970 (= direct verlopen) bij uitloggen.
+  document.cookie = pb.authStore.exportToCookie({
+    httpOnly: false,
+    secure,
+    sameSite: "Lax",
+    path: "/",
+  });
+}
+
 export function getPb(): PocketBase | null {
   if (!PB_URL) return null;
-  if (!pbInstance) pbInstance = new PocketBase(PB_URL);
+  if (!pbInstance) {
+    pbInstance = new PocketBase(PB_URL);
+    // Bij het eerste gebruik ook meteen synchroniseren (bijv. na een
+    // pagina-herlaad waarbij authStore al uit localStorage is gevuld maar
+    // de cookie nog de oude/lege staat heeft).
+    syncAuthCookie(pbInstance);
+    pbInstance.authStore.onChange(() => syncAuthCookie(pbInstance!));
+  }
   return pbInstance;
 }
 
