@@ -84,7 +84,7 @@ export async function fetchOnderhoud(materieelId?: string): Promise<OnderhoudsRe
   return haalLijst("het onderhoudslog", [], async (pb) => {
     const records = await pb.collection("onderhoudslog").getFullList({
       sort: "-datum,-created",
-      filter: materieelId ? `materieel = "${materieelId}"` : "",
+      filter: materieelId ? pb.filter("materieel = {:materieelId}", { materieelId }) : "",
     });
     return records.map(onderhoudFromPb);
   });

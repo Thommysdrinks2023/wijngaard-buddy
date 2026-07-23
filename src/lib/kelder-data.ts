@@ -166,11 +166,13 @@ export interface TankboekFilter {
 export async function fetchTankboek(filter?: TankboekFilter): Promise<TankboekRegel[]> {
   return haalLijst("het tankboek", [], async (pb) => {
     const delen: string[] = [];
-    if (filter?.partij) delen.push(`partij = "${filter.partij}"`);
-    if (filter?.tank) delen.push(`(van_tank = "${filter.tank}" || naar_tank = "${filter.tank}")`);
-    if (filter?.producent) delen.push(`producent = "${filter.producent}"`);
-    if (filter?.vanaf) delen.push(`datum >= "${filter.vanaf}"`);
-    if (filter?.tot) delen.push(`datum <= "${filter.tot}"`);
+    if (filter?.partij) delen.push(pb.filter("partij = {:partij}", { partij: filter.partij }));
+    if (filter?.tank)
+      delen.push(pb.filter("(van_tank = {:tank} || naar_tank = {:tank})", { tank: filter.tank }));
+    if (filter?.producent)
+      delen.push(pb.filter("producent = {:producent}", { producent: filter.producent }));
+    if (filter?.vanaf) delen.push(pb.filter("datum >= {:vanaf}", { vanaf: filter.vanaf }));
+    if (filter?.tot) delen.push(pb.filter("datum <= {:tot}", { tot: filter.tot }));
     const records = await pb.collection("tankboek").getFullList({
       sort: "-datum,-tijd,-created",
       filter: delen.join(" && "),
@@ -262,7 +264,7 @@ export async function fetchAnalyses(partijId?: string): Promise<Analyse[]> {
   return haalLijst("analyses", [], async (pb) => {
     const records = await pb.collection("analyses").getFullList({
       sort: "-datum,-tijd,-created",
-      filter: partijId ? `partij = "${partijId}"` : "",
+      filter: partijId ? pb.filter("partij = {:partijId}", { partijId }) : "",
     });
     return records.map(analyseFromPb);
   });
@@ -386,7 +388,7 @@ export async function fetchVoedingswaardeBerekeningen(
   return haalLijst("voedingswaardeberekeningen", [], async (pb) => {
     const records = await pb.collection("voedingswaarde_berekeningen").getFullList({
       sort: "-berekening_datum,-created",
-      filter: `partij = "${partijId}"`,
+      filter: pb.filter("partij = {:partijId}", { partijId }),
     });
     return records.map(voedingswaardeFromPb);
   });
@@ -444,7 +446,9 @@ export async function fetchBottelrondes(partijId?: string): Promise<Bottelronde[
   return haalLijst("bottelrondes", [], async (pb) => {
     const records = await pb.collection("bottelrondes").getFullList({
       sort: "-botteldatum,-created",
-      filter: partijId ? `partij = "${partijId}" && deleted != true` : "deleted != true",
+      filter: partijId
+        ? pb.filter("partij = {:partijId} && deleted != true", { partijId })
+        : "deleted != true",
     });
     return records.map(bottelrondeFromPb);
   });
@@ -528,9 +532,10 @@ export interface VoorraadFilter {
 export async function fetchVoorraadFlessen(filter?: VoorraadFilter): Promise<VoorraadFles[]> {
   return haalLijst("de voorraad", [], async (pb) => {
     const delen: string[] = [];
-    if (filter?.producent) delen.push(`producent = "${filter.producent}"`);
-    if (filter?.status) delen.push(`status = "${filter.status}"`);
-    if (filter?.partij) delen.push(`partij = "${filter.partij}"`);
+    if (filter?.producent)
+      delen.push(pb.filter("producent = {:producent}", { producent: filter.producent }));
+    if (filter?.status) delen.push(pb.filter("status = {:status}", { status: filter.status }));
+    if (filter?.partij) delen.push(pb.filter("partij = {:partij}", { partij: filter.partij }));
     const records = await pb.collection("voorraad_flessen").getFullList({
       sort: "-created",
       filter: delen.join(" && "),
@@ -571,7 +576,7 @@ export async function fetchVoorraadMutaties(voorraadId: string): Promise<Voorraa
   return haalLijst("voorraadmutaties", [], async (pb) => {
     const records = await pb.collection("voorraad_mutaties").getFullList({
       sort: "-datum,-created",
-      filter: `voorraad = "${voorraadId}"`,
+      filter: pb.filter("voorraad = {:voorraadId}", { voorraadId }),
     });
     return records.map(voorraadMutatieFromPb);
   });

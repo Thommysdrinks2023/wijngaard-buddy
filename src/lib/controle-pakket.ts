@@ -43,7 +43,10 @@ export async function maakControlePakket(
     ]);
   const mutaties = pb
     ? await pb.collection("voorraad_mutaties").getFullList({
-        filter: `datum >= "${periode.van}" && datum <= "${periode.tot}"`,
+        filter: pb.filter("datum >= {:van} && datum <= {:tot}", {
+          van: periode.van,
+          tot: periode.tot,
+        }),
         sort: "datum",
       })
     : [];

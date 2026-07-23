@@ -44,7 +44,7 @@ export async function fetchProefnotities(partijId?: string): Promise<Proefnotiti
   return haalLijst("proefnotities", [], async (pb) => {
     const records = await pb.collection("proefnotities").getFullList({
       sort: "-datum,-created",
-      filter: partijId ? `partij = "${partijId}"` : "",
+      filter: partijId ? pb.filter("partij = {:partijId}", { partijId }) : "",
     });
     return records.map(fromPb);
   });

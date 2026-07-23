@@ -94,7 +94,7 @@ export async function fetchBerichten(gesprekId: string): Promise<AgentBericht[]>
   if (!pb || !(await ensureOnline())) return [];
   const records = await pb.collection("agent_berichten").getFullList({
     sort: "created",
-    filter: `gesprek_id = "${gesprekId}" && deleted != true`,
+    filter: pb.filter("gesprek_id = {:gesprekId} && deleted != true", { gesprekId }),
   });
   return records.map((r) => berichtFromPb(r, pb));
 }
@@ -142,7 +142,7 @@ export async function fetchActies(gesprekId: string): Promise<AgentActie[]> {
   if (!pb || !(await ensureOnline())) return [];
   const records = await pb.collection("agent_acties").getFullList({
     sort: "created",
-    filter: `gesprek_id = "${gesprekId}"`,
+    filter: pb.filter("gesprek_id = {:gesprekId}", { gesprekId }),
   });
   return records.map((r) => ({
     id: r.id,

@@ -193,7 +193,7 @@ export async function fetchMetingen(rijId?: string): Promise<Meting[]> {
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
-      const filter = rijId ? `rij = "${rijId}"` : "";
+      const filter = rijId ? pb.filter("rij = {:rijId}", { rijId }) : "";
       const records = await pb.collection("metingen").getFullList({
         sort: "-datum,-created",
         filter,
@@ -241,7 +241,7 @@ export async function fetchObservaties(rijId?: string): Promise<Observatie[]> {
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
-      const filter = rijId ? `rij = "${rijId}"` : "";
+      const filter = rijId ? pb.filter("rij = {:rijId}", { rijId }) : "";
       const records = await pb.collection("observaties").getFullList({
         sort: "-datum,-created",
         filter,
@@ -465,7 +465,7 @@ export async function fetchFenologie(rijId?: string): Promise<Fenologie[]> {
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
-      const filter = rijId ? `rij = "${rijId}"` : "";
+      const filter = rijId ? pb.filter("rij = {:rijId}", { rijId }) : "";
       const records = await pb.collection("fenologie").getFullList({
         sort: "-datum,-created",
         filter,

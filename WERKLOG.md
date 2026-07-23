@@ -361,3 +361,28 @@ Vervolg op de performance/smoothness-audit (11 punten). Uitgevoerd in vaste volg
 **DoD-verificatie**: `npm run build` slaagt (12,5 s), `npx tsc --noEmit` schoon, `npx eslint` op alle gewijzigde bestanden schoon. Browser: hub-logo scherp op 36 px (webp geladen, geverifieerd via screenshot), login-pagina rendert compleet met logo + meldingsbanner-plek. Geen credentials voorhanden om als Thomas in te loggen — de accijns-ZIP-knop zelf is daarom **niet** live doorgeklikt; wel bevestigd via build-output dat de lazy chunk correct wordt gegenereerd en via code-lezing dat de dynamische import 1-op-1 dezelfde `JSZip`-API aanroept als voorheen. Aanbevolen: bij eerstvolgende sessie met Thomas ingelogd, één keer een controle-pakket exporteren ter bevestiging.
 
 **Commit**: `fase 9 blok a: logo's verkleind, jszip lazy geladen, themakleur/pwa-iconen gelijkgetrokken, 25 ongebruikte ui-dependencies verwijderd`.
+
+### Blok B — PocketBase-filters parameteriseren ✅
+
+De audit noemde "7 plekken"; bij het daadwerkelijk doorlopen van elke `filter:` met een template-literal in `src/lib/*.ts` bleken het er **21** (verspreid over meer losse `pb.filter()`-aanroepen omdat samengestelde filters, zoals het tankboek-filter met 5 optionele delen, per deel apart parameteriseren). Allemaal omgezet naar `pb.filter("veld = {:naam}", { naam: waarde })`:
+
+- `kelder-data.ts` (12×): tankboek (partij/tank/producent/vanaf/tot — 5 delen), analyses, voedingswaarde_berekeningen, bottelrondes, voorraad_flessen (producent/status/partij — 3 delen), voorraad_mutaties.
+- `data.ts` (3×): metingen/observaties/fenologie, allemaal hetzelfde `rij = {:rijId}`-patroon.
+- `agent-data.ts` (2×): berichten (`gesprek_id`), acties (`gesprek_id`).
+- `controle-pakket.ts` (1×): voorraad_mutaties-periodefilter (`datum >= … && datum <= …`, twee parameters in één expressie).
+- `materieel-data.ts` (1×): onderhoudslog (`materieel`).
+- `proef-data.ts` (1×): proefnotities (`partij`).
+- `steekproef.ts` (1×, bijzonder geval): twee delete-filters die worden **opgeslagen in de offline sync-wachtrij** (`sync.ts`) voor later gebruik — op dat moment is er niet per se een live `pb`-instantie beschikbaar (offline-first). Opgelost met een kale `new PocketBase().filter(...)`-aanroep (`pbFilter`-helper): `.filter()` is pure string-escaping zonder netwerkverkeer, dus een ongeconfigureerde instantie volstaat.
+
+**Bewuste uitzondering**: `agent-data.ts` had ook een statische `filter: \`deleted != true\`` zonder interpolatie — geen waarde erin, dus niets om te parameteriseren; ongewijzigd gelaten.
+
+**Test met aanhalingsteken-waarde** (Node, `pb.filter()` rechtstreeks):
+```
+pb.filter('partij = {:p}', { p: 'abc"def' })   → partij = 'abc"def'
+pb.filter('rij = {:r}', { r: "o'brien" })      → rij = 'o\'brien'
+```
+Beide waarden komen er correct geëscaped en met enkele aanhalingstekens uit — een dubbel aanhalingsteken in een waarde brak vroeger de query-syntax (de oude `\`veld = "${waarde}"\`` sloot voortijdig af); dat kan nu niet meer.
+
+**DoD-verificatie**: `npx tsc --noEmit` schoon, `npx eslint` op alle 7 gewijzigde bestanden schoon (na 1× `--fix` voor een Prettier-regel), `npm run build` slaagt. Geen PocketBase-credentials voorhanden om de betreffende pagina's (kelderdetail, agent, controle-pakket-export, steekproeven) live met een sessie te doorlopen — de omzetting is functioneel identiek (dezelfde filterexpressie, alleen de waarde-invoeging is nu veilig) en type-/build-geverifieerd. Aanbevolen: bij eerstvolgende sessie met Thomas ingelogd, kort een tankboek-filter en een steekproef-verwijdering beproeven.
+
+**Commit**: `fase 9 blok b: pocketbase-filters geparameteriseerd (21 plekken, 7 bestanden)`.
