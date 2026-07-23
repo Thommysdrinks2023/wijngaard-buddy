@@ -9,6 +9,7 @@ import { PARTIJ_STATUSSEN, type PartijStatus } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { ErrorState } from "@/components/error-state";
 import { Plus, Wine } from "lucide-react";
 
@@ -101,7 +102,9 @@ function PartijenPage() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Partijen {jaar}
           </h2>
-          {partijenSeizoen.length === 0 ? (
+          {partijenQ.isLoading ? (
+            <ListSkeleton />
+          ) : partijenSeizoen.length === 0 ? (
             <EmptyState
               message="Nog geen partijen dit seizoen."
               icon={<Wine className="h-6 w-6" />}

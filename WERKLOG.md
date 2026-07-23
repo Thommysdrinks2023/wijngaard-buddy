@@ -430,6 +430,22 @@ Vijf punten onderzocht via de superuser-API (`pocketbase/backup-credentials.txt`
 
 **Niet gedaan, bewust**: écht een ongeldige API-key zetten en PocketBase herstarten — te risicovol op de al fragiele machine (zie de schijfruimte-bevinding bij Blok D) zonder aanwezigheid van Thomas, en de key zelf mag ik sowieso niet inzien/wijzigen.
 
+### Blok F — Laad-/foutstatussen consistent ✅
+
+Nieuwe gedeelde `src/components/list-skeleton.tsx` (`ListSkeleton`, hergebruikt de al bestaande maar tot nu toe ongebruikte `Skeleton`-basiscomponent — stond zelfs op de audit-opruimlijst als "kandidaat voor verwijdering wegens 0 gebruik", nu alsnog nuttig gebleken). Toegevoegd vóór de bestaande `EmptyState`-tak op de 5 aangewezen pagina's, zodat "nog aan het laden" niet meer optisch samenvalt met "echt leeg":
+
+- `/kelder` (kelderdashboard): partijen-sectie én tanks-sectie, elk gekoppeld aan hun eigen `useQuery.isLoading`.
+- `/kelder/tanks`: tanklijst.
+- `/kelder/partijen`: partijenlijst.
+- `/voorraad`: voorraadlijst.
+- `/perceelkaart`: geen lijst maar een SVG-kaart — hier een kort-lopende top-level skeleton (`rijenQ.isLoading && rijen.length === 0`) vóór de hoofd-render, in plaats van de complexe SVG-logica zelf aan te raken. Triggert in de praktijk zelden (rijen zijn offline-first en vallen bijna meteen terug op de geseede lijst), maar dekt de koude-start-situatie eerlijk af.
+
+Geen functionele wijzigingen — puur een laadstaat toegevoegd vóór de bestaande vertakkingen.
+
+**DoD-verificatie**: `npx tsc --noEmit` schoon, `npx eslint` op alle 6 gewijzigde/nieuwe bestanden schoon, `npm run build` slaagt, `npx vitest run` nog steeds 39/39 (geen raakvlak). Browser: `/perceelkaart` (login-vrij) rendert compleet en ongewijzigd met alle 69 rijen en de rassenlegenda — geen regressie. `/voorraad` anoniem bezocht geeft nog steeds de correcte redirect naar `/login` (guard-regressie bevestigd). De skeleton-secties zelf op de 4 kelder-/voorraadpagina's zijn niet live met een sessie gezien (zelfde credential-beperking als de rest van Fase 9) — code-/build-geverifieerd.
+
+**Commit**: `fase 9 blok f: laadstaten (skeleton) op kelderdashboard, tanks, partijen, voorraad, perceelkaart`.
+
 ## VRAGEN VOOR THOMAS (Fase 9)
 
 1. **Urgent, los van deze fase — volle C-schijf.** Tijdens Blok D bleek de C-schijf nog maar **~147 MB vrij van de 237 GB** (100% vol) te hebben. Dit is dezelfde soort risico dat in `CLAUDE.md` al staat gedocumenteerd (eerdere OneDriveDeltaPatch-crash), maar deze keer zijn die specifieke mappen leeg — de oorzaak is dus iets anders en moet met eigen ogen bekeken worden voordat er iets verwijderd wordt. Controleer op zijn minst: grote nieuwe bestanden in Downloads/Documenten, browser-cache, Windows Update-cache (`cleanmgr`), en OneDrive-syncstatus. Dit kan zonder waarschuwing PocketBase laten crashen of de dagelijkse backup laten mislukken.

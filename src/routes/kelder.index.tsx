@@ -9,6 +9,7 @@ import { PARTIJ_STATUSSEN, TANK_STATUSSEN, type Partij, type Tank } from "@/lib/
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { ArrowLeftRight, BookOpen, Container, NotebookPen, Plus, Wine } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/")({
@@ -195,7 +196,9 @@ function KelderDashboard() {
               ))}
             </select>
           )}
-          {actievePartijen.length === 0 ? (
+          {partijenQ.isLoading ? (
+            <ListSkeleton />
+          ) : actievePartijen.length === 0 ? (
             <EmptyState
               message="Geen actieve partijen — start een nieuwe partij bij de pers."
               icon={<Wine className="h-6 w-6" />}
@@ -255,7 +258,9 @@ function KelderDashboard() {
               {alleenGevuld ? "Toon alle tanks" : "Alleen gevuld"}
             </button>
           </div>
-          {getoondeTanks.length === 0 ? (
+          {tanksQ.isLoading ? (
+            <ListSkeleton />
+          ) : getoondeTanks.length === 0 ? (
             <EmptyState message="Geen tanks gevonden." icon={<Container className="h-6 w-6" />} />
           ) : (
             <div className="overflow-hidden rounded-xl border border-border bg-card">

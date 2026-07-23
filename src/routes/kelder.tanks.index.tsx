@@ -8,6 +8,7 @@ import { foutenPerVeld, isGeldig, valideerTank } from "@/lib/validatie";
 import { TANK_STATUSSEN, type TankStatus } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { ErrorState } from "@/components/error-state";
 import { Container, Loader2, QrCode, RefreshCw } from "lucide-react";
 
@@ -186,7 +187,9 @@ function TanksPage() {
               <span className="font-medium">IM</span> = zwemdekseltank
             </p>
           )}
-          {(tanksQ.data ?? []).length === 0 ? (
+          {tanksQ.isLoading ? (
+            <ListSkeleton rijen={5} />
+          ) : (tanksQ.data ?? []).length === 0 ? (
             <EmptyState message="Nog geen tanks." icon={<Container className="h-6 w-6" />} />
           ) : (
             <ul className="space-y-1.5">

@@ -5,6 +5,7 @@ import { fetchProducenten, fetchVoorraadFlessen } from "@/lib/kelder-data";
 import { VOORRAAD_STATUSSEN, type VoorraadStatus } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { ErrorState } from "@/components/error-state";
 import { Wine } from "lucide-react";
 
@@ -99,7 +100,9 @@ function VoorraadOverzicht() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Wijnen
           </h2>
-          {gefilterd.length === 0 ? (
+          {voorraadQ.isLoading ? (
+            <ListSkeleton />
+          ) : gefilterd.length === 0 ? (
             <EmptyState
               message="Nog geen voorraad. Bottel een partij vanuit de partijdetailpagina."
               icon={<Wine className="h-6 w-6" />}

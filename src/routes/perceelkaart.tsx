@@ -13,6 +13,7 @@ import { fetchBodemObservaties, laatstePerRij, type BodemObservatie } from "@/li
 import { RAS_OPTIONS, type Ras } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
 import { WeerKaart } from "@/components/weer-kaart";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, HelpCircle } from "lucide-react";
 
 export const Route = createFileRoute("/perceelkaart")({
@@ -231,6 +232,22 @@ function Perceelkaart() {
     `;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rijGeom]);
+
+  // Offline-first: fetchRijen valt vrijwel meteen terug op de geseede
+  // rijenlijst, dus dit triggert in de praktijk zelden — maar bij een echt
+  // lege eerste laadbeurt (geen cache, geen seed nog geschreven) voorkomt
+  // dit dat de kaart even leeg/kapot oogt in plaats van een laadstaat.
+  if (rijenQ.isLoading && rijen.length === 0) {
+    return (
+      <>
+        <AppHeader title="Perceelkaart" />
+        <div className="mx-auto max-w-screen-md space-y-3 px-3 py-4">
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-[420px] w-full rounded-xl" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
