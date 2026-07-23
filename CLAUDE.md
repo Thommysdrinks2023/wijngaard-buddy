@@ -161,6 +161,7 @@ Set-ScheduledTask -TaskName "Wijngaard PocketBase Backup" -Settings $settings
   - `--card` `#ffffff` — kaartachtergrond
 - **Formatting**: Prettier (`bun run format`) — altijd uitvoeren vóór commit
 - **Lint**: ESLint (`bun run lint`) — geen warnings in CI
+- **Tests**: Vitest (`npm test`) — dekt de pure rekenlibs (`dichtheid.ts`, `oenologie.ts`, `accijns.ts`, `gisting-verwachting.ts`). **Draai `npm test` vóór elke commit** die een van deze bestanden raakt; groen is een harde eis, niet optioneel. Nieuwe pure rekenlogica hoort een bijbehorend `*.test.ts`-bestand te krijgen (zelfde patroon: normaal geval, randgeval, limietoverschrijding waar van toepassing).
 - **Routing**: TanStack Router file-based. Nieuwe pagina = nieuw bestand in `src/routes/`. Voer daarna `bun run dev` uit zodat `routeTree.gen.ts` automatisch bijgewerkt wordt.
 - **Data**: queries via TanStack Query (`useQuery`). Alle PocketBase-calls zitten in `src/lib/data.ts`.
 - **Componenten**: geen commentaar tenzij de _reden_ niet-voor-de-hand-liggend is; geen multi-regel docstrings.

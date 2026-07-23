@@ -386,3 +386,20 @@ Beide waarden komen er correct geëscaped en met enkele aanhalingstekens uit —
 **DoD-verificatie**: `npx tsc --noEmit` schoon, `npx eslint` op alle 7 gewijzigde bestanden schoon (na 1× `--fix` voor een Prettier-regel), `npm run build` slaagt. Geen PocketBase-credentials voorhanden om de betreffende pagina's (kelderdetail, agent, controle-pakket-export, steekproeven) live met een sessie te doorlopen — de omzetting is functioneel identiek (dezelfde filterexpressie, alleen de waarde-invoeging is nu veilig) en type-/build-geverifieerd. Aanbevolen: bij eerstvolgende sessie met Thomas ingelogd, kort een tankboek-filter en een steekproef-verwijdering beproeven.
 
 **Commit**: `fase 9 blok b: pocketbase-filters geparameteriseerd (21 plekken, 7 bestanden)`.
+
+### Blok C — Vitest op de rekenlibs ✅ (belangrijkste blok)
+
+Vitest toegevoegd (`npm install -D vitest`, geen aparte vitest-config nodig — de standaard Node-omgeving volstaat voor deze pure functies zonder DOM). Script `npm test` = `vitest run`. **39 tests** over de vier pure rekenlibs, elk met minimaal een normaal geval, een randgeval en (waar van toepassing) een limietoverschrijding:
+
+- **`dichtheid.test.ts`** (5 tests): °Oe↔Brix↔SG met de oogstdichtheid-voorbeeld uit de eigen codecommentaar (75 °Oe → ~18,2 Bx, expliciet getoetst tégen de oude foute lineaire benadering van 15,3), randgeval 0 °Oe, en dat `vanBrix`/`vanSg` de inverse van `vanOechsle` teruggeven.
+- **`oenologie.test.ts`** (18 tests): SO₂/YAN/chaptalisatie/zuurcorrectie, met de **exacte nagerekende voorbeelden uit `docs/oenologie-formules.md`** als testcases (pH 3,4/12 mg/L → 0,30 mg/L moleculair, 500 L → 10,0 g SO₂/17,5 g KMS; 65 °Oe → 8,1 vol% → doel 11,0 vol% bij 800 L → 39,05 kg suiker) — die voorbeelden leefden voorheen alleen als hardgecodeerde tekst in een doc-bestand, nu zijn ze uitvoerbare regressietests. Limietoverschrijding getest voor chaptalisatie (zone-A) én zuurcorrectie (aanzuren).
+- **`accijns.test.ts`** (9 tests): `tariefGeverifieerd` (aanwezig/ontbrekend/nooit-gecontroleerd), `berekenAccijnsOverzicht` met en zonder geverifieerd tarief (accijns moet `null` zijn zonder tarief — dat is de kern van de "indicatie, geen aangifte"-garantie), lege periode, ontbrekende alcohol%-markering, en de maand-/kwartaalperiode-helpers (incl. schrikkeljaar-februari).
+- **`gisting-verwachting.test.ts`** (7 tests): `dalingVanPartij` (normaal/te weinig metingen/geen daling), en `berekenVerwachting` met 0, 1 (nog te weinig!) en 2 vergelijkbare partijen — bevestigt de bewuste "geen lijn verzinnen bij <2 partijen"-eis, plus een achterstand-berekening.
+
+**Bijt-bewijs (expliciet uitgevoerd, niet alleen beweerd)**: de pKa-constante in `berekenMoleculairSo2`/`benodigdeVrijeSo2` (`oenologie.ts`) tijdelijk van 1,81 naar 2,5 gewijzigd via `sed` → `npx vitest run` gaf meteen **3 falende tests** (de twee SO₂-voorbeeldtests én de eigen "bijt"-test, met exacte diff-waarden in de output). Direct daarna teruggezet naar 1,81 en herbevestigd: alle 39 tests weer groen. Dit bewijst dat de tests de formule daadwerkelijk vastpinnen, niet alleen de output van de huidige implementatie herhalen.
+
+**CLAUDE.md bijgewerkt**: nieuwe regel onder "Codeerconventies" — `npm test` draaien vóór elke commit die een van de vier rekenlibs raakt; nieuwe pure rekenlogica hoort een eigen `*.test.ts` te krijgen volgens hetzelfde patroon.
+
+**DoD-verificatie**: `npm test` → 39/39 groen, `npx tsc --noEmit` schoon, `npx eslint` op alle 4 testbestanden schoon (na 1× `--fix`), `npm run build` slaagt.
+
+**Commit**: `fase 9 blok c: vitest + 39 tests op de rekenlibs (dichtheid, oenologie, accijns, gisting-verwachting)`.
