@@ -29,7 +29,10 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
           </button>
         ) : (
           <Link to="/" className="flex h-12 items-center gap-2 px-1">
-            <img src="/logo-icon.png" alt={naam} className="h-9 w-9 object-contain" />
+            <picture>
+              <source srcSet="/logo-icon.webp" type="image/webp" />
+              <img src="/logo-icon.png" alt={naam} className="h-9 w-9 object-contain" />
+            </picture>
             <span className="text-base font-semibold tracking-tight text-nav-foreground">
               {naam}
             </span>

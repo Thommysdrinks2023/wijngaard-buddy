@@ -3,7 +3,6 @@
 // bestaande exportdata (CSV's) + een voorblad; er wordt niets nieuws
 // berekend, alleen gebundeld.
 
-import JSZip from "jszip";
 import { format } from "date-fns";
 import { APP_NAAM, BEDRIJFSNAAM } from "@/config/app";
 import { csvAlsString } from "./csv-export";
@@ -28,6 +27,9 @@ export async function maakControlePakket(
   periode: PakketPeriode,
   accijnsRegels: unknown[][],
 ): Promise<void> {
+  // Lazy geladen: jszip is alleen nodig als iemand daadwerkelijk exporteert
+  // (Fase 9 Blok A) — anders zit die hele bibliotheek in de accijns-chunk.
+  const { default: JSZip } = await import("jszip");
   const pb = getPb();
   const [tankboek, kelderlog, voorraad, bottelrondes, partijen, tanks, werkuren] =
     await Promise.all([

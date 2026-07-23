@@ -30,7 +30,10 @@ export function InstalleerBanner() {
   return (
     <div className="fixed bottom-36 left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2">
       <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_4px_20px_rgba(0,0,0,0.12)]">
-        <img src="/logo-icon.png" alt="" className="h-10 w-10 object-contain" />
+        <picture>
+          <source srcSet="/logo-icon.webp" type="image/webp" />
+          <img src="/logo-icon.png" alt="" className="h-10 w-10 object-contain" />
+        </picture>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground">Installeer {APP_NAAM}</p>
           <p className="text-xs text-muted-foreground">Als app op je beginscherm — ook offline</p>

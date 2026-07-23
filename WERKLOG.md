@@ -331,3 +331,33 @@ Vervolg op de dropdown-bugfix: audit van de HELE app op hetzelfde patroon. Gerap
 - (b) Ingelogd, via echte client-side navigatie (Hub → Kelder → Partijen → Nieuwe partij) → beide dropdowns gevuld: **3 producent-opties, 47 tank-opties**.
 - (c) Alle **15 lijst-fetches** met gesimuleerde netwerkstoring (kapotte `fetch`) → **15/15 een nette Nederlandse fout** ("Kon … niet laden — probeer het opnieuw."), **0 stil**; met gewiste sessie → "Log opnieuw in om … te kunnen laden." (steekproef tanks + klanten).
 - (d) Anonieme hub: vaste tegel-omschrijvingen, geen fouttekst, en géén aanroepen naar auth-only collecties (alleen /api/health, rijen en het inzichten-widget met eigen catch).
+
+# FASE 9 — Audit-opvolging & hardening (23 juli 2026)
+
+Vervolg op de performance/smoothness-audit (11 punten). Uitgevoerd in vaste volgorde A→F, vóór de geplande servermigratie. Standaardbeslissingen vooraf: themakleur `#2d5a3d` uit `__root.tsx` is de ene waarheid; logo's als WebP op werkelijke weergavegrootte (2×); dependency-verwijdering alleen na grep-bewijs van nul imports; Vitest (geen Playwright deze fase); auditpunt 9 (grote routebestanden opknippen) blijft buiten scope.
+
+### Blok A — Quick wins ✅
+
+1. **Logo's**: `logo-icon.png` (2000×2000, 313 KB, weergegeven op 36–80 px) vervangen door een 160×160 WebP (9,4 KB) + PNG-fallback (4,4 KB) via `<picture>` in de 5 plekken die 'm gebruiken (app-header, installeer-banner, onboarding, login, rapport). `logo-full.png` (618 KB) bleek na grep **nergens** in `src/` gebruikt — verwijderd zonder vervanging. Beide byte-identieke duplicaten (`Logo Tappenmars hogere resolutie.png`, `Logo druif koper kleur transparant.png`) verwijderd. **Besparing: ~1,24 MB aan public-assets weg**, het icoon zelf van 313 KB → 9,4 KB (webp) / 4,4 KB (png-fallback).
+2. **jszip lazy laden**: statische `import JSZip from "jszip"` in `controle-pakket.ts` vervangen door `await import("jszip")` binnen `maakControlePakket()`. Build bevestigt: jszip is nu een eigen chunk (97 KB) die alleen laadt bij een klik op "Controle-pakket (ZIP)"; de accijns-route-chunk zelf ging van 115 KB → **18,6 KB**.
+3. **Themakleur**: `manifest.webmanifest` `background_color`/`theme_color` van `#27232a` naar `#2d5a3d` (gelijk aan de meta-tag in `__root.tsx`).
+4. **PWA-iconen**: `purpose: "any maskable"` gesplitst in twee aparte icon-entries (`any` en `maskable`) per formaat; `apple-touch-icon.png` (180×180, uit icon-512 gegenereerd) toegevoegd + `<link rel="apple-touch-icon">` in `__root.tsx`. Noot: de brondiagrammen (icon-192/512) zijn niet met maskable-veiligheidsmarge getekend — voor een echt masker-proof icoon is op termijn een aparte tekening met padding nodig; buiten scope van deze opruimfase.
+5. **Ongebruikte UI-dependencies**: per pakket gecontroleerd met `grep -rl "<pakket>" src/` én een tweede grep op de eigen `ui/*.tsx`-wrapper (`grep -rn "ui/<naam>\"" src/ | grep -v de-wrapper-zelf`) om te bevestigen dat de wrapper ook nérgens buiten zichzelf geïmporteerd wordt:
+   - **Verwijderd** (0 externe imports, bevestigd): `embla-carousel-react` (+`carousel.tsx`), `cmdk` (+`command.tsx`), `input-otp` (+`input-otp.tsx`), `react-resizable-panels` (+`resizable.tsx`), `react-day-picker` (+`calendar.tsx`), en 20 ongebruikte Radix-pakketten (`@radix-ui/react-{accordion,alert-dialog,aspect-ratio,avatar,checkbox,collapsible,context-menu,dropdown-menu,hover-card,menubar,navigation-menu,popover,progress,radio-group,scroll-area,select,slider,switch,tabs,toggle-group}`) + hun 20 kale wrapperbestanden in `src/components/ui/`. In totaal 25 npm-pakketten en 25 wrapperbestanden weg.
+   - **Bewust laten staan**: `vaul` (+`drawer.tsx`) — wél gebruikt, in `rij.$rijId.planten.tsx`. `@radix-ui/react-{dialog,label,separator,toggle,tooltip,slot}` — wél gebruikt (slot direct in button/form/breadcrumb/sidebar, niet via een eigen wrapper).
+   - **Valkuil tijdens uitvoering**: de eerste verwijderpoging liep vast op een classifier-timeout ("claude-sonnet-5 tijdelijk niet beschikbaar") midden in een gecombineerde `rm && npm uninstall`-opdracht — de `rm` bleek daardoor NIET uitgevoerd terwijl de npm-uninstall van de eerste 5 pakketten wél al was gebeurd. Pas zichtbaar bij de daaropvolgende `tsc --noEmit` (20 `TS2307`-fouten: wrapperbestanden importeerden inmiddels verwijderde pakketten). Fix: de `rm` alsnog los uitgevoerd; `tsc` daarna volledig schoon. Les: na een afgebroken/gedeeltelijk gefaalde samengestelde opdracht altijd verifiëren welk deel écht doorliep, niet aannemen dat een foutmelding op het hele commando betrekking had.
+
+**Bundelgroottes (productie-build, `npm run build`)**:
+
+| Bestand | Vóór | Ná |
+| --- | --- | --- |
+| `public/logo-icon.*` | 313 KB (png) | 9,4 KB (webp) + 4,4 KB (png-fallback) |
+| `public/logo-full.png` + 2 duplicaten | 313+618+618 KB | verwijderd (0) |
+| `kelder.accijns`-routechunk | 115 KB | 18,6 KB |
+| `jszip` | inline in accijns-chunk | eigen lazy chunk, 97 KB (alleen bij klik) |
+| `dist/client` totaal | — (niet eerder gemeten) | 2,3 MB |
+| `node_modules`-pakketten | — | 25 minder (10 direct + 20 transitief via de 5 UI-libs, plus 20 Radix rechtstreeks) |
+
+**DoD-verificatie**: `npm run build` slaagt (12,5 s), `npx tsc --noEmit` schoon, `npx eslint` op alle gewijzigde bestanden schoon. Browser: hub-logo scherp op 36 px (webp geladen, geverifieerd via screenshot), login-pagina rendert compleet met logo + meldingsbanner-plek. Geen credentials voorhanden om als Thomas in te loggen — de accijns-ZIP-knop zelf is daarom **niet** live doorgeklikt; wel bevestigd via build-output dat de lazy chunk correct wordt gegenereerd en via code-lezing dat de dynamische import 1-op-1 dezelfde `JSZip`-API aanroept als voorheen. Aanbevolen: bij eerstvolgende sessie met Thomas ingelogd, één keer een controle-pakket exporteren ter bevestiging.
+
+**Commit**: `fase 9 blok a: logo's verkleind, jszip lazy geladen, themakleur/pwa-iconen gelijkgetrokken, 25 ongebruikte ui-dependencies verwijderd`.

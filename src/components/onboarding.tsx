@@ -51,11 +51,14 @@ export function Onboarding() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-[0_8px_30px_rgba(0,0,0,0.18)]">
         {huidige.logo ? (
-          <img
-            src="/logo-icon.png"
-            alt={getWijngaardConfig().naam}
-            className="mx-auto h-24 w-24 object-contain"
-          />
+          <picture>
+            <source srcSet="/logo-icon.webp" type="image/webp" />
+            <img
+              src="/logo-icon.png"
+              alt={getWijngaardConfig().naam}
+              className="mx-auto h-24 w-24 object-contain"
+            />
+          </picture>
         ) : (
           <div className="text-5xl">{huidige.emoji}</div>
         )}

@@ -76,7 +76,10 @@ function LoginPage() {
       <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
         {/* Kop met logo */}
         <div className="flex flex-col items-center bg-nav px-6 pb-6 pt-8 text-center">
-          <img src="/logo-icon.png" alt={wijngaardNaam} className="h-20 w-20 object-contain" />
+          <picture>
+            <source srcSet="/logo-icon.webp" type="image/webp" />
+            <img src="/logo-icon.png" alt={wijngaardNaam} className="h-20 w-20 object-contain" />
+          </picture>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-nav-foreground">
             {wijngaardNaam}
           </h1>
