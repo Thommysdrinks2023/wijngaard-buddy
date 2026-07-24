@@ -6,10 +6,13 @@
 // bestaande data en levert een verse Signaal[] op. Geen serverstaat, geen
 // AI-aanroep, geen kosten. Zie ONTWERP-1-ARCHITECTUUR.md voor de motivatie.
 
-import { isIngelogd } from "./data";
+import { getPb, isIngelogd } from "./data";
 import { fetchMaterieel, fetchOnderhoud, onderhoudBinnenkort } from "./materieel-data";
-import { fetchRegelgevingInstellingen } from "./regelgeving-data";
+import { fetchRegelgevingInstellingen, REGELGEVING_SLEUTELS } from "./regelgeving-data";
+import { fetchPartijen } from "./partijen-data";
+import { fetchKelderlog } from "./kelder-data";
 import { APP_INSTELLING_SLEUTELS, fetchAppInstellingen, vindWaarde } from "./app-instellingen-data";
+import { addDays, format } from "date-fns";
 
 export type SignaalErnst = "kritiek" | "waarschuwing" | "info";
 
@@ -83,7 +86,111 @@ export async function backupWaarschuwingSignaal(): Promise<Signaal[]> {
   ];
 }
 
-const PRODUCENTEN: SignaalProducent[] = [onderhoudSignalen, backupWaarschuwingSignaal];
+// ============= AGP-drempel (verhuisd uit meldingen.tsx) =============
+// Jaarproductie (som startvolumes huidige jaargang) vs. de wettelijke
+// AGP-drempel (regelgeving_instellingen). Het WAARSCHUWINGSPERCENTAGE (80%)
+// is een operationele keuze van Thomas en komt uit app_instellingen; de
+// drempel zelf (liters) blijft wettelijk/geverifieerd in
+// regelgeving_instellingen. Zie ONTWERP-2-DATAMODEL.md §3.
+export async function agpSignaal(): Promise<Signaal[]> {
+  if (!isIngelogd()) return [];
+  const [partijen, regelgeving, appInstellingen] = await Promise.all([
+    fetchPartijen(),
+    fetchRegelgevingInstellingen(),
+    fetchAppInstellingen(),
+  ]);
+  const drempel = regelgeving.find((r) => r.sleutel === REGELGEVING_SLEUTELS.agpDrempel)?.waarde;
+  if (!drempel) return [];
+  const percentage = vindWaarde(
+    appInstellingen,
+    APP_INSTELLING_SLEUTELS.agpWaarschuwingPercentage,
+    80,
+  );
+  const jaar = new Date().getFullYear();
+  const productie = partijen
+    .filter((p) => p.jaargang === jaar)
+    .reduce((acc, p) => acc + (p.start_volume_l ?? 0), 0);
+  if (productie <= drempel * (percentage / 100)) return [];
+  return [
+    {
+      id: `agp-${jaar}`,
+      bron: "agp",
+      ernst: "waarschuwing",
+      titel: `Jaarproductie ${jaar} (${Math.round(productie)} L) nadert of overschrijdt de AGP-drempel (${drempel} L) — controleer je accijnspositie.`,
+      waarom: `De jaarproductie van ${jaar} (${Math.round(productie)} L, som van de startvolumes van alle partijen dit jaar) zit boven ${percentage}% van de AGP-drempel (${drempel} L).`,
+      link: "/kelder/accijns",
+      datum: `${jaar}-12-31`,
+    },
+  ];
+}
+
+// ============= Kelderlog-taken (verhuisd uit meldingen.tsx) =============
+// Conventie: notitie begint met "TAAK:"; tonen zodra de datum binnen 7 dagen
+// ligt of verstreken is.
+export async function kelderlogTaakSignalen(): Promise<Signaal[]> {
+  if (!isIngelogd()) return [];
+  const kelderlog = await fetchKelderlog();
+  const vandaag = format(new Date(), "yyyy-MM-dd");
+  const taakGrens = format(addDays(new Date(), 7), "yyyy-MM-dd");
+  const signalen: Signaal[] = [];
+  for (const r of kelderlog) {
+    if (!r.notitie?.startsWith("TAAK:")) continue;
+    if (r.datum > taakGrens) continue;
+    const verlopen = r.datum <= vandaag;
+    signalen.push({
+      id: `taak-${r.id}`,
+      bron: "kelderlog_taak",
+      ernst: verlopen ? "waarschuwing" : "info",
+      titel: `${r.datum}: ${r.notitie.slice(5).trim()}`,
+      waarom: verlopen
+        ? `Deze taak stond gepland voor ${r.datum} — dat is vandaag of eerder.`
+        : `Deze taak staat gepland binnen 7 dagen (${r.datum}).`,
+      link: "/kelder",
+      datum: r.datum,
+    });
+  }
+  return signalen;
+}
+
+// ============= Kritieke inzichten (verhuisd uit meldingen.tsx) =============
+const KRITIEKE_INZICHTEN = new Set(["gisting_snelheid", "uitval_cluster"]);
+
+export async function kritiekeInzichtSignalen(): Promise<Signaal[]> {
+  const pb = getPb();
+  if (!pb || !isIngelogd()) return [];
+  try {
+    // Fase 10 besluit: inzichten worden NIET meer opgeschoond (onbeperkte
+    // historie voor jaar-op-jaar-vergelijking), dus deze query moet expliciet
+    // een venster meegeven i.p.v. de hele (groeiende) tabel op te halen -
+    // zie ONTWERP-2-DATAMODEL.md §9.
+    const { items } = await pb.collection("inzichten").getList(1, 20, {
+      filter: "deleted != true",
+      sort: "-berekend_op",
+    });
+    return items
+      .filter((r) => KRITIEKE_INZICHTEN.has(r["inzicht_type"]))
+      .slice(0, 5)
+      .map((r) => ({
+        id: `inzicht-${r.id}`,
+        bron: "inzicht",
+        ernst: "waarschuwing" as const,
+        titel: r["samenvatting_nl"] as string,
+        waarom: r["samenvatting_nl"] as string,
+        link: "/assistent",
+        datum: r["berekend_op"] as string,
+      }));
+  } catch {
+    return []; // niet ingelogd of offline — geen signalen
+  }
+}
+
+const PRODUCENTEN: SignaalProducent[] = [
+  onderhoudSignalen,
+  backupWaarschuwingSignaal,
+  agpSignaal,
+  kelderlogTaakSignalen,
+  kritiekeInzichtSignalen,
+];
 
 // Verzamelt alle signalen; een falende producent blokkeert de rest nooit
 // (Fase 3-eis: één kapotte bron mag nooit de hele Vandaag-widget breken).

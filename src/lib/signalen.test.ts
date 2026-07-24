@@ -1,24 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Signaal } from "./signalen";
 
-vi.mock("./data", () => ({ isIngelogd: vi.fn(() => true) }));
+vi.mock("./data", () => ({ isIngelogd: vi.fn(() => true), getPb: vi.fn() }));
 vi.mock("./materieel-data", () => ({
   fetchOnderhoud: vi.fn(),
   fetchMaterieel: vi.fn(),
   onderhoudBinnenkort: vi.fn((lijst: unknown[]) => lijst),
 }));
-vi.mock("./regelgeving-data", () => ({ fetchRegelgevingInstellingen: vi.fn() }));
+vi.mock("./regelgeving-data", () => ({
+  fetchRegelgevingInstellingen: vi.fn(),
+  REGELGEVING_SLEUTELS: { agpDrempel: "agp_drempel_liters_per_jaar" },
+}));
+vi.mock("./partijen-data", () => ({ fetchPartijen: vi.fn() }));
+vi.mock("./kelder-data", () => ({ fetchKelderlog: vi.fn() }));
 vi.mock("./app-instellingen-data", () => ({
-  APP_INSTELLING_SLEUTELS: { backupWaarschuwingDagen: "backup_waarschuwing_dagen" },
+  APP_INSTELLING_SLEUTELS: {
+    backupWaarschuwingDagen: "backup_waarschuwing_dagen",
+    agpWaarschuwingPercentage: "agp_waarschuwing_percentage",
+  },
   fetchAppInstellingen: vi.fn(() => Promise.resolve([])),
   vindWaarde: vi.fn((_i: unknown, _s: string, standaard: number) => standaard),
 }));
 
-import { isIngelogd } from "./data";
+import { getPb, isIngelogd } from "./data";
 import { fetchMaterieel, fetchOnderhoud } from "./materieel-data";
 import { fetchRegelgevingInstellingen } from "./regelgeving-data";
+import { fetchPartijen } from "./partijen-data";
+import { fetchKelderlog } from "./kelder-data";
 import {
+  agpSignaal,
   backupWaarschuwingSignaal,
+  kelderlogTaakSignalen,
+  kritiekeInzichtSignalen,
   onderhoudSignalen,
   sorteerSignalen,
   verzamelSignalen,
@@ -95,5 +108,88 @@ describe("backupWaarschuwingSignaal en verzamelSignalen (falende producent)", ()
     ]);
     const resultaat = await backupWaarschuwingSignaal();
     expect(resultaat).toEqual([]);
+  });
+});
+
+describe("agpSignaal", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("normaal geval: productie boven de waarschuwingsdrempel", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    const jaar = new Date().getFullYear();
+    vi.mocked(fetchPartijen).mockResolvedValue([{ jaargang: jaar, start_volume_l: 9000 } as never]);
+    vi.mocked(fetchRegelgevingInstellingen).mockResolvedValue([
+      { id: "r1", sleutel: "agp_drempel_liters_per_jaar", waarde: 10000 } as never,
+    ]);
+    const resultaat = await agpSignaal();
+    expect(resultaat).toHaveLength(1);
+    expect(resultaat[0].bron).toBe("agp");
+  });
+
+  it("randgeval: geen wettelijke drempel ingesteld -> geen signaal", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    vi.mocked(fetchPartijen).mockResolvedValue([]);
+    vi.mocked(fetchRegelgevingInstellingen).mockResolvedValue([]);
+    const resultaat = await agpSignaal();
+    expect(resultaat).toEqual([]);
+  });
+
+  it("randgeval: productie ruim onder de drempel -> geen signaal", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    const jaar = new Date().getFullYear();
+    vi.mocked(fetchPartijen).mockResolvedValue([{ jaargang: jaar, start_volume_l: 100 } as never]);
+    vi.mocked(fetchRegelgevingInstellingen).mockResolvedValue([
+      { id: "r1", sleutel: "agp_drempel_liters_per_jaar", waarde: 10000 } as never,
+    ]);
+    const resultaat = await agpSignaal();
+    expect(resultaat).toEqual([]);
+  });
+});
+
+describe("kelderlogTaakSignalen", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("normaal geval: verlopen taak wordt een waarschuwing", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    vi.mocked(fetchKelderlog).mockResolvedValue([
+      { id: "k1", datum: "2020-01-01", notitie: "TAAK: SO2 na-meten" } as never,
+    ]);
+    const resultaat = await kelderlogTaakSignalen();
+    expect(resultaat).toHaveLength(1);
+    expect(resultaat[0].ernst).toBe("waarschuwing");
+    expect(resultaat[0].titel).toContain("SO2 na-meten");
+  });
+
+  it("randgeval: regel zonder TAAK-prefix wordt genegeerd", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    vi.mocked(fetchKelderlog).mockResolvedValue([
+      { id: "k2", datum: "2020-01-01", notitie: "gewone notitie" } as never,
+    ]);
+    const resultaat = await kelderlogTaakSignalen();
+    expect(resultaat).toEqual([]);
+  });
+});
+
+describe("kritiekeInzichtSignalen", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("randgeval: geen pb-instantie -> lege lijst", async () => {
+    vi.mocked(getPb).mockReturnValue(null);
+    const resultaat = await kritiekeInzichtSignalen();
+    expect(resultaat).toEqual([]);
+  });
+
+  it("normaal geval: filtert alleen kritieke inzicht_types en gebruikt een venster (limit), geen getFullList", async () => {
+    const getList = vi.fn().mockResolvedValue({
+      items: [
+        { id: "i1", inzicht_type: "gisting_snelheid", samenvatting_nl: "Tank 3 stagneert" },
+        { id: "i2", inzicht_type: "brix_verloop", samenvatting_nl: "Normaal verloop" },
+      ],
+    });
+    vi.mocked(getPb).mockReturnValue({ collection: () => ({ getList }) as never } as never);
+    const resultaat = await kritiekeInzichtSignalen();
+    expect(resultaat).toHaveLength(1);
+    expect(resultaat[0].id).toBe("inzicht-i1");
+    expect(getList).toHaveBeenCalledWith(1, 20, expect.any(Object));
   });
 });

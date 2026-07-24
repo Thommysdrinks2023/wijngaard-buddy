@@ -494,3 +494,18 @@ Geen code, schema of data aangepast — puur onderzoek en het ontwerpdocument. V
 **Tests**: `npx tsc --noEmit` schoon, `npx eslint` op alle 8 gewijzigde/nieuwe bestanden schoon (na 1× `--fix`), `npx vitest run` **46/46 groen** (39 bestaand + 7 nieuw), `npm run build` slaagt. Browser: anonieme hub toont geen meldingen en geen console-fouten (auth-only bronnen correct stil, Fase 8-patroon intact).
 
 **Regressierisico gerealiseerd?** Nee — laag risico zoals voorspeld in `ONTWERP-4-STAPPEN.md`. Geen zichtbare wijziging voor een ingelogde gebruiker (kon niet live met een sessie geverifieerd worden, zelfde credential-beperking als eerdere fases; wel bevestigd via het nauwkeurig overnemen van de exacte teksten en de bestaande `onderhoudBinnenkort`-/`fetchRegelgevingInstellingen`-functies ongewijzigd te hergebruiken).
+
+### Bouwstap 2 — AGP-, kelderlog-taak- en inzicht-signalen verhuisd ✅
+
+Geen schemawijziging (geen backup nodig — puur frontend-refactor).
+
+**`src/lib/signalen.ts`**: drie nieuwe producenten, samen met stap 1 nu vijf in totaal:
+- `agpSignaal()` — jaarproductie vs. AGP-drempel. **Splitsing conform Thomas' besluit 7**: de wettelijke drempel (liters) komt uit `regelgeving_instellingen`, het waarschuwings*percentage* (80%) uit de nieuwe `app_instellingen` — voorheen was die 80% hardcoded.
+- `kelderlogTaakSignalen()` — de `"TAAK:"`-prefixconventie, verlopen taken worden `waarschuwing`, toekomstige binnen 7 dagen `info`.
+- `kritiekeInzichtSignalen()` — gistingsstagnatie/uitvalcluster. **Aangescherpt t.o.v. de oude implementatie**: gebruikt nu `getList(1, 20, …)` in plaats van `getFullList()`. Dat is een direct gevolg van Thomas' besluit 5 (inzichten worden niet meer opgeschoond, dus onbeperkte groei) — de oude code haalde blind de héle tabel op, wat na een paar seizoenen duizenden records zou worden. Zie ONTWERP-2-DATAMODEL.md §9.
+
+**`src/components/meldingen.tsx`**: teruggebracht van 189 naar 79 regels — nu een dunne wrapper die alleen `verzamelSignalen()` aanroept en rendert. Alle vijf `useQuery`-blokken, de losse `fetchKritiekeInzichten`-helper en alle detectielogica zijn weg. De rendering (kleuren, kruisje, localStorage-afvinken) is ongewijzigd; wordt in stap 3 vervangen.
+
+**Tests**: 7 nieuwe tests erbij (14 in `signalen.test.ts`, 53 in totaal): AGP boven/onder drempel + ontbrekende wettelijke drempel, kelderlog-taak met/zonder `TAAK:`-prefix, inzichten zonder pb-instantie, en expliciet dat `kritiekeInzichtSignalen` `getList(1, 20, …)` aanroept (bewijst het venster, vangt een terugval naar `getFullList`). `tsc`/`eslint`/`build` schoon, browser: anonieme hub ongewijzigd, geen console-fouten.
+
+**Regressierisico gerealiseerd?** Nee. Zoals voorspeld laag; de AGP-`filter`/`reduce`-logica is 1-op-1 overgenomen, alleen het percentage komt nu uit een instelling in plaats van een literal.

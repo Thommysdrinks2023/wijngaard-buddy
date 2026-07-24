@@ -1,27 +1,18 @@
 // Fase 7 Blok B — proactieve meldingen op de hub. In-app only, afvinkbaar
-// (afgevinkte meldingen onthouden we per id in localStorage). Bronnen:
-// kritieke inzichten (gistingsstagnatie, uitvalcluster), AGP-drempel,
-// onderhoud binnen 30 dagen en de backup-waarschuwing uit Blok A.
+// (afgevinkte meldingen onthouden we per id in localStorage).
+//
+// Fase 10 Blok 2: alle vijf bronnen (onderhoud, backup, AGP, kelderlog-taken,
+// kritieke inzichten) zijn verhuisd naar de gedeelde signalen.ts-laag. Deze
+// component is nu een dunne wrapper — wordt in bouwstap 3 vervangen door de
+// Vandaag-widget (met server-side snooze i.p.v. dit localStorage-mechanisme).
 
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { getPb, isIngelogd } from "@/lib/data";
-import { fetchPartijen } from "@/lib/partijen-data";
-import { fetchKelderlog } from "@/lib/kelder-data";
-import { fetchRegelgevingInstellingen, REGELGEVING_SLEUTELS } from "@/lib/regelgeving-data";
 import { verzamelSignalen } from "@/lib/signalen";
 import { X } from "lucide-react";
-import { addDays, format } from "date-fns";
 
 const LS_AFGEVINKT = "wg.meldingen.afgevinkt.v1";
-
-interface Melding {
-  id: string; // stabiel per onderwerp, zodat afvinken blijft plakken
-  tekst: string;
-  ernst: "waarschuwing" | "info";
-  link?: string;
-}
 
 function leesAfgevinkt(): Set<string> {
   try {
@@ -31,114 +22,15 @@ function leesAfgevinkt(): Set<string> {
   }
 }
 
-const KRITIEKE_INZICHTEN = new Set(["gisting_snelheid", "uitval_cluster"]);
-
-async function fetchKritiekeInzichten() {
-  const pb = getPb();
-  if (!pb) return [];
-  try {
-    const records = await pb.collection("inzichten").getFullList({
-      filter: "deleted != true",
-      sort: "-berekend_op",
-    });
-    return records
-      .filter((r) => KRITIEKE_INZICHTEN.has(r["inzicht_type"]))
-      .slice(0, 5)
-      .map((r) => ({
-        id: `inzicht-${r.id}`,
-        tekst: r["samenvatting_nl"] as string,
-        type: r["inzicht_type"] as string,
-      }));
-  } catch {
-    return []; // niet ingelogd of offline — geen meldingen
-  }
-}
-
 export function Meldingen() {
   const [afgevinkt, setAfgevinkt] = useState<Set<string>>(leesAfgevinkt);
 
-  const inzichtenQ = useQuery({
-    queryKey: ["meldingen", "inzichten"],
-    queryFn: fetchKritiekeInzichten,
-  });
-  // De hub is publiek; deze bronnen zijn auth-only en zouden zonder sessie
-  // een fout gooien (Fase 8) — dus alleen bevragen mét sessie.
-  const ingelogd = isIngelogd();
-  const partijenQ = useQuery({
-    queryKey: ["partijen", "meldingen"],
-    queryFn: fetchPartijen,
-    enabled: ingelogd,
-  });
-  // Fase 10 Blok 1: onderhoud- en backup-signalen verhuisd naar signalen.ts
-  // (gedeelde, geteste producenten i.p.v. losse checks hier).
   const signalenQ = useQuery({
     queryKey: ["signalen", "meldingen"],
     queryFn: verzamelSignalen,
   });
-  const regelgevingQ = useQuery({
-    queryKey: ["regelgeving", "meldingen"],
-    queryFn: fetchRegelgevingInstellingen,
-    enabled: ingelogd,
-  });
-  const kelderlogQ = useQuery({
-    queryKey: ["kelderlog", "meldingen"],
-    queryFn: () => fetchKelderlog(),
-    enabled: ingelogd,
-  });
 
-  const meldingen: Melding[] = [];
-
-  // Kelderlog-taken (Fase 7 Blok C: na-meting SO₂, gistvoedingsschema).
-  // Conventie: notitie begint met "TAAK:"; tonen zodra de datum binnen 7 dagen
-  // ligt of verstreken is. Afvinken gebeurt via het meldingenkruisje.
-  const taakGrens = format(addDays(new Date(), 7), "yyyy-MM-dd");
-  for (const r of kelderlogQ.data ?? []) {
-    if (!r.notitie?.startsWith("TAAK:")) continue;
-    if (r.datum > taakGrens) continue;
-    meldingen.push({
-      id: `taak-${r.id}`,
-      tekst: `${r.datum}: ${r.notitie.slice(5).trim()}`,
-      ernst: r.datum <= format(new Date(), "yyyy-MM-dd") ? "waarschuwing" : "info",
-      link: "/kelder",
-    });
-  }
-
-  for (const i of inzichtenQ.data ?? []) {
-    meldingen.push({ id: i.id, tekst: i.tekst, ernst: "waarschuwing", link: "/assistent" });
-  }
-
-  // AGP-drempel: jaarproductie (som startvolumes huidige jaargang) vs drempel
-  const drempel = (regelgevingQ.data ?? []).find(
-    (r) => r.sleutel === REGELGEVING_SLEUTELS.agpDrempel,
-  )?.waarde;
-  if (drempel) {
-    const jaar = new Date().getFullYear();
-    const productie = (partijenQ.data ?? [])
-      .filter((p) => p.jaargang === jaar)
-      .reduce((acc, p) => acc + (p.start_volume_l ?? 0), 0);
-    if (productie > drempel * 0.8) {
-      meldingen.push({
-        id: `agp-${jaar}`,
-        tekst: `Jaarproductie ${jaar} (${Math.round(productie)} L) nadert of overschrijdt de AGP-drempel (${drempel} L) — controleer je accijnspositie.`,
-        ernst: "waarschuwing",
-        link: "/kelder/accijns",
-      });
-    }
-  }
-
-  // Onderhoud + backup: verhuisd naar signalen.ts (Fase 10 Blok 1), hier
-  // omgezet naar het lokale Melding-formaat zodat de rendering ongewijzigd
-  // blijft (deze component wordt in stap 3 vervangen door de Vandaag-widget).
-  for (const s of signalenQ.data ?? []) {
-    meldingen.push({
-      id: s.id,
-      tekst: s.titel,
-      ernst: s.ernst === "info" ? "info" : "waarschuwing",
-      link: s.link,
-    });
-  }
-
-  const zichtbaar = meldingen.filter((m) => !afgevinkt.has(m.id));
+  const zichtbaar = (signalenQ.data ?? []).filter((s) => !afgevinkt.has(s.id));
   if (zichtbaar.length === 0) return null;
 
   const vinkAf = (id: string) => {
@@ -157,26 +49,26 @@ export function Meldingen() {
       <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Meldingen
       </h2>
-      {zichtbaar.map((m) => (
+      {zichtbaar.map((s) => (
         <div
-          key={m.id}
+          key={s.id}
           className={`flex items-start gap-2 rounded-xl border px-3 py-2 text-sm ${
-            m.ernst === "waarschuwing"
-              ? "border-amber-300 bg-amber-50 text-amber-900"
-              : "border-border bg-card"
+            s.ernst === "info"
+              ? "border-border bg-card"
+              : "border-amber-300 bg-amber-50 text-amber-900"
           }`}
         >
-          {m.link ? (
-            <Link to={m.link} className="min-w-0 flex-1 hover:underline">
-              {m.tekst}
+          {s.link ? (
+            <Link to={s.link} className="min-w-0 flex-1 hover:underline">
+              {s.titel}
             </Link>
           ) : (
-            <span className="min-w-0 flex-1">{m.tekst}</span>
+            <span className="min-w-0 flex-1">{s.titel}</span>
           )}
           <button
             type="button"
             aria-label="Melding afvinken"
-            onClick={() => vinkAf(m.id)}
+            onClick={() => vinkAf(s.id)}
             className="mt-0.5 shrink-0 rounded p-0.5 text-muted-foreground hover:bg-black/5"
           >
             <X className="h-4 w-4" />
