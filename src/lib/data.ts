@@ -778,7 +778,11 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
   flushBezig = true;
   try {
     try {
-      await pb.health.check();
+      // requestKey: null — zonder dit kan een gelijktijdige pingPb() deze check
+      // annuleren, waarna de flush denkt dat de server offline is en de hele
+      // wachtrij ongemoeid laat terwijl er niets aan de hand is. Zelfde
+      // auto-cancellation-valkuil als in pingPb() zelf, zie CLAUDE.md.
+      await pb.health.check({ requestKey: null });
       pbStatus = "online";
     } catch {
       pbStatus = "offline";
@@ -808,6 +812,9 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
         if (actie === "create") {
           const heeftOfflineFoto = payload.__fotoOffline === true;
           delete payload.__fotoOffline;
+          // vooraf bepaald id meesturen: maakt een herhaalde poging herkenbaar
+          // in plaats van een duplicaat (zie recordId in sync.ts)
+          if (item.recordId) payload.id = item.recordId;
           let body: Record<string, unknown> | FormData = payload;
           if (heeftOfflineFoto) {
             // foto uit IndexedDB ophalen en als multipart meesturen
@@ -860,13 +867,34 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
         verzonden++;
       } catch (err) {
         const status = (err as { status?: number }).status ?? 0;
+        const velden = (err as { response?: { data?: Record<string, { code?: string }> } }).response
+          ?.data;
+
+        // Het record bestaat al met precies dit id: een eerdere poging IS
+        // aangekomen, alleen ging het antwoord verloren. Dus geslaagd, niet
+        // mislukt — anders zou elke nieuwe poging een duplicaat opleveren.
+        if (status === 400 && velden?.id?.code === "validation_not_unique") {
+          removeFromSyncQueue(item.queueId);
+          const lsKey = item.lsKey ?? SOORT_LS_KEY[item.soort];
+          if (lsKey) removeLocalRecord(lsKey, item.localId);
+          verzonden++;
+          continue;
+        }
+
         // 400 = blijvende validatiefout: uit de wachtrij (lokale kopie blijft).
         // 401/403 (niet ingelogd) en netwerk-/serverfouten blijven staan voor
         // een nieuwe poging na inloggen of als de server weer bereikbaar is.
         if (status === 400 || status === 404) {
           removeFromSyncQueue(item.queueId);
-          // niet stil laten verdwijnen: registreren en melden
-          const bericht = (err as { message?: string }).message ?? "Onbekende fout";
+          // niet stil laten verdwijnen: registreren en melden. PocketBase zet
+          // de bruikbare informatie in response.data per veld; de bovenliggende
+          // message is altijd het nietszeggende "Failed to create record."
+          const veldFouten = velden
+            ? Object.entries(velden)
+                .map(([veld, f]) => `${veld}: ${(f as { message?: string }).message ?? f.code}`)
+                .join("; ")
+            : "";
+          const bericht = veldFouten || (err as { message?: string }).message || "Onbekende fout";
           registreerSyncFout(item, status, bericht);
           if (item.soort !== "audit") {
             toast.error(

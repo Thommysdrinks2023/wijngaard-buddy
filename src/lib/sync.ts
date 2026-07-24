@@ -37,6 +37,21 @@ export interface SyncItem {
   remoteId?: string;
   // bij delete zonder remoteId: PocketBase-filter om records te vinden
   filter?: string;
+  // Fase 11 Blok 2 — vooraf bepaald PocketBase-record-id voor creates. Zonder
+  // dit levert een verbinding die wegvalt NA het wegschrijven maar VÓÓR het
+  // antwoord een duplicaat op bij elke volgende poging (bewezen: 1 meting werd
+  // 3 records). Met een vast id weigert de server de tweede poging met
+  // validation_not_unique, wat de flush als "al aangekomen" kan herkennen.
+  // Optioneel omdat items uit een oudere appversie het veld niet hebben.
+  recordId?: string;
+}
+
+// PocketBase-record-ids zijn exact 15 tekens uit [a-z0-9].
+export function maakRecordId(): string {
+  const tekens = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const buf = new Uint8Array(15);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => tekens[b % tekens.length]).join("");
 }
 
 const LS_QUEUE = "wg.sync.queue.v1";
@@ -79,6 +94,7 @@ export function addToSyncQueue(
   },
 ) {
   const items = readQueue();
+  const actie = opties?.actie ?? "create";
   items.push({
     queueId: Math.random().toString(36).slice(2, 10) + Date.now().toString(36),
     soort,
@@ -90,6 +106,9 @@ export function addToSyncQueue(
     actie: opties?.actie,
     remoteId: opties?.remoteId,
     filter: opties?.filter,
+    // alleen creates hoeven idempotent te zijn: update en delete op een vast
+    // remoteId zijn dat van nature (tweemaal hetzelfde doen = zelfde uitkomst)
+    recordId: actie === "create" ? maakRecordId() : undefined,
   });
   writeQueue(items);
 }

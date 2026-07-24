@@ -633,3 +633,33 @@ POST /api/collections/oogst/records      -> 400 "Invalid value Souvignier Gris."
 **Fix voor 2**: `deelVerzoek()` in `src/lib/data.ts` — gelijktijdige aanroepers delen één lopend verzoek in plaats van elkaar te annuleren (oude gedrag) of te dupliceren (nieuwe gedrag). Zelfde patroon als het bestaande `pingInFlight`. Toegepast op `fetchAppInstellingen`, `fetchRegelgevingInstellingen` en `fetchVoorraadFlessen` (die laatste met het filter in de sleutel, anders krijgen verschillende filters elkaars antwoord). Bewust géén cache met houdbaarheid: de bundeling geldt alleen zolang het verzoek loopt, dus er kan geen verouderde data blijven plakken.
 
 **Geverifieerd in de productiebuild**: hub van **22 naar 15 calls**, alle duplicaten weg, identieke schermweergave (69 rijen, 16 tanks in gebruik · 3469 L, 2631 flessen). 4 nieuwe tests in `src/lib/deel-verzoek.test.ts` (bundelen, sleutelscheiding, geen caching na afronding, foutafhandeling zonder blokkade); suite nu 69 tests groen.
+
+### Blok 2 — Offline- en verbindingsrobuustheid
+
+Alles hieronder is live getest in de productiebuild met echte PocketBase-schrijfacties, niet uit de code afgeleid.
+
+**Test 1 — geweigerd item blokkeert de rest niet.** 20 items in de wachtrij, waarvan één met een niet-bestaande rij-verwijzing. Resultaat: **19 aangekomen, 1 geweigerd**, de geweigerde uit de wachtrij en geregistreerd in het foutenlogboek, wachtrij daarna leeg. Dit werkt zoals het hoort.
+
+**Test 2 — verbinding valt weg tijdens het verzenden. Hier zat een datafout.**
+
+Scenario: het verzoek bereikt de server en het record wordt weggeschreven, maar het antwoord komt niet aan (bereik valt weg op precies dat moment). De client ziet een netwerkfout, houdt het item in de wachtrij, en probeert het later opnieuw.
+
+Live gemeten resultaat vóór de fix: **één offline ingevoerde meting werd 3 identieke records op de server.** Wachtrij daarna leeg, foutenlogboek leeg, geen enkele waarschuwing. Thomas zou dit niet zien — hij zou drie metingen in zijn overzicht vinden en niet weten welke echt is.
+
+Waarom dit zwaar weegt: hetzelfde mechanisme geldt voor `oogst` en `werkuren`. Dat laatste is de spuitregistratie, een wettelijke verplichting. Dubbele regels in een register dat bij een controle wordt ingezien zijn erger dan een ontbrekende regel, want ze zijn niet als fout herkenbaar.
+
+**Grondoorzaak**: creates hadden geen idempotentie. De server kon niet zien dat een tweede poging dezelfde handeling was, want elk verzoek vroeg om een nieuw record.
+
+**Fix**: elk create-item in de wachtrij krijgt bij het aanmaken een vooraf bepaald PocketBase-record-id (`recordId`, 15 tekens uit `[a-z0-9]`, zie `maakRecordId()` in `sync.ts`). Dat id gaat mee in het verzoek. Is een eerdere poging wél aangekomen, dan weigert de server de tweede met `validation_not_unique` op het `id`-veld — en dát herkent de flush nu als "al aangekomen, dus geslaagd" in plaats van als fout. Update en delete krijgen bewust géén id: die zijn op een vast `remoteId` al idempotent.
+
+**Verificatie**: exact hetzelfde scenario opnieuw gedraaid na de fix. Resultaat: **1 record**, wachtrij netjes leeg, 0 fouten geregistreerd. Vóór de fix: 3 records.
+
+*Beperking, eerlijk vermeld*: wachtrij-items die op Thomas' apparaat al bestaan van vóór deze versie hebben nog geen `recordId` en houden het oude gedrag. De code valt daar veilig op terug (geen crash). In de praktijk is de wachtrij bij normaal gebruik leeg, maar het is geen theoretische nul.
+
+**Test 3 — bruikbaarheid van de foutmelding (bijvangst uit test 1).** Het foutenlogboek toonde `"Failed to create record."` — de bovenliggende PocketBase-boodschap, die niets zegt over wat er mis was. De bruikbare informatie staat per veld in `response.data`. De registratie leest die nu uit, zodat er bijvoorbeeld `rij: Missing required value` in het logboek komt te staan in plaats van een algemeenheid. Zonder dit is het foutenlogboek er wel, maar kun je er niets mee.
+
+**Test 4 — dubbel indienen.** Alle 27 routes met een mutatie nagelopen: elke opslaan-knop is beschermd met `disabled={...isPending}`, en de belangrijkste veldformulieren hercontroleren dat ook nog in de handler. Eén uitzondering: het verwijderen van een steekproefpunt (`steekproeven.beheer.tsx`) heeft geen `isPending`-blokkade, maar zit achter een bevestigingsdialoog en een tweede verwijdering is onschadelijk. **Niet aangepast** — dat zou bouwen zonder aangetoond probleem zijn.
+
+**Losse fix onderweg**: `flushSyncQueue()` deed zijn `health.check()` zonder `requestKey: null`. Een gelijktijdige `pingPb()` kon die annuleren, waarna de flush concludeerde dat de server offline was en de hele wachtrij liet staan terwijl er niets aan de hand was. Dit is de vierde keer dat dezelfde auto-cancellation-valkuil toeslaat (Fase 3, Fase 8, Fase 10, nu). Blok 6 gaat daarover.
+
+5 nieuwe tests in `src/lib/sync-idempotentie.test.ts`; suite nu 74 tests groen.
