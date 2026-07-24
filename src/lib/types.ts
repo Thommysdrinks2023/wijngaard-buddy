@@ -445,7 +445,9 @@ export type AgentActieType =
   | "kelderlog"
   | "analyse"
   | "bottelronde"
-  | "voorraad_mutatie";
+  | "voorraad_mutatie"
+  | "order"
+  | "onderhoud";
 
 export type AgentActieStatus = "voorgesteld" | "bevestigd" | "afgewezen" | "uitgevoerd" | "mislukt";
 
@@ -514,6 +516,8 @@ export const AGENT_ACTIE_CONFIG: Record<
   analyse: { label: "Analyse", emoji: "🧪", randKlasse: "border-success" },
   bottelronde: { label: "Bottelronde", emoji: "🍾", randKlasse: "border-primary" },
   voorraad_mutatie: { label: "Voorraadmutatie", emoji: "📦", randKlasse: "border-accent-gold" },
+  order: { label: "Conceptorder", emoji: "🧾", randKlasse: "border-primary" },
+  onderhoud: { label: "Onderhoud", emoji: "🔧", randKlasse: "border-warning" },
 };
 
 // ============= Verkoop licht (Eindsprint Blok L) =============

@@ -312,5 +312,9 @@ export function actieTypeNaarLijstNaam(actieType: AgentActieType): string {
       return "bottelrondes";
     case "voorraad_mutatie":
       return "voorraad";
+    case "order":
+      return "orders";
+    case "onderhoud":
+      return "onderhoudslog";
   }
 }

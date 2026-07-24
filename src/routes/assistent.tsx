@@ -188,6 +188,10 @@ function aanpasBestemming(actie: AgentActie): {
         to: "/voorraad/$voorraadId",
         params: { voorraadId: String(payload.voorraad ?? "") },
       };
+    case "order":
+      return { to: "/verkoop" };
+    case "onderhoud":
+      return { to: "/materieel" };
   }
 }
 
