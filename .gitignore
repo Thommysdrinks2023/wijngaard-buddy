@@ -51,3 +51,9 @@ dist-ssr
 *.sln
 *.sw?
 scripts/healthcheck-url.txt
+
+# Playwright (Fase 11 Blok 5)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

@@ -718,3 +718,32 @@ Daarmee is elke volgende registratie nog maar "typen + opslaan". Wie niet op vol
 **Live geverifieerd** in de productiebuild: drie registraties achter elkaar (42,5 / 38 / 51,5 kg), telkens alleen gewicht typen en opslaan. Rij liep door van 1 → 2 → 3 → 4, het ras werd bij alle drie correct als Muscaris meegeschreven, en alle drie kwamen op de server aan. Testrecords daarna verwijderd (oogst terug op 3 records, de nulmeting).
 
 **Wat ik bewust niet heb gedaan**: een aparte oogstmodus met een rijenlijst-in-plaats-van-keuzelijst, of invoer per emmer/kist. Beide zijn denkbaar, maar er is geen bewijs dat het huidige formulier tekortschiet zodra de herhaalde rijkeuze weg is — en een nieuw scherm vlak voor het seizoen introduceert meer risico dan het wegneemt.
+
+### Blok 5 — Geautomatiseerde rooktests
+
+**Playwright**, tegen de **productiebuild** en op **telefoonformaat** (Pixel 7). Beide keuzes zijn bewust: bij Blok 1 bleek de dev-server tot acht keer trager en anders van gedrag, en Thomas werkt in de wijngaard op een telefoon — een test die alleen op een breed bureaubladscherm met een dev-server slaagt, bewijst het verkeerde.
+
+`npm run test:e2e`. Zes tests, **21,9 seconden**, alle zes groen:
+
+1. de hub laadt met echte cijfers (niet een lege huls)
+2. een Brix-meting komt écht op de server aan
+3. oogstinvoer springt door naar de volgende rij (de wijziging uit Blok 4)
+4. de kelder toont meer dan tien tanks en een partij is te openen
+5. een wachtend offline record laat de sync-balk verschijnen
+6. geen enkel hoofdscherm toont een foutmelding (`role="alert"`) — zeven schermen langs
+
+Ontwerpkeuzes die het verschil maken tussen een rooktest die iets waard is en een die dat niet is:
+
+- **Waar het kan controleren de tests de server, niet het scherm.** Een groene bevestigingsmelding zegt niets over wat er is opgeslagen; test 2 en 3 vragen PocketBase of het record er staat.
+- **Wachtwoorden staan niet in de repo** maar komen uit `E2E_EMAIL`/`E2E_WACHTWOORD`.
+- **`retries: 0`** — een wisselvallige test is een bevinding, geen ruis om weg te retryen.
+- Aangemaakte records worden opgeruimd (`ingevoerd_door = "e2e-rooktest"`).
+
+**Bewijs dat ze rood worden.** Ik heb `fetchTanks()` tijdelijk naar een niet-bestaande collectie laten wijzen en opnieuw gebouwd. Resultaat: **alle zes tests rood**. Daarna teruggezet en opnieuw gebouwd: **alle zes weer groen**.
+
+Dat alle zes vielen in plaats van alleen test 4 is zelf een bevinding: het inloggen stuurt door naar de laatst gebruikte module, en toen de kelder niet kon laden voltooide die navigatie nooit. **Eén falende dataquery in de kelder blokkeert daarmee het inloggen zelf** — niet alleen het kelderscherm. Dat is precies het soort cascade dat Blok 6 moet blootleggen.
+
+**Twee dingen die tijdens het opzetten aan het licht kwamen:**
+
+- De **onboarding-dialoog verschijnt óver het inlogscherm** op een vers apparaat en vangt alle kliks af. Voor een mens is dat op te lossen door "Overslaan" te tikken, dus het blokkeert niet — maar het is de verkeerde volgorde: onboarding hoort ná het inloggen. Niet aangepast; staat als opmerking in het auditrapport.
+- **`/voorraad` heeft geen kopelement.** De titel zit alleen in de gedeelde koptekstbalk. Kleine toegankelijkheidsmisser, niet gerepareerd omdat het buiten de opdracht van dit blok viel.

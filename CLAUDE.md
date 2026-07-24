@@ -162,6 +162,11 @@ Set-ScheduledTask -TaskName "Wijngaard PocketBase Backup" -Settings $settings
 - **Formatting**: Prettier (`bun run format`) — altijd uitvoeren vóór commit
 - **Lint**: ESLint (`bun run lint`) — geen warnings in CI
 - **Tests**: Vitest (`npm test`) — dekt de pure rekenlibs (`dichtheid.ts`, `oenologie.ts`, `accijns.ts`, `gisting-verwachting.ts`). **Draai `npm test` vóór elke commit** die een van deze bestanden raakt; groen is een harde eis, niet optioneel. Nieuwe pure rekenlogica hoort een bijbehorend `*.test.ts`-bestand te krijgen (zelfde patroon: normaal geval, randgeval, limietoverschrijding waar van toepassing).
+- **Rooktests (E2E)**: Playwright (`npm run test:e2e`), 6 tests in `e2e/rooktest.spec.ts`. Draaien tegen de **productiebuild** (`playwright.config.ts` bouwt en start `vite preview` op poort 4173) op **telefoonformaat** (Pixel 7) — niet de dev-server en niet bureaubladbreedte, want dat is niet wat Thomas gebruikt. Ze verwachten een draaiende lokale PocketBase op `127.0.0.1:8090`.
+  - **Inloggegevens komen uit de omgeving, niet uit de repo**: zet `E2E_EMAIL` en `E2E_WACHTWOORD` voordat je ze draait (`$env:E2E_EMAIL="…"; $env:E2E_WACHTWOORD="…"; npm run test:e2e`). Zonder die variabelen falen ze met een duidelijke melding.
+  - De tests controleren waar mogelijk of een record **écht op de server** staat, niet of er een bevestiging op het scherm stond — een groene toast bewijst niets over wat er is opgeslagen. Records die ze aanmaken ruimen ze zelf op (`ingevoerd_door = "e2e-rooktest"`).
+  - Test 6 controleert dat **geen enkel hoofdscherm een `role="alert"` toont**. Dat is de goedkoopste bewaking tegen het terugkerende faalpatroon uit Fase 8/10 (datalaag faalt, scherm toont een foutstatus of blijft leeg).
+  - **`retries: 0` is bewust**: een wisselvallige test is een bevinding, geen ruis om weg te retryen.
 - **Routing**: TanStack Router file-based. Nieuwe pagina = nieuw bestand in `src/routes/`. Voer daarna `bun run dev` uit zodat `routeTree.gen.ts` automatisch bijgewerkt wordt.
 - **Data**: queries via TanStack Query (`useQuery`). Alle PocketBase-calls zitten in `src/lib/data.ts`.
 - **Componenten**: geen commentaar tenzij de _reden_ niet-voor-de-hand-liggend is; geen multi-regel docstrings.
