@@ -33,7 +33,14 @@ function instellingFromPb(r: RecordModel): AppInstelling {
 
 export async function fetchAppInstellingen(): Promise<AppInstelling[]> {
   return haalLijst("de app-instellingen", [], async (pb) => {
-    const records = await pb.collection("app_instellingen").getFullList({ sort: "sleutel" });
+    // requestKey: null schakelt PocketBase's auto-cancellation uit. Deze
+    // functie wordt op vier plekken tegelijk aangeroepen (Vandaag-widget,
+    // BackupWidget, en twee signaalproducenten) — zonder dit annuleren die
+    // elkaars identieke GET, waardoor de widget stil leeg bleef. Zelfde
+    // valkuil als de pingPb()-fix in data.ts, zie CLAUDE.md.
+    const records = await pb
+      .collection("app_instellingen")
+      .getFullList({ sort: "sleutel", requestKey: null });
     return records.map(instellingFromPb);
   });
 }

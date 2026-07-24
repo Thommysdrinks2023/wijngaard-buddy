@@ -244,6 +244,9 @@ const INZICHT_TYPES = [
   "spuit_effectiviteit",
 ];
 const FEEDBACK_OORDELEN = ["klopte", "klopte_niet", "deels"];
+// Fase 10 Blok 3: snooze = tijdelijk verbergen (tot snooze_tot),
+// genegeerd = permanent wegklikken.
+const SIGNAAL_ACTIES = ["gesnoozed", "genegeerd"];
 
 const GEBRUIKERS = [
   { email: "invoerder1@tappenmars.nl", name: "Invoerder 1" },
@@ -1270,6 +1273,39 @@ async function main() {
   // ingebouwde auth-collectie, nodig als relation-doel voor agent-collecties
   const usersCol = await api("/api/collections/users");
 
+  // Fase 10 Blok 3 — signaal_status: server-side snooze/dismiss van signalen.
+  // Bewust NIET localStorage (besluit Thomas): hij werkt op telefoon in de
+  // wijngaard én op desktop, iets wegklikken moet overal gelden, en
+  // localStorage verdwijnt bij het legen van de cache. OPEN_RULE conform de
+  // rest van de app (bewust ook zonder login bruikbaar, Fase 3/8-besluit) -
+  // snoozen is geen gevoelige actie. Zie ONTWERP-2-DATAMODEL.md §4.
+  await ensureCollection({
+    name: "signaal_status",
+    type: "base",
+    fields: [
+      { name: "signaal_id", type: "text", required: true },
+      { name: "actie", type: "select", required: true, maxSelect: 1, values: SIGNAAL_ACTIES },
+      { name: "snooze_tot", type: "text" },
+      {
+        name: "gebruiker",
+        type: "relation",
+        collectionId: usersCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      ...autodateFields(),
+    ],
+    indexes: [
+      "CREATE INDEX idx_signaal_status_signaal_id ON signaal_status (signaal_id)",
+      "CREATE INDEX idx_signaal_status_snooze_tot ON signaal_status (snooze_tot)",
+    ],
+    listRule: OPEN_RULE,
+    viewRule: OPEN_RULE,
+    createRule: OPEN_RULE,
+    updateRule: OPEN_RULE,
+    deleteRule: OPEN_RULE,
+  });
+
   // 3a-10. AI-agent (Fase 3): gesprekken, berichten, bevestigingsacties, inzichten,
   // adviesfeedback. Schrijfacties gaan NOOIT direct de vakcollecties in — de
   // agent stelt voor via agent_acties (status "voorgesteld"); pas na expliciete
@@ -1937,6 +1973,7 @@ async function main() {
     "proefnotities",
     // Fase 10
     "app_instellingen",
+    "signaal_status",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);

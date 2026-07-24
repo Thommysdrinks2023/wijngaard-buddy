@@ -166,6 +166,10 @@ export async function kritiekeInzichtSignalen(): Promise<Signaal[]> {
     const { items } = await pb.collection("inzichten").getList(1, 20, {
       filter: "deleted != true",
       sort: "-berekend_op",
+      // requestKey: null — meerdere aanroepers kunnen dit tegelijk opvragen;
+      // zonder dit annuleren ze elkaars identieke GET (PocketBase
+      // auto-cancellation, zie CLAUDE.md).
+      requestKey: null,
     });
     return items
       .filter((r) => KRITIEKE_INZICHTEN.has(r["inzicht_type"]))

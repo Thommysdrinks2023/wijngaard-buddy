@@ -48,7 +48,11 @@ export async function fetchPartijen(): Promise<Partij[]> {
   if (!(await ensureOnline()))
     throw new Error("Geen verbinding met de server — kon partijen niet laden.");
   try {
-    const records = await pb.collection("partijen").getFullList({ sort: "-jaargang,naam" });
+    // requestKey: null — signaalproducenten en pagina's vragen deze lijst
+    // tegelijk op (PocketBase auto-cancellation-valkuil, zie CLAUDE.md).
+    const records = await pb
+      .collection("partijen")
+      .getFullList({ sort: "-jaargang,naam", requestKey: null });
     return records.map(partijFromPb);
   } catch {
     throw new Error("Kon partijen niet laden — probeer het opnieuw.");

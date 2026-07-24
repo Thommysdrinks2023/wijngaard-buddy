@@ -67,7 +67,11 @@ function onderhoudFromPb(r: RecordModel): OnderhoudsRegel {
 
 export async function fetchMaterieel(): Promise<Materieel[]> {
   return haalLijst("het machinepark", [], async (pb) => {
-    const records = await pb.collection("materieel").getFullList({ sort: "naam" });
+    // requestKey: null — signaalproducent en /materieel vragen dit tegelijk op
+    // (PocketBase auto-cancellation-valkuil, zie CLAUDE.md).
+    const records = await pb
+      .collection("materieel")
+      .getFullList({ sort: "naam", requestKey: null });
     return records.map(materieelFromPb);
   });
 }
@@ -85,6 +89,7 @@ export async function fetchOnderhoud(materieelId?: string): Promise<OnderhoudsRe
     const records = await pb.collection("onderhoudslog").getFullList({
       sort: "-datum,-created",
       filter: materieelId ? pb.filter("materieel = {:materieelId}", { materieelId }) : "",
+      requestKey: null, // zie fetchMaterieel
     });
     return records.map(onderhoudFromPb);
   });

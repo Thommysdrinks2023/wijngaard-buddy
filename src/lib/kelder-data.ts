@@ -338,6 +338,9 @@ export async function fetchKelderlog(filter?: string | KelderlogFilter): Promise
     const records = await pb.collection("kelderlog").getFullList({
       sort: "-datum,-created",
       filter: delen.join(" && "),
+      // requestKey: null — de taak-signaalproducent en het partijdetail
+      // vragen dit tegelijk op (auto-cancellation-valkuil, zie CLAUDE.md).
+      requestKey: null,
     });
     return records.map(kelderlogFromPb);
   });

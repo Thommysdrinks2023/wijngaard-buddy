@@ -17,7 +17,7 @@ import {
   fetchAppInstellingen,
   vindWaarde,
 } from "@/lib/app-instellingen-data";
-import { Meldingen } from "@/components/meldingen";
+import { VandaagWidget } from "@/components/vandaag-widget";
 
 // Fase 7 Blok A: backup-bewaking. Het backupscript schrijft na elke geslaagde
 // run de sleutel "laatste_backup" bij. Deze permanente statusregel blijft
@@ -152,7 +152,7 @@ function ModuleHub() {
             </Link>
           ))}
         </div>
-        <Meldingen />
+        <VandaagWidget />
         <BackupWidget />
       </div>
     </>

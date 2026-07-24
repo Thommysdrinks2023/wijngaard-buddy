@@ -509,3 +509,17 @@ Geen schemawijziging (geen backup nodig — puur frontend-refactor).
 **Tests**: 7 nieuwe tests erbij (14 in `signalen.test.ts`, 53 in totaal): AGP boven/onder drempel + ontbrekende wettelijke drempel, kelderlog-taak met/zonder `TAAK:`-prefix, inzichten zonder pb-instantie, en expliciet dat `kritiekeInzichtSignalen` `getList(1, 20, …)` aanroept (bewijst het venster, vangt een terugval naar `getFullList`). `tsc`/`eslint`/`build` schoon, browser: anonieme hub ongewijzigd, geen console-fouten.
 
 **Regressierisico gerealiseerd?** Nee. Zoals voorspeld laag; de AGP-`filter`/`reduce`-logica is 1-op-1 overgenomen, alleen het percentage komt nu uit een instelling in plaats van een literal.
+
+### Bouwstap 3 — Vandaag-widget + server-side snooze ✅
+
+**Backup vooraf**: `pocketbase/pb_data_backup_fase10_stap3_2026-07-24_2052` (23 MB).
+
+**Schema**: nieuwe collectie `signaal_status` (`signaal_id`/`actie`/`snooze_tot`/`gebruiker`, OPEN_RULE, 2 indexen op `signaal_id` en `snooze_tot`). Script 2× gedraaid (idempotent), curl-geverifieerd: OPEN-rules, 2 indexen, alle velden correct.
+
+**Nieuw**: `src/lib/signaal-status-data.ts` (fetch/zet/opruimen + `isVerborgen`-filter + eenmalige localStorage-migratie), `src/components/vandaag-widget.tsx` (gesorteerde signalen, plafond uit `app_instellingen`, uitklapbare "waarom", snooze 7 dagen + permanent negeren). `meldingen.tsx` **verwijderd** na browser-bevestiging (besluit 10: twee-fasen-aanpak).
+
+**Bug gevonden en gefixt tijdens de live-verificatie — PocketBase auto-cancellation (de valkuil uit CLAUDE.md, nu breder toegeslagen)**: de nieuwe widget bleef aanvankelijk volledig leeg terwijl de oude component wél meldingen toonde. Netwerk-inspectie liet `ERR_ABORTED` zien op `app_instellingen` en `inzichten`. Oorzaak: de signaallaag roept dezelfde `fetch*`-functies aan als bestaande componenten, dus liepen er 3-4 identieke GET's tegelijk die elkaar annuleerden — en `haalLijst()` vertaalt zo'n annulering naar een generieke fout, waardoor het stil faalde. **Dit was precies het faalpatroon dat Fase 8 wilde uitroeien, nu in een nieuwe gedaante.** Fix: `requestKey: null` toegevoegd in `app-instellingen-data`, `regelgeving-data`, `partijen-data`, `materieel-data` (2×), `kelder-data` (kelderlog) en de inzichten-query in `signalen.ts`. **Les voor volgende stappen**: elke fetch die zowel door een signaalproducent als door een pagina gebruikt wordt, heeft `requestKey: null` nodig.
+
+**Tests**: 6 nieuwe tests in `signaal-status-data.test.ts` (`isVerborgen`: geen status, genegeerd, actieve snooze, verlopen snooze, snooze zonder datum, status van ander signaal) — 59 totaal, allemaal groen. tsc/eslint/build schoon.
+
+**Live geverifieerd (ingelogd als Invoerder 1)**: widget toont dezelfde 2 signalen als de oude component (SO₂-taak + uitval-inzicht); "waarom"-uitklap toont de onderbouwing zonder extra netwerkverkeer; snooze schrijft een `signaal_status`-record met `snooze_tot` 7 dagen vooruit en het signaal verdwijnt meteen uit de lijst; testrecord daarna opgeruimd. Na verwijdering van `meldingen.tsx`: hub toont alleen nog "VANDAAG" + de permanente backup-statusregel, precies zoals bedoeld (besluit 8).

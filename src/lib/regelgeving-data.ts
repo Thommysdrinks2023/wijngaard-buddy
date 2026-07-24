@@ -41,7 +41,10 @@ export async function fetchRegelgevingInstellingen(): Promise<RegelgevingInstell
   return haalLijst("de regelgeving-instellingen", [], async (pb) => {
     const records = await pb
       .collection("regelgeving_instellingen")
-      .getFullList({ sort: "sleutel" });
+      // requestKey: null — meerdere componenten/signaalproducenten vragen
+      // deze lijst tegelijk op; zonder dit annuleren ze elkaars identieke
+      // GET (PocketBase auto-cancellation, zie CLAUDE.md).
+      .getFullList({ sort: "sleutel", requestKey: null });
     return records.map(instellingFromPb);
   });
 }
