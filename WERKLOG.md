@@ -349,14 +349,14 @@ Vervolg op de performance/smoothness-audit (11 punten). Uitgevoerd in vaste volg
 
 **Bundelgroottes (productie-build, `npm run build`)**:
 
-| Bestand | Vóór | Ná |
-| --- | --- | --- |
-| `public/logo-icon.*` | 313 KB (png) | 9,4 KB (webp) + 4,4 KB (png-fallback) |
-| `public/logo-full.png` + 2 duplicaten | 313+618+618 KB | verwijderd (0) |
-| `kelder.accijns`-routechunk | 115 KB | 18,6 KB |
-| `jszip` | inline in accijns-chunk | eigen lazy chunk, 97 KB (alleen bij klik) |
-| `dist/client` totaal | — (niet eerder gemeten) | 2,3 MB |
-| `node_modules`-pakketten | — | 25 minder (10 direct + 20 transitief via de 5 UI-libs, plus 20 Radix rechtstreeks) |
+| Bestand                               | Vóór                    | Ná                                                                                 |
+| ------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| `public/logo-icon.*`                  | 313 KB (png)            | 9,4 KB (webp) + 4,4 KB (png-fallback)                                              |
+| `public/logo-full.png` + 2 duplicaten | 313+618+618 KB          | verwijderd (0)                                                                     |
+| `kelder.accijns`-routechunk           | 115 KB                  | 18,6 KB                                                                            |
+| `jszip`                               | inline in accijns-chunk | eigen lazy chunk, 97 KB (alleen bij klik)                                          |
+| `dist/client` totaal                  | — (niet eerder gemeten) | 2,3 MB                                                                             |
+| `node_modules`-pakketten              | —                       | 25 minder (10 direct + 20 transitief via de 5 UI-libs, plus 20 Radix rechtstreeks) |
 
 **DoD-verificatie**: `npm run build` slaagt (12,5 s), `npx tsc --noEmit` schoon, `npx eslint` op alle gewijzigde bestanden schoon. Browser: hub-logo scherp op 36 px (webp geladen, geverifieerd via screenshot), login-pagina rendert compleet met logo + meldingsbanner-plek. Geen credentials voorhanden om als Thomas in te loggen — de accijns-ZIP-knop zelf is daarom **niet** live doorgeklikt; wel bevestigd via build-output dat de lazy chunk correct wordt gegenereerd en via code-lezing dat de dynamische import 1-op-1 dezelfde `JSZip`-API aanroept als voorheen. Aanbevolen: bij eerstvolgende sessie met Thomas ingelogd, één keer een controle-pakket exporteren ter bevestiging.
 
@@ -377,10 +377,12 @@ De audit noemde "7 plekken"; bij het daadwerkelijk doorlopen van elke `filter:` 
 **Bewuste uitzondering**: `agent-data.ts` had ook een statische `filter: \`deleted != true\`` zonder interpolatie — geen waarde erin, dus niets om te parameteriseren; ongewijzigd gelaten.
 
 **Test met aanhalingsteken-waarde** (Node, `pb.filter()` rechtstreeks):
+
 ```
 pb.filter('partij = {:p}', { p: 'abc"def' })   → partij = 'abc"def'
 pb.filter('rij = {:r}', { r: "o'brien" })      → rij = 'o\'brien'
 ```
+
 Beide waarden komen er correct geëscaped en met enkele aanhalingstekens uit — een dubbel aanhalingsteken in een waarde brak vroeger de query-syntax (de oude `\`veld = "${waarde}"\`` sloot voortijdig af); dat kan nu niet meer.
 
 **DoD-verificatie**: `npx tsc --noEmit` schoon, `npx eslint` op alle 7 gewijzigde bestanden schoon (na 1× `--fix` voor een Prettier-regel), `npm run build` slaagt. Geen PocketBase-credentials voorhanden om de betreffende pagina's (kelderdetail, agent, controle-pakket-export, steekproeven) live met een sessie te doorlopen — de omzetting is functioneel identiek (dezelfde filterexpressie, alleen de waarde-invoeging is nu veilig) en type-/build-geverifieerd. Aanbevolen: bij eerstvolgende sessie met Thomas ingelogd, kort een tankboek-filter en een steekproef-verwijdering beproeven.
@@ -483,11 +485,13 @@ Geen code, schema of data aangepast — puur onderzoek en het ontwerpdocument. V
 **Schema** (`scripts/setup-pocketbase.mjs`): nieuwe collectie `app_instellingen` (sleutel/waarde/eenheid/notitie, `AUTH_RULE`), geseed met 4 sleutels (`backup_waarschuwing_dagen`=2, `agp_waarschuwing_percentage`=80, `voorraad_drempel_standaard`=12, `signaal_max_zichtbaar`=6 — alle vier in één keer geseed zodat latere stappen geen aparte migratie nodig hebben). Toegevoegd aan `TENANT_COLLECTIES`. **Script 2× gedraaid** (idempotent bevestigd: 0 nieuwe records/velden bij de tweede run), curl-geverifieerd dat alle 4 sleutels met de juiste waarden bestaan.
 
 **Nieuwe bestanden**:
+
 - `src/lib/app-instellingen-data.ts` — datalaag (`fetchAppInstellingen`, `vindWaarde`-helper met fallback).
 - `src/lib/signalen.ts` — het `Signaal`/`SignaalProducent`-contract (ONTWERP-3-API.md §1) + `verzamelSignalen()` (draait elke producent in een eigen `try/catch`, een falende producent blokkeert de rest nooit) + `sorteerSignalen()` (ernst → recentheid). Twee producenten: `onderhoudSignalen()` en `backupWaarschuwingSignaal()` — **exact dezelfde detectielogica** als voorheen in `meldingen.tsx`/`index.tsx`, nu op één plek, met de backup-drempel uit de nieuwe `app_instellingen` in plaats van de hardcoded `2`.
 - `src/lib/signalen.test.ts` — 7 tests: `sorteerSignalen` (normaal/leeg/datum-sortering), `onderhoudSignalen` (niet-ingelogd/normaal geval), en het **bijt-bewijs** dat een falende `fetchOnderhoud`-aanroep het backup-signaal niet blokkeert (`verzamelSignalen()` geeft het backup-signaal alsnog terug).
 
 **Gewijzigd**:
+
 - `src/components/meldingen.tsx`: onderhoud- en backup-detectie (was: losse `useQuery`'s + inline logica) vervangen door één `verzamelSignalen()`-aanroep; teksten bewust **exact** gelijk gehouden aan vóór de wijziging (`titel`-veld in `Signaal` draagt de letterlijke oude tekst, `waarom`-veld de uitgebreidere uitleg voor de latere widget) — geen zichtbaar verschil voor Thomas.
 - `src/routes/index.tsx`: `BackupWidget` leest de waarschuwingsdrempel nu uit `app_instellingen` (`backup_waarschuwing_dagen`) in plaats van de hardcoded `2`; de permanente statusregel zelf blijft ongewijzigd (bewust, Thomas' besluit 8).
 
@@ -500,6 +504,7 @@ Geen code, schema of data aangepast — puur onderzoek en het ontwerpdocument. V
 Geen schemawijziging (geen backup nodig — puur frontend-refactor).
 
 **`src/lib/signalen.ts`**: drie nieuwe producenten, samen met stap 1 nu vijf in totaal:
+
 - `agpSignaal()` — jaarproductie vs. AGP-drempel. **Splitsing conform Thomas' besluit 7**: de wettelijke drempel (liters) komt uit `regelgeving_instellingen`, het waarschuwings*percentage* (80%) uit de nieuwe `app_instellingen` — voorheen was die 80% hardcoded.
 - `kelderlogTaakSignalen()` — de `"TAAK:"`-prefixconventie, verlopen taken worden `waarschuwing`, toekomstige binnen 7 dagen `info`.
 - `kritiekeInzichtSignalen()` — gistingsstagnatie/uitvalcluster. **Aangescherpt t.o.v. de oude implementatie**: gebruikt nu `getList(1, 20, …)` in plaats van `getFullList()`. Dat is een direct gevolg van Thomas' besluit 5 (inzichten worden niet meer opgeschoond, dus onbeperkte groei) — de oude code haalde blind de héle tabel op, wat na een paar seizoenen duizenden records zou worden. Zie ONTWERP-2-DATAMODEL.md §9.
@@ -586,6 +591,7 @@ Stappen 1 t/m 5 uit `ONTWERP-4-STAPPEN.md` zijn af, elk apart gecommit en getest
 De live PocketBase-selects voor `ras` bevatten de oude tikfout **"Souveginier Gris"**, terwijl de frontend (`RAS_OPTIONS` in `seed-rijen.ts`) de correcte spelling **"Souvignier Gris"** stuurt. Gevolg: elke schrijfactie voor een Souvignier Gris-rij faalde met `HTTP 400 — validation_invalid_value: Invalid value Souvignier Gris`.
 
 **Live bewezen vóór de fix** (curl, echte gebruikerstoken, rij 6):
+
 ```
 POST /api/collections/fenologie/records  -> 400 "Invalid value Souvignier Gris."
 POST /api/collections/oogst/records      -> 400 "Invalid value Souvignier Gris."
@@ -611,16 +617,16 @@ POST /api/collections/oogst/records      -> 400 "Invalid value Souvignier Gris."
 
 **Gemeten op de productiebuild** (`npm run build` + `vite preview`, niet de dev-server — de dev-server meet ongeminificeerde modules en gaf misleidend hoge cijfers, tot 4564 ms voor partijdetail):
 
-| Scherm | Tijd tot bruikbaar | API-calls |
-| --- | --- | --- |
-| Hub (incl. Vandaag-widget) | 353 ms | 15 |
-| Kelderdashboard | 317 ms | 6 |
-| Tanklijst | 269 ms | 5 |
-| Voorraad | 311 ms | 5 |
-| Accijnsoverzicht | 318 ms | 10 |
-| Jaaroverzicht | 377 ms | 8 |
-| Perceelkaart | 366 ms | 9 |
-| Partijdetail | 565 ms | 16 |
+| Scherm                     | Tijd tot bruikbaar | API-calls |
+| -------------------------- | ------------------ | --------- |
+| Hub (incl. Vandaag-widget) | 353 ms             | 15        |
+| Kelderdashboard            | 317 ms             | 6         |
+| Tanklijst                  | 269 ms             | 5         |
+| Voorraad                   | 311 ms             | 5         |
+| Accijnsoverzicht           | 318 ms             | 10        |
+| Jaaroverzicht              | 377 ms             | 8         |
+| Perceelkaart               | 366 ms             | 9         |
+| Partijdetail               | 565 ms             | 16        |
 
 **Geen enkel scherm zit warm boven de 2 seconden.** De 2-secondengrens uit de opdracht wordt nergens overschreden.
 
@@ -654,7 +660,7 @@ Waarom dit zwaar weegt: hetzelfde mechanisme geldt voor `oogst` en `werkuren`. D
 
 **Verificatie**: exact hetzelfde scenario opnieuw gedraaid na de fix. Resultaat: **1 record**, wachtrij netjes leeg, 0 fouten geregistreerd. Vóór de fix: 3 records.
 
-*Beperking, eerlijk vermeld*: wachtrij-items die op Thomas' apparaat al bestaan van vóór deze versie hebben nog geen `recordId` en houden het oude gedrag. De code valt daar veilig op terug (geen crash). In de praktijk is de wachtrij bij normaal gebruik leeg, maar het is geen theoretische nul.
+_Beperking, eerlijk vermeld_: wachtrij-items die op Thomas' apparaat al bestaan van vóór deze versie hebben nog geen `recordId` en houden het oude gedrag. De code valt daar veilig op terug (geen crash). In de praktijk is de wachtrij bij normaal gebruik leeg, maar het is geen theoretische nul.
 
 **Test 3 — bruikbaarheid van de foutmelding (bijvangst uit test 1).** Het foutenlogboek toonde `"Failed to create record."` — de bovenliggende PocketBase-boodschap, die niets zegt over wat er mis was. De bruikbare informatie staat per veld in `response.data`. De registratie leest die nu uit, zodat er bijvoorbeeld `rij: Missing required value` in het logboek komt te staan in plaats van een algemeenheid. Zonder dit is het foutenlogboek er wel, maar kun je er niets mee.
 
@@ -668,12 +674,12 @@ Waarom dit zwaar weegt: hetzelfde mechanisme geldt voor `oogst` en `werkuren`. D
 
 **Meting: tikdoelen (44×44 CSS-px, WCAG 2.5.5).** Gemeten in de productiebuild op mobiel formaat (375×812) met een script dat elk klikbaar element opmeet.
 
-| Scherm | Te klein vóór | Te klein na |
-| --- | --- | --- |
-| Hub (Vandaag-widget) | 7 | **0** |
-| /snel | 1 | 0 |
-| /oogst | 4 | 0 |
-| /rij/…/planten | 2 | 0 |
+| Scherm               | Te klein vóór | Te klein na |
+| -------------------- | ------------- | ----------- |
+| Hub (Vandaag-widget) | 7             | **0**       |
+| /snel                | 1             | 0           |
+| /oogst               | 4             | 0           |
+| /rij/…/planten       | 2             | 0           |
 
 De ergste waren de knoppen in de Vandaag-widget: **20×20 px**, drie naast elkaar, waarvan er één een signaal permanent verbergt. Dat is werk van mijzelf uit fase 10 en had daar al opgemerkt moeten worden. Verder de seizoenswisselaar (36×36) — één gedeeld component dat op **13 schermen** staat — en het zoekicoon in de koptekst (40 px breed, op élk scherm).
 
@@ -683,19 +689,19 @@ De ergste waren de knoppen in de Vandaag-widget: **20×20 px**, drie naast elkaa
 
 De navigatiebalk van de wijngaardmodule bevatte zeven items — Home, Kaart, Seizoen, Steekproeven, Dashboard, Grafieken, Meer — en daarvan is er **geen enkele een invoeractie**. Vijf van de zeven zijn kijkschermen. Om iets vast te leggen moest je eerst door een scherm heen dat voor iets anders bedoeld is:
 
-| Actie | Route ernaartoe | Schermwissels |
-| --- | --- | --- |
-| Brix-meting | Home → Kaart → Snelle meting | 3 |
-| Oogst registreren | Home → Dashboard → tegel Oogst | 3 |
-| Werk/spuiten vastleggen | Home → Dashboard → tegel Werk | 3 |
-| Gezondheid melden | Home → Dashboard → tegel Gezondheid | 3 |
+| Actie                   | Route ernaartoe                     | Schermwissels |
+| ----------------------- | ----------------------------------- | ------------- |
+| Brix-meting             | Home → Kaart → Snelle meting        | 3             |
+| Oogst registreren       | Home → Dashboard → tegel Oogst      | 3             |
+| Werk/spuiten vastleggen | Home → Dashboard → tegel Werk       | 3             |
+| Gezondheid melden       | Home → Dashboard → tegel Gezondheid | 3             |
 
 Oogst en werkuren waren zelfs vanuit géén enkel veldscherm bereikbaar — alleen via het dashboard (statistiek) of de instellingen. Werkuren is de spuitregistratie, wettelijk verplicht.
 
 **Drie reparaties:**
 
 1. **Tikdoelen** — seizoenswisselaar naar 44×44 (raakt 13 schermen), zoekicoon naar 44 breed (raakt alle schermen), Vandaag-widget-knoppen van 20×20 naar 44×44, terugknop op het plantenscherm naar 44 hoog, filterchips op de perceelkaart naar 44 hoog.
-2. **"Meten" in de navigatiebalk** — `/snel` staat nu direct in de wijngaardbalk, in plaats van "Grafiek". Brix-meting: van 3 schermwissels naar 1. Grafieken blijven bereikbaar via Meer. *Dit is de enige wijziging in dit blok waar Thomas een mening over kan hebben; het is één regel in `bottom-nav.tsx` en zo teruggedraaid.*
+2. **"Meten" in de navigatiebalk** — `/snel` staat nu direct in de wijngaardbalk, in plaats van "Grafiek". Brix-meting: van 3 schermwissels naar 1. Grafieken blijven bereikbaar via Meer. _Dit is de enige wijziging in dit blok waar Thomas een mening over kan hebben; het is één regel in `bottom-nav.tsx` en zo teruggedraaid._
 3. **Oogst en spuitregistratie op de perceelkaart** — twee knoppen naast de bestaande "Snelle meting"-knop, in het scherm waar je in het veld toch al bent. Van 3 schermwissels via het dashboard naar 2, en belangrijker: ze zijn nu vindbaar zonder te weten dat ze achter "Dash" of "Meer" zitten.
 
 **Dubbel indienen** was al goed afgedekt (zie Blok 2, test 4) — daar was niets te repareren.
@@ -763,13 +769,13 @@ Daarmee werden vier wezenlijk verschillende situaties dezelfde melding: een verl
 
 **Nu**: `src/lib/laadfout.ts` met een pure `classificeerLeesfout()`, die vijf gevallen uit elkaar houdt:
 
-| Geval | Signaal | Melding aan Thomas |
-| --- | --- | --- |
-| `niet_ingelogd` | 401/403 | "Je sessie is verlopen — log opnieuw in om … te zien." |
+| Geval             | Signaal                  | Melding aan Thomas                                        |
+| ----------------- | ------------------------ | --------------------------------------------------------- |
+| `niet_ingelogd`   | 401/403                  | "Je sessie is verlopen — log opnieuw in om … te zien."    |
 | `geen_verbinding` | status 0 / fetch mislukt | "Geen verbinding met de server — … Controleer je bereik." |
-| `geannuleerd` | `isAbort` / `AbortError` | wordt **niet** getoond (zie hieronder) |
-| `server_fout` | 5xx | "De server gaf een fout (503) …" |
-| `onbekend` | overig | melding mét statuscode, zodat het te herleiden is |
+| `geannuleerd`     | `isAbort` / `AbortError` | wordt **niet** getoond (zie hieronder)                    |
+| `server_fout`     | 5xx                      | "De server gaf een fout (503) …"                          |
+| `onbekend`        | overig                   | melding mét statuscode, zodat het te herleiden is         |
 
 Een **lege lijst** staat er bewust niet bij: dat is een geslaagd antwoord, geen fout. Het onderscheid tussen "echt niets" en "leeg gefilterd door een API-rule" — de bug uit Fase 8 — wordt bovenstrooms afgevangen doordat `haalLijst` gooit zodra er geen sessie is. Een anoniem verzoek krijgt van PocketBase een geldige 200 met een lege lijst, en dát mag nooit als "geen data" worden getoond.
 
@@ -782,3 +788,28 @@ Een **lege lijst** staat er bewust niet bij: dat is een geslaagd antwoord, geen 
 **Ook opgelost**: Vitest probeerde de Playwright-bestanden te draaien. `vitest.config.ts` sluit `e2e/` nu uit. Bewust géén `mergeConfig` met `vite.config.ts` — die bevat de TanStack Start-plugins en valt om bij het samenvoegen.
 
 **Valkuil vastgelegd** (kostte tijdens dit blok een verkeerde diagnose): Playwright's `reuseExistingServer` slaat het bouwen én starten over als er al iets op poort 4173 luistert. Heb je daarna zelf gebouwd, dan serveert die oude server verwijzingen naar chunk-namen die niet meer bestaan en vallen **alle** tests om op het inloggen — wat op een regressie lijkt maar het niet is. Staat nu als waarschuwing in `playwright.config.ts`.
+
+### Blok 7 — Auditrapport en afsluiting
+
+`AUDIT-VELDGEREEDHEID.md` geschreven: zelfstandig leesbaar voor Thomas' adviseur, zonder voorkennis van de app of de code. Zeven hoofdstukken, met hoofdstuk 5 ("Wat NIET is opgelost") bewust het meest pessimistische deel.
+
+**Het oordeel is niet onverdeeld positief, en dat staat er ook zo in**: de software is klaar, de opstelling waarin hij draait niet. De volledige administratie — inclusief de wettelijk verplichte spuitregistratie — staat op één laptop, met de enige backups op diezelfde schijf, op een machine waar dit jaar al twee keer de schijf volliep en de backup mislukte. In het rapport staat expliciet dat geen enkele softwareverbetering uit deze fase opweegt tegen dat risico, en dat het feit dat er twee ernstige fouten zijn gevonden geen garantie is dat er geen derde is.
+
+**Eindcontrole:**
+
+| Controle                  | Uitkomst                                        |
+| ------------------------- | ----------------------------------------------- |
+| Unittests                 | 84 groen (9 bestanden)                          |
+| Rooktests (Playwright)    | 6 groen, 1,4 min                                |
+| TypeScript                | schoon                                          |
+| Productiebuild            | slaagt                                          |
+| Seed-/testdata verwijderd | 0 restanten, onafhankelijk geverifieerd         |
+| Overige routes            | 19 extra routes gecontroleerd, alle 200         |
+| Verse pb_data-backup      | gemaakt 2026-07-25 00:14, via de PocketBase-API |
+| Vrije schijfruimte        | 4,3 GB (was 8,5 GB bij aanvang)                 |
+
+_Beperking van de routecontrole_: die 19 routes zijn gecontroleerd op hun serverantwoord, niet op wat er daarna in de browser gebeurt. De zeven schermen die er het meest toe doen zijn wél volledig in de browser doorlopen (rooktest 6).
+
+**Schijfruimte**: gedaald van 8,5 naar 4,3 GB door bouwbestanden, de testdata (inmiddels verwijderd) en de installatie van Playwright met Chromium. Ruim boven de stopgrens van 2 GB, maar op deze machine een punt om in de gaten te houden — zie het auditrapport §5.1.
+
+**Wat ik niet heb gedaan en bewust heb laten liggen**: geen deploy, geen DNS- of serverwijzigingen, geen records verwijderd behalve de eigen gemarkeerde testdata, geen backupmappen aangeraakt, geen schema destructief gewijzigd, geen dependencies met breekende wijzigingen bijgewerkt (Playwright is nieuw toegevoegd als ontwikkelafhankelijkheid, niet als upgrade).
