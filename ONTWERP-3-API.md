@@ -1,6 +1,6 @@
 # Fase 10 — Proactieve assistent: Fase 3, API en contracten
 
-**Status: concept, bouwt voort op `ONTWERP-1-ARCHITECTUUR.md` en `ONTWERP-2-DATAMODEL.md`. Wacht op akkoord van Thomas. Geen code aangepast.**
+**Status: BESLOTEN door Thomas (24 juli 2026). Basis voor Fase 5 (bouwen).**
 
 ---
 
@@ -126,13 +126,32 @@ Alleen gebouwd na akkoord (Fase 1 vraag 1/2). PocketBase-hook (`pb_hooks/signale
   | Minder dan 2 signalen meegestuurd | 400 | "Correlatie heeft minstens twee gelijktijdige signalen nodig." |
   | `ANTHROPIC_API_KEY` ontbreekt | 400 | "De AI-agent is niet ingesteld: ANTHROPIC_API_KEY ontbreekt op de server." (bestaande melding) |
   | Anthropic onbereikbaar/fout | 400 | "Kon de AI-agent niet bereiken: <reden>." (bestaand patroon) |
-  | Budget-plafond overschreden (indien ingesteld) | 400 | "Het AI-budget voor deze maand is bereikt — de proactieve verklaring is tijdelijk uitgeschakeld. Alle overige signalen werken gewoon." |
+  | Budget-plafond overschreden | — | **Vervalt** (besluit Thomas): geen apart maandplafond bovenop de bestaande rate-limit — zie §4c. |
 
 - **Waarom een hook en niet client-side?** De Anthropic-key mag nooit in de client (bestaande architectuur, Fase 3-besluit uit een eerdere fase). Elke AI-aanroep loopt server-side, punt.
 
-### 4b. Snooze/dismiss endpoints — **alleen bij `signaal_status`-collectie (vraag 3)**
+### 4b. Snooze/dismiss — **besloten: server-side (`signaal_status`), gewone PocketBase-SDK-calls**
 
-Als Thomas cross-device snooze wil, zijn dit gewone PocketBase-SDK-calls (geen custom endpoint nodig): `pb.collection("signaal_status").create/update/delete` met `OPEN_RULE`. Geen hook. Als het localStorage blijft, bestaan deze niet — dan is snooze puur client-side, zoals nu.
+Thomas werkt op telefoon én desktop — localStorage is per apparaat en verdwijnt bij het legen van de cache, dus dat volstaat niet. Dit zijn gewone PocketBase-SDK-calls, **geen custom hook-endpoint nodig**:
+
+```ts
+// snoozen
+await pb.collection("signaal_status").create({
+  signaal_id, actie: "gesnoozed", snooze_tot: datum,
+});
+// permanent negeren
+await pb.collection("signaal_status").create({ signaal_id, actie: "genegeerd" });
+// status opvragen voor de zichtbare signalen (één query, niet per signaal)
+const statussen = await pb.collection("signaal_status").getFullList({
+  filter: pb.filter("signaal_id in ({:ids})" /* of per-id filter, zie implementatie */, { ids }),
+});
+```
+
+Rechten `OPEN_RULE` (Fase 2 §4) — geen hook, geen server-side validatie nodig, dit is precies het soort simpele CRUD waar de PocketBase-SDK direct voor bedoeld is.
+
+### 4c. Geen apart budgetplafond — besloten door Thomas
+
+Geen nieuw endpoint, geen nieuwe instelling. Thomas werkt met prepaid Anthropic-credits (het account raakt op, geen onverwachte rekening) en de bestaande per-uur rate-limit (Fase 9 Blok E, `agent_berichten_per_uur_per_ip`) geldt al voor elke Claude-aanroep inclusief de toekomstige correlatietool. Bovendien is de correlatietool zelf uitgesteld tot na het seizoen, dus dit is op dit moment ook geen acuut risico. Als de correlatietool ooit gebouwd wordt (buiten dit Fase 5-plan) en de praktijk een apart plafond nodig blijkt, is dat een kleine losse toevoeging op dat moment — niet iets om nu al te bouwen zonder concrete aanleiding.
 
 ---
 
@@ -176,7 +195,7 @@ Als Thomas cross-device snooze wil, zijn dit gewone PocketBase-SDK-calls (geen c
 | `zoek_inzichten`-agenttool | Ongewijzigd | Ja |
 | `advies_feedback`-flow | Ongewijzigd | Ja |
 | Bestaande `/api/agent/*`-endpoints | Ongewijzigd | Ja — de correlatietool is een nieuw, apart endpoint |
-| Bestaande `inzichten`-records | Behouden, alleen opschoning vooruit | Ja |
+| Bestaande `inzichten`-records | Volledig behouden, geen opschoning (herzien besluit) | Ja |
 
 **Geen enkel bestaand endpoint wordt in signatuur gewijzigd.** De correlatietool is additief. De grootste zichtbare wijziging is de vervanging van `meldingen.tsx` door de Vandaag-widget, en die is bewust ontworpen om Thomas' bestaande weggeklikte-state te behouden.
 
@@ -190,7 +209,7 @@ Als Thomas cross-device snooze wil, zijn dit gewone PocketBase-SDK-calls (geen c
 
 ---
 
-## Vragen voor Thomas (aanvullend)
+## Besluiten van Thomas (24 juli 2026, was hier eerder een open vraag)
 
-1. **`BackupWidget` op de hub**: opgaan in de signaallaag (één bron, dedupliceert de nu dubbele check) of als losse altijd-zichtbare widget behouden? (De signaallaag toont een backup-signaal alleen bij een probleem; de widget toont ook de groene "alles ok"-status. Dat is een echt functioneel verschil — een groene bevestiging kan geruststellend zijn.)
-2. **Budget-plafond**: wil je een hard maandplafond op AI-aanroepen (bovenop de bestaande per-uur rate-limit) dat de correlatietool uitschakelt bij overschrijding? Zo ja, welk bedrag? (Fase 1 schatte de correlatiekosten op centen per maand, dus dit is meer een principe/gemoedsrust-knop dan een noodzaak.)
+1. **`BackupWidget` op de hub**: **beide** — een permanente statusregel ("laatste geslaagde backup: X geleden", ook zichtbaar als alles goed gaat) blijft bestaan, plus een signaal in de Vandaag-widget zodra de drempel overschreden wordt. Motivatie van Thomas: bij backups is stilte dubbelzinnig — hij wil kunnen zien dat de controle zelf nog actief is, niet alleen een melding krijgen als het misgaat. **Consequentie voor bouwstap 1**: de permanente statusregel (in `index.tsx`) blijft ongewijzigd bestaan; alleen de *waarschuwings*-conditie verhuist naar `signalen.ts` als producent. Geen dubbele check meer (beide lezen straks dezelfde `backup_waarschuwing_dagen`-instelling uit `app_instellingen`), maar wel twee zichtbare plekken — bewust, niet per ongeluk.
+2. **Budget-plafond**: **niet gebouwd.** Prepaid Anthropic-credits + de bestaande per-uur rate-limit volstaan; de correlatietool is bovendien uitgesteld. Zie §4c hierboven.

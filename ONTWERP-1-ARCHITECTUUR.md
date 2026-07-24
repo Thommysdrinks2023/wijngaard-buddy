@@ -270,10 +270,10 @@ Bij 3× het datavolume: `bereken-inzichten.mjs` gebruikt vandaag `getFullList()`
 
 ---
 
-## Vragen voor Thomas
+## Besluiten van Thomas (24 juli 2026)
 
-1. **Akkoord met het schrappen van generieke AI-synthese?** Dit is de grootste afwijking van de oorspronkelijke opdracht. Als je hier toch waarde in ziet die ik mis (bijvoorbeeld: je wílt gewoon een AI-stem die je dag samenvat, ook al is een lijst objectief net zo informatief), hoor ik dat liever nu dan na de bouw.
-2. **Akkoord met het uitstellen van de correlatietool tot na een echt seizoen?** Alternatief: ik bouw het contract alvast (interfaces, endpoint-skelet) maar laat 'm inhoudelijk leeg/uitgeschakeld tot je besluit dat er genoeg signalen zijn om te correleren.
-3. **Snooze-status delen tussen apparaten (telefoon/laptop) — nu al gewenst, of is losse per-apparaat-status prima voor nu?** Dit bepaalt of Fase 2 een aparte PocketBase-collectie voor snooze-status nodig heeft, of dat localStorage voorlopig volstaat.
-4. **De bestaande `agent_acties`-frontend/backend-drift** (`onderhoud`/`order` ontbreken in `AGENT_ACTIE_CONFIG`, zie 1a) — apart oppakken als losse bugfix, of meenemen in Fase 5 van dit traject omdat we toch in die flow zitten?
-5. **Wat is voor jou een acceptabele definitie van "genoeg data" om na oogst 2026 de correlatietool alsnog te beoordelen** — een vast aantal weken, of een concreet aantal keer dat er 3+ signalen tegelijk actief waren?
+1. **AI-synthese geschrapt** — akkoord, met onderbouwing.
+2. **Correlatietool uitgesteld** tot na oogst 2026 — akkoord, geen voorlopig leeg contract nodig.
+3. **Snooze-status server-side**, niet localStorage — Thomas werkt op telefoon én desktop, ziet dit als een harde eis, geen "voorlopig prima." Uitgewerkt in `ONTWERP-2-DATAMODEL.md` §4 (`signaal_status`-collectie).
+4. **`agent_acties`-config-drift**: apart als losse bugfix opgepakt en gefixt (24 juli 2026, commit `9a4ac67`), vóór de bouw van Fase 5 — niet meegenomen als onderdeel van een bouwstap.
+5. **Definitie van "genoeg data" voor de correlatietool**: niet expliciet vastgelegd door Thomas; blijft een open punt voor het moment dat stap 6 daadwerkelijk overwogen wordt (na het seizoen) — geen blokkade voor de huidige bouw (stap 1-5), die geen enkele AI-aanroep bevat.

@@ -1,6 +1,6 @@
 # Fase 10 — Proactieve assistent: Fase 4, Implementatieplan
 
-**Status: concept, bouwt voort op `ONTWERP-1-ARCHITECTUUR.md`, `ONTWERP-2-DATAMODEL.md`, `ONTWERP-3-API.md`. Wacht op akkoord van Thomas. Geen code aangepast in dit document zelf — Fase 5 (bouwen) start pas na expliciet akkoord.**
+**Status: BESLOTEN door Thomas (24 juli 2026) — Fase 5 (bouwen) is gestart, stap 1 t/m 5.**
 
 ---
 
@@ -126,8 +126,15 @@ Elke stap hieronder is **zelfstandig werkend en testbaar**. Stap 1 alleen al lev
 
 ---
 
-## Vragen voor Thomas (aanvullend)
+## Besluiten van Thomas (24 juli 2026)
 
-1. **Stap 3 (widget) verwijdert `meldingen.tsx` pas ná browser-verificatie ernaast** — akkoord met deze twee-fasen-aanpak binnen één stap, of liever in één keer wisselen?
-2. **Stap 5's velden-onderzoek** (`bericht_id` mogelijk verplicht) kan betekenen dat er een kleine aanpassing aan de bestaande `agent_acties`-collectie nodig is (veld optioneel maken). Akkoord dat dit ontdekt en opgelost wordt tijdens de bouw van stap 5, in plaats van dat ik er nu al op vooruitloop zonder de code erbij?
-3. **Stap 6 expliciet loskoppelen** van "klaar zijn met dit plan" — akkoord dat stap 1-5 een volledig opgeleverd, bruikbaar resultaat is, en stap 6 een apart, later te nemen besluit blijft?
+1. **Stap 3, twee-fasen-aanpak**: akkoord — widget eerst naast `meldingen.tsx`, browser-verifiëren, dan pas de oude component verwijderen.
+2. **Stap 5's velden-onderzoek, vooraf uitgevoerd** (niet doorgeschoven, op uitdrukkelijk verzoek van Thomas: "een bekend risico hoort niet halverwege de bouw ontdekt te worden"): curl-verificatie op de live database (24 juli 2026) bevestigt dat `agent_acties.bericht_id` al `required: false` is. **Geen schemawijziging nodig** — bouwstap 5 kan zonder vooronderzoek beginnen.
+3. **Stap 6 losgekoppeld**: akkoord, bevestigd. Stap 1-5 is het volledige, af te bouwen resultaat van dit plan; stap 6 blijft een apart besluit na het seizoen.
+
+**Overige besluiten die dit stappenplan raken** (details in `ONTWERP-2-DATAMODEL.md`/`ONTWERP-3-API.md`):
+- Snooze/dismiss wordt server-side (`signaal_status`-collectie), niet localStorage — stap 3 bouwt deze collectie mee, geen voorwaardelijk onderdeel meer.
+- `inzichten` krijgt geen opschoning — stap 2 (dat de kritieke-inzichten-signaalproducent verhuist) moet een expliciete `sort`/`limit` gebruiken in plaats van de hele tabel op te halen (zie Fase 2 §9 — nieuw aandachtspunt, was niet relevant toen de 12-snapshot-limiet nog gold).
+- De twee bestaande hardcoded drempels (backup 2 dagen, AGP-waarschuwing 80%) verhuizen mee naar de nieuwe `app_instellingen`-collectie in stap 1/2, niet naar `regelgeving_instellingen`.
+- Voorraaddrempel-veld (`drempel_aantal`) wordt nu al toegevoegd in stap 4, ook al gebruikt Thomas voorlopig alleen de globale standaard.
+- Geen budgetplafond-endpoint (stap 6 sowieso uitgesteld, en zelfs dan niet nodig — prepaid credits + bestaande rate-limit volstaan).

@@ -1,8 +1,6 @@
 # Fase 10 — Proactieve assistent: Fase 2, Datamodel
 
-**Status: concept, bouwt voort op `ONTWERP-1-ARCHITECTUUR.md`. Wacht op akkoord van Thomas — op Fase 1 én op dit document. Geen schema of data aangepast tijdens het opstellen.**
-
-> **Afhankelijkheid van open vragen uit Fase 1.** Dit datamodel volgt de *aanbevolen* architectuur uit Fase 1 (regel-signalen berekend in de client, AI-synthese geschrapt, correlatietool uitgesteld). Waar een keuze afhangt van een nog-open vraag voor Thomas, staat dat expliciet gemarkeerd met **[hangt af van vraag N]**. Als Thomas een andere kant kiest, verandert alleen het gemarkeerde deel — de kern blijft staan.
+**Status: BESLOTEN door Thomas (24 juli 2026). Dit document reflecteert de definitieve besluiten en is de basis voor Fase 5 (bouwen).**
 
 ---
 
@@ -10,175 +8,175 @@
 
 De belangrijkste uitkomst van Fase 1 voor het datamodel is contra-intuïtief maar eerlijk: **de proactieve laag heeft in zijn aanbevolen vorm nauwelijks nieuwe database-structuur nodig.** Reden: de regel-signalen worden *berekend* uit bestaande collecties op het moment van tonen, niet *opgeslagen*. Een signaal is een afgeleide, geen entiteit. Opslaan zou betekenen dat we een tweede bron van waarheid introduceren die kan verouderen t.o.v. de brondata — precies de fout die nu al zichtbaar is in de dubbele backup-check (nulmeting 1a).
 
-Wat wél nieuw schema vraagt, is klein en valt in drie categorieën:
+Wat wél nieuw schema vraagt (definitief, na Thomas' besluiten):
 
-1. Eén ontbrekend **inputveld** dat een nieuw regel-signaal mogelijk maakt (voorraaddrempel).
-2. Een paar **instellingssleutels** (drempels), volgens het bestaande `regelgeving_instellingen`-patroon.
-3. Twee **optionele** collecties, elk gekoppeld aan een nog-open vraag, die alleen bestaan als Thomas de bijbehorende functie wil.
+1. Eén ontbrekend **inputveld** dat een nieuw regel-signaal mogelijk maakt (voorraaddrempel) — **nu al toevoegen**.
+2. Een nieuwe collectie **`app_instellingen`** voor operationele voorkeuren (drempels, plafonds) — **gescheiden van** `regelgeving_instellingen`, dat gereserveerd blijft voor wettelijk geverifieerde waarden.
+3. Eén nieuwe collectie **`signaal_status`** voor server-side snooze/dismiss — **wordt gebouwd**, niet meer voorwaardelijk (Thomas werkt op telefoon én desktop, localStorage volstaat niet).
+4. **`inzichten` blijft ongewijzigd, geen opschoning** — Thomas wil jaar-op-jaar-vergelijking, dus alles bewaard.
+5. `signaal_analyses` blijft **optioneel/uitgesteld** (correlatietool na het seizoen) — vorm staat vast, niet gebouwd in Fase 5.
 
-Verworpen alternatief: een centrale `signalen`-collectie die elk gedetecteerd signaal als rij opslaat, plus een achtergrondproces dat 'm vult. Verworpen omdat (a) het een tweede waarheid introduceert die kan verouderen, (b) het een gescheduled schrijfproces vereist — precies de "kost geld/draait onbewaakt"-valkuil die Fase 1 wil vermijden, en (c) bij 5-8 signalen die in milliseconden herberekend zijn, opslag geen enkel prestatievoordeel biedt. Signalen opslaan zou pas zin hebben als de berekening duur was (zoals `inzichten`, die wél wordt opgeslagen — dáár is de multi-seizoen-aggregatie het dure deel).
+Verworpen alternatief: een centrale `signalen`-collectie die elk gedetecteerd signaal als rij opslaat, plus een achtergrondproces dat 'm vult. Verworpen omdat (a) het een tweede waarheid introduceert die kan verouderen, (b) het een gescheduled schrijfproces vereist — precies de "kost geld/draait onbewaakt"-valkuil die Fase 1 wil vermijden, en (c) bij 5-8 signalen die in milliseconden herberekend zijn, opslag geen enkel prestatievoordeel biedt.
 
 ---
 
 ## 1. Wijziging op bestaande collectie: `voorraad_flessen`
 
-**Nieuw veld** (via `ensureVelden`, niet-destructief):
+**Nieuw veld** (via `ensureVelden`, niet-destructief) — **besloten: nu al toevoegen**, ook al start Thomas met de globale standaard, zodat er later geen aparte migratie nodig is:
 
 | Veld | Type | Verplicht | Default | Motivatie |
 |---|---|---|---|---|
-| `drempel_aantal` | number | nee | leeg (= gebruik globale standaard) | Onder dit aantal flessen genereert het voorraad-bijna-op-signaal een waarschuwing. Per-wijn instelbaar omdat een dagelijkse huiswijn een hogere drempel verdient dan een kleine speciale cuvée. |
+| `drempel_aantal` | number | nee | leeg (= gebruik globale standaard uit `app_instellingen`) | Onder dit aantal flessen genereert het voorraad-bijna-op-signaal een waarschuwing. Leeg = val terug op de globale standaard (12). |
 
-**Waarom een veld en geen aparte collectie?** Een drempel is een eigenschap *van* een voorraadrecord, één-op-één, nooit apart bevraagd. Een aparte `voorraad_drempels`-collectie zou een join vereisen voor elke voorraadweergave zonder enig voordeel. Dit is precies het geval waarin "veld op bestaande collectie" wint van "nieuwe collectie."
+**Waarom een veld en geen aparte collectie?** Een drempel is een eigenschap *van* een voorraadrecord, één-op-één, nooit apart bevraagd. Een aparte `voorraad_drempels`-collectie zou een join vereisen voor elke voorraadweergave zonder enig voordeel.
 
-De Tappenmars-voorbeeld: voorraadrecord "Souvignier Gris 2025" met `aantal_huidig: 18`, `drempel_aantal: 24` → signaal "Souvignier Gris 2025 nadert einde voorraad (18 flessen, drempel 24)". Een record zonder ingevulde `drempel_aantal` valt terug op de globale standaard (zie §3).
-
----
-
-## 2. Wijzigingen op bestaande collectie: `inzichten` (geen schemawijziging, wél opschoning)
-
-Het schema blijft **exact zoals het is** — geen veld toegevoegd. Wat nieuw is, is een **opschoonregel**, geen structuur:
-
-- Per unieke combinatie (`inzicht_type`, `onderwerp`) worden alleen de **laatste 12 berekeningen** bewaard (≈ 3 maanden wekelijkse historie). Oudere records krijgen `deleted: true` (soft-delete, consistent met het bestaande `deleted != true`-filterpatroon dat `meldingen.tsx` en de agent-tool al gebruiken).
-- Uitvoering: uitbreiding van `scripts/bereken-inzichten.mjs` zelf — direct ná het schrijven van de nieuwe berekeningen ruimt het script de oude op. Dit koppelt opschoning aan de berekening (die toch al draait), zodat er **geen apart onbewaakt opschoonproces** ontstaat — leert van de Fase 9-bevinding dat losse achtergrondtaken op deze machine niet vanzelf draaien.
-
-**Waarom soft-delete en niet hard verwijderen?** Consistentie met de bestaande conventie (alle agent-collecties gebruiken `deleted`-vlag i.p.v. echte verwijdering), en het houdt de deur open voor een latere echte-verwijder-sweep zonder de opschoonlogica te herschrijven. In tegenstelling tot het tankboek (wettelijk permanent) heeft een oude inzicht-snapshot geen bewaarplicht — de soft-delete is puur operationeel gemak, geen juridische keuze.
+De Tappenmars-voorbeeld: voorraadrecord "Souvignier Gris 2025" met `aantal_huidig: 18`, `drempel_aantal: 24` → signaal "Souvignier Gris 2025 nadert einde voorraad (18 flessen, drempel 24)". Een record zonder ingevulde `drempel_aantal` valt terug op de globale standaard.
 
 ---
 
-## 3. Nieuwe instellingssleutels in `regelgeving_instellingen`
+## 2. `inzichten`: GEEN opschoning — besloten door Thomas
 
-Volgen het bestaande patroon (`sleutel`/`waarde`/`eenheid`/`bron`), geseed via `setup-pocketbase.mjs` met veilige defaults die Thomas kan aanpassen:
+**Gewijzigd besluit ten opzichte van het eerste concept.** Het schema blijft exact zoals het is, en er komt **geen opschoonregel**: Thomas wil year-over-year-vergelijking kunnen doen (bv. "hoe verliep de gisting dit jaar t.o.v. vorig jaar op dezelfde datum"), en dat is precies de use case die een 12-snapshot-limiet zou breken. Bij ~40 (type × onderwerp)-combinaties × 52 weken/jaar ≈ 2.080 records/jaar — bij meerdere jaren nog steeds een kleine tabel (tienduizenden records na een decennium), geen enkel praktisch probleem voor PocketBase/SQLite.
 
-| `sleutel` | `waarde` (default) | `eenheid` | Betekenis |
+**Consequentie voor `scripts/bereken-inzichten.mjs`**: geen wijziging nodig — het script blijft precies zoals het nu is, gewoon wekelijks nieuwe records toevoegen zonder ooit iets te verwijderen.
+
+**Consequentie voor Fase 3-vraag over de "waarom"-query**: de correlatietool (indien ooit gebouwd) kan hierdoor ook meerdere seizoenen teruglezen zonder gat in de historie — een prettige bijkomstigheid van dit besluit.
+
+---
+
+## 3. Nieuwe collectie: `app_instellingen` (operationele voorkeuren, gescheiden van `regelgeving_instellingen`)
+
+**Besloten door Thomas, expliciet gescheiden van `regelgeving_instellingen`.** Die laatste collectie is gereserveerd voor wettelijk/officieel geverifieerde waarden (accijnstarief, AGP-drempel, zone-A-limieten) — elk record heeft een `laatst_gecontroleerd`-datum en `bron`-veld die een echte controle bij een officiële instantie impliceren. Een operationele voorkeur als "vanaf welk backup-leeftijd waarschuwen" heeft geen bron om te verifiëren en geen controlemoment — dat zou het contract van `regelgeving_instellingen` verwateren (een toekomstige lezer zou niet meer kunnen aannemen dat elk record daar geverifieerd is).
+
+```
+app_instellingen
+  sleutel          text, required
+  waarde           number
+  eenheid          text
+  notitie          text
+  ...autodateFields()
+```
+
+Zelfde sleutel/waarde-vorm als `regelgeving_instellingen`, bewust géén `laatst_gecontroleerd`/`bron` (die zouden hier betekenisloos zijn — niets te verifiëren). Rechten: `AUTH_RULE` op alle vier (consistent met de rest van de kelder-/instellingen-collecties).
+
+**Seed-waarden bij aanmaak**:
+
+| `sleutel` | `waarde` | `eenheid` | Betekenis |
 |---|---|---|---|
 | `voorraad_drempel_standaard` | `12` | flessen | Globale voorraad-bijna-op-drempel voor wijnen zonder eigen `drempel_aantal` |
-| `signaal_max_zichtbaar` | `6` | stuks | Plafond op de Vandaag-widget (Fase 1: 6) — instelbaar zodat Thomas het kan bijstellen zonder code |
-| `inzicht_bewaar_aantal` | `12` | berekeningen | Hoeveel snapshots per (type, onderwerp) bewaard blijven |
+| `signaal_max_zichtbaar` | `6` | stuks | Plafond op de Vandaag-widget |
+| `backup_waarschuwing_dagen` | `2` | dagen | Vanaf welke leeftijd van de laatste backup een signaal verschijnt — **verhuisd hierheen vanuit de hardcoded `2` in `index.tsx`/`meldingen.tsx`** |
+| `agp_waarschuwing_percentage` | `80` | % | Vanaf welk percentage van de AGP-drempel gewaarschuwd wordt — **verhuisd hierheen vanuit de hardcoded `80` in `meldingen.tsx`**. De AGP-drempel zelf (de wettelijke hoeveelheid liters) blijft in `regelgeving_instellingen` — alleen het *waarschuwingspercentage* is een operationele keuze van Thomas. |
 
-**Waarom in `regelgeving_instellingen` en niet gehardcodeerd?** De nulmeting toont dat drempels nu deels hardcoded staan (backup 2 dagen, AGP 80%) en deels als instelling (AGP-drempel zelf). Dat is inconsistent. Nieuwe drempels horen instelbaar te zijn, zodat Thomas ze na een seizoen kan bijstellen op basis van ervaring — precies het soort waarde dat pas met echt gebruik blijkt. Verworpen alternatief: een aparte `signaal_instellingen`-collectie — onnodig, `regelgeving_instellingen` is al de generieke sleutel-waarde-store en wordt al door de accijns- en backup-logica gebruikt.
-
-> **Aanbeveling los van dit ontwerp**: de bestaande hardcoded drempels (backup 2 dagen in `index.tsx` én `meldingen.tsx`, AGP 80% in `meldingen.tsx`) zouden bij de bouw naar dezelfde store kunnen verhuizen zodat álle drempels op één plek staan. Dit hoort logisch bij "de signaallaag opschonen" maar is strikt genomen refactoring van bestaande functionaliteit — meenemen in Fase 4-stappen als lage-risico opruiming, of bewust laten liggen. **Vraag voor Thomas.**
-
----
-
-## 4. Optionele collectie: `signaal_status` — **[hangt af van vraag 3]**
-
-**Alleen bouwen als Thomas snooze/dismiss wil synchroniseren tussen telefoon en laptop.** Anders blijft dit localStorage (zie §6, migratiepad) en wordt deze collectie **niet** aangemaakt.
-
-Als wél gewenst:
-
-| Veld | Type | Verplicht | Motivatie |
-|---|---|---|---|
-| `signaal_id` | text | ja | Het stabiele signaal-id (`<bron>-<onderwerp-id>`), zoals nu al in localStorage |
-| `actie` | select (`gesnoozed`, `genegeerd`) | ja | Onderscheid tijdelijk uitstellen vs. permanent verbergen |
-| `snooze_tot` | text (`yyyy-MM-dd`) | nee | Alleen bij `gesnoozed`; leeg bij `genegeerd` |
-| `gebruiker` | relation → `users` | nee | Zodat een tweede gebruiker (later) eigen snooze-status heeft |
-| + `vineyard_id`, autodate | | | Standaardconventie |
-
-Rechten: `OPEN_RULE` (consistent met de rest van de app, die bewust zonder login werkt), of `AUTH_RULE` als Thomas snooze-status per account wil — **onderdeel van vraag 3**.
-
-**Waarom een aparte collectie en geen veld op iets bestaands?** Een signaal-status hoort bij geen enkele bestaande entiteit — het signaal zelf is een afgeleide zonder eigen rij. Dit is de enige plek waar het onvermijdelijk een eigen tabel is als het al persistent-in-de-database moet. **Maar**: Fase 1 adviseert localStorage voorlopig te houden (single-user, single-device is de realiteit), dus dit is bewust een *voorwaardelijke* collectie.
-
-**Query-index**: index op `signaal_id` (puntlookup bij het renderen van elk signaal) en op `snooze_tot` (om verlopen snoozes op te ruimen).
+**Waarom de bestaande hardcoded drempels wél meeverhuizen (in tegenstelling tot het eerste concept)**: Thomas koos expliciet voor deze scheiding, en het verhuizen van de twee bestaande hardcoded waarden hoort logisch bij "nu eindelijk één plek voor operationele instellingen" — het zou raar zijn om de nieuwe instellingen wél in een generieke store te zetten en de oude twee daarbuiten te laten staan. Dit is een kleine, geïsoleerde refactor van bestaande, werkende code (twee getallen die van een letterlijke `2`/`80` naar een `fetch`-aanroep verhuizen) — laag risico, meegenomen in bouwstap 1/2.
 
 ---
 
-## 5. Optionele collectie: `signaal_analyses` — **[hangt af van vraag 1 en 2, uitgesteld tot na oogst 2026]**
+## 4. Nieuwe collectie: `signaal_status` (server-side snooze/dismiss — besloten, niet meer voorwaardelijk)
 
-**Alleen bouwen als en wanneer de AI-correlatietool daadwerkelijk gebouwd wordt** (Fase 1: pas na een echt seizoen). Nu in dit document opgenomen zodat de vorm vaststaat, maar niet in Fase 5 aangemaakt.
+**Besloten door Thomas**: server-side, niet localStorage. Reden: hij werkt op telefoon (in de wijngaard) én desktop, en localStorage is per apparaat/browser — iets wegklikken op de telefoon zou op de desktop weer terugkomen, en localStorage verdwijnt bovendien bij het legen van de cache.
 
-| Veld | Type | Verplicht | Motivatie |
-|---|---|---|---|
-| `betrokken_signalen` | json | ja | Array van signaal-id's + hun samenvatting op het moment van analyse (snapshot, want de signalen zelf zijn afgeleiden die veranderen) |
-| `redenering` | text | ja | De opgeslagen AI-verklaring — conform Fase 1: opslaan bij generatie, nooit opnieuw opvragen |
-| `model` | text | ja | Welk model de redenering produceerde (`claude-sonnet-5`), voor traceerbaarheid bij latere prijs-/modelwijzigingen |
-| `gegenereerd_op` | text (`yyyy-MM-dd HH:mm`) | ja | Voor de bewaartermijn-sweep |
-| `vervalt_op` | text (`yyyy-MM-dd`) | ja | `gegenereerd_op` + 90 dagen; maakt opschoning een triviale datumvergelijking |
-| + `vineyard_id`, autodate | | | Standaardconventie |
+```
+signaal_status
+  signaal_id     text, required     -- het stabiele signaal-id, bv. "onderhoud-<record-id>"
+  actie          select, required  -- "gesnoozed" | "genegeerd"
+  snooze_tot     text              -- yyyy-MM-dd, alleen bij "gesnoozed"
+  gebruiker      relation -> users -- optioneel; app is bewust ook zonder login bruikbaar
+  ...autodateFields()
+```
 
-Rechten: `listRule`/`viewRule` = `OPEN_RULE` (Thomas mag zijn eigen opgeslagen analyses altijd teruglezen — gratis, want opgeslagen), `createRule`/`updateRule`/`deleteRule` = `null` (alleen de hook mag schrijven, exact zoals `agent_acties`).
+Rechten: **`OPEN_RULE`** op alle vier — consistent met de rest van de app die bewust zonder login werkt (Fase 3/8-besluit), en snooze/dismiss is geen gevoelige actie die authenticatie rechtvaardigt.
 
-**Waarom `vervalt_op` als apart veld en niet berekend uit `gegenereerd_op`?** Zodat de opschoon-sweep een simpele indexeerbare filter kan draaien (`vervalt_op < vandaag`) zonder per record te rekenen. Kleine denormalisatie, grote query-eenvoud.
+**Query-index**: index op `signaal_id` (puntlookup bij het renderen van elk signaal, en om te bepalen of een status al bestaat vóór een upsert) en op `snooze_tot` (opschoning van verlopen snoozes).
 
-**Bewaartermijn**: 90 dagen, daarna **hard verwijderen** (niet soft-delete) — een AI-verklaring over een allang-niet-meer-actueel signaal heeft geen operationele én geen juridische waarde. Dit is het enige onderdeel dat hard verwijdert i.p.v. soft-delete, bewust, omdat er anders onbeperkt AI-tekst opstapelt.
+**Migratie vanuit de bestaande localStorage-sleutel** (`wg.meldingen.afgevinkt.v1`): eenmalig bij het eerste laden van de Vandaag-widget, de bestaande lokale id's als `signaal_status`-records met `actie: "genegeerd"` wegschrijven (zie §6). Na een geslaagde migratie blijft de oude localStorage-sleutel *ongebruikt* staan (niet gewist) als terugvaloptie.
+
+---
+
+## 5. Optionele collectie: `signaal_analyses` — **uitgesteld tot na oogst 2026, ongewijzigd**
+
+Alleen bouwen als en wanneer de AI-correlatietool daadwerkelijk gebouwd wordt. Vorm ongewijzigd t.o.v. het eerste concept:
+
+```
+signaal_analyses
+  betrokken_signalen   json, required   -- snapshot van signaal-id's + samenvattingen
+  redenering           text, required  -- opgeslagen AI-verklaring, nooit heropgevraagd
+  model                text, required  -- bv. "claude-sonnet-5"
+  gegenereerd_op        text, required  -- yyyy-MM-dd HH:mm
+  vervalt_op            text, required  -- gegenereerd_op + 90 dagen
+  ...autodateFields()
+```
+
+Rechten: `listRule`/`viewRule` = `OPEN_RULE`, `createRule`/`updateRule`/`deleteRule` = `null` (alleen de hook mag schrijven, zoals `agent_acties`). Bewaartermijn 90 dagen, daarna hard verwijderen — **enige onderdeel van dit datamodel dat hard verwijdert**, akkoord bevestigd door Thomas.
 
 ---
 
 ## 6. Migratiepad vanaf de huidige staat
 
-**Niet-destructief en idempotent via `scripts/setup-pocketbase.mjs`, conform de harde regel.**
+**Niet-destructief en idempotent via `scripts/setup-pocketbase.mjs`.**
 
 ### Bestaande `inzichten`-records
-Blijven volledig intact. De nieuwe opschoonregel (§2) werkt alleen vooruit: bij de eerstvolgende `bereken-inzichten.mjs`-run worden per (type, onderwerp) de oudste boven de 12 gemarkeerd als `deleted`. Geen enkel bestaand record wordt aangeraakt bij de schema-migratie zelf. Er zijn er nu sowieso weinig (de berekening draait handmatig), dus het effect is klein en veilig.
+Volledig ongewijzigd, geen opschoning (zie §2 — herzien besluit).
 
-### Bestaande meldingen-state (localStorage `wg.meldingen.afgevinkt.v1`)
-De Vandaag-widget vervangt `meldingen.tsx` maar de afgevinkt-state moet blijven plakken, anders ziet Thomas alles wat hij al had weggeklikt opnieuw. **Migratie in de client** (eenmalig, bij eerste laden van de nieuwe widget):
-- Lees de oude sleutel `wg.meldingen.afgevinkt.v1` (array van id's).
-- Schrijf ze als `{ actie: "genegeerd" }` naar de nieuwe structuur `wg.signalen.staat.v2`.
-- De signaal-id's zijn bewust ontworpen om **identiek** te blijven aan de bestaande melding-id's (`onderhoud-<...>`, `backup-<...>`, etc.) zodat de migratie een 1-op-1 sleutelkopie is, geen vertaling.
-- Laat de oude sleutel staan (niet wissen) voor het geval Thomas terugrolt — localStorage-ruimte is triviaal.
-
-**Verworpen alternatief**: de oude sleutel hergebruiken. Verworpen omdat de nieuwe structuur snooze-met-datum toevoegt (de oude was een platte array); een versienummer in de sleutel maakt de vorm-wijziging expliciet en terugrolbaar.
+### Bestaande meldingen-state (localStorage `wg.meldingen.afgevinkt.v1` → `signaal_status`-collectie)
+De Vandaag-widget vervangt `meldingen.tsx`. Bij eerste laden van de widget:
+- Lees de oude localStorage-sleutel (array van id's).
+- Voor elk id: `pb.collection("signaal_status").create({ signaal_id: id, actie: "genegeerd" })` — **eenmalig**, met een aparte migratie-vlag in localStorage (`wg.signalen.migratie_v2_gedaan`) zodat dit niet bij elke paginalaad opnieuw gebeurt en geen dubbele records ontstaat.
+- Signaal-id's blijven bewust **identiek** aan de bestaande melding-id's (`onderhoud-<...>`, `backup-<...>`, etc.) — geen vertaling nodig.
+- Oude localStorage-sleutel blijft staan (niet wissen) als terugvaloptie.
 
 ### Bestaande `agent_acties`-flow
-Ongewijzigd. De signaal→taak-promotie hergebruikt deze flow zonder schema-aanpassing (Fase 1: geen nieuwe status-machine). Wel relevant: de bestaande frontend/backend-drift (`onderhoud`/`order` ontbreken in `AGENT_ACTIE_CONFIG`) moet gefixt zijn vóórdat een signaal een onderhouds-taak kan voorstellen — anders heeft de bevestigingskaart geen weergave. **Dit is de reden dat die losse bugfix nu al relevant is** (zie Fase 1, vraag 4).
+Ongewijzigd — **bevestigd, geen schemawijziging nodig**: `bericht_id` is in het huidige schema al `required: false` (curl-geverifieerd op de live database, 24 juli 2026), dus een signaal kan direct een `agent_acties`-record aanmaken zonder tussenkomst van een AI-beurt. De eerder gevreesde "misschien moet dit veld optioneel gemaakt worden" (Fase 4-vraag 11) is dus al opgelost — geen actie nodig in bouwstap 5.
+
+De eerder gemelde frontend/backend-drift (`onderhoud`/`order` ontbraken in `AGENT_ACTIE_CONFIG`) is **al gefixt** (losstaande bugfix, 24 juli 2026, commit `9a4ac67`), dus dat blokkeert bouwstap 5 niet meer.
 
 ---
 
-## 7. Bewaartermijnen en opschoning (samengevat)
+## 7. Bewaartermijnen en opschoning (samengevat, herzien)
 
 | Data | Bewaartermijn | Methode | Wie draait het |
 |---|---|---|---|
-| `inzichten` | Laatste 12 per (type, onderwerp) | Soft-delete (`deleted: true`) | Uitbreiding van `bereken-inzichten.mjs`, gekoppeld aan de berekening |
-| `signaal_status` (indien gebouwd) | Verlopen snoozes | Hard verwijderen zodra `snooze_tot < vandaag` | Client bij laden, of kleine sweep in bereken-inzichten |
-| `signaal_analyses` (indien gebouwd) | 90 dagen | Hard verwijderen zodra `vervalt_op < vandaag` | Sweep in het opschoonproces |
+| `inzichten` | **Onbeperkt** (herzien besluit) | Geen opschoning | — |
+| `signaal_status` | Verlopen snoozes (`snooze_tot < vandaag`) | Hard verwijderen | Client-side sweep bij laden van de widget (klein aantal records, geen apart proces nodig) |
+| `signaal_analyses` (indien gebouwd) | 90 dagen | Hard verwijderen zodra `vervalt_op < vandaag` | Sweep in het correlatie-endpoint zelf, bij elke aanroep (geen los proces) |
 | Regel-signalen zelf | N.v.t. | Worden niet opgeslagen | — |
 
-Elk opschoonproces schrijft een `regelgeving_instellingen`-record (`sleutel: "laatste_signaal_opschoning"`, `laatst_gecontroleerd: <datum>`) naar het patroon van de bestaande backup-monitoring, zodat óók deze opschoning zichtbaar is als hij een keer niet draait.
+**Geen enkel opschoonproces in dit ontwerp draait als los gepland script** — allemaal gekoppeld aan een bestaande aanroep (client-laden, of het correlatie-endpoint zelf) — leert direct van de Fase 9-bevinding dat losse crons op deze machine niet vuren.
 
 ---
 
-## 8. Verwachte datagroei per jaar (normaal gebruik)
+## 8. Verwachte datagroei per jaar (normaal gebruik, herzien)
 
 | Collectie | Groei/jaar | Toelichting |
 |---|---|---|
-| `inzichten` | Netto ~begrensd op 12 × ~40 (type×onderwerp) ≈ 480 actieve records | Zonder opschoning ~1.800/jaar; mét de 12-snapshot-regel stabiliseert het |
+| `inzichten` | ~2.080 records/jaar, onbeperkt cumulatief | Klein genoeg voor SQLite over meerdere decennia; dit is expliciet gewenst (jaar-op-jaar) |
 | `voorraad_flessen.drempel_aantal` | 0 nieuwe records | Alleen een veld op bestaande records |
-| `regelgeving_instellingen` | +3 records eenmalig | Instellingssleutels, groeien niet |
-| `signaal_status` (indien gebouwd) | Zo groot als het aantal ooit gesnoozede/genegeerde signalen, minus opschoning; realistisch enkele tientallen | Verlopen snoozes worden opgeruimd |
+| `app_instellingen` | +4 records eenmalig | Instellingssleutels, groeien niet |
+| `signaal_status` | Enkele tientallen tegelijk, verlopen snoozes opgeruimd | Netto begrensd |
 | `signaal_analyses` (indien gebouwd) | ~15-20 records/oogstmaand, begrensd op 90 dagen ≈ max. ~60 tegelijk | Alleen tijdens actief seizoen, hard opgeschoond |
 
-Conclusie: **verwaarloosbare groei.** Geen enkele collectie loopt bij normaal gebruik uit de hand; de enige onbegrensde bron (`inzichten` zonder opschoning) wordt door §2 begrensd.
+Conclusie: **nog steeds verwaarloosbare groei**, ook na het loslaten van de inzichten-limiet — SQLite/PocketBase heeft geen moeite met een tabel van enkele tienduizenden simpele records.
 
 ---
 
 ## 9. Query-patronen van het dashboard
 
-Welke vragen stelt de Vandaag-widget, en dekken de bestaande/nieuwe indexen die af?
-
 | Vraag | Query | Index nodig? |
 |---|---|---|
-| "Welke tanks stagneren?" | `inzichten` waar `inzicht_type = "gisting_snelheid"` en `deleted != true`, sorteer `-berekend_op` | Bestaande sortering op `berekend_op` volstaat; dataset klein |
-| "Welk onderhoud komt eraan?" | `onderhoudslog` (bestaande `fetchOnderhoud` + `onderhoudBinnenkort`-filter client-side) | Geen — kleine dataset, bestaande query |
-| "Welke voorraad is bijna op?" | `voorraad_flessen` waar `aantal_huidig < (drempel_aantal ?? standaard)` — **client-side filter** na fetch | Geen nieuwe index; vergelijking gebeurt in de client omdat de fallback-drempel niet in een simpele PB-filter past |
-| "Welke taken vervallen?" | `kelderlog` waar `notitie` begint met `"TAAK:"` (bestaande client-side filter in `meldingen.tsx`) | Geen — bestaande query |
-| "Wat is de backup-status?" | `regelgeving_instellingen` waar `sleutel = "laatste_backup"` | Geen — puntlookup, kleine tabel |
-| "Snooze-status van signaal X" (indien collectie) | `signaal_status` waar `signaal_id = {:id}` | **Nieuwe index op `signaal_id`** |
+| "Welke tanks stagneren?" | `inzichten` waar `inzicht_type = "gisting_snelheid"` en `deleted != true`, sorteer `-berekend_op`, `limit` op recente records | Bestaande sortering volstaat; met onbeperkte groei wordt een `limit` op de query belangrijker dan bij de eerdere 12-snapshot-aanname — **client-side query moet expliciet een periode/limiet meegeven**, niet de hele tabel ophalen |
+| "Welk onderhoud komt eraan?" | `onderhoudslog` (bestaande `fetchOnderhoud` + client-filter) | Geen — bestaande query |
+| "Welke voorraad is bijna op?" | `voorraad_flessen` waar `aantal_huidig < (drempel_aantal ?? standaard uit app_instellingen)` — client-side filter | Geen nieuwe index nodig |
+| "Welke taken vervallen?" | `kelderlog` waar `notitie` begint met `"TAAK:"` (bestaand) | Geen |
+| "Wat is de backup-status?" | `regelgeving_instellingen` waar `sleutel = "laatste_backup"` | Geen — puntlookup |
+| "Wat is de backup-waarschuwingsdrempel?" | `app_instellingen` waar `sleutel = "backup_waarschuwing_dagen"` | Geen — puntlookup |
+| "Snooze-status van signaal X" | `signaal_status` waar `signaal_id = {:id}` | **Nieuwe index op `signaal_id`** |
 
-**Belangrijke ontwerpkeuze in query-patronen**: het voorraad-bijna-op-signaal filtert **client-side** omdat de drempel per record kan verschillen (eigen `drempel_aantal` óf de globale standaard) — dat is geen enkele PocketBase-filterexpressie. Alternatief (een gematerialiseerd "onder drempel"-veld dat bij elke mutatie herberekend wordt) is verworpen: het introduceert weer een tweede waarheid die kan verouderen, voor een dataset (enkele tientallen wijnen) die triviaal in de client te filteren is. Consistent met het leidend principe: bereken, sla niet op.
-
----
-
-## Drie belangrijkste datamodel-keuzes
-
-1. **Bijna geen nieuw schema.** De regel-signalen worden berekend uit bestaande data, niet opgeslagen — één inputveld (`voorraad_flessen.drempel_aantal`), drie instellingssleutels, en twee *voorwaardelijke* collecties die alleen bestaan als Thomas de bijbehorende functie wil.
-2. **Opschoning is gekoppeld aan bestaande processen**, nooit een los onbewaakt achtergrondproces — leert direct van de Fase 9-bevinding dat losse crons op deze machine niet vuren.
-3. **De migratie behoudt Thomas' afgevinkte meldingen** via bewust identiek gehouden signaal-id's, zodat de overgang van `meldingen.tsx` naar de Vandaag-widget geen enkele weggeklikte melding terugbrengt.
+**Belangrijke aanscherping door het loslaten van de inzichten-limiet**: de `zoek_inzichten`-achtige queries (en de nieuwe stagnatie-signaalproducent) moeten voortaan expliciet een `sort + limit` of een datumfilter meegeven (bv. "laatste 8 weken") in plaats van blind alles op te halen — dat was met een 12-snapshot-limiet vanzelf begrensd, nu niet meer. Dit is een concreet aandachtspunt voor bouwstap 1/2, geen architectuurwijziging.
 
 ---
 
-## Vragen voor Thomas (aanvullend op Fase 1)
+## Drie belangrijkste datamodel-keuzes (herzien)
 
-1. **Voorraaddrempels**: is één globale standaard (12 flessen) genoeg om mee te beginnen, of wil je per wijn direct kunnen instellen? (Het datamodel ondersteunt beide; dit bepaalt alleen of de per-wijn-invoer-UI in de eerste bouwstap zit of later.)
-2. **De bestaande hardcoded drempels** (backup 2 dagen, AGP 80%) meeverhuizen naar `regelgeving_instellingen` bij de bouw, of bewust laten staan? (Opruiming, laag risico, maar raakt bestaande werkende code.)
-3. Herhaling van Fase 1-vraag 3 omdat het `signaal_status`-model eraan hangt: **snooze delen tussen apparaten nu al, of localStorage voorlopig prima?**
+1. **Bijna geen nieuw schema, maar wél twee nieuwe collecties die eerst voorwaardelijk waren**: `app_instellingen` (scheidt operationele voorkeuren van wettelijk geverifieerde waarden) en `signaal_status` (server-side, want Thomas werkt op meerdere apparaten).
+2. **`inzichten` blijft historie zonder limiet** — bewuste keuze vóór jaar-op-jaar-inzicht boven opslagzuinigheid, met als consequentie dat queries voortaan zelf hun venster moeten begrenzen.
+3. **Twee "voorbereidende" onzekerheden zijn al opgelost vóór de bouw begint**: `bericht_id` is al optioneel (geen schemawijziging nodig voor taak-promotie) en de config-drift-bug is al gefixt — bouwstap 5 kan zonder vooronderzoek beginnen.
