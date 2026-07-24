@@ -560,3 +560,17 @@ Geen schemawijziging (geen backup nodig — puur frontend-refactor).
 ## FASE 10 — Stand na bouwstap 5 (STOP-punt)
 
 Stappen 1 t/m 5 uit `ONTWERP-4-STAPPEN.md` zijn af, elk apart gecommit en getest. **Stap 6 (AI-correlatietool) is NIET gebouwd** — conform besluit 12 blijft dat een apart besluit na het seizoen, niet automatisch "erbij". De hele signaallaag bevat op dit moment **geen enkele AI-aanroep** en kost dus niets aan API-budget.
+
+## Opruiming handmatige pb_data-snapshots (24 juli 2026, na akkoord Thomas)
+
+**Aanleiding**: de schijfruimte-inventarisatie stelde vast dat de 7/4/12-rotatie in `backup-pocketbase.ps1` alléén de zips in `Backups/` beheert — de handmatige `pb_data_backup_*`-mappen in de projectroot vallen daarbuiten en groeiden ongecontroleerd door bij elke risicovolle sessie (11 mappen, 207 MB).
+
+**Vóór het verwijderen gecontroleerd**: mappen zijn gitignored (`.gitignore` regel 17, 0 bestanden in git), PocketBase draait (health 200), en er staan **11 roterende zip-backups** in `Backups/` — inclusief die van vandaag 20:00 — die het echte dataherstelpunt vormen.
+
+**Verwijderd (10 mappen, ~184 MB)**: `2026-07-02`, `fase3`, `fase4`, `kelderuitbreiding`, `liveverificatie`, `blokD_2026-07-04_2351`, `eindsprint_schema_2026-07-06_2300`, `schemarun_2026-07-10_0234`, `fase10_stap3_2026-07-24_2052`, `fase10_stap4_2026-07-24_2136`. Allemaal snapshots van afgeronde, geverifieerde en gecommitte fases.
+
+**Bewust BEHOUDEN**: `pb_data_backup_fase10_start_2026-07-24_1106` (23 MB) — het enige rollbackpunt naar de staat vóór Fase 10. Thomas heeft de Fase 10-code zelf nog niet geverifieerd; deze map mag pas weg zodra hij bevestigt dat de nieuwe signaallaag naar behoren werkt. (De tussenliggende stap3/stap4-snapshots zijn wél verwijderd: elke bouwstap is een eigen git-commit en het schema-script is idempotent, dus die voegden geen herstelmogelijkheid toe.)
+
+**Na afloop geverifieerd**: `pb_data` ongewijzigd (29 MB), health 200, datasteekproef intact (69 rijen, 48 tanks, 4 partijen, 5 tankboekregels, 1 voorraadrecord), `npm test` 65/65 groen, hub rendert normaal met de Vandaag-widget. Schijfruimte: 8,8 GB vrij.
+
+**Openstaand vervolgpunt**: er is nog steeds geen automatische opruiming van handmatige snapshots. Opties (voor een latere sessie): een `-Keep`-parameter in het backupscript die ook `pb_data_backup_*` roteert, óf de afspraak dat elke snapshot direct na een geslaagde fase-verificatie handmatig weg mag. Nu niet gebouwd — geen opdracht, en de zip-rotatie dekt het dataherstel al.
