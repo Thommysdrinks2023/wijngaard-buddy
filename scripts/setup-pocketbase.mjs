@@ -1192,6 +1192,11 @@ async function main() {
     deleteRule: null,
   });
 
+  // Fase 10 Blok 4 — per-wijn voorraaddrempel. Nu al toegevoegd (besluit
+  // Thomas) ook al start hij met de globale standaard uit app_instellingen:
+  // zo is er later geen migratie nodig. Leeg = gebruik de globale waarde.
+  await ensureVelden("voorraad_flessen", [{ name: "drempel_aantal", type: "number" }]);
+
   await ensureCollection({
     name: "voorraad_mutaties",
     type: "base",

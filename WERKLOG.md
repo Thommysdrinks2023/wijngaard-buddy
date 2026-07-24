@@ -523,3 +523,19 @@ Geen schemawijziging (geen backup nodig — puur frontend-refactor).
 **Tests**: 6 nieuwe tests in `signaal-status-data.test.ts` (`isVerborgen`: geen status, genegeerd, actieve snooze, verlopen snooze, snooze zonder datum, status van ander signaal) — 59 totaal, allemaal groen. tsc/eslint/build schoon.
 
 **Live geverifieerd (ingelogd als Invoerder 1)**: widget toont dezelfde 2 signalen als de oude component (SO₂-taak + uitval-inzicht); "waarom"-uitklap toont de onderbouwing zonder extra netwerkverkeer; snooze schrijft een `signaal_status`-record met `snooze_tot` 7 dagen vooruit en het signaal verdwijnt meteen uit de lijst; testrecord daarna opgeruimd. Na verwijdering van `meldingen.tsx`: hub toont alleen nog "VANDAAG" + de permanente backup-statusregel, precies zoals bedoeld (besluit 8).
+
+### Bouwstap 4 — Voorraad-bijna-op-signaal + per-wijn drempel ✅
+
+**Backup vooraf**: `pocketbase/pb_data_backup_fase10_stap4_2026-07-24_2136`.
+
+**Schema**: `voorraad_flessen.drempel_aantal` (number, optioneel) via `ensureVelden`. Nu al toegevoegd conform besluit 6, ook al start Thomas met de globale standaard — zo is er later geen migratie nodig. Script 2× gedraaid, idempotent bevestigd.
+
+**Nieuw endpoint** `PATCH /api/tappenmars/voorraad-drempel` (`voorraad.pb.js`): `voorraad_flessen` heeft `updateRule: null` (alleen hooks mogen schrijven, want `aantal_huidig` is een cache van `voorraad_mutaties`), dus een smal endpoint dat **uitsluitend** `drempel_aantal` aanraakt en nooit de voorraadaantallen zelf. Vereist `requireAuth` + schrijfrecht. **Curl-getest, alle vier de gevallen**: geldige waarde → 200 + opgeslagen; negatieve waarde → 400 "De drempel moet een getal van 0 of hoger zijn."; ontbrekende `voorraad_id` → 400 "Voorraad_id is verplicht."; zonder token → 401.
+
+**Nieuwe producent** `voorraadBijnaOpSignalen()`: client-side filter (de drempel verschilt per wijn — eigen `drempel_aantal` óf de globale standaard — wat in geen PocketBase-filterexpressie past). Uitverkocht (0 flessen) geeft bewust **geen** "bijna op"-signaal: dat is een andere situatie en zou anders als vals signaal blijven staan.
+
+**UI**: sectie "Waarschuwingsdrempel" op `/voorraad/$voorraadId` met invoerveld (placeholder toont de globale standaard) + opslaan-knop; leeg laten wist de eigen drempel.
+
+**Tests**: 6 nieuwe (65 totaal): onder globale standaard, eigen drempel wint van globale, ruim voldoende, uitverkocht → geen signaal, precies óp de drempel → nog geen signaal, niet-ingelogd. tsc/eslint schoon.
+
+**Live geverifieerd**: drempel 50 gezet via curl bij een voorraad van 30 flessen → signaal "Fase7 Testwijn 2026 nadert einde voorraad (30 flessen)" verschijnt op de hub; via de UI gewijzigd naar 40 → database bevestigt 40; daarna teruggezet naar leeg (testdata opgeruimd). Ook `fetchVoorraadFlessen` kreeg `requestKey: null` (les uit stap 3).

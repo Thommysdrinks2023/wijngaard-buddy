@@ -125,3 +125,33 @@ routerAdd(
   },
   $apis.requireAuth(),
 );
+
+// ---------- PATCH /api/tappenmars/voorraad-drempel ----------
+// Fase 10 Blok 4: per-wijn voorraaddrempel instellen. voorraad_flessen heeft
+// updateRule: null (alleen hooks mogen schrijven, want aantal_huidig is een
+// cache van voorraad_mutaties) — daarom dit smalle endpoint dat UITSLUITEND
+// het drempel_aantal-veld aanraakt en nooit de voorraadaantallen zelf.
+routerAdd(
+  "PATCH",
+  "/api/tappenmars/voorraad-drempel",
+  (e) => {
+    const logica = require(`${__hooks}/voorraad_logica.js`);
+    try {
+      const kelderLogica = require(`${__hooks}/kelder_logica.js`);
+      const schrijfFout = kelderLogica.eisSchrijfrecht(e.auth);
+      if (schrijfFout) return e.json(403, { message: schrijfFout });
+      const b = e.requestInfo().body;
+      if (!b.voorraad_id) throw new BadRequestError("voorraad_id is verplicht.");
+      const drempel = b.drempel_aantal == null ? 0 : Number(b.drempel_aantal);
+      if (isNaN(drempel) || drempel < 0)
+        throw new BadRequestError("De drempel moet een getal van 0 of hoger zijn.");
+      const rec = e.app.findRecordById("voorraad_flessen", b.voorraad_id);
+      rec.set("drempel_aantal", drempel);
+      e.app.save(rec);
+      return e.json(200, { ok: true, drempel_aantal: drempel });
+    } catch (err) {
+      throw logica.leesbareFout(err);
+    }
+  },
+  $apis.requireAuth(),
+);

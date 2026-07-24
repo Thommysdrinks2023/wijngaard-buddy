@@ -519,6 +519,9 @@ function voorraadFlesFromPb(r: RecordModel): VoorraadFles {
     jaargang: r["jaargang"] ?? null,
     aantal_beginvoorraad: r["aantal_beginvoorraad"] ?? 0,
     aantal_huidig: r["aantal_huidig"] ?? 0,
+    // 0 betekent hier "niet ingesteld" (PocketBase-nummerveld zonder waarde),
+    // dus terugvallen op de globale standaard — zie voorraadBijnaOpSignalen.
+    drempel_aantal: r["drempel_aantal"] > 0 ? r["drempel_aantal"] : null,
     locatie: r["locatie"] ?? "",
     status: r["status"],
     created: r["created"],
@@ -542,6 +545,9 @@ export async function fetchVoorraadFlessen(filter?: VoorraadFilter): Promise<Voo
     const records = await pb.collection("voorraad_flessen").getFullList({
       sort: "-created",
       filter: delen.join(" && "),
+      // requestKey: null — de voorraad-signaalproducent, de hub-tegel en
+      // /voorraad vragen dit tegelijk op (auto-cancellation, zie CLAUDE.md).
+      requestKey: null,
     });
     return records.map(voorraadFlesFromPb);
   });
@@ -611,5 +617,20 @@ export async function boekVoorraadMutatie(
   return await pb.send("/api/tappenmars/voorraad-mutatie", {
     method: "POST",
     body: input,
+  });
+}
+
+// Fase 10 Blok 4 — per-wijn voorraaddrempel. Via een smal endpoint omdat
+// voorraad_flessen updateRule: null heeft (aantal_huidig is een cache die
+// alleen via voorraad_mutaties mag veranderen).
+export async function zetVoorraadDrempel(
+  voorraadId: string,
+  drempel: number | null,
+): Promise<void> {
+  const pb = await pbOfFout();
+  logAudit("gewijzigd", "voorraad_flessen", `drempel ${drempel ?? "gewist"}`);
+  await pb.send("/api/tappenmars/voorraad-drempel", {
+    method: "PATCH",
+    body: { voorraad_id: voorraadId, drempel_aantal: drempel },
   });
 }

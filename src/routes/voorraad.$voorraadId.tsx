@@ -10,7 +10,13 @@ import {
   fetchTanks,
   fetchVoorraadFlesById,
   fetchVoorraadMutaties,
+  zetVoorraadDrempel,
 } from "@/lib/kelder-data";
+import {
+  APP_INSTELLING_SLEUTELS,
+  fetchAppInstellingen,
+  vindWaarde,
+} from "@/lib/app-instellingen-data";
 import { fetchPartijById } from "@/lib/partijen-data";
 import { fetchOogst } from "@/lib/extra-data";
 import { foutenPerVeld, isGeldig, valideerVoorraadMutatie } from "@/lib/validatie";
@@ -93,6 +99,29 @@ function VoorraadDetailPage() {
       setMAantal("");
       setMAfnemer("");
       setMNotities("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Fase 10 Blok 4: per-wijn voorraaddrempel (leeg = globale standaard).
+  const instellingenQ = useQuery({
+    queryKey: ["app-instellingen", "voorraad-detail"],
+    queryFn: fetchAppInstellingen,
+  });
+  const standaardDrempel = vindWaarde(
+    instellingenQ.data ?? [],
+    APP_INSTELLING_SLEUTELS.voorraadDrempelStandaard,
+    12,
+  );
+  const [drempelInvoer, setDrempelInvoer] = useState<string | null>(null);
+  const drempelM = useMutation({
+    mutationFn: (waarde: number | null) => zetVoorraadDrempel(voorraadId, waarde),
+    onSuccess: () => {
+      toast.success("Drempel opgeslagen ✓");
+      qc.invalidateQueries({ queryKey: ["voorraad-fles", voorraadId] });
+      qc.invalidateQueries({ queryKey: ["voorraad"] });
+      qc.invalidateQueries({ queryKey: ["signalen"] });
+      setDrempelInvoer(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -193,6 +222,39 @@ function VoorraadDetailPage() {
                 {voorraad?.aantal_beginvoorraad}
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* Fase 10 Blok 4: waarschuwingsdrempel per wijn */}
+        <section className="rounded-2xl border border-border bg-card p-3 print:hidden">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Waarschuwingsdrempel
+          </h2>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Onder dit aantal flessen verschijnt een signaal op het startscherm. Leeg laten =
+            standaard ({standaardDrempel} flessen).
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder={`${standaardDrempel} (standaard)`}
+              value={drempelInvoer ?? voorraad?.drempel_aantal ?? ""}
+              onChange={(e) => setDrempelInvoer(e.target.value)}
+              className="h-11 w-32 rounded-xl border border-input bg-background px-3 text-sm tabular-nums"
+            />
+            <button
+              type="button"
+              disabled={drempelM.isPending || drempelInvoer === null}
+              onClick={() => {
+                const waarde = (drempelInvoer ?? "").trim();
+                drempelM.mutate(waarde === "" ? null : Number(waarde));
+              }}
+              className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {drempelM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Opslaan"}
+            </button>
           </div>
         </section>
 

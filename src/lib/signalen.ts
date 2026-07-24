@@ -10,7 +10,7 @@ import { getPb, isIngelogd } from "./data";
 import { fetchMaterieel, fetchOnderhoud, onderhoudBinnenkort } from "./materieel-data";
 import { fetchRegelgevingInstellingen, REGELGEVING_SLEUTELS } from "./regelgeving-data";
 import { fetchPartijen } from "./partijen-data";
-import { fetchKelderlog } from "./kelder-data";
+import { fetchKelderlog, fetchVoorraadFlessen } from "./kelder-data";
 import { APP_INSTELLING_SLEUTELS, fetchAppInstellingen, vindWaarde } from "./app-instellingen-data";
 import { addDays, format } from "date-fns";
 
@@ -188,12 +188,48 @@ export async function kritiekeInzichtSignalen(): Promise<Signaal[]> {
   }
 }
 
+// ============= Voorraad bijna op (Fase 10 Blok 4, nieuw signaal) =============
+// Client-side filter omdat de drempel per wijn kan verschillen (eigen
+// drempel_aantal óf de globale standaard) — dat past in geen enkele
+// PocketBase-filterexpressie. Zie ONTWERP-2-DATAMODEL.md §9.
+export async function voorraadBijnaOpSignalen(): Promise<Signaal[]> {
+  if (!isIngelogd()) return [];
+  const [voorraad, appInstellingen] = await Promise.all([
+    fetchVoorraadFlessen(),
+    fetchAppInstellingen(),
+  ]);
+  const standaard = vindWaarde(
+    appInstellingen,
+    APP_INSTELLING_SLEUTELS.voorraadDrempelStandaard,
+    12,
+  );
+  const signalen: Signaal[] = [];
+  for (const v of voorraad) {
+    // Uitverkocht is geen "bijna op" meer — dat is een andere situatie en
+    // zou als vals signaal blijven staan tot het record verwijderd wordt.
+    if (v.aantal_huidig <= 0) continue;
+    const drempel = v.drempel_aantal ?? standaard;
+    if (v.aantal_huidig >= drempel) continue;
+    const naam = `${v.wijnnaam}${v.jaargang ? ` ${v.jaargang}` : ""}`;
+    signalen.push({
+      id: `voorraad-${v.id}`,
+      bron: "voorraad_bijna_op",
+      ernst: "info",
+      titel: `${naam} nadert einde voorraad (${v.aantal_huidig} flessen).`,
+      waarom: `Er zijn nog ${v.aantal_huidig} flessen ${naam} — dat is onder de drempel van ${drempel}${v.drempel_aantal ? " (eigen drempel voor deze wijn)" : " (globale standaard)"}.`,
+      link: "/voorraad",
+    });
+  }
+  return signalen;
+}
+
 const PRODUCENTEN: SignaalProducent[] = [
   onderhoudSignalen,
   backupWaarschuwingSignaal,
   agpSignaal,
   kelderlogTaakSignalen,
   kritiekeInzichtSignalen,
+  voorraadBijnaOpSignalen,
 ];
 
 // Verzamelt alle signalen; een falende producent blokkeert de rest nooit

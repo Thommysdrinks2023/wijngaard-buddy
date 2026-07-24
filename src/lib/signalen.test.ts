@@ -12,11 +12,12 @@ vi.mock("./regelgeving-data", () => ({
   REGELGEVING_SLEUTELS: { agpDrempel: "agp_drempel_liters_per_jaar" },
 }));
 vi.mock("./partijen-data", () => ({ fetchPartijen: vi.fn() }));
-vi.mock("./kelder-data", () => ({ fetchKelderlog: vi.fn() }));
+vi.mock("./kelder-data", () => ({ fetchKelderlog: vi.fn(), fetchVoorraadFlessen: vi.fn() }));
 vi.mock("./app-instellingen-data", () => ({
   APP_INSTELLING_SLEUTELS: {
     backupWaarschuwingDagen: "backup_waarschuwing_dagen",
     agpWaarschuwingPercentage: "agp_waarschuwing_percentage",
+    voorraadDrempelStandaard: "voorraad_drempel_standaard",
   },
   fetchAppInstellingen: vi.fn(() => Promise.resolve([])),
   vindWaarde: vi.fn((_i: unknown, _s: string, standaard: number) => standaard),
@@ -26,9 +27,10 @@ import { getPb, isIngelogd } from "./data";
 import { fetchMaterieel, fetchOnderhoud } from "./materieel-data";
 import { fetchRegelgevingInstellingen } from "./regelgeving-data";
 import { fetchPartijen } from "./partijen-data";
-import { fetchKelderlog } from "./kelder-data";
+import { fetchKelderlog, fetchVoorraadFlessen } from "./kelder-data";
 import {
   agpSignaal,
+  voorraadBijnaOpSignalen,
   backupWaarschuwingSignaal,
   kelderlogTaakSignalen,
   kritiekeInzichtSignalen,
@@ -191,5 +193,61 @@ describe("kritiekeInzichtSignalen", () => {
     expect(resultaat).toHaveLength(1);
     expect(resultaat[0].id).toBe("inzicht-i1");
     expect(getList).toHaveBeenCalledWith(1, 20, expect.any(Object));
+  });
+});
+
+describe("voorraadBijnaOpSignalen", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("normaal geval: onder de globale standaard (12) -> signaal", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    vi.mocked(fetchVoorraadFlessen).mockResolvedValue([
+      { id: "v1", wijnnaam: "Souvignier Gris", jaargang: 2025, aantal_huidig: 8 } as never,
+    ]);
+    const resultaat = await voorraadBijnaOpSignalen();
+    expect(resultaat).toHaveLength(1);
+    expect(resultaat[0].id).toBe("voorraad-v1");
+    expect(resultaat[0].waarom).toContain("globale standaard");
+  });
+
+  it("normaal geval: eigen drempel wint van de globale standaard", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    vi.mocked(fetchVoorraadFlessen).mockResolvedValue([
+      // 20 flessen: boven de globale 12, maar onder de eigen drempel van 24
+      { id: "v1", wijnnaam: "Johanniter", aantal_huidig: 20, drempel_aantal: 24 } as never,
+    ]);
+    const resultaat = await voorraadBijnaOpSignalen();
+    expect(resultaat).toHaveLength(1);
+    expect(resultaat[0].waarom).toContain("eigen drempel");
+  });
+
+  it("randgeval: ruim voldoende voorraad -> geen signaal", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    vi.mocked(fetchVoorraadFlessen).mockResolvedValue([
+      { id: "v1", wijnnaam: "Regent", aantal_huidig: 200 } as never,
+    ]);
+    expect(await voorraadBijnaOpSignalen()).toEqual([]);
+  });
+
+  it("randgeval: uitverkocht (0 flessen) geeft GEEN bijna-op-signaal", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    vi.mocked(fetchVoorraadFlessen).mockResolvedValue([
+      { id: "v1", wijnnaam: "Pinotin", aantal_huidig: 0 } as never,
+    ]);
+    expect(await voorraadBijnaOpSignalen()).toEqual([]);
+  });
+
+  it("randgeval: precies op de drempel -> nog geen signaal", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(true);
+    vi.mocked(fetchVoorraadFlessen).mockResolvedValue([
+      { id: "v1", wijnnaam: "Muscaris", aantal_huidig: 12 } as never,
+    ]);
+    expect(await voorraadBijnaOpSignalen()).toEqual([]);
+  });
+
+  it("randgeval: niet ingelogd -> lege lijst, geen fetch", async () => {
+    vi.mocked(isIngelogd).mockReturnValue(false);
+    expect(await voorraadBijnaOpSignalen()).toEqual([]);
+    expect(fetchVoorraadFlessen).not.toHaveBeenCalled();
   });
 });

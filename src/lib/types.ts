@@ -387,6 +387,9 @@ export interface VoorraadFles {
   jaargang?: number | null;
   aantal_beginvoorraad: number;
   aantal_huidig: number; // cache — waarheid is voorraad_mutaties; nooit direct aanpasbaar
+  // Fase 10: onder dit aantal verschijnt een voorraad-bijna-op-signaal.
+  // null/leeg = gebruik de globale standaard uit app_instellingen.
+  drempel_aantal?: number | null;
   locatie?: string;
   status: VoorraadStatus;
   created: string;
