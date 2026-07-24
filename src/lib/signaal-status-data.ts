@@ -129,3 +129,22 @@ export function isVerborgen(signaalId: string, statussen: SignaalStatus[]): bool
   }
   return false;
 }
+
+// Fase 10 Blok 5 — signaal promoveren tot taak. Loopt via een hook omdat
+// agent_acties createRule: null heeft; het endpoint maakt zelf een kort
+// gesprek aan (gesprek_id is verplicht in het schema) en zet het voorstel
+// op status "voorgesteld" — bevestigen gebeurt in de BESTAANDE flow op
+// /assistent, dus er is precies één plek waar iets wordt uitgevoerd.
+export async function promoveerSignaalNaarTaak(voorstel: {
+  actie_type: string;
+  samenvatting: string;
+  payload: Record<string, unknown>;
+  verantwoordelijke?: string;
+}): Promise<{ actie_id: string; gesprek_id: string }> {
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) throw new Error("Geen verbinding met de server.");
+  return await pb.send("/api/tappenmars/signaal-naar-taak", {
+    method: "POST",
+    body: voorstel,
+  });
+}

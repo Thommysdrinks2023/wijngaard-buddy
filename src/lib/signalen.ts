@@ -54,6 +54,17 @@ export async function onderhoudSignalen(): Promise<Signaal[]> {
       waarom: `${naam} heeft onderhoud gepland vóór ${r.volgende_keer} — dat valt binnen de 30-dagen-vooruitblik.`,
       link: "/materieel",
       datum: r.volgende_keer,
+      // Fase 10 Blok 5: promoveerbaar tot taak via de bestaande
+      // agent_acties-bevestigingsflow (besluit 4, geen nieuwe statusmachine).
+      taakVoorstel: {
+        actie_type: "kelderlog" as const,
+        samenvatting: `TAAK: onderhoud ${naam} vóór ${r.volgende_keer}`,
+        payload: {
+          datum: r.volgende_keer,
+          actie: "overig",
+          notitie: `TAAK: onderhoud ${naam} inplannen (uiterlijk ${r.volgende_keer})`,
+        },
+      },
     };
   });
 }

@@ -539,3 +539,24 @@ Geen schemawijziging (geen backup nodig — puur frontend-refactor).
 **Tests**: 6 nieuwe (65 totaal): onder globale standaard, eigen drempel wint van globale, ruim voldoende, uitverkocht → geen signaal, precies óp de drempel → nog geen signaal, niet-ingelogd. tsc/eslint schoon.
 
 **Live geverifieerd**: drempel 50 gezet via curl bij een voorraad van 30 flessen → signaal "Fase7 Testwijn 2026 nadert einde voorraad (30 flessen)" verschijnt op de hub; via de UI gewijzigd naar 40 → database bevestigt 40; daarna teruggezet naar leeg (testdata opgeruimd). Ook `fetchVoorraadFlessen` kreeg `requestKey: null` (les uit stap 3).
+
+### Bouwstap 5 — Signaal naar taak promoveren ✅
+
+**Twee schema-verrassingen die pas bij het bouwen bleken** (het vooronderzoek uit stap 0 was onvolledig — dat is de eerlijke conclusie):
+
+1. **`gesprek_id` is VERPLICHT in `agent_acties`** (alleen `bericht_id` was optioneel, wat ik eerder rapporteerde). Een signaal hoort bij geen gesprek. **Niet opgelost door het schema te versoepelen** (dat zou de bestaande garantie "elke actie hoort bij een gesprek" ondermijnen), maar door de hook zelf een kort gesprek te laten aanmaken met het signaal als aanleiding.
+2. **`ActieKaart` rendert alleen binnen een bericht**: `/assistent` groepeert bevestigingskaarten per `bericht_id` (`actiesPerBericht`). Een voorstel zonder bericht was daardoor wél in de database maar **onzichtbaar in de UI** — precies het soort stille fout dat een live-test moet vangen. Opgelost door ook een kort assistentbericht als drager aan te maken ("Dit voorstel komt uit een signaal op je startscherm...").
+
+**Nieuw endpoint** `POST /api/tappenmars/signaal-naar-taak` (`pb_hooks/signalen.pb.js`): maakt gesprek + bericht + `agent_acties`-record (status `voorgesteld`) in één `runInTransaction`. Vereist `requireAuth` + schrijfrecht. **Curl-getest**: geldig → 200 met actie/gesprek-id; ontbrekende samenvatting → 400 met NL-melding; zonder token → 401.
+
+**Frontend**: `taakVoorstel` op het onderhoud-signaal (`kelderlog`-actie met `TAAK:`-prefix, conform de bestaande conventie), knop "Maak hier een taak van" in de Vandaag-widget (alleen zichtbaar bij signalen mét voorstel), datalaagfunctie `promoveerSignaalNaarTaak`.
+
+**Live end-to-end geverifieerd (de hele keten)**: tijdelijk testmaterieel + onderhoudsrecord aangemaakt → onderhoud-signaal verschijnt op de hub mét knop → klikken maakt voorstel aan → verschijnt op `/assistent` als bevestigingskaart met Afwijzen/Aanpassen/Bevestigen → **Bevestigen uitgevoerd** → status `uitgevoerd` + `uitgevoerd_record_id` gevuld → echte `kelderlog`-regel aangemaakt (`2026-08-03 | overig | TAAK: hertest`), die vervolgens zelf weer als taak-signaal verschijnt. **Alle testdata daarna opgeruimd** (kelderlogregel, 3 acties, 3 gesprekken + berichten, testmaterieel + onderhoudslog); geverifieerd: `signaal_status` 0, `materieel` 0, `onderhoudslog` 0 records.
+
+**Geen nieuwe statusmachine** (besluit 4): er is precies één plek waar iets bevestigd/uitgevoerd wordt — de bestaande `agent_acties`-flow.
+
+**Tests**: 65 totaal, tsc/eslint schoon.
+
+## FASE 10 — Stand na bouwstap 5 (STOP-punt)
+
+Stappen 1 t/m 5 uit `ONTWERP-4-STAPPEN.md` zijn af, elk apart gecommit en getest. **Stap 6 (AI-correlatietool) is NIET gebouwd** — conform besluit 12 blijft dat een apart besluit na het seizoen, niet automatisch "erbij". De hele signaallaag bevat op dit moment **geen enkele AI-aanroep** en kost dus niets aan API-budget.

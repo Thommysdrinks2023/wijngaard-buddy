@@ -12,15 +12,17 @@ import {
   fetchSignaalStatussen,
   isVerborgen,
   migreerOudeAfvinkStatus,
+  promoveerSignaalNaarTaak,
   ruimVerlopenSnoozesOp,
   zetSignaalStatus,
 } from "@/lib/signaal-status-data";
+import { useInvoerder } from "@/lib/use-invoerder";
 import {
   APP_INSTELLING_SLEUTELS,
   fetchAppInstellingen,
   vindWaarde,
 } from "@/lib/app-instellingen-data";
-import { ChevronDown, Clock, X } from "lucide-react";
+import { ChevronDown, Clock, ListPlus, X } from "lucide-react";
 import { addDays, format } from "date-fns";
 
 const SNOOZE_DAGEN = 7;
@@ -67,6 +69,17 @@ export function VandaagWidget() {
     }) => zetSignaalStatus(signaalId, actie, snoozeTot),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["signaal-status"] }),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Kon dit niet opslaan"),
+  });
+
+  // Fase 10 Blok 5: signaal promoveren tot taak via de bestaande
+  // agent_acties-bevestigingsflow (besluit 4, geen nieuwe statusmachine).
+  const [invoerder] = useInvoerder();
+  const taakM = useMutation({
+    mutationFn: (voorstel: NonNullable<(typeof getoond)[number]["taakVoorstel"]>) =>
+      promoveerSignaalNaarTaak({ ...voorstel, verantwoordelijke: invoerder }),
+    onSuccess: () =>
+      toast.success("Voorstel klaargezet — bevestig het bij de Assistent om het te boeken."),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Kon de taak niet aanmaken"),
   });
 
   const statussen = statusQ.data ?? [];
@@ -151,6 +164,16 @@ export function VandaagWidget() {
             <p className="mt-1.5 border-t border-current/15 pt-1.5 text-xs opacity-80">
               {s.waarom}
             </p>
+          )}
+          {s.taakVoorstel && (
+            <button
+              type="button"
+              disabled={taakM.isPending}
+              onClick={() => taakM.mutate(s.taakVoorstel!)}
+              className="mt-2 flex h-9 items-center gap-1.5 rounded-lg border border-current/25 px-2.5 text-xs font-medium disabled:opacity-50"
+            >
+              <ListPlus className="h-3.5 w-3.5" /> Maak hier een taak van
+            </button>
           )}
         </div>
       ))}
