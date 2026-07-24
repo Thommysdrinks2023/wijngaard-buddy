@@ -747,3 +747,38 @@ Dat alle zes vielen in plaats van alleen test 4 is zelf een bevinding: het inlog
 
 - De **onboarding-dialoog verschijnt óver het inlogscherm** op een vers apparaat en vangt alle kliks af. Voor een mens is dat op te lossen door "Overslaan" te tikken, dus het blokkeert niet — maar het is de verkeerde volgorde: onboarding hoort ná het inloggen. Niet aangepast; staat als opmerking in het auditrapport.
 - **`/voorraad` heeft geen kopelement.** De titel zit alleen in de gedeelde koptekstbalk. Kleine toegankelijkheidsmisser, niet gerepareerd omdat het buiten de opdracht van dit blok viel.
+
+### Blok 6 — Het faalpatroon van de gedeelde datalaag
+
+Dit is de vierde fase waarin dezelfde soort storing opdook: Fase 3 (gesprekkenlijst leek leeg), Fase 8 (lege keuzelijsten), Fase 10 (Vandaag-widget bleef stil leeg), en in Blok 2 van deze fase opnieuw in `flushSyncQueue`. Steeds was de melding op het scherm — of het ontbreken daarvan — geen aanwijzing voor de oorzaak.
+
+**De grondoorzaak zat in één `catch`.** De gedeelde leeshelper `haalLijst()` deed dit:
+
+```
+try { return await lees(pb); }
+catch { throw new Error(`Kon ${wat} niet laden — probeer het opnieuw.`); }
+```
+
+Daarmee werden vier wezenlijk verschillende situaties dezelfde melding: een verlopen sessie, een onbereikbare server, een geannuleerd verzoek, en een serverfout. Voor Thomas ziet dat er identiek uit, terwijl de juiste reactie in elk geval anders is (opnieuw inloggen / bereik zoeken / niets doen / later terugkomen).
+
+**Nu**: `src/lib/laadfout.ts` met een pure `classificeerLeesfout()`, die vijf gevallen uit elkaar houdt:
+
+| Geval | Signaal | Melding aan Thomas |
+| --- | --- | --- |
+| `niet_ingelogd` | 401/403 | "Je sessie is verlopen — log opnieuw in om … te zien." |
+| `geen_verbinding` | status 0 / fetch mislukt | "Geen verbinding met de server — … Controleer je bereik." |
+| `geannuleerd` | `isAbort` / `AbortError` | wordt **niet** getoond (zie hieronder) |
+| `server_fout` | 5xx | "De server gaf een fout (503) …" |
+| `onbekend` | overig | melding mét statuscode, zodat het te herleiden is |
+
+Een **lege lijst** staat er bewust niet bij: dat is een geslaagd antwoord, geen fout. Het onderscheid tussen "echt niets" en "leeg gefilterd door een API-rule" — de bug uit Fase 8 — wordt bovenstrooms afgevangen doordat `haalLijst` gooit zodra er geen sessie is. Een anoniem verzoek krijgt van PocketBase een geldige 200 met een lege lijst, en dát mag nooit als "geen data" worden getoond.
+
+**Het geannuleerde geval krijgt bovendien een echte oplossing, geen etiket.** Auto-cancellation betekent dat de server bereikbaar is en de gebruiker is ingelogd — er botsten alleen twee gelijktijdige aanroepen. `haalLijst` probeert het daarom één keer opnieuw in plaats van er een foutmelding van te maken. Dat is de vangnetlaag onder de twee bestaande maatregelen (`requestKey: null` voorkomt de annulering, `deelVerzoek()` uit Blok 1 voorkomt de botsing); dit vangt op wat er alsnog doorheen glipt.
+
+10 nieuwe tests in `src/lib/laadfout.test.ts`, waaronder expliciet: een geannuleerd verzoek mag **niet** als "geen verbinding" worden gelezen, ook al is de statuscode in beide gevallen 0. Precies die verwarring kostte in Fase 3 en Fase 10 tijd. Suite nu **84 tests groen**.
+
+**Regressietest**: de zes rooktests uit Blok 5 draaien groen op de gewijzigde datalaag, inclusief de Fase 8- en Fase 10-schermen (kelder, tanks, partijen, voorraad, hub met Vandaag-widget).
+
+**Ook opgelost**: Vitest probeerde de Playwright-bestanden te draaien. `vitest.config.ts` sluit `e2e/` nu uit. Bewust géén `mergeConfig` met `vite.config.ts` — die bevat de TanStack Start-plugins en valt om bij het samenvoegen.
+
+**Valkuil vastgelegd** (kostte tijdens dit blok een verkeerde diagnose): Playwright's `reuseExistingServer` slaat het bouwen én starten over als er al iets op poort 4173 luistert. Heb je daarna zelf gebouwd, dan serveert die oude server verwijzingen naar chunk-namen die niet meer bestaan en vallen **alle** tests om op het inloggen — wat op een regressie lijkt maar het niet is. Staat nu als waarschuwing in `playwright.config.ts`.

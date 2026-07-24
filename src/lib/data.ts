@@ -18,6 +18,7 @@ import {
   syncQueueCount,
   updateQueuedCreate,
 } from "./sync";
+import { classificeerLeesfout, LaadFout } from "./laadfout";
 import { deleteOfflineFoto, getOfflineFoto, saveOfflineFoto } from "./foto-opslag";
 import { naarPrullenbak, verwijderUitPrullenbak } from "./prullenbak";
 import { logAudit } from "./audit";
@@ -164,13 +165,36 @@ export async function haalLijst<T>(
 ): Promise<T> {
   const pb = getPb();
   if (!pb) return leeg; // geen server geconfigureerd — lege staat is dan correct
-  if (!isIngelogd()) throw new Error(`Log opnieuw in om ${wat} te kunnen laden.`);
+  if (!isIngelogd())
+    throw new LaadFout("niet_ingelogd", `Log opnieuw in om ${wat} te kunnen laden.`);
   if (!(await ensureOnline()))
-    throw new Error(`Geen verbinding met de server — kon ${wat} niet laden.`);
+    throw new LaadFout(
+      "geen_verbinding",
+      `Geen verbinding met de server — kon ${wat} niet laden. Controleer je bereik.`,
+    );
   try {
     return await lees(pb);
-  } catch {
-    throw new Error(`Kon ${wat} niet laden — probeer het opnieuw.`);
+  } catch (fout) {
+    // Fase 11 Blok 6: niet meer alles op één hoop. Zie laadfout.ts voor waarom
+    // dit ertoe doet — de oude generieke melding maakte vier verschillende
+    // oorzaken ononderscheidbaar, en dat heeft in vier fases bugs gekost.
+    const geclassificeerd = classificeerLeesfout(fout, wat);
+
+    // Een geannuleerd verzoek is geen storing maar een botsing tussen twee
+    // gelijktijdige aanroepen: de server is bereikbaar en de gebruiker is
+    // ingelogd. Eén keer opnieuw proberen lost dat op in plaats van er een
+    // foutmelding van te maken. Dit is de vangnetlaag onder deelVerzoek() en
+    // requestKey: null — die voorkomen de botsing, dit vangt af wat er alsnog
+    // doorheen glipt.
+    if (geclassificeerd.soort === "geannuleerd") {
+      try {
+        return await lees(pb);
+      } catch (tweedeFout) {
+        throw classificeerLeesfout(tweedeFout, wat);
+      }
+    }
+
+    throw geclassificeerd;
   }
 }
 

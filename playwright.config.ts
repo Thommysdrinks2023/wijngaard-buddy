@@ -31,6 +31,14 @@ export default defineConfig({
   webServer: {
     command: "npm run build && npx vite preview --port 4173",
     url: "http://localhost:4173",
+    // VALKUIL: met reuseExistingServer slaat Playwright zowel het bouwen ALS
+    // het starten over als er al iets op 4173 luistert. Heb je daarna zelf
+    // `npm run build` gedraaid, dan serveert die oude server een index.html met
+    // verwijzingen naar chunk-namen die niet meer bestaan — de app laadt dan
+    // helemaal niet en ALLE tests vallen om met een misleidende fout
+    // ("Failed to fetch dynamically imported module"). Dat lijkt op een
+    // regressie maar is het niet. Zie je alle zes tests tegelijk vallen op het
+    // inloggen: stop eerst de draaiende preview op 4173 en draai opnieuw.
     reuseExistingServer: true,
     timeout: 180_000,
   },
