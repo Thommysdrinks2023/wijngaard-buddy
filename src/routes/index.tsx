@@ -12,22 +12,40 @@ import {
   setLaatsteModule,
 } from "@/lib/module-keuze";
 import { fetchRegelgevingInstellingen } from "@/lib/regelgeving-data";
+import {
+  APP_INSTELLING_SLEUTELS,
+  fetchAppInstellingen,
+  vindWaarde,
+} from "@/lib/app-instellingen-data";
 import { Meldingen } from "@/components/meldingen";
 
 // Fase 7 Blok A: backup-bewaking. Het backupscript schrijft na elke geslaagde
-// run de sleutel "laatste_backup" bij; ouder dan 2 dagen = waarschuwing.
+// run de sleutel "laatste_backup" bij. Deze permanente statusregel blijft
+// bewust naast het signaal in de Vandaag-widget bestaan (Fase 10 besluit
+// Thomas: "stilte is dubbelzinnig bij backups" — hij wil ook zien dat de
+// controle zelf nog werkt, niet alleen een melding bij een probleem).
 function BackupWidget() {
   const q = useQuery({
     queryKey: ["regelgeving", "hub-backup"],
     queryFn: fetchRegelgevingInstellingen,
     enabled: isIngelogd(), // hub is publiek; zonder sessie geen (falende) fetch
   });
+  const instellingenQ = useQuery({
+    queryKey: ["app-instellingen", "hub-backup"],
+    queryFn: fetchAppInstellingen,
+    enabled: isIngelogd(),
+  });
   const record = (q.data ?? []).find((r) => r.sleutel === "laatste_backup");
   if (!record?.laatst_gecontroleerd) return null;
   const laatst = new Date(record.laatst_gecontroleerd.replace(" ", "T"));
   if (isNaN(laatst.getTime())) return null;
   const dagen = Math.floor((Date.now() - laatst.getTime()) / (24 * 60 * 60 * 1000));
-  const teOud = dagen > 2;
+  const drempel = vindWaarde(
+    instellingenQ.data ?? [],
+    APP_INSTELLING_SLEUTELS.backupWaarschuwingDagen,
+    2,
+  );
+  const teOud = dagen > drempel;
   return (
     <div
       className={`mt-3 rounded-xl border px-4 py-2.5 text-sm ${

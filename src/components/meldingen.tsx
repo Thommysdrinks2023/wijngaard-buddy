@@ -8,9 +8,9 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { getPb, isIngelogd } from "@/lib/data";
 import { fetchPartijen } from "@/lib/partijen-data";
-import { fetchMaterieel, fetchOnderhoud, onderhoudBinnenkort } from "@/lib/materieel-data";
 import { fetchKelderlog } from "@/lib/kelder-data";
 import { fetchRegelgevingInstellingen, REGELGEVING_SLEUTELS } from "@/lib/regelgeving-data";
+import { verzamelSignalen } from "@/lib/signalen";
 import { X } from "lucide-react";
 import { addDays, format } from "date-fns";
 
@@ -69,15 +69,11 @@ export function Meldingen() {
     queryFn: fetchPartijen,
     enabled: ingelogd,
   });
-  const materieelQ = useQuery({
-    queryKey: ["materieel", "meldingen"],
-    queryFn: fetchMaterieel,
-    enabled: ingelogd,
-  });
-  const onderhoudQ = useQuery({
-    queryKey: ["onderhoud", "meldingen"],
-    queryFn: () => fetchOnderhoud(),
-    enabled: ingelogd,
+  // Fase 10 Blok 1: onderhoud- en backup-signalen verhuisd naar signalen.ts
+  // (gedeelde, geteste producenten i.p.v. losse checks hier).
+  const signalenQ = useQuery({
+    queryKey: ["signalen", "meldingen"],
+    queryFn: verzamelSignalen,
   });
   const regelgevingQ = useQuery({
     queryKey: ["regelgeving", "meldingen"],
@@ -130,30 +126,16 @@ export function Meldingen() {
     }
   }
 
-  // Onderhoud binnen 30 dagen
-  const binnenkort = onderhoudBinnenkort(onderhoudQ.data ?? []);
-  const materieelNaam = new Map((materieelQ.data ?? []).map((m) => [m.id, m.naam]));
-  for (const r of binnenkort) {
+  // Onderhoud + backup: verhuisd naar signalen.ts (Fase 10 Blok 1), hier
+  // omgezet naar het lokale Melding-formaat zodat de rendering ongewijzigd
+  // blijft (deze component wordt in stap 3 vervangen door de Vandaag-widget).
+  for (const s of signalenQ.data ?? []) {
     meldingen.push({
-      id: `onderhoud-${r.materieel}-${r.volgende_keer}`,
-      tekst: `Onderhoud gepland: ${materieelNaam.get(r.materieel) ?? "machine"} vóór ${r.volgende_keer}.`,
-      ernst: "info",
-      link: "/materieel",
+      id: s.id,
+      tekst: s.titel,
+      ernst: s.ernst === "info" ? "info" : "waarschuwing",
+      link: s.link,
     });
-  }
-
-  // Backup >2 dagen (zelfde bron als de widget in index.tsx)
-  const backup = (regelgevingQ.data ?? []).find((r) => r.sleutel === "laatste_backup");
-  if (backup?.laatst_gecontroleerd) {
-    const laatst = new Date(backup.laatst_gecontroleerd.replace(" ", "T"));
-    const dagen = Math.floor((Date.now() - laatst.getTime()) / 86400000);
-    if (!isNaN(dagen) && dagen > 2) {
-      meldingen.push({
-        id: `backup-${backup.laatst_gecontroleerd}`,
-        tekst: `Laatste geslaagde backup is ${dagen} dagen oud — controleer de backuptaak.`,
-        ernst: "waarschuwing",
-      });
-    }
   }
 
   const zichtbaar = meldingen.filter((m) => !afgevinkt.has(m.id));

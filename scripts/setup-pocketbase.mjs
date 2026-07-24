@@ -1009,6 +1009,30 @@ async function main() {
     deleteRule: AUTH_RULE,
   });
 
+  // Fase 10 Blok 1 — app_instellingen: operationele voorkeuren (drempels,
+  // plafonds), bewust GESCHEIDEN van regelgeving_instellingen. Die laatste is
+  // gereserveerd voor wettelijk/officieel geverifieerde waarden (elk record
+  // heeft een laatst_gecontroleerd-datum + bron die een echte controle
+  // impliceren) - een operationele voorkeur als "vanaf welke backup-leeftijd
+  // waarschuwen" heeft geen bron om te verifiëren en zou dat contract
+  // verwateren. Zie ONTWERP-2-DATAMODEL.md §3.
+  await ensureCollection({
+    name: "app_instellingen",
+    type: "base",
+    fields: [
+      { name: "sleutel", type: "text", required: true },
+      { name: "waarde", type: "number" },
+      { name: "eenheid", type: "text" },
+      { name: "notitie", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
+  });
+
   // 3a-8b. Kelderuitbreiding: velden uit Logboek_leeg.xlsx die vóór de eerste
   // analyse al ingevuld worden (Ph/Totaal zuur bovenaan het logboek) plus twee
   // vinkjes (ontstelen/voorklaren) en twee vrije-tekstvelden. "gist" stond al
@@ -1789,6 +1813,50 @@ async function main() {
     }
   }
 
+  // Fase 10 Blok 1 — app_instellingen-seeds. Alle vier sleutels in één keer
+  // geseed (ook al worden signaal_max_zichtbaar/voorraad_drempel_standaard
+  // pas in latere bouwstappen gebruikt) zodat er niet drie losse
+  // schema-migraties nodig zijn.
+  const APP_INSTELLINGEN_SEEDS = [
+    {
+      sleutel: "backup_waarschuwing_dagen",
+      waarde: 2,
+      eenheid: "dagen",
+      notitie: "Vanaf welke leeftijd van de laatste backup een signaal verschijnt.",
+    },
+    {
+      sleutel: "agp_waarschuwing_percentage",
+      waarde: 80,
+      eenheid: "%",
+      notitie:
+        "Vanaf welk percentage van de AGP-drempel gewaarschuwd wordt. De AGP-drempel zelf (wettelijk) staat in regelgeving_instellingen.",
+    },
+    {
+      sleutel: "voorraad_drempel_standaard",
+      waarde: 12,
+      eenheid: "flessen",
+      notitie: "Globale voorraad-bijna-op-drempel voor wijnen zonder eigen drempel_aantal.",
+    },
+    {
+      sleutel: "signaal_max_zichtbaar",
+      waarde: 6,
+      eenheid: "stuks",
+      notitie: "Plafond op het aantal gelijktijdig getoonde signalen in de Vandaag-widget.",
+    },
+  ];
+  for (const seed of APP_INSTELLINGEN_SEEDS) {
+    const bestaand = await api(
+      `/api/collections/app_instellingen/records?perPage=1&filter=${encodeURIComponent(`sleutel='${seed.sleutel}'`)}`,
+    );
+    if (bestaand.totalItems === 0) {
+      await api("/api/collections/app_instellingen/records", {
+        method: "POST",
+        body: seed,
+      });
+      console.log(`  + app-instelling "${seed.sleutel}" aangemaakt`);
+    }
+  }
+
   // 3b. Wijngaard-instellingen (vineyard_settings) + eerste configuratie
   await ensureCollection({
     name: "vineyard_settings",
@@ -1867,6 +1935,8 @@ async function main() {
     "middelen",
     "sensor_metingen",
     "proefnotities",
+    // Fase 10
+    "app_instellingen",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);
