@@ -1991,13 +1991,26 @@ async function main() {
     { name: "notitie", type: "text" },
     { name: "planten_per_vak", type: "number", onlyInt: true },
   ]);
+  // Fase 11: dit blok patchte eerder ALLEEN "rijen". RAS_VALUES wordt echter
+  // in 6 collecties gebruikt, en ensureCollection() is create-only — het werkt
+  // select-waarden van een bestaande collectie nooit bij. Gevolg (live gevonden
+  // in Fase 11): rijen.ras stond correct op "Souvignier Gris", maar fenologie,
+  // oogst, werkuren, steekproef_planten en werkkalender hingen nog op de oude
+  // tikfout "Souveginier Gris". Elke schrijfactie voor die 17 rijen faalde met
+  // HTTP 400 "Invalid value Souvignier Gris" — onzichtbaar tot je het probeert.
+  // Daarom nu generiek over álle collecties met een ras-select.
   {
-    const col = await api("/api/collections/rijen");
-    const rasVeld = col.fields.find((f) => f.name === "ras");
-    if (rasVeld && JSON.stringify(rasVeld.values) !== JSON.stringify(RAS_VALUES)) {
-      const velden = col.fields.map((f) => (f.name === "ras" ? { ...f, values: RAS_VALUES } : f));
+    const alle = await api("/api/collections?perPage=200");
+    for (const col of alle.items ?? []) {
+      if (col.name.startsWith("_")) continue;
+      const rasVeld = (col.fields ?? []).find((f) => f.name === "ras" && f.type === "select");
+      if (!rasVeld) continue;
+      if (JSON.stringify(rasVeld.values) === JSON.stringify(RAS_VALUES)) continue;
+      const velden = col.fields.map((f) =>
+        f.name === "ras" && f.type === "select" ? { ...f, values: RAS_VALUES } : f,
+      );
       await api(`/api/collections/${col.id}`, { method: "PATCH", body: { fields: velden } });
-      console.log("  ✓ ras-select bijgewerkt naar actuele rasnamen");
+      console.log(`  ✓ ras-select bijgewerkt in "${col.name}"`);
     }
   }
 

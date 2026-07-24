@@ -574,3 +574,31 @@ Stappen 1 t/m 5 uit `ONTWERP-4-STAPPEN.md` zijn af, elk apart gecommit en getest
 **Na afloop geverifieerd**: `pb_data` ongewijzigd (29 MB), health 200, datasteekproef intact (69 rijen, 48 tanks, 4 partijen, 5 tankboekregels, 1 voorraadrecord), `npm test` 65/65 groen, hub rendert normaal met de Vandaag-widget. Schijfruimte: 8,8 GB vrij.
 
 **Openstaand vervolgpunt**: er is nog steeds geen automatische opruiming van handmatige snapshots. Opties (voor een latere sessie): een `-Keep`-parameter in het backupscript die ook `pb_data_backup_*` roteert, óf de afspraak dat elke snapshot direct na een geslaagde fase-verificatie handmatig weg mag. Nu niet gebouwd — geen opdracht, en de zip-rotatie dekt het dataherstel al.
+
+# FASE 11 — Veldgereedheid seizoen 2026 (24 juli 2026)
+
+**Nulmeting bij aanvang**: 8,7 GB vrije schijfruimte, PocketBase health 200, git op `762bd1d`. Backup gemaakt: `pb_data_backup_fase11_start_2026-07-24_2251`. **`PROJECT-NOTEBOOK.md` bestaat niet** (fantoomdocument, net als `tappenmars-buddy-systeemontwerp.md` eerder) — gelezen: CLAUDE.md, WERKLOG.md, ARCHITECTURE.md.
+
+## BEVINDING 1 (kritiek, seizoensblokkerend) — ras-select drift: 17 rijen konden niet geregistreerd worden
+
+**Gevonden tijdens de schemaverkenning voor Blok 1, vóór er één seed-record bestond.**
+
+De live PocketBase-selects voor `ras` bevatten de oude tikfout **"Souveginier Gris"**, terwijl de frontend (`RAS_OPTIONS` in `seed-rijen.ts`) de correcte spelling **"Souvignier Gris"** stuurt. Gevolg: elke schrijfactie voor een Souvignier Gris-rij faalde met `HTTP 400 — validation_invalid_value: Invalid value Souvignier Gris`.
+
+**Live bewezen vóór de fix** (curl, echte gebruikerstoken, rij 6):
+```
+POST /api/collections/fenologie/records  -> 400 "Invalid value Souvignier Gris."
+POST /api/collections/oogst/records      -> 400 "Invalid value Souvignier Gris."
+```
+
+**Reikwijdte**: 5 collecties — `fenologie`, `oogst`, `werkuren`, `steekproef_planten`, `werkkalender`. `rijen.ras` was wél correct, waardoor het probleem onzichtbaar bleef: de rijen tonen netjes "Souvignier Gris", maar zodra je er iets voor wilde vastleggen faalde het. Betreft **17 van de 69 rijen (25%)** — gedeeld grootste aanplant, samen met Johanniter.
+
+**Impact als dit in september ongemerkt was gebleven**: geen oogstregistratie en geen fenologie voor een kwart van de wijngaard, precies op de drukste dagen. `werkuren` weegt extra: dat is de spuitregistratie, een wettelijke verplichting.
+
+**Grondoorzaak (belangrijker dan het symptoom)**: `ensureCollection()` is **create-only** — het maakt een collectie aan als die ontbreekt, maar reconcilieert nooit de select-waarden van een bestaande collectie. De tikfout stond niet meer in de broncode (die was ooit gecorrigeerd), maar die correctie is nooit naar de draaiende database gemigreerd. Er bestond wél een migratieblok, maar dat patchte **alleen `rijen`** — terwijl dezelfde `RAS_VALUES` in 6 collecties wordt gebruikt. Schema-drift tussen bron en live database is hier dus structureel onzichtbaar.
+
+**Fix**: het migratieblok in `scripts/setup-pocketbase.mjs` is generiek gemaakt — het loopt nu over álle collecties met een `ras`-select en corrigeert elke afwijking van `RAS_VALUES`. Veilig uitgevoerd: vooraf geverifieerd dat **0 records** de tikfout-waarde gebruikten, dus niet-destructief.
+
+**Verificatie na de fix**: 5 collecties gepatcht (`fenologie`, `oogst`, `werkuren`, `steekproef_planten`, `werkkalender`), tweede scriptrun patcht niets meer (idempotent). Dezelfde drie schrijfacties die eerst 400 gaven, geven nu **HTTP 200** — inclusief de spuitregistratie. Testrecords daarna verwijderd, recordaantallen terug op de nulmeting (fenologie 4, oogst 3, werkuren 3).
+
+**Restrisico**: dezelfde drift kan bestaan bij ándere select-velden die in meerdere collecties voorkomen. Ik heb alle 40 select-velden in de database gedumpt en vergeleken; buiten `ras` staat geen enkele waarde-lijst in meer dan één collectie, dus dit specifieke patroon is nu volledig afgedekt. Een generieke schema-drift-detectie (bron vs. live vergelijken) staat als aanbeveling in het auditrapport.
