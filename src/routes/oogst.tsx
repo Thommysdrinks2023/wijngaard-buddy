@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
@@ -58,6 +58,7 @@ function OogstPage() {
   const [partijId, setPartijId] = useState("");
   const [notitie, setNotitie] = useState("");
   const [fouten, setFouten] = useState<Record<string, string>>({});
+  const kgRef = useRef<HTMLInputElement>(null);
 
   const partijenJaar = useMemo(
     () => (partijenQ.data ?? []).filter((p) => p.jaargang === jaar),
@@ -95,10 +96,25 @@ function OogstPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Oogst geregistreerd ✓");
       qc.invalidateQueries({ queryKey: ["oogst-records"] });
       setKg("");
       setNotitie("");
+      // Fase 11 Blok 4: op een oogstdag worden de rijen op volgorde geplukt en
+      // werden er tot 69 achter elkaar ingevoerd — telkens door een keuzelijst
+      // van 69 rijen scrollen. Na het opslaan springt de keuze daarom door naar
+      // de volgende rij en gaat de cursor terug naar het gewichtsveld, zodat de
+      // volgende invoer alleen nog "typen + opslaan" is. Wie niet op volgorde
+      // plukt, kiest gewoon zelf een rij — er verandert niets aan wat er kan.
+      const rijen = rijenQ.data ?? [];
+      const idx = rijen.findIndex((r) => r.id === rijId);
+      const volgende = idx >= 0 ? rijen[idx + 1] : undefined;
+      if (volgende) {
+        setRijId(volgende.id);
+        toast.success(`Oogst geregistreerd ✓ — nu rij ${volgende.rijnummer}`);
+      } else {
+        toast.success("Oogst geregistreerd ✓ — dit was de laatste rij");
+      }
+      kgRef.current?.focus();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -231,6 +247,7 @@ function OogstPage() {
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Gewicht (kg)</span>
               <input
+                ref={kgRef}
                 type="number"
                 inputMode="decimal"
                 step="0.1"

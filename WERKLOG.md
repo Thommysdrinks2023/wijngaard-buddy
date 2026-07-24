@@ -699,3 +699,22 @@ Oogst en werkuren waren zelfs vanuit géén enkel veldscherm bereikbaar — alle
 3. **Oogst en spuitregistratie op de perceelkaart** — twee knoppen naast de bestaande "Snelle meting"-knop, in het scherm waar je in het veld toch al bent. Van 3 schermwissels via het dashboard naar 2, en belangrijker: ze zijn nu vindbaar zonder te weten dat ze achter "Dash" of "Meer" zitten.
 
 **Dubbel indienen** was al goed afgedekt (zie Blok 2, test 4) — daar was niets te repareren.
+
+### Blok 4 — Is oogstdag-invoer werkbaar?
+
+**Beoordeling: werkbaar, maar met één kostenpost die zich 30 tot 69 keer herhaalt op de drukste dag van het jaar.**
+
+Wat al goed was: de invoer werkt offline, het ras wordt automatisch uit de rij afgeleid (geen extra keuze), er is een lopend totaal per ras met de verwachting ernaast, en na opslaan werden gewicht en notitie al leeggemaakt. De datum blijft staan, wat klopt — je oogst een hele dag.
+
+Wat niet goed was: **de rijkeuze bleef na het opslaan op dezelfde rij staan.** Elke volgende registratie begon dus met het openen van een keuzelijst van 69 rijen en daarin de juiste zoeken. Op een telefoon is dat een lange systeemlijst; bij 40 rijen op een dag is dat 40 keer scrollen door 69 opties.
+
+**Geen nieuwe oogstmodus gebouwd.** De opdracht was om dat alleen te doen als het aantoonbaar niet werkbaar is, en dat is niet zo — het formulier zelf is prima. Twee kleine wijzigingen in het bestaande scherm halen de herhaalde kost weg:
+
+1. Na het opslaan springt de rijkeuze door naar de **volgende rij**, want er wordt op volgorde geplukt.
+2. De cursor gaat terug naar het gewichtsveld.
+
+Daarmee is elke volgende registratie nog maar "typen + opslaan". Wie niet op volgorde plukt, kiest gewoon zelf een rij — er is niets weggenomen, alleen een standaard toegevoegd. De bevestigingsmelding noemt expliciet de nieuwe rij ("Oogst geregistreerd ✓ — nu rij 2"), zodat het doorspringen zichtbaar is en niet als verrassing komt.
+
+**Live geverifieerd** in de productiebuild: drie registraties achter elkaar (42,5 / 38 / 51,5 kg), telkens alleen gewicht typen en opslaan. Rij liep door van 1 → 2 → 3 → 4, het ras werd bij alle drie correct als Muscaris meegeschreven, en alle drie kwamen op de server aan. Testrecords daarna verwijderd (oogst terug op 3 records, de nulmeting).
+
+**Wat ik bewust niet heb gedaan**: een aparte oogstmodus met een rijenlijst-in-plaats-van-keuzelijst, of invoer per emmer/kist. Beide zijn denkbaar, maar er is geen bewijs dat het huidige formulier tekortschiet zodra de herhaalde rijkeuze weg is — en een nieuw scherm vlak voor het seizoen introduceert meer risico dan het wegneemt.
