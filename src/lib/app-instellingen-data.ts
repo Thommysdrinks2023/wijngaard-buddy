@@ -4,7 +4,7 @@
 // waarden met bron + laatst_gecontroleerd). Zie ONTWERP-2-DATAMODEL.md §3.
 
 import type { RecordModel } from "pocketbase";
-import { haalLijst } from "./data";
+import { deelVerzoek, haalLijst } from "./data";
 
 export interface AppInstelling {
   id: string;
@@ -32,17 +32,18 @@ function instellingFromPb(r: RecordModel): AppInstelling {
 }
 
 export async function fetchAppInstellingen(): Promise<AppInstelling[]> {
-  return haalLijst("de app-instellingen", [], async (pb) => {
-    // requestKey: null schakelt PocketBase's auto-cancellation uit. Deze
-    // functie wordt op vier plekken tegelijk aangeroepen (Vandaag-widget,
-    // BackupWidget, en twee signaalproducenten) — zonder dit annuleren die
-    // elkaars identieke GET, waardoor de widget stil leeg bleef. Zelfde
-    // valkuil als de pingPb()-fix in data.ts, zie CLAUDE.md.
-    const records = await pb
-      .collection("app_instellingen")
-      .getFullList({ sort: "sleutel", requestKey: null });
-    return records.map(instellingFromPb);
-  });
+  // Deze functie wordt op vijf plekken tegelijk aangeroepen (Vandaag-widget,
+  // BackupWidget, en drie signaalproducenten). requestKey: null voorkomt dat
+  // ze elkaars identieke GET annuleren (zie CLAUDE.md); deelVerzoek voorkomt
+  // dat het er dan vijf worden. Zie de toelichting bij deelVerzoek in data.ts.
+  return deelVerzoek("app_instellingen", () =>
+    haalLijst("de app-instellingen", [], async (pb) => {
+      const records = await pb
+        .collection("app_instellingen")
+        .getFullList({ sort: "sleutel", requestKey: null });
+      return records.map(instellingFromPb);
+    }),
+  );
 }
 
 export function vindWaarde(

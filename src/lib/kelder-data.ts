@@ -21,7 +21,7 @@ import type {
   VoorraadMutatieType,
 } from "./types";
 import type { PartijInput } from "./partijen-data";
-import { ensureOnline, getPb, haalLijst, isIngelogd } from "./data";
+import { deelVerzoek, ensureOnline, getPb, haalLijst, isIngelogd } from "./data";
 import { logAudit } from "./audit";
 
 const GEEN_VERBINDING = "Geen verbinding — kelderboekingen vereisen de server.";
@@ -536,21 +536,26 @@ export interface VoorraadFilter {
 }
 
 export async function fetchVoorraadFlessen(filter?: VoorraadFilter): Promise<VoorraadFles[]> {
-  return haalLijst("de voorraad", [], async (pb) => {
-    const delen: string[] = [];
-    if (filter?.producent)
-      delen.push(pb.filter("producent = {:producent}", { producent: filter.producent }));
-    if (filter?.status) delen.push(pb.filter("status = {:status}", { status: filter.status }));
-    if (filter?.partij) delen.push(pb.filter("partij = {:partij}", { partij: filter.partij }));
-    const records = await pb.collection("voorraad_flessen").getFullList({
-      sort: "-created",
-      filter: delen.join(" && "),
-      // requestKey: null — de voorraad-signaalproducent, de hub-tegel en
-      // /voorraad vragen dit tegelijk op (auto-cancellation, zie CLAUDE.md).
-      requestKey: null,
-    });
-    return records.map(voorraadFlesFromPb);
-  });
+  // De voorraad-signaalproducent, de hub-tegel en /voorraad vragen dit tegelijk
+  // op. requestKey: null voorkomt dat ze elkaar annuleren, deelVerzoek dat
+  // dezelfde query dubbel over de lijn gaat — de sleutel bevat daarom het
+  // filter, anders zouden verschillende filters elkaars antwoord krijgen.
+  const sleutel = `voorraad_flessen:${filter?.producent ?? ""}|${filter?.status ?? ""}|${filter?.partij ?? ""}`;
+  return deelVerzoek(sleutel, () =>
+    haalLijst("de voorraad", [], async (pb) => {
+      const delen: string[] = [];
+      if (filter?.producent)
+        delen.push(pb.filter("producent = {:producent}", { producent: filter.producent }));
+      if (filter?.status) delen.push(pb.filter("status = {:status}", { status: filter.status }));
+      if (filter?.partij) delen.push(pb.filter("partij = {:partij}", { partij: filter.partij }));
+      const records = await pb.collection("voorraad_flessen").getFullList({
+        sort: "-created",
+        filter: delen.join(" && "),
+        requestKey: null,
+      });
+      return records.map(voorraadFlesFromPb);
+    }),
+  );
 }
 
 export async function fetchVoorraadFlesById(id: string): Promise<VoorraadFles | null> {

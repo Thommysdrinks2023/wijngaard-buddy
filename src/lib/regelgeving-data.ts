@@ -4,7 +4,7 @@
 // (zie tariefGeverifieerd in accijns.ts).
 
 import type { RecordModel } from "pocketbase";
-import { ensureOnline, getPb, haalLijst } from "./data";
+import { deelVerzoek, ensureOnline, getPb, haalLijst } from "./data";
 import { logAudit } from "./audit";
 
 export interface RegelgevingInstelling {
@@ -38,15 +38,17 @@ function instellingFromPb(r: RecordModel): RegelgevingInstelling {
 }
 
 export async function fetchRegelgevingInstellingen(): Promise<RegelgevingInstelling[]> {
-  return haalLijst("de regelgeving-instellingen", [], async (pb) => {
-    const records = await pb
-      .collection("regelgeving_instellingen")
-      // requestKey: null — meerdere componenten/signaalproducenten vragen
-      // deze lijst tegelijk op; zonder dit annuleren ze elkaars identieke
-      // GET (PocketBase auto-cancellation, zie CLAUDE.md).
-      .getFullList({ sort: "sleutel", requestKey: null });
-    return records.map(instellingFromPb);
-  });
+  // requestKey: null voorkomt dat gelijktijdige aanroepers elkaars identieke
+  // GET annuleren (PocketBase auto-cancellation, zie CLAUDE.md); deelVerzoek
+  // voorkomt dat het er dan drie worden. Zie deelVerzoek in data.ts.
+  return deelVerzoek("regelgeving_instellingen", () =>
+    haalLijst("de regelgeving-instellingen", [], async (pb) => {
+      const records = await pb
+        .collection("regelgeving_instellingen")
+        .getFullList({ sort: "sleutel", requestKey: null });
+      return records.map(instellingFromPb);
+    }),
+  );
 }
 
 export async function updateRegelgevingInstelling(

@@ -122,6 +122,24 @@ export async function ensureOnline(): Promise<boolean> {
   return pingInFlight;
 }
 
+// Fase 11 Blok 1 — verzoeken bundelen. Op de hub bleken 8 van de 22 API-calls
+// exacte duplicaten (app_instellingen 5x, regelgeving_instellingen 3x): elke
+// signaalproducent haalt dezelfde instellingenlijst zelfstandig op. Eerder was
+// dat onzichtbaar doordat PocketBase's auto-cancellation ze wegkaapte — met
+// `requestKey: null` (de fix daarvoor) vuren ze nu allemaal echt af. Bundelen
+// lost beide problemen tegelijk op: één lopend verzoek dat de aanroepers delen,
+// dus geen annulering en geen duplicaat. Zelfde patroon als pingInFlight.
+const lopendeVerzoeken = new Map<string, Promise<unknown>>();
+export function deelVerzoek<T>(sleutel: string, maak: () => Promise<T>): Promise<T> {
+  const lopend = lopendeVerzoeken.get(sleutel);
+  if (lopend) return lopend as Promise<T>;
+  const verzoek = maak().finally(() => {
+    lopendeVerzoeken.delete(sleutel);
+  });
+  lopendeVerzoeken.set(sleutel, verzoek);
+  return verzoek;
+}
+
 export function isIngelogd(): boolean {
   const pb = getPb();
   return Boolean(pb?.authStore.isValid);

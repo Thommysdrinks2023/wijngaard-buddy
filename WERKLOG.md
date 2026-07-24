@@ -602,3 +602,34 @@ POST /api/collections/oogst/records      -> 400 "Invalid value Souvignier Gris."
 **Verificatie na de fix**: 5 collecties gepatcht (`fenologie`, `oogst`, `werkuren`, `steekproef_planten`, `werkkalender`), tweede scriptrun patcht niets meer (idempotent). Dezelfde drie schrijfacties die eerst 400 gaven, geven nu **HTTP 200** — inclusief de spuitregistratie. Testrecords daarna verwijderd, recordaantallen terug op de nulmeting (fenologie 4, oogst 3, werkuren 3).
 
 **Restrisico**: dezelfde drift kan bestaan bij ándere select-velden die in meerdere collecties voorkomen. Ik heb alle 40 select-velden in de database gedumpt en vergeleken; buiten `ras` staat geen enkele waarde-lijst in meer dan één collectie, dus dit specifieke patroon is nu volledig afgedekt. Een generieke schema-drift-detectie (bron vs. live vergelijken) staat als aanbeveling in het auditrapport.
+
+### Blok 1 (vervolg) — Prestatiemeting met een vol seizoen
+
+**Testvolume**: 1142 records via `scripts/seed-seizoen.mjs`, allemaal gemarkeerd met `vineyard_id = "SEED-FASE11"` zodat opruimen aantoonbaar volledig is.
+
+**API-laag is niet de bottleneck.** Alle 15 zwaarste queries samen: **96 ms** (mediaan van 3 metingen per query). De grootste: metingen (412 records) 35 ms, tankboek (209 records) 7 ms. PocketBase/SQLite heeft bij dit volume ruimte over; een ontbrekende index is nergens het probleem.
+
+**Gemeten op de productiebuild** (`npm run build` + `vite preview`, niet de dev-server — de dev-server meet ongeminificeerde modules en gaf misleidend hoge cijfers, tot 4564 ms voor partijdetail):
+
+| Scherm | Tijd tot bruikbaar | API-calls |
+| --- | --- | --- |
+| Hub (incl. Vandaag-widget) | 353 ms | 15 |
+| Kelderdashboard | 317 ms | 6 |
+| Tanklijst | 269 ms | 5 |
+| Voorraad | 311 ms | 5 |
+| Accijnsoverzicht | 318 ms | 10 |
+| Jaaroverzicht | 377 ms | 8 |
+| Perceelkaart | 366 ms | 9 |
+| Partijdetail | 565 ms | 16 |
+
+**Geen enkel scherm zit warm boven de 2 seconden.** De 2-secondengrens uit de opdracht wordt nergens overschreden.
+
+**Wél gevonden — twee dingen die de tabel niet laat zien:**
+
+1. **Koud laden duurt 4823 ms.** Dat is de eerste keer laden op een apparaat (of na een cacheleegmaking): 1027 KB JavaScript over 29 bestanden. Op localhost is dat instant en verdwijnt het in de ruis; op een telefoon met matig bereik in de wijngaard is dit de enige meting die telt. **Niet opgelost** — bundelgrootte terugbrengen raakt de routestructuur en de grafiekbibliotheken (recharts alleen al 384 KB), en dat is geen ingreep om vlak voor het seizoen te doen. Staat als risico in het auditrapport. Verzachtende omstandigheid: als PWA met service worker gebeurt dit één keer per apparaat, niet per dag.
+
+2. **8 van de 22 API-calls op de hub waren exacte duplicaten** — `app_instellingen` 5×, `regelgeving_instellingen` 3×, `voorraad_flessen` 2×. Elke signaalproducent haalde dezelfde instellingenlijst zelfstandig op. Dit was eerder onzichtbaar doordat PocketBase's auto-cancellation ze wegkaapte; sinds de `requestKey: null`-fix (Fase 10) vuurden ze allemaal echt af. De fix voor het ene probleem maakte het andere zichtbaar.
+
+**Fix voor 2**: `deelVerzoek()` in `src/lib/data.ts` — gelijktijdige aanroepers delen één lopend verzoek in plaats van elkaar te annuleren (oude gedrag) of te dupliceren (nieuwe gedrag). Zelfde patroon als het bestaande `pingInFlight`. Toegepast op `fetchAppInstellingen`, `fetchRegelgevingInstellingen` en `fetchVoorraadFlessen` (die laatste met het filter in de sleutel, anders krijgen verschillende filters elkaars antwoord). Bewust géén cache met houdbaarheid: de bundeling geldt alleen zolang het verzoek loopt, dus er kan geen verouderde data blijven plakken.
+
+**Geverifieerd in de productiebuild**: hub van **22 naar 15 calls**, alle duplicaten weg, identieke schermweergave (69 rijen, 16 tanks in gebruik · 3469 L, 2631 flessen). 4 nieuwe tests in `src/lib/deel-verzoek.test.ts` (bundelen, sleutelscheiding, geen caching na afronding, foutafhandeling zonder blokkade); suite nu 69 tests groen.
