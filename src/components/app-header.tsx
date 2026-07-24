@@ -51,7 +51,7 @@ export function AppHeader({ title, subtitle, back, right }: AppHeaderProps) {
         <Link
           to="/zoeken"
           aria-label="Zoeken in alle registraties"
-          className="flex h-12 w-10 items-center justify-center text-nav-foreground"
+          className="flex h-12 w-11 items-center justify-center text-nav-foreground"
         >
           <Search className="h-5 w-5" />
         </Link>

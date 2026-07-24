@@ -269,6 +269,25 @@ function Perceelkaart() {
           ⚡ Snelle meting — Brix in 3 tikken
         </Link>
 
+        {/* Fase 11 Blok 3: oogst en spuitregistratie waren alleen bereikbaar via
+            het dashboard of de instellingen — twee kijkschermen. Het zijn juist
+            de twee registraties die in het seizoen buiten worden gedaan, en
+            werkuren is bovendien de wettelijk verplichte spuitregistratie. */}
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            to="/oogst"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-sm font-medium"
+          >
+            🍇 Oogst registreren
+          </Link>
+          <Link
+            to="/werkrapport"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-sm font-medium"
+          >
+            🕒 Werk & spuiten
+          </Link>
+        </div>
+
         {/* Weergave-toggle (Fase 7 Blok B) */}
         <div className="flex flex-wrap gap-1.5">
           {WEERGAVEN.map((w) => (
@@ -276,7 +295,7 @@ function Perceelkaart() {
               key={w.key}
               type="button"
               onClick={() => setWeergave(w.key)}
-              className={`h-9 rounded-lg border px-3 text-xs font-medium ${
+              className={`h-11 rounded-lg border px-3 text-xs font-medium ${
                 weergave === w.key
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card"
@@ -287,7 +306,7 @@ function Perceelkaart() {
           ))}
           <Link
             to="/bodem"
-            className="ml-auto flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium"
+            className="ml-auto flex h-11 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium"
           >
             + Bodemobservatie
           </Link>

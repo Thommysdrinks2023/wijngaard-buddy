@@ -119,7 +119,7 @@ export function VandaagWidget() {
         >
           <div className="flex items-start gap-2">
             {s.link ? (
-              <Link to={s.link} className="min-w-0 flex-1 hover:underline">
+              <Link to={s.link} className="flex min-w-0 flex-1 items-center py-2 hover:underline">
                 {s.titel}
               </Link>
             ) : (
@@ -129,7 +129,7 @@ export function VandaagWidget() {
               type="button"
               aria-label="Waarom zie ik dit?"
               onClick={() => toggle(s.id)}
-              className="mt-0.5 shrink-0 rounded p-0.5 text-muted-foreground hover:bg-black/5"
+              className="-my-2 flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-black/5"
             >
               <ChevronDown
                 className={`h-4 w-4 transition-transform ${open.has(s.id) ? "rotate-180" : ""}`}
@@ -146,7 +146,7 @@ export function VandaagWidget() {
                   snoozeTot: format(addDays(new Date(), SNOOZE_DAGEN), "yyyy-MM-dd"),
                 })
               }
-              className="mt-0.5 shrink-0 rounded p-0.5 text-muted-foreground hover:bg-black/5 disabled:opacity-50"
+              className="-my-2 flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-black/5 disabled:opacity-50"
             >
               <Clock className="h-4 w-4" />
             </button>
@@ -155,7 +155,7 @@ export function VandaagWidget() {
               aria-label="Niet meer tonen"
               disabled={statusM.isPending}
               onClick={() => statusM.mutate({ signaalId: s.id, actie: "genegeerd" })}
-              className="mt-0.5 shrink-0 rounded p-0.5 text-muted-foreground hover:bg-black/5 disabled:opacity-50"
+              className="-my-2 flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-black/5 disabled:opacity-50"
             >
               <X className="h-4 w-4" />
             </button>

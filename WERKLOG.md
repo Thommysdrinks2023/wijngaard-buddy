@@ -663,3 +663,39 @@ Waarom dit zwaar weegt: hetzelfde mechanisme geldt voor `oogst` en `werkuren`. D
 **Losse fix onderweg**: `flushSyncQueue()` deed zijn `health.check()` zonder `requestKey: null`. Een gelijktijdige `pingPb()` kon die annuleren, waarna de flush concludeerde dat de server offline was en de hele wachtrij liet staan terwijl er niets aan de hand was. Dit is de vierde keer dat dezelfde auto-cancellation-valkuil toeslaat (Fase 3, Fase 8, Fase 10, nu). Blok 6 gaat daarover.
 
 5 nieuwe tests in `src/lib/sync-idempotentie.test.ts`; suite nu 74 tests groen.
+
+### Blok 3 — Invoersnelheid in het veld
+
+**Meting: tikdoelen (44×44 CSS-px, WCAG 2.5.5).** Gemeten in de productiebuild op mobiel formaat (375×812) met een script dat elk klikbaar element opmeet.
+
+| Scherm | Te klein vóór | Te klein na |
+| --- | --- | --- |
+| Hub (Vandaag-widget) | 7 | **0** |
+| /snel | 1 | 0 |
+| /oogst | 4 | 0 |
+| /rij/…/planten | 2 | 0 |
+
+De ergste waren de knoppen in de Vandaag-widget: **20×20 px**, drie naast elkaar, waarvan er één een signaal permanent verbergt. Dat is werk van mijzelf uit fase 10 en had daar al opgemerkt moeten worden. Verder de seizoenswisselaar (36×36) — één gedeeld component dat op **13 schermen** staat — en het zoekicoon in de koptekst (40 px breed, op élk scherm).
+
+**Niet opgelost, wel gemeten**: op de perceelkaart zijn de 69 rijbalken 5 px breed. Dat is geen stijlfout maar rekenkunde: 375 px gedeeld door 69 rijen. Een rij aantikken op een telefoon is daarmee onbetrouwbaar. Er zijn twee werkende alternatieven (QR-scan op de rijpaal, en zoeken), dus de functie is niet geblokkeerd. Een echte oplossing is zoom/pan of een rijenlijst — dat is een ontwerpkeuze voor Thomas, niet iets om vlak voor het seizoen in te bouwen.
+
+**Meting: aantal schermwissels tot de eerste invoer.** Hier zat de grootste vondst, en die is structureel:
+
+De navigatiebalk van de wijngaardmodule bevatte zeven items — Home, Kaart, Seizoen, Steekproeven, Dashboard, Grafieken, Meer — en daarvan is er **geen enkele een invoeractie**. Vijf van de zeven zijn kijkschermen. Om iets vast te leggen moest je eerst door een scherm heen dat voor iets anders bedoeld is:
+
+| Actie | Route ernaartoe | Schermwissels |
+| --- | --- | --- |
+| Brix-meting | Home → Kaart → Snelle meting | 3 |
+| Oogst registreren | Home → Dashboard → tegel Oogst | 3 |
+| Werk/spuiten vastleggen | Home → Dashboard → tegel Werk | 3 |
+| Gezondheid melden | Home → Dashboard → tegel Gezondheid | 3 |
+
+Oogst en werkuren waren zelfs vanuit géén enkel veldscherm bereikbaar — alleen via het dashboard (statistiek) of de instellingen. Werkuren is de spuitregistratie, wettelijk verplicht.
+
+**Drie reparaties:**
+
+1. **Tikdoelen** — seizoenswisselaar naar 44×44 (raakt 13 schermen), zoekicoon naar 44 breed (raakt alle schermen), Vandaag-widget-knoppen van 20×20 naar 44×44, terugknop op het plantenscherm naar 44 hoog, filterchips op de perceelkaart naar 44 hoog.
+2. **"Meten" in de navigatiebalk** — `/snel` staat nu direct in de wijngaardbalk, in plaats van "Grafiek". Brix-meting: van 3 schermwissels naar 1. Grafieken blijven bereikbaar via Meer. *Dit is de enige wijziging in dit blok waar Thomas een mening over kan hebben; het is één regel in `bottom-nav.tsx` en zo teruggedraaid.*
+3. **Oogst en spuitregistratie op de perceelkaart** — twee knoppen naast de bestaande "Snelle meting"-knop, in het scherm waar je in het veld toch al bent. Van 3 schermwissels via het dashboard naar 2, en belangrijker: ze zijn nu vindbaar zonder te weten dat ze achter "Dash" of "Meer" zitten.
+
+**Dubbel indienen** was al goed afgedekt (zie Blok 2, test 4) — daar was niets te repareren.

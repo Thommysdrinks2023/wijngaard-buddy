@@ -4,7 +4,7 @@ import {
   Map,
   Calendar,
   Settings,
-  LineChart,
+  Zap,
   ClipboardList,
   Home,
   Wine,
@@ -27,13 +27,17 @@ interface NavItem {
 // Elke module heeft een eigen navigatiebalk: in de Wijngaard geen Kelder-links
 // en andersom. "Home" brengt je altijd terug naar de modulekiezer op /.
 // De hub zelf toont geen balk — dat scherm ís het menu.
+// Fase 11 Blok 3: "Grafiek" is vervangen door "Meten" (/snel). De balk bevatte
+// vijf kijkschermen en geen enkele invoeractie, terwijl invoeren is wat er in
+// het veld gebeurt — een Brix-meting kostte drie tikken (Home → Kaart → Snelle
+// meting) voor je het eerste veld zag. Grafieken blijven bereikbaar via Meer.
 const WIJNGAARD_ITEMS: NavItem[] = [
   { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/perceelkaart", label: "Kaart", icon: Map },
+  { to: "/snel", label: "Meten", icon: Zap },
   { to: "/seizoen", label: "Seizoen", icon: Calendar },
   { to: "/steekproeven", label: "Steek", icon: ClipboardList },
   { to: "/dashboard", label: "Dash", icon: BarChart3 },
-  { to: "/grafieken", label: "Grafiek", icon: LineChart },
   { to: "/instellingen", label: "Meer", icon: Settings },
 ];
 
