@@ -1,7 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Signaal } from "./signalen";
 
-vi.mock("./data", () => ({ isIngelogd: vi.fn(() => true), getPb: vi.fn() }));
+vi.mock("./data", () => ({
+  isIngelogd: vi.fn(() => true),
+  getPb: vi.fn(),
+  // Fase 13 Blok B: de wachttijd-producent trekt via fetchMiddelen/fetchWerkuren
+  // ook haalLijst en fetchRijen aan. Zonder deze regels valt de hele testrun om
+  // met een unhandled rejection terwijl de tests zelf groen lijken.
+  haalLijst: vi.fn(() => Promise.resolve([])),
+  fetchRijen: vi.fn(() => Promise.resolve([])),
+  ensureOnline: vi.fn(() => Promise.resolve(true)),
+  deelVerzoek: vi.fn((_s: string, maak: () => unknown) => maak()),
+}));
 vi.mock("./materieel-data", () => ({
   fetchOnderhoud: vi.fn(),
   fetchMaterieel: vi.fn(),

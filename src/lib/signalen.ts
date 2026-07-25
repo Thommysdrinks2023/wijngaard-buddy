@@ -12,6 +12,10 @@ import { fetchRegelgevingInstellingen, REGELGEVING_SLEUTELS } from "./regelgevin
 import { fetchPartijen } from "./partijen-data";
 import { fetchKelderlog, fetchVoorraadFlessen } from "./kelder-data";
 import { APP_INSTELLING_SLEUTELS, fetchAppInstellingen, vindWaarde } from "./app-instellingen-data";
+import { fetchMiddelen } from "./middelen-data";
+import { fetchWerkuren } from "./extra-data";
+import { fetchRijen } from "./data";
+import { berekenWachttijden, omschrijfWachttijd, type RijWachttijd } from "./wachttijd";
 import { addDays, format } from "date-fns";
 
 export type SignaalErnst = "kritiek" | "waarschuwing" | "info";
@@ -234,6 +238,57 @@ export async function voorraadBijnaOpSignalen(): Promise<Signaal[]> {
   return signalen;
 }
 
+// ============= Rijen in spuitwachttijd (Fase 13 Blok B) =============
+// De enige signaalsoort met juridische gevolgen: druiven binnen de
+// veiligheidstermijn maken de wijn onverkoopbaar. Verdwijnt vanzelf zodra de
+// termijn verstreken is, want berekenWachttijden() geeft alleen lopende
+// termijnen terug.
+export async function wachttijdSignalen(): Promise<Signaal[]> {
+  if (!isIngelogd()) return [];
+  const [werkuren, middelen, rijen] = await Promise.all([
+    fetchWerkuren(),
+    fetchMiddelen(),
+    fetchRijen(),
+  ]);
+  const vandaag = format(new Date(), "yyyy-MM-dd");
+  const perRij = berekenWachttijden(
+    werkuren,
+    middelen,
+    rijen.map((r) => r.id),
+    vandaag,
+  );
+  if (perRij.size === 0) return [];
+
+  const nummerVan = new Map(rijen.map((r) => [r.id, r.rijnummer]));
+  // Eén signaal per vrijgavedatum in plaats van per rij: bij een bespuiting
+  // van de hele wijngaard zouden anders 69 identieke regels in de widget
+  // staan en is hij onleesbaar.
+  const perDatum = new Map<string, string[]>();
+  const bepalendPerDatum = new Map<string, RijWachttijd>();
+  for (const w of perRij.values()) {
+    if (!perDatum.has(w.vrijVanaf)) perDatum.set(w.vrijVanaf, []);
+    perDatum.get(w.vrijVanaf)!.push(String(nummerVan.get(w.rijId) ?? "?"));
+    if (!bepalendPerDatum.has(w.vrijVanaf)) bepalendPerDatum.set(w.vrijVanaf, w);
+  }
+
+  return [...perDatum.entries()].map(([vrijVanaf, rijnummers]) => {
+    const voorbeeld = bepalendPerDatum.get(vrijVanaf)!;
+    const b = voorbeeld.bepalend;
+    const rijTekst = b.heleWijngaard
+      ? "Hele wijngaard"
+      : `Rij ${rijnummers.sort((x, y) => Number(x) - Number(y)).join(", ")}`;
+    return {
+      id: `wachttijd-${vrijVanaf}`,
+      bron: "wachttijd",
+      ernst: "waarschuwing" as SignaalErnst,
+      titel: `${rijTekst}: niet oogsten vóór ${vrijVanaf} (nog ${voorbeeld.dagenTeGaan} ${voorbeeld.dagenTeGaan === 1 ? "dag" : "dagen"})`,
+      waarom: omschrijfWachttijd(voorbeeld, b.heleWijngaard ? undefined : Number(rijnummers[0])),
+      link: "/perceelkaart",
+      datum: vrijVanaf,
+    };
+  });
+}
+
 const PRODUCENTEN: SignaalProducent[] = [
   onderhoudSignalen,
   backupWaarschuwingSignaal,
@@ -241,6 +296,7 @@ const PRODUCENTEN: SignaalProducent[] = [
   kelderlogTaakSignalen,
   kritiekeInzichtSignalen,
   voorraadBijnaOpSignalen,
+  wachttijdSignalen,
 ];
 
 // Verzamelt alle signalen; een falende producent blokkeert de rest nooit

@@ -133,6 +133,13 @@ export interface OogstRecord {
   notitie?: string;
   ingevoerd_door?: string;
   partij?: string | null; // partij id — koppeling wijngaard → kelder
+  /**
+   * Fase 13 Blok B — leeg tenzij er binnen de veiligheidstermijn is geoogst.
+   * Bevat dan wie het wanneer heeft bevestigd, met middel, spuitdatum, termijn
+   * en bron. Oogsten binnen de termijn wordt niet geblokkeerd, maar moet wel
+   * navolgbaar zijn: dit is de regel die een controleur zou willen zien.
+   */
+  wachttijd_bevestigd?: string;
   created: string;
 }
 
@@ -150,6 +157,7 @@ const oogstEntity = maakEntity<OogstRecord>({
     notitie: r["notitie"] ?? "",
     ingevoerd_door: r["ingevoerd_door"] ?? "",
     partij: r["partij"] || null,
+    wachttijd_bevestigd: r["wachttijd_bevestigd"] ?? "",
     created: r["created"],
   }),
 });

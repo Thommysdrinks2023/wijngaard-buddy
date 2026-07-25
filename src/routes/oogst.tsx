@@ -5,7 +5,14 @@ import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
 import { fetchRijen, isIngelogd } from "@/lib/data";
-import { createOogstRecord, fetchOogst, VERWACHTE_KG_PER_PLANT } from "@/lib/extra-data";
+import {
+  createOogstRecord,
+  fetchOogst,
+  fetchWerkuren,
+  VERWACHTE_KG_PER_PLANT,
+} from "@/lib/extra-data";
+import { fetchMiddelen } from "@/lib/middelen-data";
+import { berekenWachttijden, omschrijfWachttijd } from "@/lib/wachttijd";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerOogst } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
@@ -59,6 +66,8 @@ function OogstPage() {
   const [notitie, setNotitie] = useState("");
   const [fouten, setFouten] = useState<Record<string, string>>({});
   const kgRef = useRef<HTMLInputElement>(null);
+  const [toonWachttijdBevestiging, setToonWachttijdBevestiging] = useState(false);
+  const [wachttijdBevestigd, setWachttijdBevestigd] = useState(false);
 
   const partijenJaar = useMemo(
     () => (partijenQ.data ?? []).filter((p) => p.jaargang === jaar),
@@ -81,6 +90,24 @@ function OogstPage() {
 
   const gekozenRij = rijId ? rijenById.get(rijId) : undefined;
 
+  // Fase 13 Blok B — veiligheidstermijn per rij. Blokkeert niet (op een
+  // plukdag moet je door kunnen), maar dwingt wél een bewuste keuze af en legt
+  // die vast in het record: zonder dat is de afweging achteraf niet te
+  // reconstrueren, en juist dát wil een controleur zien.
+  const werkurenQ = useQuery({ queryKey: ["werkuren"], queryFn: fetchWerkuren });
+  const middelenQ = useQuery({ queryKey: ["middelen"], queryFn: fetchMiddelen });
+  const wachttijden = useMemo(
+    () =>
+      berekenWachttijden(
+        werkurenQ.data ?? [],
+        middelenQ.data ?? [],
+        (rijenQ.data ?? []).map((r) => r.id),
+        format(new Date(), "yyyy-MM-dd"),
+      ),
+    [werkurenQ.data, middelenQ.data, rijenQ.data],
+  );
+  const wachttijdVanGekozenRij = rijId ? (wachttijden.get(rijId) ?? null) : null;
+
   const m = useMutation({
     mutationFn: async () => {
       if (!gekozenRij) throw new Error("Kies een rij");
@@ -93,6 +120,10 @@ function OogstPage() {
         notitie,
         ingevoerd_door: invoerder,
         partij: partijId || null,
+        wachttijd_bevestigd: wachttijdVanGekozenRij
+          ? `Geoogst binnen de veiligheidstermijn, bevestigd door ${invoerder} op ${format(new Date(), "yyyy-MM-dd")}. ` +
+            omschrijfWachttijd(wachttijdVanGekozenRij, gekozenRij.rijnummer)
+          : "",
       });
     },
     onSuccess: () => {
@@ -108,6 +139,7 @@ function OogstPage() {
       const rijen = rijenQ.data ?? [];
       const idx = rijen.findIndex((r) => r.id === rijId);
       const volgende = idx >= 0 ? rijen[idx + 1] : undefined;
+      setWachttijdBevestigd(false); // per rij opnieuw bevestigen
       if (volgende) {
         setRijId(volgende.id);
         toast.success(`Oogst geregistreerd ✓ — nu rij ${volgende.rijnummer}`);
@@ -133,6 +165,14 @@ function OogstPage() {
       return;
     }
     setFouten({});
+    // Veiligheidstermijn: één expliciete bevestiging per registratie. Bewust
+    // géén blokkade — er kunnen goede redenen zijn (bijv. een bespuiting die
+    // deze rij niet echt raakte) — maar wel een bewuste handeling die in het
+    // record terechtkomt.
+    if (wachttijdVanGekozenRij && !wachttijdBevestigd) {
+      setToonWachttijdBevestiging(true);
+      return;
+    }
     m.mutate();
   };
 
@@ -230,6 +270,9 @@ function OogstPage() {
                 onChange={(e) => {
                   setRijId(e.target.value);
                   wisFout("rij");
+                  // bevestiging geldt per rij: hem laten meelopen naar de
+                  // volgende rij zou de waarborg waardeloos maken
+                  setWachttijdBevestigd(false);
                 }}
                 className={`${veldClass} ${fouten.rij ? "border-destructive" : ""}`}
               >
@@ -268,6 +311,33 @@ function OogstPage() {
             <p className="text-xs text-muted-foreground">
               Ras: <strong>{gekozenRij.ras}</strong> · {gekozenRij.aantal_planten} planten
             </p>
+          )}
+
+          {/* Fase 13 Blok B — veiligheidstermijn. Prominent, want dit is het
+              enige scherm waar een verkeerde keuze de wijn onverkoopbaar maakt. */}
+          {wachttijdVanGekozenRij && (
+            <div
+              role="alert"
+              className="rounded-xl border-2 border-destructive bg-destructive/10 px-3 py-2.5"
+            >
+              <p className="text-sm font-semibold text-destructive">
+                ⚠️ Deze rij staat nog in de veiligheidstermijn
+              </p>
+              <p className="mt-1 text-xs text-destructive/90">
+                {omschrijfWachttijd(wachttijdVanGekozenRij, gekozenRij?.rijnummer)}
+              </p>
+              {wachttijdVanGekozenRij.alleBronnen.length > 1 && (
+                <p className="mt-1 text-[11px] text-destructive/80">
+                  Er zijn {wachttijdVanGekozenRij.alleBronnen.length} bespuitingen die deze rij
+                  raken; de langst lopende bepaalt de datum.
+                </p>
+              )}
+              {wachttijdBevestigd && (
+                <p className="mt-1.5 text-[11px] font-medium text-destructive">
+                  Bevestigd — dit wordt bij de oogstregistratie vastgelegd.
+                </p>
+              )}
+            </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
@@ -339,6 +409,46 @@ function OogstPage() {
             {m.isPending && <Loader2 className="h-5 w-5 animate-spin" />}
             Oogst opslaan
           </button>
+
+          {/* Fase 13 Blok B — bevestiging bij oogst binnen de veiligheidstermijn.
+              Geen blokkade, wel een bewuste handeling die wordt vastgelegd. */}
+          {toonWachttijdBevestiging && wachttijdVanGekozenRij && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-sm rounded-2xl border border-destructive bg-card p-5 shadow-xl">
+                <h3 className="text-base font-bold text-destructive">
+                  Oogsten binnen de veiligheidstermijn?
+                </h3>
+                <p className="mt-2 text-sm text-foreground">
+                  {omschrijfWachttijd(wachttijdVanGekozenRij, gekozenRij?.rijnummer)}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Druiven die binnen de termijn geplukt zijn, kunnen de wijn onverkoopbaar maken. Ga
+                  je door, dan wordt deze bevestiging bij de oogstregistratie vastgelegd — met
+                  middel, datum en termijn.
+                </p>
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWachttijdBevestigd(true);
+                      setToonWachttijdBevestiging(false);
+                      m.mutate();
+                    }}
+                    className="h-12 w-full rounded-xl bg-destructive text-sm font-semibold text-destructive-foreground"
+                  >
+                    Ja, toch registreren
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setToonWachttijdBevestiging(false)}
+                    className="h-12 w-full rounded-xl border border-input bg-card text-sm font-medium"
+                  >
+                    Annuleren
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Opbrengst vs verwachting per ras */}

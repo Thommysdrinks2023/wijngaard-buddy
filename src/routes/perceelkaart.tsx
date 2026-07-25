@@ -1,7 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { differenceInDays, parseISO } from "date-fns";
+import { differenceInDays, format, parseISO } from "date-fns";
+import { fetchWerkuren } from "@/lib/extra-data";
+import { fetchMiddelen } from "@/lib/middelen-data";
+import { berekenWachttijden } from "@/lib/wachttijd";
 import {
   fetchFenologie,
   fetchMetingen,
@@ -95,6 +98,21 @@ function Perceelkaart() {
   });
   const [weergave, setWeergave] = useState<Weergave>("ras");
   const bodemPerRij = useMemo(() => laatstePerRij(bodemQ.data ?? []), [bodemQ.data]);
+
+  // Fase 13 Blok B — welke rijen staan nog in de veiligheidstermijn na een
+  // bespuiting? Die worden op de kaart gemarkeerd; hier mag niet geplukt worden.
+  const werkurenQ = useQuery({ queryKey: ["werkuren"], queryFn: fetchWerkuren });
+  const middelenQ = useQuery({ queryKey: ["middelen"], queryFn: fetchMiddelen });
+  const wachttijden = useMemo(
+    () =>
+      berekenWachttijden(
+        werkurenQ.data ?? [],
+        middelenQ.data ?? [],
+        (rijenQ.data ?? []).map((r) => r.id),
+        format(new Date(), "yyyy-MM-dd"),
+      ),
+    [werkurenQ.data, middelenQ.data, rijenQ.data],
+  );
 
   const recencyByRij = useMemo(() => {
     const map = new Map<string, { recentMeting: boolean; recentZiekteSchade: boolean }>();
@@ -269,6 +287,24 @@ function Perceelkaart() {
           ⚡ Snelle meting — Brix in 3 tikken
         </Link>
 
+        {/* Fase 13 Blok B — rijen waar nog niet geplukt mag worden. Boven de
+            kaart, want hier kijk je als je de plukvolgorde bepaalt. */}
+        {wachttijden.size > 0 && (
+          <div
+            role="alert"
+            className="rounded-xl border-2 border-destructive bg-destructive/10 px-3 py-2.5"
+          >
+            <p className="text-sm font-semibold text-destructive">
+              ⚠️ {wachttijden.size} {wachttijden.size === 1 ? "rij staat" : "rijen staan"} nog in de
+              veiligheidstermijn
+            </p>
+            <p className="mt-1 text-xs text-destructive/90">
+              Gestreepte rijen op de kaart: hier niet plukken. Vrij vanaf{" "}
+              {[...new Set([...wachttijden.values()].map((w) => w.vrijVanaf))].sort().join(" / ")}.
+            </p>
+          </div>
+        )}
+
         {/* Fase 11 Blok 3: oogst en spuitregistratie waren alleen bereikbaar via
             het dashboard of de instellingen — twee kijkschermen. Het zijn juist
             de twee registraties die in het seizoen buiten worden gedaan, en
@@ -349,7 +385,12 @@ function Perceelkaart() {
                   onClick={() => navigate({ to: "/rij/$rijId", params: { rijId: r.id } })}
                   tabIndex={0}
                   role="button"
-                  aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
+                  aria-label={
+                    `Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten` +
+                    (wachttijden.has(r.id)
+                      ? ` — LET OP: veiligheidstermijn tot ${wachttijden.get(r.id)!.vrijVanaf}`
+                      : "")
+                  }
                 >
                   {/* Tap target — extra breed voor gebruik met handschoenen in het veld */}
                   <line
@@ -370,6 +411,21 @@ function Perceelkaart() {
                     strokeWidth="4"
                     strokeLinecap="round"
                   />
+                  {/* Fase 13 Blok B — rij in veiligheidstermijn: hier mag nog
+                      niet geplukt worden. Streepjespatroon over de rij heen,
+                      zodat het los staat van de gekozen kleurweergave. */}
+                  {wachttijden.has(r.id) && (
+                    <line
+                      x1={x}
+                      y1={yTop}
+                      x2={x}
+                      y2={yBottom}
+                      stroke="var(--destructive)"
+                      strokeWidth="4"
+                      strokeDasharray="3 3"
+                      strokeLinecap="round"
+                    />
+                  )}
                   {/* Status indicator aan de tip (onderkant) */}
                   {rec?.recentZiekteSchade && (
                     <circle

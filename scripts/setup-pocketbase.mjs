@@ -1292,6 +1292,13 @@ async function main() {
   // Kommagescheiden veldnamen; leeg bij analyses van vóór deze versie.
   await ensureVelden("analyses", [{ name: "gemeten_velden", type: "text" }]);
 
+  // Fase 13 Blok B — oogsten binnen de veiligheidstermijn wordt niet
+  // geblokkeerd (op een plukdag moet je door kunnen), maar wél vastgelegd:
+  // wie heeft wat bevestigd, met welk middel, welke termijn en welke bron.
+  // Zonder dat veld is de afweging achteraf niet te reconstrueren, en juist
+  // dát is wat een controleur zou willen zien.
+  await ensureVelden("oogst", [{ name: "wachttijd_bevestigd", type: "text" }]);
+
   // 3a-9. Seeds: producenten en tankinventaris (create-only, nooit overschrijven)
   {
     const bestaandeProducenten = await api("/api/collections/producenten/records?perPage=200");
