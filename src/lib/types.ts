@@ -316,6 +316,13 @@ export interface KelderlogRegel {
   foto?: string;
   ingevoerd_door?: string;
   created: string;
+  // Fase 13 Blok C — alleen gevuld bij regels waarvan de notitie met "TAAK:"
+  // begint. De afronding staat náást de notitie; die wordt nooit herschreven.
+  taak_status?: string; // "" | "open" | "afgerond"
+  taak_afgerond_op?: string;
+  taak_afgerond_door?: string;
+  /** "<soort>:<veld>", bijv. "analyse:so2_vrij" — zie src/lib/taken.ts */
+  taak_sluit_bij?: string;
 }
 
 // ============= Partij-toevoegingen (kelderuitbreiding) =============

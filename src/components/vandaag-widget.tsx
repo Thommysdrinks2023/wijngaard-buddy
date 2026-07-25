@@ -22,7 +22,8 @@ import {
   fetchAppInstellingen,
   vindWaarde,
 } from "@/lib/app-instellingen-data";
-import { ChevronDown, Clock, ListPlus, X } from "lucide-react";
+import { rondTaakAf } from "@/lib/kelder-data";
+import { Check, ChevronDown, Clock, ListPlus, X } from "lucide-react";
 import { addDays, format } from "date-fns";
 
 const SNOOZE_DAGEN = 7;
@@ -69,6 +70,19 @@ export function VandaagWidget() {
     }) => zetSignaalStatus(signaalId, actie, snoozeTot),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["signaal-status"] }),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Kon dit niet opslaan"),
+  });
+
+  // Fase 13 Blok C — taak afvinken. Schrijft alleen de statusvelden op de
+  // kelderlogregel; de oorspronkelijke notitie blijft ongemoeid.
+  const afvinkM = useMutation({
+    mutationFn: ({ kelderlogId }: { kelderlogId: string }) =>
+      rondTaakAf(kelderlogId, invoerder, format(new Date(), "yyyy-MM-dd")),
+    onSuccess: () => {
+      toast.success("Taak afgerond ✓");
+      qc.invalidateQueries({ queryKey: ["signalen"] });
+      qc.invalidateQueries({ queryKey: ["kelderlog"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Kon de taak niet afronden"),
   });
 
   // Fase 10 Blok 5: signaal promoveren tot taak via de bestaande
@@ -124,6 +138,20 @@ export function VandaagWidget() {
               </Link>
             ) : (
               <span className="min-w-0 flex-1">{s.titel}</span>
+            )}
+            {/* Fase 13 Blok C — een taak moet afgerond kunnen worden. Zonder
+                deze knop waren uitstellen en wegklikken de enige uitwegen, en
+                dat leert je meldingen weg te tikken in plaats van te doen. */}
+            {s.bronRecord?.collectie === "kelderlog" && (
+              <button
+                type="button"
+                aria-label="Taak afvinken als gedaan"
+                disabled={afvinkM.isPending}
+                onClick={() => afvinkM.mutate({ kelderlogId: s.bronRecord!.id })}
+                className="-my-2 flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-black/5 disabled:opacity-50"
+              >
+                <Check className="h-4 w-4" />
+              </button>
             )}
             <button
               type="button"

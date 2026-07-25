@@ -1299,6 +1299,24 @@ async function main() {
   // dát is wat een controleur zou willen zien.
   await ensureVelden("oogst", [{ name: "wachttijd_bevestigd", type: "text" }]);
 
+  // Fase 13 Blok C — taken kunnen afronden. Een taak is een kelderlogregel
+  // waarvan de notitie met "TAAK:" begint (leidend begrip; agent_acties is
+  // slechts het bevestigingsmechanisme dat zo'n regel aanmaakt). De afronding
+  // komt in APARTE velden ernaast: de oorspronkelijke notitie wordt nooit
+  // herschreven. Kelderlog is bewust wél wijzigbaar — anders dan `tankboek`,
+  // dat het wettelijke register is; kelderlog is een werklogboek.
+  //
+  // `taak_sluit_bij` maakt automatisch afronden algemeen in plaats van een
+  // SO₂-uitzondering: "<soort>:<veld>", bijv. "analyse:so2_vrij" betekent
+  // "sluit zodra er voor deze partij een analyse is mét vrij SO₂ gemeten,
+  // op of ná de taakdatum".
+  await ensureVelden("kelderlog", [
+    { name: "taak_status", type: "select", maxSelect: 1, values: ["open", "afgerond"] },
+    { name: "taak_afgerond_op", type: "text" },
+    { name: "taak_afgerond_door", type: "text" },
+    { name: "taak_sluit_bij", type: "text" },
+  ]);
+
   // 3a-9. Seeds: producenten en tankinventaris (create-only, nooit overschrijven)
   {
     const bestaandeProducenten = await api("/api/collections/producenten/records?perPage=200");

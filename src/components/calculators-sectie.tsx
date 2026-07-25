@@ -130,6 +130,8 @@ function useVoorstel(partijId: string, tankId: string | null) {
         notitie: string;
         datum?: string;
         actie?: "toevoeging" | "overig";
+        /** Fase 13 Blok C: sluitregel voor taken, bijv. "analyse:so2_vrij". */
+        taak_sluit_bij?: string;
       }[],
     ) => {
       for (const r of regels) {
@@ -143,6 +145,7 @@ function useVoorstel(partijId: string, tankId: string | null) {
           eenheid: r.eenheid,
           notitie: r.notitie,
           ingevoerd_door: invoerder,
+          taak_sluit_bij: r.taak_sluit_bij,
         });
       }
     },
@@ -255,6 +258,10 @@ function So2Calc({
                     actie: "overig",
                     datum: format(addDays(new Date(), dagen), "yyyy-MM-dd"),
                     notitie: `TAAK: na-meting SO₂ (gepland door SO₂-calculator op ${format(new Date(), "yyyy-MM-dd")})`,
+                    // Fase 13 Blok C: deze taak sluit zichzelf zodra er voor
+                    // deze partij een analyse is waarin vrij SO₂ écht gemeten
+                    // is. Het werk dóén sluit de taak — niet het wegklikken.
+                    taak_sluit_bij: "analyse:so2_vrij",
                   },
                 ]);
               }}

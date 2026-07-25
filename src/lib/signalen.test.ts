@@ -22,7 +22,14 @@ vi.mock("./regelgeving-data", () => ({
   REGELGEVING_SLEUTELS: { agpDrempel: "agp_drempel_liters_per_jaar" },
 }));
 vi.mock("./partijen-data", () => ({ fetchPartijen: vi.fn() }));
-vi.mock("./kelder-data", () => ({ fetchKelderlog: vi.fn(), fetchVoorraadFlessen: vi.fn() }));
+vi.mock("./kelder-data", () => ({
+  fetchKelderlog: vi.fn(),
+  fetchVoorraadFlessen: vi.fn(),
+  // Fase 13 Blok C: de taakproducent leest analyses mee om te bepalen of een
+  // taak zichzelf al gesloten heeft.
+  fetchAnalyses: vi.fn(() => Promise.resolve([])),
+  rondTaakAf: vi.fn(),
+}));
 vi.mock("./app-instellingen-data", () => ({
   APP_INSTELLING_SLEUTELS: {
     backupWaarschuwingDagen: "backup_waarschuwing_dagen",

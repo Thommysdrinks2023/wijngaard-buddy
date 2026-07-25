@@ -348,7 +348,43 @@ function kelderlogFromPb(r: RecordModel): KelderlogRegel {
     foto: r["foto"] ? getPb()?.files.getURL(r, r["foto"]) : "",
     ingevoerd_door: r["ingevoerd_door"] ?? "",
     created: r["created"],
+    taak_status: r["taak_status"] ?? "",
+    taak_afgerond_op: r["taak_afgerond_op"] ?? "",
+    taak_afgerond_door: r["taak_afgerond_door"] ?? "",
+    taak_sluit_bij: r["taak_sluit_bij"] ?? "",
   };
+}
+
+/**
+ * Fase 13 Blok C — een taak afvinken. Schrijft uitsluitend de status-velden;
+ * de oorspronkelijke notitie blijft ongemoeid, zodat er niets aan het
+ * werklogboek wordt herschreven.
+ */
+export async function rondTaakAf(
+  kelderlogId: string,
+  door: string,
+  datum: string,
+): Promise<KelderlogRegel> {
+  const pb = await pbOfFout();
+  logAudit("gewijzigd", "kelderlog", `taak afgerond · ${kelderlogId}`);
+  const r = await pb.collection("kelderlog").update(kelderlogId, {
+    taak_status: "afgerond",
+    taak_afgerond_op: datum,
+    taak_afgerond_door: door,
+  });
+  return kelderlogFromPb(r);
+}
+
+/** Een per ongeluk afgevinkte taak weer openzetten. */
+export async function heropenTaak(kelderlogId: string): Promise<KelderlogRegel> {
+  const pb = await pbOfFout();
+  logAudit("gewijzigd", "kelderlog", `taak heropend · ${kelderlogId}`);
+  const r = await pb.collection("kelderlog").update(kelderlogId, {
+    taak_status: "open",
+    taak_afgerond_op: "",
+    taak_afgerond_door: "",
+  });
+  return kelderlogFromPb(r);
 }
 
 export interface KelderlogFilter {
@@ -392,6 +428,11 @@ export interface KelderlogInput {
   eenheid?: KelderlogEenheid | null;
   notitie?: string;
   ingevoerd_door?: string;
+  /**
+   * Fase 13 Blok C — alleen bij taken ("TAAK:"-notitie): welke gebeurtenis
+   * sluit deze taak vanzelf? Formaat "<soort>:<veld>", bijv "analyse:so2_vrij".
+   */
+  taak_sluit_bij?: string;
 }
 
 export async function createKelderlog(input: KelderlogInput): Promise<KelderlogRegel> {

@@ -10,7 +10,27 @@ import { getPb, isIngelogd } from "./data";
 import { fetchMaterieel, fetchOnderhoud, onderhoudBinnenkort } from "./materieel-data";
 import { fetchRegelgevingInstellingen, REGELGEVING_SLEUTELS } from "./regelgeving-data";
 import { fetchPartijen } from "./partijen-data";
-import { fetchKelderlog, fetchVoorraadFlessen } from "./kelder-data";
+import { fetchAnalyses, fetchKelderlog, fetchVoorraadFlessen } from "./kelder-data";
+import {
+  bepaalTaakStatus,
+  isTaak,
+  omschrijfAchterstand,
+  type SluitGebeurtenis,
+  type TaakRegel,
+} from "./taken";
+import { meetwaarde, parseGemetenVelden, type MeetVeld } from "./meetwaarde";
+
+// Welke analysevelden kunnen een taak sluiten. Bewust een expliciete lijst:
+// zo is meteen zichtbaar waar het mechanisme op werkt.
+const ANALYSE_SLUITVELDEN: MeetVeld[] = [
+  "so2_vrij",
+  "so2_totaal",
+  "dichtheid_oechsle",
+  "ph",
+  "totaalzuur_g_l",
+  "restsuiker_g_l",
+  "alcohol_pct",
+];
 import { APP_INSTELLING_SLEUTELS, fetchAppInstellingen, vindWaarde } from "./app-instellingen-data";
 import { fetchMiddelen } from "./middelen-data";
 import { fetchWerkuren } from "./extra-data";
@@ -32,6 +52,13 @@ export interface Signaal {
   // De "waarom": een kant-en-klare string, opgebouwd uit dezelfde data die
   // het signaal detecteerde. Geen aparte call nodig om 'm te tonen.
   waarom: string;
+  /**
+   * Fase 13 — het record waar dit signaal over gaat. Nodig om een taak te
+   * kunnen afvinken (Blok C) en om naar het juiste detailscherm te linken
+   * (Blok D). Ontbreekt bij signalen die niet over één record gaan, zoals de
+   * backup-waarschuwing.
+   */
+  bronRecord?: { collectie: string; id: string };
   datum?: string; // yyyy-MM-dd, voor recentheid-sortering binnen dezelfde ernst
   taakVoorstel?: {
     actie_type: "kelderlog";
@@ -144,23 +171,48 @@ export async function agpSignaal(): Promise<Signaal[]> {
 // ligt of verstreken is.
 export async function kelderlogTaakSignalen(): Promise<Signaal[]> {
   if (!isIngelogd()) return [];
-  const kelderlog = await fetchKelderlog();
+  // Fase 13 Blok C: analyses meelezen, want een taak kan zichzelf sluiten
+  // zodra de bijbehorende meting is vastgelegd (zie src/lib/taken.ts).
+  const [kelderlog, analyses] = await Promise.all([fetchKelderlog(), fetchAnalyses()]);
   const vandaag = format(new Date(), "yyyy-MM-dd");
   const taakGrens = format(addDays(new Date(), 7), "yyyy-MM-dd");
+
+  const gebeurtenissen: SluitGebeurtenis[] = analyses.map((a) => ({
+    id: a.id,
+    soort: "analyse",
+    datum: a.datum,
+    partij: a.partij,
+    // alleen ECHT gemeten velden tellen als sluiter — een leeg PocketBase-veld
+    // komt als 0 terug en zou een taak anders ten onrechte afsluiten (Blok A)
+    velden: new Set(
+      ANALYSE_SLUITVELDEN.filter(
+        (v) => meetwaarde(v, a[v], parseGemetenVelden(a.gemeten_velden)) !== null,
+      ),
+    ),
+  }));
+
   const signalen: Signaal[] = [];
   for (const r of kelderlog) {
-    if (!r.notitie?.startsWith("TAAK:")) continue;
+    if (!isTaak(r.notitie)) continue;
     if (r.datum > taakGrens) continue;
-    const verlopen = r.datum <= vandaag;
+    const status = bepaalTaakStatus(r as TaakRegel, gebeurtenissen, vandaag);
+    // Afgeronde taken verdwijnen — of dat nu met de hand of doordat het werk
+    // gedaan is. Dát was het hele punt: het werk dóén moet de taak sluiten.
+    if (status.afgerond) continue;
+    const teLaat = status.urgentie === "te_laat";
     signalen.push({
       id: `taak-${r.id}`,
       bron: "kelderlog_taak",
-      ernst: verlopen ? "waarschuwing" : "info",
-      titel: `${r.datum}: ${r.notitie.slice(5).trim()}`,
-      waarom: verlopen
-        ? `Deze taak stond gepland voor ${r.datum} — dat is vandaag of eerder.`
-        : `Deze taak staat gepland binnen 7 dagen (${r.datum}).`,
-      link: "/kelder",
+      ernst: teLaat ? "waarschuwing" : "info",
+      titel: `${status.omschrijving} — ${omschrijfAchterstand(status)}`,
+      waarom: teLaat
+        ? `Deze taak stond gepland voor ${r.datum} en is nu ${omschrijfAchterstand(status)}.` +
+          (r.taak_sluit_bij
+            ? ` Hij sluit vanzelf zodra de bijbehorende meting is vastgelegd (${r.taak_sluit_bij}).`
+            : "")
+        : `Deze taak staat gepland voor ${r.datum} (${omschrijfAchterstand(status)}).`,
+      link: r.partij ? `/kelder/partijen/${r.partij}` : "/kelder",
+      bronRecord: { collectie: "kelderlog", id: r.id },
       datum: r.datum,
     });
   }
