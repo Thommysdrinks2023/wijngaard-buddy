@@ -20,6 +20,23 @@ if (!baseUrl || !adminEmail || !adminPass) {
 }
 const base = baseUrl.replace(/\/+$/, "");
 
+// ---------------------------------------------------------------------------
+// Fase 12 — uitleesstand voor de schema-driftcontrole.
+//
+// Waarom dit hier zit en niet in een los bestand: dit script IS de bron van
+// waarheid voor het schema. Een tweede kopie van de definities zou meteen
+// gaan afwijken, en dan controleer je drift met een bron die zelf gedrift is.
+//
+// Zet DRIFT_DUMP=<pad.json> om het script alles te laten opschrijven wat het
+// zou willen inrichten, ZONDER iets te wijzigen: elke niet-GET-aanroep wordt
+// geblokkeerd. scripts/check-schema-drift.mjs leest die dump en vergelijkt hem
+// met de draaiende database. Zonder de variabele verandert er niets aan het
+// normale gedrag van dit script.
+const DRIFT_DUMP = process.env.DRIFT_DUMP || "";
+const droog = Boolean(DRIFT_DUMP);
+const driftDefinities = [];
+const driftVelden = [];
+
 const AUTH_RULE = "@request.auth.id != ''";
 // Leeg = geen restrictie (ook anonieme/niet-ingelogde clients mogen erbij).
 // Gebruikt voor de agent-collecties: de assistent werkt bewust ook zonder
@@ -257,6 +274,13 @@ const GEBRUIKERS = [
 let adminToken = "";
 
 async function api(path, { method = "GET", body, token = adminToken, form } = {}) {
+  // In de uitleesstand mag er niets gewijzigd worden. Lezen (GET) gaat gewoon
+  // door — de driftcontrole heeft de live staat nodig — maar elke schrijfactie
+  // wordt geblokkeerd en beantwoord met een onschuldige stub, zodat het script
+  // door kan lopen tot het einde en alle definities langskomen.
+  if (droog && method !== "GET" && !path.includes("auth-with-password")) {
+    return { id: "droog", fields: [], items: [] };
+  }
   const headers = {};
   if (token) headers.Authorization = token;
   if (body && !form) headers["Content-Type"] = "application/json";
@@ -289,6 +313,11 @@ function autodateFields() {
 
 // Voegt ontbrekende velden toe aan een bestaande collectie (schema-migratie)
 async function ensureVelden(collectionNaam, velden) {
+  // uitleesstand: opschrijven wat dit script aan velden verwacht, niets doen
+  if (droog) {
+    driftVelden.push({ collectie: collectionNaam, velden });
+    return;
+  }
   const col = await api(`/api/collections/${collectionNaam}`);
   const bestaande = new Set(col.fields.map((f) => f.name));
   const nieuwe = velden.filter((v) => !bestaande.has(v.name));
@@ -303,6 +332,18 @@ async function ensureVelden(collectionNaam, velden) {
 }
 
 async function ensureCollection(def) {
+  // Uitleesstand: de definitie vastleggen. Dit is precies het punt waar de
+  // drift ontstaat — hieronder wordt een bestaande collectie ongemoeid
+  // gelaten, dus wat hier in `def` staat is wat het schema ZOU moeten zijn,
+  // en dat wordt bij een bestaande collectie nergens afgedwongen.
+  if (droog) {
+    driftDefinities.push(def);
+    try {
+      return await api(`/api/collections/${def.name}`);
+    } catch {
+      return { id: "droog", name: def.name, fields: [] };
+    }
+  }
   try {
     const bestaand = await api(`/api/collections/${def.name}`);
     console.log(`  ✓ collectie "${def.name}" bestaat al`);
@@ -2123,7 +2164,30 @@ async function main() {
   console.log("\n✅ PocketBase volledig ingericht!");
 }
 
-main().catch((e) => {
-  console.error("\n❌ Fout:", e.message);
-  process.exit(1);
-});
+function schrijfDriftDump(onvolledig) {
+  writeFileSync(
+    DRIFT_DUMP,
+    JSON.stringify({ onvolledig, collecties: driftDefinities, velden: driftVelden }, null, 2),
+  );
+  console.log(
+    `\nUitleesstand: ${driftDefinities.length} collectiedefinities en ${driftVelden.length} veldsets weggeschreven naar ${DRIFT_DUMP}` +
+      (onvolledig ? " (ONVOLLEDIG — script liep vast, zie melding hierboven)" : ""),
+  );
+}
+
+main()
+  .then(() => {
+    if (droog) schrijfDriftDump(false);
+  })
+  .catch((e) => {
+    // In de uitleesstand is vastlopen te verwachten: het script wil ook records
+    // en gebruikers aanmaken, en die schrijfacties zijn geblokkeerd. Alles wat
+    // tot dat punt is verzameld is nog steeds bruikbaar, dus wél wegschrijven.
+    if (droog) {
+      console.error(`\n(uitleesstand) script gestopt bij: ${e.message.slice(0, 200)}`);
+      schrijfDriftDump(true);
+      process.exit(0);
+    }
+    console.error("\n❌ Fout:", e.message);
+    process.exit(1);
+  });

@@ -173,9 +173,24 @@ Set-ScheduledTask -TaskName "Wijngaard PocketBase Backup" -Settings $settings
 
 ## Aandachtspunten
 
-- **Spelling ras**: "Souvignier Gris" (niet "Souveginier"). Staat in `seed-rijen.ts`, `RAS_KLEUR` in meerdere routes, en PocketBase seed-script.
+- **Spelling ras**: "Souvignier Gris" (niet "Souveginier"). Staat in `seed-rijen.ts`, `RAS_KLEUR` in meerdere routes, en PocketBase seed-script. **Fase 12 heeft dit project-breed gecontroleerd**: broncode, scripts, `pb_hooks/agent_systeemprompt.md` en de live database gebruiken allemaal de juiste spelling, en de overige zes rassen kennen geen varianten.
+  - **`pocketbase/pb_migrations/*.js` bevat de oude tikfout bewust en mag NIET "gecorrigeerd" worden.** Dat is PocketBase's append-only migratiegeschiedenis: de `created_*`-migraties leggen vast hoe het schema ooit wás, en in de `1784926545_updated_*`-migraties (de Fase 11-fix) staat de juiste spelling vooruit en de oude spelling in de rollback — precies wat een rollback hoort te doen. Een verse replay van alle migraties eindigt dus op de juiste waarden. Bewerken van die bestanden breekt de rollback zonder iets op te lossen.
 - **Rij 23/24**: hebben `planten_per_vak: 4` (standaard = 5). De perceelkaart-SVG gebruikt `fysiekeLengteBasis()` om de _fysieke_ rijlengte te berekenen, niet het plantaantal — niet aanpassen zonder die helper te begrijpen.
 - **Rij 69**: stompje-rij, 36 planten. In de perceelkaart-SVG groeit hij van _onder_ naar boven (`groeitVanOnder = true`).
+- **Schema-driftcontrole — DRAAI DIT VÓÓR ELKE FASE DIE HET SCHEMA RAAKT** (`scripts/check-schema-drift.mjs`):
+
+  ```bash
+  node scripts/check-schema-drift.mjs http://127.0.0.1:8090 <admin-email> <admin-wachtwoord>
+  ```
+
+  Vergelijkt wat `setup-pocketbase.mjs` wíl inrichten met wat er werkelijk in de database staat: veldnamen, types, verplicht-vlaggen, keuzelijstwaarden, min/max/patroon, relatiedoelen, indexen en alle vijf API-regels. Exitcode 1 zodra er iets met ernst "hoog" tussen zit.
+
+  **Waarom dit bestaat**: `ensureCollection()` is create-only en corrigeert een bestaande collectie nooit. Een schemawijziging die wel in de code staat maar nooit is gemigreerd, is daardoor onzichtbaar — precies hoe de rasnaam-tikfout maandenlang 17 rijen blokkeerde (`AUDIT-VELDGEREEDHEID.md` §3.1).
+
+  **Hoe het werkt**: het script draait `setup-pocketbase.mjs` met `DRIFT_DUMP=<pad>`. In die uitleesstand schrijft dat script alle collectiedefinities weg en wordt élke niet-GET-aanroep geblokkeerd, dus er verandert niets. Bewust géén tweede kopie van de definities: die zou zelf gaan driften. Bij een crash in de uitleesstand wordt geschreven wat er tot dan toe verzameld is (`onvolledig: true` in de dump) — controleer dan of de dekking klopt vóór je de uitkomst gelooft.
+
+  **Dekking (gemeten juli 2026)**: 43 van de 44 collecties, 421 velden, 215 API-regels. Niet gedekt: de ingebouwde `users`-collectie, op `users.rol` na (die loopt via `ensureVelden` en wordt wél vergeleken).
+
 - **PocketBase setup-script** (`scripts/setup-pocketbase.mjs`): idempotent. Doet upsert (PATCH bestaand / POST nieuw) + verwijdert rijen die niet in de seed staan. Veilig om meerdere keren te draaien.
 - **Netlify**: nog niet live. Deployment-configuratie bestaat (`wrangler.jsonc`), maar de site wordt nog lokaal gebruikt.
 - **VPS (Hetzner)**: PocketBase draait niet op de VPS — wachtwoord reset nodig via Hetzner-console. Plan: `pb.tappenmars.nl` voor HTTPS-productie, SSL via Cloud86.
