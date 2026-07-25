@@ -813,3 +813,141 @@ _Beperking van de routecontrole_: die 19 routes zijn gecontroleerd op hun server
 **Schijfruimte**: gedaald van 8,5 naar 4,3 GB door bouwbestanden, de testdata (inmiddels verwijderd) en de installatie van Playwright met Chromium. Ruim boven de stopgrens van 2 GB, maar op deze machine een punt om in de gaten te houden — zie het auditrapport §5.1.
 
 **Wat ik niet heb gedaan en bewust heb laten liggen**: geen deploy, geen DNS- of serverwijzigingen, geen records verwijderd behalve de eigen gemarkeerde testdata, geen backupmappen aangeraakt, geen schema destructief gewijzigd, geen dependencies met breekende wijzigingen bijgewerkt (Playwright is nieuw toegevoegd als ontwikkelafhankelijkheid, niet als upgrade).
+
+---
+
+## FASE 12 — Naamconsistentie, schema-drift & rate limit (25 juli 2026)
+
+Vervolg op `AUDIT-VELDGEREEDHEID.md`, bevindingen 3.1 en 5.4. Geen featurefase: drie vragen beantwoorden en alleen repareren wat er onderweg gevonden werd.
+
+**Vooraf**: verse `pb_data`-backup gemaakt (08:16), PocketBase gezond, 8,1 GB vrij.
+
+### Blok 1 — Naamconsistentie druivenrassen
+
+Project-breed gezocht op alle varianten, met een reguliere expressie die ook onbekende afwijkingen vangt (niet alleen de drie varianten uit de opdracht).
+
+**Uitkomst: 73× de juiste spelling, 12× de foute — en die 12 zitten allemaal op plekken waar ze horen.**
+
+| Waar                                                                                | Variant                      | Oordeel                                                |
+| ----------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------ |
+| `src/**` (broncode, tests, seed)                                                    | `Souvignier Gris`            | correct                                                |
+| `scripts/setup-pocketbase.mjs`, `seed-seizoen.mjs`                                  | `Souvignier Gris`            | correct                                                |
+| **`pb_hooks/agent_systeemprompt.md`**                                               | `Souvignier Gris`            | **correct** — dit was het grootste risico van dit blok |
+| live database, alle keuzelijsten                                                    | `Souvignier Gris`            | correct                                                |
+| `pb_migrations/*.js` (9 bestanden)                                                  | `Souveginier Gris`           | **bewust laten staan**                                 |
+| `CLAUDE.md`, `AGENTS.md`, `WERKLOG.md`, `AUDIT-…md`, commentaar in het setup-script | noemt de tikfout als tikfout | correct, niet aanpassen                                |
+
+**Waarom de migratiebestanden niet gecorrigeerd zijn.** Dat is PocketBase's append-only migratiegeschiedenis. De `created_*`-migraties leggen vast hoe het schema ooit wás; in de `1784926545_updated_*`-migraties (de Fase 11-fix) staat vooruit de juiste spelling en in de rollback de oude — precies wat een rollback hoort te doen. Een verse replay van alle migraties eindigt dus op de juiste waarden. Ze bewerken breekt de rollback zonder iets op te lossen. Vastgelegd in `CLAUDE.md` zodat een latere sessie ze niet alsnog "verbetert".
+
+**De overige zes rassen**: nul varianten. Muscaris, Johanniter, Regent, Pinot Noir, Chardonnay en Pinotin komen overal exact zo voor.
+
+**`fase-3-ai-agent.md` bestaat niet** in dit project, en de variant `Souvenier Gris` komt nergens voor. Opnieuw een fantoomverwijzing, zelfde patroon als eerder vastgesteld bij `PROJECT-NOTEBOOK.md` en `tappenmars-buddy-systeemontwerp.md`.
+
+**Database doorzocht op vrije tekst, niet alleen keuzelijsten.** 250 records, 970 tekstwaarden over alle collecties. Eén treffer: `partijen.samenstelling` van de partij "Johanniter" (lotnummer 260101) bevat `"100 johanitter"`. Dat is door Thomas zelf ingetypte vrije tekst, blokkeert niets, en de partijnaam ernaast is wél correct. **Niet gecorrigeerd** — andermans data-invoer wijzig ik niet ongevraagd. Staat onder VRAGEN VOOR THOMAS; het weegt licht mee omdat `samenstelling` wel in het traceerbaarheidsrapport terechtkomt.
+
+**Verificatie 1 — de vijf eerder geblokkeerde registraties**, alle voor een echte Souvignier Gris-rij (rij 6):
+
+```
+fenologie          HTTP 200  ras opgeslagen als "Souvignier Gris"
+oogst              HTTP 200  ras opgeslagen als "Souvignier Gris"
+werkuren           HTTP 200  ras opgeslagen als "Souvignier Gris"
+steekproef_planten HTTP 200  ras opgeslagen als "Souvignier Gris"
+werkkalender       HTTP 200  ras opgeslagen als "Souvignier Gris"
+5/5 geslaagd, 5/5 opgeruimd
+```
+
+_Terzijde, want het is leerzaam_: mijn eerste poging gaf 4 van de 5 fouten — maar géén daarvan ging over `ras`. Het waren fouten in mijn eigen testpayload (`"knopbreek"` in plaats van `"Knopbreek"`, ontbrekende verplichte velden). Dat onderscheid is precies waar het bij dit soort verificatie om draait: een rode uitslag is pas een bevinding als je weet wélk veld hem veroorzaakt.
+
+**Verificatie 2 — de assistent** (de test die het onderliggende risico afdekt). Vrije tekst: _"Leg een observatie vast voor rij 6, dat is Souvignier Gris: ik zie vandaag beginnende meeldauw…"_
+
+```
+actie_type  : observatie
+samenvatting: Observatie: rij 6 (Souvignier Gris) - ziekte: …
+payload     : {"datum":"2026-07-25","notitie":"Souvignier Gris, rij 6: …","rij":"1658xzh3ehmvqde",…}
+spelling    : correct (Souvignier Gris)
+bevestigen  : HTTP 200 -> status "uitgevoerd", record fpfe053vjq2kyjf
+```
+
+De agent gebruikt de juiste spelling in zowel samenvatting als payload, en het bevestigde voorstel wordt daadwerkelijk als record opgeslagen. Alle testdata verwijderd; recordaantallen terug op de nulmeting.
+
+### Blok 2 — Schema-drift breed onderzocht
+
+**`scripts/check-schema-drift.mjs`** gebouwd. De opzet is de kern van dit blok: het script maakt **geen tweede kopie** van de schemadefinities, want die zou zelf gaan driften. In plaats daarvan krijgt `setup-pocketbase.mjs` een uitleesstand (`DRIFT_DUMP=<pad>`) waarin het alles opschrijft wat het zou willen inrichten en élke niet-GET-aanroep geblokkeerd wordt. Het setup-script blijft daarmee de enige bron van waarheid.
+
+Dat werkt precies op het punt waar de drift ontstaat: `ensureCollection()` laat een bestaande collectie ongemoeid, dus wat er in `def` staat is wat het schema zóu moeten zijn — en dat wordt nergens afgedwongen.
+
+**De controleur is eerst getoetst voordat zijn uitkomst geloofd werd.** Een driftcontrole die op zijn eerste run "0 verschillen" zegt, is verdacht: dat is precies wat een kapotte controleur ook zegt. Drie kunstmatige verschillen ingebracht:
+
+| Ingebrachte fout                                   | Gevonden?                                          |
+| -------------------------------------------------- | -------------------------------------------------- |
+| veld dat live ontbreekt                            | ja — ernst hoog                                    |
+| veldtype `text` in de database vs `number` in code | ja — ernst hoog                                    |
+| keuzelijst met de oude rasnaam-tikfout             | **ja — in alle 6 collecties tegelijk, ernst hoog** |
+
+Die laatste is het bewijs dat ertoe doet: **had dit script bestaan, dan was bevinding 3.1 direct opgevallen in plaats van na maanden.** Daarna alles teruggedraaid en opnieuw gedraaid.
+
+**Uitkomst op de echte database: 0 verschillen.**
+
+Dat is alleen betekenisvol als er ook echt iets vergeleken wordt, dus dat is apart gemeten:
+
+| Wat                             | Aantal                             |
+| ------------------------------- | ---------------------------------- |
+| collecties vergeleken           | 43 van 44 live collecties          |
+| velden vergeleken               | 421 (34 keuzelijsten, 36 relaties) |
+| API-regels vergeleken           | 215 (alle vijf, voor alle 43)      |
+| indexen vergeleken              | 2                                  |
+| extra veldsets (`ensureVelden`) | 50                                 |
+
+**Niet gedekt**: de ingebouwde `users`-collectie, behalve `users.rol` — die loopt via `ensureVelden` en wordt wél vergeleken. Voor de rest van `users` drukt het setup-script geen gewenste staat uit, dus er is niets om tegenaan te houden. Eerlijk gezegd: dat is een gat, maar een klein en bekend gat.
+
+**Geen enkel verschil gevonden betekent ook geen correcties.** Stap 4 van de opdracht (corrigeer alleen wat aantoonbaar problemen geeft) is daarmee leeg gebleven.
+
+Vastgelegd in `CLAUDE.md` dat dit script vóór elke fase draait die het schema raakt, inclusief de meetgegevens over de dekking en de waarschuwing dat een `onvolledig: true` in de dump betekent dat je de uitkomst niet zonder meer mag geloven.
+
+Verder gecontroleerd dat `setup-pocketbase.mjs` zelf onveranderd werkt: normale run slaagt, exitcode 0, 44 collecties bevestigd.
+
+### Blok 3 — Rate limit
+
+**De rate limit bestaat, werkt, en stond al beschreven in `ARCHITECTURE.md` §7.10.** De auditor wist er niet van — dat was de eerste van de twee mogelijkheden uit de opdracht, en het is de goede.
+
+|            |                                                                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Waar       | `controleerRateLimit()` in `pb_hooks/agent_uitvoering.js`, aangeroepen als eerste regel van alle drie de `/api/agent/*`-endpoints |
+| Limiet     | 30 berichten per uur, **per IP-adres**                                                                                            |
+| Instelbaar | ja — `regelgeving_instellingen`, sleutel `agent_berichten_per_uur_per_ip` (live op 30)                                            |
+| Telling    | gedeelde Go-side app-store; reset bij PocketBase-herstart                                                                         |
+
+**Curl-test op de wérkelijke limiet** (niet op een verlaagde testwaarde): 36 pogingen afgevuurd met een ongeldige body — die worden vóór de betaalde Claude-aanroep geweigerd maar tellen wél mee, dus de limiet is te bereiken zonder geld te verbranden.
+
+```
+#1-#28  HTTP 400  "Bericht_id is verplicht."
+#29     HTTP 429  "Je hebt de limiet van 30 assistent-berichten per uur bereikt.
+                   Probeer het over ongeveer 52 minuten opnieuw."
+/api/agent/actie/…/bevestig  -> HTTP 429  (zelfde teller)
+/api/agent/actie/…/afwijzen  -> HTTP 429  (zelfde teller)
+```
+
+28 + de 2 echte agent-aanroepen uit Blok 1 = 30. De telling klopt tot op het getal, de melding is nette Nederlandse tekst met wachttijd, en de drie endpoints delen aantoonbaar één teller. **Handhaving, niet alleen logging.**
+
+`ARCHITECTURE.md` §7.10 aangevuld met deze herverificatie, en `AUDIT-VELDGEREEDHEID.md` §5.4 gecorrigeerd — dat rapport was op dit punt te somber.
+
+**Maar de correctie gaat twee kanten op, en de tweede kant weegt zwaarder.** Bij het documenteren viel op wat er in §7.10 ontbrak: de teller loopt **per IP** en de endpoints hebben nog steeds **geen `requireAuth()`**. Bij publieke bereikbaarheid omzeilt iemand met wisselende IP-adressen de rem, en elke serverherstart zet de teller op nul. De rate limit beperkt de schade van een uitschieter maar vervangt geen authenticatie. Dat staat nu expliciet in beide documenten, zodat "er zit een rate limit op" niet als "afgedekt" gelezen wordt.
+
+### Oordeel: heeft de driftcontrole méér problemen van het kaliber 3.1 blootgelegd?
+
+**Nee.** Over 43 collecties, 421 velden en 215 API-regels is geen enkel verschil gevonden tussen het setup-script en de draaiende database. De rasnaam-tikfout was, voor zover dit meetbaar is, een eenmalig geval en geen symptoom van breed uiteengelopen schema.
+
+Dat is een geruststellend antwoord, en juist daarom hoort er een voorbehoud bij:
+
+1. **De controle vergelijkt code met database, niet code met bedoeling.** Staat iets in beide fout, dan ziet dit script niets. De rasnaam werd gevonden doordat code en database van elkáár verschilden; een fout die van meet af aan overal gelijk was, blijft onzichtbaar.
+2. **Dekking is 43 van 44 collecties.** `users` valt er grotendeels buiten.
+3. **Indexen zijn nauwelijks getoetst** — er staan er maar 2 in de definities. Of dat betekent dat er te weinig indexen zijn, is een prestatievraag; Fase 11 mat 96 ms voor alle zware queries samen, dus urgentie is er niet.
+4. **Deze uitkomst geldt voor vandaag.** De waarde van dit blok zit niet in de nulmeting maar in het script: vanaf nu is drift in één commando zichtbaar in plaats van na maanden.
+
+Het belangrijkste resultaat van deze sessie is dus niet een vondst, maar een vangnet — plus de bevestiging dat de systeemprompt van de assistent de juiste spelling gebruikt, wat een stille storing zou zijn geweest die zich als "de assistent doet het niet" had voorgedaan.
+
+### VRAGEN VOOR THOMAS
+
+1. **`partijen.samenstelling` van partij "Johanniter" (lot 260101) bevat `"100 johanitter"`.** Zal ik dat corrigeren naar `"100% Johanniter"`, of laat je het staan? Het blokkeert niets, maar het veld komt wel in het traceerbaarheidsrapport dat een controleur kan inzien. Ik wijzig je eigen invoer niet zonder je akkoord.
+2. **Inlogplicht op de assistent-endpoints.** De rate limit is er, maar dekt publieke bereikbaarheid niet af (per IP, geen authenticatie). Wil je dat ik `requireAuth()` op de drie `/api/agent/*`-endpoints zet? Dat betekent dat de assistent níét meer zonder inloggen werkt — een bewuste eerdere keuze van jou, dus dit is jouw afweging en geen technische.
+3. **`users`-collectie buiten de driftcontrole.** Wil je dat het setup-script ook de API-regels van `users` expliciet vastlegt, zodat die meegenomen worden? Dat is een kleine uitbreiding, maar het raakt inlogrechten en daar wil ik geen aannames doen.

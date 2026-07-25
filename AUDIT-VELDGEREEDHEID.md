@@ -125,6 +125,10 @@ De perceelkaart tekent 69 rijen op schaal. Op een telefoonscherm van 375 punten 
 
 Het onderdeel dat vragen aan de AI-assistent verwerkt, vereist geen inlog. Zolang de server alleen op het eigen netwerk luistert is dat geen probleem. **Zodra deze app van buitenaf bereikbaar wordt gemaakt, kan iedereen die het adres kent betaalde AI-aanvragen laten uitvoeren op Thomas' rekening.** Dit is een bekende en eerder vastgelegde beperking, geen nieuwe bevinding — maar het hoort in dit rapport omdat een verhuizing naar een Pi of externe server precies dat zou veranderen.
 
+> **Aanvulling 25 juli 2026 — deze paragraaf was te somber.** Er blijkt wél een kostenrem te zitten, die de auditor over het hoofd had gezien: alle drie de assistent-endpoints hanteren een limiet van **30 berichten per uur per IP-adres**, instelbaar en afgedwongen met een nette Nederlandse melding. Opnieuw getest op de werkelijke instelling (dus niet met een verlaagde testlimiet): de 29e poging werd geweigerd — kloppend, want er waren die sessie al twee echte aanroepen gedaan — en bevestigen en afwijzen delen aantoonbaar dezelfde teller. Ook ongeldige verzoeken tellen mee, zodat aftasten niet gratis is.
+>
+> Wat blijft staan: de assistent vereist nog steeds **geen inlog**, en de teller wordt per IP-adres bijgehouden. Bij publieke bereikbaarheid kan iemand met wisselende IP-adressen de rem dus omzeilen, en de teller wordt bij elke herstart van de server op nul gezet. De rem beperkt de schade, maar vervangt geen authenticatie. **Vóór publieke bereikbaarheid hoort er inlogplicht op deze endpoints te komen** — de limiet alleen is niet genoeg.
+
 ### 5.5 Kleinere punten, niet opgelost
 
 - De **welkomstdialoog verschijnt over het inlogscherm** op een nieuw apparaat en vangt de kliks af. Voor een mens op te lossen door "Overslaan" te tikken, maar het is de verkeerde volgorde.
