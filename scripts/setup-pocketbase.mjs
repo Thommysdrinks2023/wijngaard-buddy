@@ -1282,6 +1282,16 @@ async function main() {
     },
   ]);
 
+  // Fase 13 Blok A — vastleggen WELKE analysevelden zijn ingevuld.
+  // Onderzocht op PocketBase 0.39: een optioneel number-veld komt altijd als 0
+  // terug, of je het nu weglaat, null stuurt of leeg laat. Er is dus geen
+  // opslagniveau-onderscheid tussen "niet gemeten" en "gemeten, waarde 0".
+  // Voor pH/°Oe/Brix/SG/zuur is 0 fysiek onmogelijk en dus zelf al bewijs,
+  // maar voor alcohol, SO₂ en restsuiker is 0 een geldige uitkomst — daar is
+  // deze expliciete registratie de enige manier om het verschil te bewaren.
+  // Kommagescheiden veldnamen; leeg bij analyses van vóór deze versie.
+  await ensureVelden("analyses", [{ name: "gemeten_velden", type: "text" }]);
+
   // 3a-9. Seeds: producenten en tankinventaris (create-only, nooit overschrijven)
   {
     const bestaandeProducenten = await api("/api/collections/producenten/records?perPage=200");

@@ -229,7 +229,9 @@ function KelderlogPage() {
                       </td>
                       <td className="px-2 py-2">{r.middel || "—"}</td>
                       <td className="px-2 py-2 text-right tabular-nums">
-                        {r.hoeveelheid != null ? `${r.hoeveelheid} ${eenheid?.label ?? ""}` : "—"}
+                        {/* Fase 13 Blok A: leeg getalveld komt als 0 uit
+                            PocketBase; een toevoeging van 0 is geen toevoeging. */}
+                        {r.hoeveelheid ? `${r.hoeveelheid} ${eenheid?.label ?? ""}` : "—"}
                       </td>
                       <td className="px-2 py-2">{r.ingevoerd_door || "—"}</td>
                     </tr>

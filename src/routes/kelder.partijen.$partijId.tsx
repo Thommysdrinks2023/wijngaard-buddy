@@ -26,6 +26,7 @@ import {
   valideerVoedingswaarde,
 } from "@/lib/validatie";
 import { vanBrix, vanOechsle } from "@/lib/dichtheid";
+import { meetwaarde, parseGemetenVelden } from "@/lib/meetwaarde";
 import {
   alcoholPctNaarGramLiter,
   berekenVoedingswaarde,
@@ -134,21 +135,29 @@ function PartijDetailPage() {
   // Blok E — fermentatiecurve + analysewaarden over tijd (recharts, zit al in de
   // stack). analysesQ is gesorteerd nieuw->oud (fetchAnalyses); voor een grafiek
   // van links (oud) naar rechts (nieuw) wordt hij hier omgedraaid.
+  // Fase 13 Blok A: niet-gemeten waarden worden `undefined`, niet 0. Recharts
+  // slaat undefined over, dus er komt geen punt op nul en de lijn duikt niet
+  // naar beneden bij een analyse waarin dat veld simpelweg niet is ingevuld.
   const analyseSerie = useMemo(
     () =>
       (analysesQ.data ?? [])
         .slice()
         .reverse()
-        .map((a) => ({
-          datum: a.datum,
-          dichtheid_oechsle: a.dichtheid_oechsle ?? undefined,
-          ph: a.ph ?? undefined,
-          so2_vrij: a.so2_vrij ?? undefined,
-          so2_totaal: a.so2_totaal ?? undefined,
-          restsuiker_g_l: a.restsuiker_g_l ?? undefined,
-          totaalzuur_g_l: a.totaalzuur_g_l ?? undefined,
-          vluchtig_zuur_g_l: a.vluchtig_zuur_g_l ?? undefined,
-        })),
+        .map((a) => {
+          const g = parseGemetenVelden(a.gemeten_velden);
+          const w = (veld: Parameters<typeof meetwaarde>[0]) =>
+            meetwaarde(veld, a[veld], g) ?? undefined;
+          return {
+            datum: a.datum,
+            dichtheid_oechsle: w("dichtheid_oechsle"),
+            ph: w("ph"),
+            so2_vrij: w("so2_vrij"),
+            so2_totaal: w("so2_totaal"),
+            restsuiker_g_l: w("restsuiker_g_l"),
+            totaalzuur_g_l: w("totaalzuur_g_l"),
+            vluchtig_zuur_g_l: w("vluchtig_zuur_g_l"),
+          };
+        }),
     [analysesQ.data],
   );
 
@@ -167,9 +176,21 @@ function PartijDetailPage() {
         .filter((p) => (partij.gist ? p.gist === partij.gist : p.type === partij.type))
         .map((p) => p.id),
     );
+    // Fase 13 Blok A: alleen ÉCHTE dichtheidsmetingen voeden de voorspelling.
+    // Voorheen liet `!= null` een 0 door (leeg PocketBase-veld), waarna de
+    // curve naar nul dook en de voorspelling meldde dat de gisting achterliep
+    // — een waarschuwing gebouwd op een meting die nooit gedaan is.
     const punten = (alleAnalysesQ.data ?? [])
-      .filter((a) => a.dichtheid_oechsle != null)
-      .map((a) => ({ partij: a.partij, datum: a.datum, oechsle: a.dichtheid_oechsle as number }));
+      .map((a) => ({
+        partij: a.partij,
+        datum: a.datum,
+        oechsle: meetwaarde(
+          "dichtheid_oechsle",
+          a.dichtheid_oechsle,
+          parseGemetenVelden(a.gemeten_velden),
+        ),
+      }))
+      .filter((p): p is { partij: string; datum: string; oechsle: number } => p.oechsle !== null);
     return berekenVerwachting(partijId, punten, vergelijkbaar);
   }, [partij, partijenQ.data, alleAnalysesQ.data, partijId]);
 
@@ -220,6 +241,29 @@ function PartijDetailPage() {
           })),
     [analyseSerieMetVerwachting, sensorPerDag],
   );
+
+  // Fase 13 Blok A — de kopregel toonde "0 °Oe" zodra de laatste analyse dat
+  // veld niet ingevuld had. Val terug op de meest recente analyse waarin de
+  // waarde wél gemeten is, in plaats van blind de nieuwste te nemen.
+  const laatsteGemeten = useMemo(() => {
+    const zoek = (veld: Parameters<typeof meetwaarde>[0]) => {
+      for (const a of analysesQ.data ?? []) {
+        const w = meetwaarde(veld, a[veld], parseGemetenVelden(a.gemeten_velden));
+        if (w !== null) return w;
+      }
+      return null;
+    };
+    return {
+      oechsle: zoek("dichtheid_oechsle"),
+      brix: zoek("dichtheid_brix"),
+      sg: zoek("dichtheid_sg"),
+      so2_vrij: zoek("so2_vrij"),
+      ph: zoek("ph"),
+      totaalzuur: zoek("totaalzuur_g_l"),
+      alcohol: zoek("alcohol_pct"),
+      restsuiker: zoek("restsuiker_g_l"),
+    };
+  }, [analysesQ.data]);
 
   const huidigVolume = Math.round(tanksVanPartij.reduce((acc, t) => acc + t.huidig_volume_l, 0));
   const dagenInKelder = partij?.pers_datum
@@ -362,14 +406,13 @@ function PartijDetailPage() {
   const [vFouten, setVFouten] = useState<Record<string, string>>({});
 
   const vulInVanuitAnalyse = () => {
-    if (!laatsteAnalyse) return;
-    if (laatsteAnalyse.alcohol_pct != null)
-      setVAlcohol(
-        String(Math.round(alcoholPctNaarGramLiter(laatsteAnalyse.alcohol_pct) * 10) / 10),
-      );
-    if (laatsteAnalyse.restsuiker_g_l != null)
-      setVRestsuiker(String(laatsteAnalyse.restsuiker_g_l));
-    if (laatsteAnalyse.totaalzuur_g_l != null) setVZuur(String(laatsteAnalyse.totaalzuur_g_l));
+    // Fase 13 Blok A: alleen gemeten waarden overnemen. Een etiketberekening op
+    // een niet-gemeten "0% alcohol" levert een onjuiste voedingswaarde op het
+    // etiket op, en dat is wettelijke informatie.
+    if (laatsteGemeten.alcohol !== null)
+      setVAlcohol(String(Math.round(alcoholPctNaarGramLiter(laatsteGemeten.alcohol) * 10) / 10));
+    if (laatsteGemeten.restsuiker !== null) setVRestsuiker(String(laatsteGemeten.restsuiker));
+    if (laatsteGemeten.totaalzuur !== null) setVZuur(String(laatsteGemeten.totaalzuur));
   };
 
   const voedingswaardeM = useMutation({
@@ -515,28 +558,34 @@ function PartijDetailPage() {
                 Dichtheid
               </p>
               <p className="mt-0.5 text-xl font-bold tabular-nums text-white">
-                {laatsteAnalyse?.dichtheid_oechsle ?? partij?.start_dichtheid_oechsle ?? "—"}
+                {laatsteGemeten.oechsle ??
+                  meetwaarde("dichtheid_oechsle", partij?.start_dichtheid_oechsle) ??
+                  "—"}
                 <span className="text-xs font-normal"> °Oe</span>
               </p>
               <p className="text-[10px] text-white/70">
-                {laatsteAnalyse?.dichtheid_brix ?? partij?.start_dichtheid_brix ?? "—"} °Bx · SG{" "}
-                {laatsteAnalyse?.dichtheid_sg ?? partij?.start_dichtheid_sg ?? "—"}
+                {laatsteGemeten.brix ??
+                  meetwaarde("dichtheid_brix", partij?.start_dichtheid_brix) ??
+                  "—"}{" "}
+                °Bx · SG{" "}
+                {laatsteGemeten.sg ?? meetwaarde("dichtheid_sg", partij?.start_dichtheid_sg) ?? "—"}
               </p>
             </div>
           </div>
         </section>
 
-        {/* Calculators (Fase 7 Blok C) */}
+        {/* Calculators (Fase 7 Blok C).
+            Fase 13 Blok A: deze krijgen alleen ÉCHT gemeten waarden mee. Een
+            SO₂-berekening op een niet-gemeten "vrij 0" stelt een veel te hoge
+            dosering voor — dat is een echte kelderfout, geen weergavekwestie. */}
         <CalculatorsSectie
           partijId={partijId}
           tankId={tanksVanPartij[0]?.id ?? null}
           volumeL={huidigVolume}
-          laatstePh={laatsteAnalyse?.ph ?? null}
-          laatsteSo2Vrij={laatsteAnalyse?.so2_vrij ?? null}
-          laatsteOechsle={
-            laatsteAnalyse?.dichtheid_oechsle ?? partij?.start_dichtheid_oechsle ?? null
-          }
-          laatsteTotaalzuur={laatsteAnalyse?.totaalzuur_g_l ?? null}
+          laatstePh={laatsteGemeten.ph}
+          laatsteSo2Vrij={laatsteGemeten.so2_vrij}
+          laatsteOechsle={laatsteGemeten.oechsle ?? partij?.start_dichtheid_oechsle ?? null}
+          laatsteTotaalzuur={laatsteGemeten.totaalzuur}
         />
 
         {/* Acties */}
@@ -1127,31 +1176,39 @@ function PartijDetailPage() {
             <EmptyState message="Nog geen analyses." icon={<FlaskConical className="h-6 w-6" />} />
           ) : (
             <ul className="space-y-1.5">
-              {(analysesQ.data ?? []).slice(0, 5).map((a) => (
-                <li key={a.id} className="rounded-xl border border-border bg-card px-3 py-2">
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-sm font-medium">
-                      {a.dichtheid_oechsle != null ? `${a.dichtheid_oechsle} °Oe` : "Analyse"}
-                      {a.dichtheid_brix != null ? ` · ${a.dichtheid_brix} °Bx` : ""}
+              {(analysesQ.data ?? []).slice(0, 5).map((a) => {
+                // Fase 13 Blok A: alleen écht gemeten waarden tonen. Een leeg
+                // getalveld komt uit PocketBase als 0 terug, en "SO₂ vrij 0"
+                // leest voor een kelderman als onbeschermde wijn.
+                const g = parseGemetenVelden(a.gemeten_velden);
+                const w = (veld: Parameters<typeof meetwaarde>[0]) => meetwaarde(veld, a[veld], g);
+                const regels = [
+                  w("ph") != null ? `pH ${w("ph")}` : null,
+                  w("alcohol_pct") != null ? `${w("alcohol_pct")}% vol` : null,
+                  w("restsuiker_g_l") != null ? `RS ${w("restsuiker_g_l")} g/L` : null,
+                  w("totaalzuur_g_l") != null ? `TZ ${w("totaalzuur_g_l")} g/L` : null,
+                  w("so2_vrij") != null ? `SO₂v ${w("so2_vrij")}` : null,
+                  w("so2_totaal") != null ? `SO₂t ${w("so2_totaal")}` : null,
+                ].filter(Boolean);
+                const oe = w("dichtheid_oechsle");
+                const brix = w("dichtheid_brix");
+                return (
+                  <li key={a.id} className="rounded-xl border border-border bg-card px-3 py-2">
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm font-medium">
+                        {oe != null ? `${oe} °Oe` : "Analyse"}
+                        {brix != null ? ` · ${brix} °Bx` : ""}
+                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        {format(parseISO(a.datum), "d MMM", { locale: nl })}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {regels.join(" · ") || "Geen meetwaarden vastgelegd"}
                     </p>
-                    <span className="text-xs text-muted-foreground">
-                      {format(parseISO(a.datum), "d MMM", { locale: nl })}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {[
-                      a.ph != null ? `pH ${a.ph}` : null,
-                      a.alcohol_pct != null ? `${a.alcohol_pct}% vol` : null,
-                      a.restsuiker_g_l != null ? `RS ${a.restsuiker_g_l} g/L` : null,
-                      a.totaalzuur_g_l != null ? `TZ ${a.totaalzuur_g_l} g/L` : null,
-                      a.so2_vrij != null ? `SO₂v ${a.so2_vrij}` : null,
-                      a.so2_totaal != null ? `SO₂t ${a.so2_totaal}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "Geen meetwaarden"}
-                  </p>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -1180,7 +1237,11 @@ function PartijDetailPage() {
                       <p className="text-sm font-medium">
                         {actie?.emoji} {actie?.label ?? r.actie}
                         {r.middel ? ` · ${r.middel}` : ""}
-                        {r.hoeveelheid != null ? ` · ${r.hoeveelheid} ${eenheid?.label ?? ""}` : ""}
+                        {/* Fase 13 Blok A: een kelderlogregel zonder hoeveelheid
+                            kwam als "· 0" op het scherm (PocketBase maakt van een
+                            leeg getalveld een 0). Een toevoeging van 0 gram is
+                            geen toevoeging — dan hoort er niets te staan. */}
+                        {r.hoeveelheid ? ` · ${r.hoeveelheid} ${eenheid?.label ?? ""}` : ""}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {format(parseISO(r.datum), "d MMM yyyy", { locale: nl })}

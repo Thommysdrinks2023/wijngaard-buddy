@@ -22,6 +22,7 @@ import type {
 } from "./types";
 import type { PartijInput } from "./partijen-data";
 import { deelVerzoek, ensureOnline, getPb, haalLijst, isIngelogd } from "./data";
+import { serialiseerGemetenVelden } from "./meetwaarde";
 import { logAudit } from "./audit";
 
 const GEEN_VERBINDING = "Geen verbinding — kelderboekingen vereisen de server.";
@@ -257,14 +258,22 @@ function analyseFromPb(r: RecordModel): Analyse {
     notitie: r["notitie"] ?? "",
     ingevoerd_door: r["ingevoerd_door"] ?? "",
     created: r["created"],
+    gemeten_velden: r["gemeten_velden"] ?? "",
   };
 }
 
 export async function fetchAnalyses(partijId?: string): Promise<Analyse[]> {
+  // requestKey: null — het partijdetail vraagt tegelijk de analyses van DEZE
+  // partij én (voor de gistingsvoorspelling) die van alle partijen op. Beide
+  // gaan naar dezelfde URL, dus zonder deze vlag annuleert PocketBase's
+  // auto-cancellation de een met de ander: ERR_ABORTED, en dan verdwenen de
+  // analyses en de grafieken van het scherm zonder foutmelding. Vierde variant
+  // van dezelfde valkuil (Fase 3, 8, 10, 11) — zie CLAUDE.md.
   return haalLijst("analyses", [], async (pb) => {
     const records = await pb.collection("analyses").getFullList({
       sort: "-datum,-tijd,-created",
       filter: partijId ? pb.filter("partij = {:partijId}", { partijId }) : "",
+      requestKey: null,
     });
     return records.map(analyseFromPb);
   });
@@ -290,10 +299,37 @@ export interface AnalyseInput {
   ingevoerd_door?: string;
 }
 
+// Fase 13 Blok A — welke meetvelden heeft de gebruiker daadwerkelijk ingevuld?
+// PocketBase maakt van elk leeg getalveld een 0, dus dit moet vóór het opslaan
+// worden vastgelegd; achteraf is het niet meer te reconstrueren. Afgeleid uit
+// de input zelf, zodat geen enkele aanroeper eraan hoeft te denken.
+const ANALYSE_MEETVELDEN = [
+  "dichtheid_oechsle",
+  "dichtheid_brix",
+  "dichtheid_sg",
+  "ph",
+  "alcohol_pct",
+  "restsuiker_g_l",
+  "totaalzuur_g_l",
+  "vluchtig_zuur_g_l",
+  "so2_vrij",
+  "so2_totaal",
+] as const;
+
+function bepaalGemetenVelden(input: AnalyseInput): string {
+  const ingevuld = ANALYSE_MEETVELDEN.filter((veld) => {
+    const w = input[veld];
+    return w !== null && w !== undefined && !Number.isNaN(w);
+  });
+  return serialiseerGemetenVelden(ingevuld);
+}
+
 export async function createAnalyse(input: AnalyseInput): Promise<Analyse> {
   const pb = await pbOfFout();
   logAudit("aangemaakt", "analyses", `${input.datum} · partij ${input.partij}`);
-  const r = await pb.collection("analyses").create({ ...input });
+  const r = await pb
+    .collection("analyses")
+    .create({ ...input, gemeten_velden: bepaalGemetenVelden(input) });
   return analyseFromPb(r);
 }
 

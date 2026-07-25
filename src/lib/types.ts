@@ -248,6 +248,13 @@ export interface Analyse {
   notitie?: string;
   ingevoerd_door?: string;
   created: string;
+  /**
+   * Fase 13 Blok A — kommagescheiden lijst van de velden die bij deze analyse
+   * daadwerkelijk zijn ingevuld. Nodig omdat PocketBase een leeg getalveld als
+   * 0 teruggeeft; zonder dit is "vrij SO₂ = 0" niet te onderscheiden van "vrij
+   * SO₂ niet gemeten". Leeg bij analyses van vóór deze versie — zie meetwaarde.ts.
+   */
+  gemeten_velden?: string;
 }
 
 // ============= Kelderlog (werklogboek) =============
