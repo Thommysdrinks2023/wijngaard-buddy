@@ -4,6 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
+import { ongekoppeldeOogst } from "@/lib/oogst-naar-partij";
 import { fetchRijen, isIngelogd } from "@/lib/data";
 import {
   createOogstRecord,
@@ -146,6 +148,17 @@ function OogstPage() {
       } else {
         toast.success("Oogst geregistreerd ✓ — dit was de laatste rij");
       }
+      // Fase 13 Blok E — zonder partij is de keten van fles terug naar rij
+      // verbroken. Bewust GEEN blokkade: op een plukdag is de partij vaak nog
+      // niet aangemaakt, en de kilo's moeten door kunnen. Wel een zichtbare
+      // herinnering, want anders blijft die koppeling stilletjes leeg — precies
+      // wat er tot nu toe gebeurde. Het overzicht onderaan deze pagina laat de
+      // openstaande regels staan tot ze wél gekoppeld zijn.
+      if (!partijId) {
+        toast.info("Nog niet aan een partij gekoppeld", {
+          description: "Onderaan deze pagina koppel je ze later in één keer.",
+        });
+      }
       kgRef.current?.focus();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -211,6 +224,32 @@ function OogstPage() {
   const kgPerHa = oppervlakteHa > 0 ? Math.round(totaalGeoogst / oppervlakteHa) : 0;
 
   const recent = useMemo(() => seizoenOogst.slice(0, 10), [seizoenOogst]);
+
+  // Fase 13 Blok E — oogst die nog aan geen partij hangt. Dit is de plek waar
+  // de keten wijngaard → kelder zichtbaar wordt: zolang hier regels staan, is
+  // van die kilo's niet te herleiden in welke fles ze terechtkwamen.
+  const ongekoppeld = useMemo(
+    () => ongekoppeldeOogst(oogstQ.data ?? [], jaar),
+    [oogstQ.data, jaar],
+  );
+  const [selectie, setSelectie] = useState<Set<string>>(new Set());
+  const zichtbareSelectie = useMemo(
+    () => ongekoppeld.filter((o) => selectie.has(o.id)),
+    [ongekoppeld, selectie],
+  );
+  const wisselSelectie = (id: string) =>
+    setSelectie((s) => {
+      const kopie = new Set(s);
+      if (kopie.has(id)) kopie.delete(id);
+      else kopie.add(id);
+      return kopie;
+    });
+  const selecteerAlles = () =>
+    setSelectie((s) =>
+      s.size === ongekoppeld.length ? new Set() : new Set(ongekoppeld.map((o) => o.id)),
+    );
+  const geselecteerdeKg =
+    Math.round(zichtbareSelectie.reduce((som, o) => som + (o.kg || 0), 0) * 10) / 10;
 
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
@@ -541,6 +580,74 @@ function OogstPage() {
             </ul>
           )}
         </section>
+
+        {/* Fase 13 Blok E — nog niet aan een partij gekoppeld */}
+        {ongekoppeld.length > 0 && (
+          <section className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Nog niet in de kelder
+              </h2>
+              <button
+                type="button"
+                onClick={selecteerAlles}
+                className="text-xs font-semibold text-primary underline"
+              >
+                {selectie.size === ongekoppeld.length ? "Selectie wissen" : "Alles selecteren"}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {ongekoppeld.length === 1
+                ? "1 oogstregel hangt"
+                : `${ongekoppeld.length} oogstregels hangen`}{" "}
+              nog aan geen enkele partij. Zolang dat zo is, kun je van deze kilo&apos;s niet
+              terugvinden in welke fles ze terechtkwamen.
+            </p>
+
+            <ul className="space-y-1.5">
+              {ongekoppeld.map((o) => {
+                const r = o.rij ? rijenById.get(o.rij) : undefined;
+                const aan = selectie.has(o.id);
+                return (
+                  <li key={o.id}>
+                    <label
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${
+                        aan ? "border-primary bg-primary/5" : "border-border bg-card"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={aan}
+                        onChange={() => wisselSelectie(o.id)}
+                        className="h-5 w-5 shrink-0 accent-[var(--primary)]"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">
+                          {o.kg} kg · {o.ras}
+                          {r ? ` · rij ${r.rijnummer}` : ""}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {format(parseISO(o.datum), "d MMMM", { locale: nl })}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {zichtbareSelectie.length > 0 && (
+              <Link
+                to="/kelder/partijen/nieuw"
+                search={{ oogst: zichtbareSelectie.map((o) => o.id).join(",") }}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+              >
+                <Grape className="h-4 w-4" />
+                Nieuwe partij van {geselecteerdeKg} kg
+              </Link>
+            )}
+          </section>
+        )}
       </div>
     </>
   );

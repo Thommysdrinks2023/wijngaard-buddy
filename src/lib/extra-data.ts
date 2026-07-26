@@ -165,6 +165,42 @@ const oogstEntity = maakEntity<OogstRecord>({
 export const fetchOogst = oogstEntity.fetchAll;
 export const createOogstRecord = oogstEntity.create;
 
+/**
+ * Fase 13 Blok E — koppelt oogstregels aan een partij.
+ *
+ * BEWUST ONLINE-ONLY, anders dan createOogstRecord hierboven. Oogst invoeren
+ * moet in het veld werken zonder bereik; koppelen gebeurt in de kelder, waar de
+ * partij net op de server is aangemaakt. Een offline "koppeling" zou een
+ * verwijzing naar een partij-id opleveren die lokaal nog niet bestaat — dat is
+ * precies het soort halve staat waar de sync-wachtrij niet mee overweg kan (zie
+ * ARCHITECTURE.md §7.6). Liever een eerlijke foutmelding.
+ */
+export async function koppelOogstAanPartij(oogstIds: string[], partijId: string): Promise<number> {
+  if (oogstIds.length === 0) return 0;
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) {
+    throw new Error(
+      "Geen verbinding met de server — de oogst kon niet aan de partij gekoppeld worden. De partij zelf is wél aangemaakt; koppel de oogst later alsnog.",
+    );
+  }
+  let gekoppeld = 0;
+  for (const id of oogstIds) {
+    await pb.collection("oogst").update(id, { partij: partijId });
+    gekoppeld++;
+  }
+  logAudit("gewijzigd", "oogst", `${gekoppeld} oogstregel(s) gekoppeld aan partij ${partijId}`);
+
+  // Lokale cache bijwerken zodat het overzicht niet blijft hangen op "nog niet
+  // gekoppeld" tot de volgende volledige ophaalronde.
+  const cache = readLs<OogstRecord[]>("wg.oogst.v1", []);
+  const ids = new Set(oogstIds);
+  writeLs(
+    "wg.oogst.v1",
+    cache.map((o) => (ids.has(o.id) ? { ...o, partij: partijId } : o)),
+  );
+  return gekoppeld;
+}
+
 // Verwachte opbrengst per plant (kg) — eenvoudige vuistregel voor jonge
 // aanplant; later te vervangen door een echte yield prediction.
 export const VERWACHTE_KG_PER_PLANT = 1.5;

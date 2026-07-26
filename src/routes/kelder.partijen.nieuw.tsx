@@ -1,6 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchMetingen } from "@/lib/data";
+import { fetchOogst, koppelOogstAanPartij } from "@/lib/extra-data";
+import {
+  MAX_MEETOUDERDOM_DAGEN,
+  STANDAARD_RENDEMENT_L_PER_100KG,
+  stelPartijVoor,
+} from "@/lib/oogst-naar-partij";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { createPartijViaEndpoint, fetchProducenten, fetchTanks } from "@/lib/kelder-data";
@@ -24,6 +31,13 @@ import { Loader2 } from "lucide-react";
 export const Route = createFileRoute("/kelder/partijen/nieuw")({
   component: NieuwePartijPage,
   head: () => ({ meta: [{ title: "Nieuwe partij — Kelder" }] }),
+  // Fase 13 Blok E — met ?oogst=<id>,<id> komt het formulier voorgevuld binnen
+  // vanaf /oogst. Bewust een lijst ids in de URL en geen globale staat: dan is
+  // de stap deelbaar, herlaadbaar en te bookmarken, en blijft dit scherm ook
+  // zonder die parameter gewoon werken.
+  validateSearch: (zoek: Record<string, unknown>): { oogst?: string } => ({
+    oogst: typeof zoek.oogst === "string" && zoek.oogst ? zoek.oogst : undefined,
+  }),
 });
 
 function NieuwePartijPage() {
@@ -31,9 +45,53 @@ function NieuwePartijPage() {
   const navigate = useNavigate();
   const [jaar] = useSeizoen();
   const [invoerder, setInvoerder] = useInvoerder();
+  const { oogst: oogstParam } = Route.useSearch();
   const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
+
+  // Voorgevuld vanuit de oogst: alleen ophalen wanneer er ids meekomen.
+  const gevraagdeOogstIds = useMemo(
+    () => (oogstParam ? oogstParam.split(",").filter(Boolean) : []),
+    [oogstParam],
+  );
+  const oogstQ = useQuery({
+    queryKey: ["oogst-records"],
+    queryFn: fetchOogst,
+    enabled: gevraagdeOogstIds.length > 0,
+  });
+  const metingenQ = useQuery({
+    queryKey: ["metingen"],
+    queryFn: () => fetchMetingen(),
+    enabled: gevraagdeOogstIds.length > 0,
+  });
+
+  const [rendement, setRendement] = useState(STANDAARD_RENDEMENT_L_PER_100KG);
+
+  const gekozenOogst = useMemo(() => {
+    if (gevraagdeOogstIds.length === 0) return [];
+    const wil = new Set(gevraagdeOogstIds);
+    return (oogstQ.data ?? []).filter((o) => wil.has(o.id));
+  }, [oogstQ.data, gevraagdeOogstIds]);
+
+  const voorstel = useMemo(
+    () =>
+      gekozenOogst.length > 0
+        ? stelPartijVoor(
+            gekozenOogst.map((o) => ({
+              id: o.id,
+              rij: o.rij,
+              ras: o.ras,
+              datum: o.datum,
+              kg: o.kg,
+              partij: o.partij,
+            })),
+            (metingenQ.data ?? []).map((m) => ({ rij: m.rij, datum: m.datum, brix: m.brix })),
+            rendement,
+          )
+        : null,
+    [gekozenOogst, metingenQ.data, rendement],
+  );
 
   const [naam, setNaam] = useState("");
   const [jaargang, setJaargang] = useState(String(jaar));
@@ -75,6 +133,44 @@ function NieuwePartijPage() {
     return genereerLotnummer(naam, Number(jaargang), bestaande);
   }, [naam, jaargang, partijenQ.data]);
 
+  // Het voorstel één keer in de velden zetten. Daarna niet meer: wie een veld
+  // aanpast moet niet overschreven worden door een herberekening. Het rendement
+  // is de uitzondering — dat schuifje is er juist om het volume live te laten
+  // meebewegen (zie hieronder).
+  //
+  // WACHTEN OP BEIDE QUERIES IS ESSENTIEEL, en dat is hier fout gegaan tijdens
+  // het testen (26 juli 2026). `voorstel` is al bruikbaar zodra de OOGST binnen
+  // is, maar de startdichtheid komt uit de METINGEN — een tweede query die
+  // later kan landen. Vulde je op het eerste moment, dan zette de vlag zichzelf
+  // op "gedaan" terwijl dichtheid nog null was, en werd de °Oechsle nooit meer
+  // ingevuld: de partij ging zonder startdichtheid de kelder in.
+  //
+  // Gemeen detail: bij een tweede bezoek kwamen beide queries uit de cache en
+  // wérkte het wel. Koud kapot, warm goed — dus precies bij het eerste gebruik
+  // van de dag zou het misgaan, en in een snelle test nooit opvallen.
+  const oogstGereed = gevraagdeOogstIds.length === 0 || !oogstQ.isPending;
+  const metingenGereed = gevraagdeOogstIds.length === 0 || !metingenQ.isPending;
+  const voorgevuld = useRef(false);
+  useEffect(() => {
+    if (voorgevuld.current || !voorstel) return;
+    if (!oogstGereed || !metingenGereed) return;
+    voorgevuld.current = true;
+    setNaam(voorstel.naam);
+    setJaargang(String(voorstel.jaargang));
+    setSamenstelling(voorstel.samenstelling);
+    setPersDatum(voorstel.persDatum);
+    setStartVolume(String(voorstel.startVolumeL));
+    if (voorstel.dichtheid) setOechsle(String(voorstel.dichtheid.oechsle));
+  }, [voorstel]);
+
+  // Het rendement verschuiven hoort het volume mee te nemen, óók nadat het
+  // formulier is voorgevuld — anders is het schuifje een dood bedieningselement.
+  useEffect(() => {
+    if (!voorgevuld.current || !voorstel) return;
+    setStartVolume(String(voorstel.startVolumeL));
+    // bewust alleen op het volume uit het voorstel reageren
+  }, [voorstel?.startVolumeL]);
+
   const wisFout = (veld: string) =>
     setFouten((f) => {
       if (!f[veld]) return f;
@@ -110,9 +206,27 @@ function NieuwePartijPage() {
         verantwoordelijke: invoerder,
         notitie,
       }),
-    onSuccess: (r) => {
+    onSuccess: async (r) => {
       toast.success("Partij aangemaakt ✓");
       if (r.waarschuwing) toast.warning(r.waarschuwing);
+
+      // Fase 13 Blok E — de koppeling is het hele punt van deze stap, maar hij
+      // gebeurt ná het aanmaken en kan dus apart mislukken. De partij bestaat
+      // dan al; die mag niet stilletjes zonder oogst achterblijven. Daarom een
+      // expliciete melding die zegt wat er wél gelukt is en wat niet.
+      if (voorstel && voorstel.oogstIds.length > 0) {
+        try {
+          const n = await koppelOogstAanPartij(voorstel.oogstIds, r.id);
+          toast.success(`${n} oogstregel${n === 1 ? "" : "s"} gekoppeld aan deze partij ✓`);
+          qc.invalidateQueries({ queryKey: ["oogst-records"] });
+        } catch (fout) {
+          toast.error("Partij aangemaakt, maar de oogst is niet gekoppeld", {
+            description: (fout as Error).message,
+            duration: 10_000,
+          });
+        }
+      }
+
       qc.invalidateQueries({ queryKey: ["partijen"] });
       qc.invalidateQueries({ queryKey: ["tanks"] });
       qc.invalidateQueries({ queryKey: ["tankboek"] });
@@ -150,6 +264,72 @@ function NieuwePartijPage() {
     <>
       <AppHeader back title="Nieuwe partij" subtitle="Kelder" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        {/* Fase 13 Blok E — herkomst van het voorstel. Alles hieronder is een
+            AANNAME en staat er daarom bij: wie het niet ziet, kan het niet
+            corrigeren. De velden eronder zijn gewoon te overschrijven. */}
+        {voorstel && (
+          <section className="space-y-3 rounded-2xl border border-primary/40 bg-primary/5 p-4">
+            <div>
+              <h2 className="text-sm font-semibold">Voorgevuld uit de oogst</h2>
+              <p className="text-xs text-muted-foreground">
+                {voorstel.oogstIds.length} oogstregel
+                {voorstel.oogstIds.length === 1 ? "" : "s"} · {voorstel.totaalKg} kg ·{" "}
+                {voorstel.samenstelling}
+              </p>
+            </div>
+
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium">
+                Verwachte opbrengst: {rendement} liter per 100 kg
+              </span>
+              <input
+                type="range"
+                min={40}
+                max={90}
+                step={1}
+                value={rendement}
+                onChange={(e) => setRendement(Number(e.target.value))}
+                className="w-full accent-[var(--primary)]"
+              />
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Vuistregel — hangt af van pers, ras en rijpheid. Geeft{" "}
+                <strong>{voorstel.startVolumeL} L</strong> most.
+              </span>
+            </label>
+
+            {voorstel.dichtheid ? (
+              <p className="text-xs text-muted-foreground">
+                Startdichtheid <strong>{voorstel.dichtheid.oechsle} °Oe</strong> (
+                {voorstel.dichtheid.brix} °Bx), gewogen op kilo&apos;s uit veldmetingen van{" "}
+                {voorstel.dichtheid.vanDatum === voorstel.dichtheid.totDatum
+                  ? voorstel.dichtheid.vanDatum
+                  : `${voorstel.dichtheid.vanDatum} t/m ${voorstel.dichtheid.totDatum}`}
+                {voorstel.dichtheid.rijenMetMeting < voorstel.dichtheid.rijenTotaal && (
+                  <>
+                    {" "}
+                    — let op: gebaseerd op {voorstel.dichtheid.rijenMetMeting} van de{" "}
+                    {voorstel.dichtheid.rijenTotaal} betrokken rijen
+                    {voorstel.dichtheid.rijenTeOud > 0 && (
+                      <>
+                        , want bij {voorstel.dichtheid.rijenTeOud}{" "}
+                        {voorstel.dichtheid.rijenTeOud === 1 ? "rij was" : "rijen was"} de laatste
+                        meting ouder dan {MAX_MEETOUDERDOM_DAGEN} dagen
+                      </>
+                    )}
+                  </>
+                )}
+                . Een most-monster na het persen wijkt hier meestal van af.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Geen bruikbare veldmeting gevonden voor deze rijen
+                {gekozenOogst.length > 0 && " (of alleen metingen ouder dan drie weken)"} — vul de
+                startdichtheid zelf in.
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
