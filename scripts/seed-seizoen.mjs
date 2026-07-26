@@ -24,7 +24,9 @@ const MARKER = "SEED-FASE11";
 const PREFIX = "[SEED-F11]";
 
 if (!email || !wachtwoord) {
-  console.error("Gebruik: node scripts/seed-seizoen.mjs <url> <admin-email> <admin-wachtwoord> [--cleanup]");
+  console.error(
+    "Gebruik: node scripts/seed-seizoen.mjs <url> <admin-email> <admin-wachtwoord> [--cleanup]",
+  );
   process.exit(1);
 }
 
@@ -98,9 +100,20 @@ async function alleRecords(collectie, filter = "") {
 
 // ============================= CLEANUP =============================
 const SEED_COLLECTIES = [
-  "metingen", "observaties", "fenologie", "gezondheid", "oogst",
-  "analyses", "kelderlog", "tankboek", "voorraad_mutaties",
-  "voorraad_flessen", "bottelrondes", "orders", "klanten", "partijen",
+  "metingen",
+  "observaties",
+  "fenologie",
+  "gezondheid",
+  "oogst",
+  "analyses",
+  "kelderlog",
+  "tankboek",
+  "voorraad_mutaties",
+  "voorraad_flessen",
+  "bottelrondes",
+  "orders",
+  "klanten",
+  "partijen",
 ];
 
 async function cleanup() {
@@ -154,7 +167,8 @@ async function seed() {
   const t0 = Date.now();
 
   const rijen = await alleRecords("rijen");
-  if (rijen.length === 0) throw new Error("Geen rijen gevonden — draai eerst setup-pocketbase.mjs.");
+  if (rijen.length === 0)
+    throw new Error("Geen rijen gevonden — draai eerst setup-pocketbase.mjs.");
   const tanks = (await alleRecords("tanks")).filter((t) => t.capaciteit_l > 0);
   const producenten = await alleRecords("producenten");
   const producent = producenten[0]?.id || "";
@@ -211,7 +225,11 @@ async function seed() {
   // ---------- fenologie (alle 5 momenten × alle 7 rassen, meerdere rijen)
   console.log("  fenologie");
   const MOMENTEN = [
-    ["Knopbreek", 4], ["Bloei", 6], ["Zetting", 7], ["Véraison", 8], ["Oogstrijp", 9],
+    ["Knopbreek", 4],
+    ["Bloei", 6],
+    ["Zetting", 7],
+    ["Véraison", 8],
+    ["Oogstrijp", 9],
   ];
   const fenoTaken = [];
   for (const [moment, maand] of MOMENTEN) {
@@ -259,9 +277,14 @@ async function seed() {
   // ---------- partijen (8) + oogst gekoppeld
   console.log("  partijen (8) + oogst");
   const RAS_PARTIJ = [
-    ["Souvignier Gris", "wit"], ["Johanniter", "wit"], ["Muscaris", "wit"],
-    ["Chardonnay", "wit"], ["Pinot Noir", "rood"], ["Regent", "rood"],
-    ["Pinotin", "rood"], ["Souvignier Gris", "rosé"],
+    ["Souvignier Gris", "wit"],
+    ["Johanniter", "wit"],
+    ["Muscaris", "wit"],
+    ["Chardonnay", "wit"],
+    ["Pinot Noir", "rood"],
+    ["Regent", "rood"],
+    ["Pinotin", "rood"],
+    ["Souvignier Gris", "rosé"],
   ];
   const partijen = [];
   for (let i = 0; i < RAS_PARTIJ.length; i++) {
@@ -327,24 +350,70 @@ async function seed() {
     const vol = Math.min(p.startVol, tankA.capaciteit_l, tankB.capaciteit_l);
     const basis = { partij: p.id, producent, verantwoordelijke: kies(INVOERDERS) };
     // 1. vullen
-    tankboekRegels.push({ ...basis, actie: "vullen", naar_tank: tankA.id, volume_l: vol, datum: p.pers_datum, notitie: `${PREFIX} most naar tank` });
+    tankboekRegels.push({
+      ...basis,
+      actie: "vullen",
+      naar_tank: tankA.id,
+      volume_l: vol,
+      datum: p.pers_datum,
+      notitie: `${PREFIX} most naar tank`,
+    });
     // 2. toevoegingen (geen volume-effect)
     for (let i = 0; i < 4; i++) {
-      tankboekRegels.push({ ...basis, actie: "toevoeging", naar_tank: tankA.id, volume_l: 0, datum: datum(9, geheel(10, 28)), middel: kies(["KMS", "Bentoniet", "Gistvoeding", "Pectolytisch enzym"]), dosering: `${geheel(2, 30)} g/hL`, notitie: `${PREFIX} toevoeging` });
+      tankboekRegels.push({
+        ...basis,
+        actie: "toevoeging",
+        naar_tank: tankA.id,
+        volume_l: 0,
+        datum: datum(9, geheel(10, 28)),
+        middel: kies(["KMS", "Bentoniet", "Gistvoeding", "Pectolytisch enzym"]),
+        dosering: `${geheel(2, 30)} g/hL`,
+        notitie: `${PREFIX} toevoeging`,
+      });
     }
     // 3. monsters (kleine afname)
     for (let i = 0; i < 3; i++) {
-      tankboekRegels.push({ ...basis, actie: "monster", van_tank: tankA.id, volume_l: 0.5, datum: datum(10, geheel(1, 28)), notitie: `${PREFIX} monster voor analyse` });
+      tankboekRegels.push({
+        ...basis,
+        actie: "monster",
+        van_tank: tankA.id,
+        volume_l: 0.5,
+        datum: datum(10, geheel(1, 28)),
+        notitie: `${PREFIX} monster voor analyse`,
+      });
     }
     // 4. overheveling naar tank B
     const naB = rond(vol - 8, 1);
-    tankboekRegels.push({ ...basis, actie: "overhevelen", van_tank: tankA.id, naar_tank: tankB.id, volume_l: naB, datum: datum(11, geheel(1, 20)), notitie: `${PREFIX} van droesem` });
+    tankboekRegels.push({
+      ...basis,
+      actie: "overhevelen",
+      van_tank: tankA.id,
+      naar_tank: tankB.id,
+      volume_l: naB,
+      datum: datum(11, geheel(1, 20)),
+      notitie: `${PREFIX} van droesem`,
+    });
     // 5. nazorg op B
     for (let i = 0; i < 5; i++) {
-      tankboekRegels.push({ ...basis, actie: kies(["toevoeging", "monster"]), van_tank: tankB.id, naar_tank: tankB.id, volume_l: 0.5, datum: datum(11, geheel(20, 28)), notitie: `${PREFIX} nazorg` });
+      tankboekRegels.push({
+        ...basis,
+        actie: kies(["toevoeging", "monster"]),
+        van_tank: tankB.id,
+        naar_tank: tankB.id,
+        volume_l: 0.5,
+        datum: datum(11, geheel(20, 28)),
+        notitie: `${PREFIX} nazorg`,
+      });
     }
     // 6. verlies
-    tankboekRegels.push({ ...basis, actie: "verlies", van_tank: tankB.id, volume_l: rond(tussen(1, 6), 1), datum: datum(12, geheel(1, 10)), notitie: `${PREFIX} verdamping/droesem` });
+    tankboekRegels.push({
+      ...basis,
+      actie: "verlies",
+      van_tank: tankB.id,
+      volume_l: rond(tussen(1, 6), 1),
+      datum: datum(12, geheel(1, 10)),
+      notitie: `${PREFIX} verdamping/droesem`,
+    });
     p.tankA = tankA;
     p.tankB = tankB;
     p.volInB = naB;
@@ -352,10 +421,26 @@ async function seed() {
   // opvullen tot ~200 met extra monsters
   while (tankboekRegels.length < 200) {
     const p = kies(partijen);
-    tankboekRegels.push({ partij: p.id, producent, verantwoordelijke: kies(INVOERDERS), actie: "monster", van_tank: p.tankB.id, volume_l: 0.2, datum: datum(geheel(10, 12), geheel(1, 28)), notitie: `${PREFIX} extra monster` });
+    tankboekRegels.push({
+      partij: p.id,
+      producent,
+      verantwoordelijke: kies(INVOERDERS),
+      actie: "monster",
+      van_tank: p.tankB.id,
+      volume_l: 0.2,
+      datum: datum(geheel(10, 12), geheel(1, 28)),
+      notitie: `${PREFIX} extra monster`,
+    });
   }
   await inBatches(tankboekRegels, 10, (r) =>
-    api("/api/collections/tankboek/records", { method: "POST", body: { ...V, ...r, tijd: `${String(geheel(8, 18)).padStart(2, "0")}:${kies(["00", "15", "30", "45"])}` } }),
+    api("/api/collections/tankboek/records", {
+      method: "POST",
+      body: {
+        ...V,
+        ...r,
+        tijd: `${String(geheel(8, 18)).padStart(2, "0")}:${kies(["00", "15", "30", "45"])}`,
+      },
+    }),
   );
 
   // ---------- analyses (~60)
@@ -389,7 +474,19 @@ async function seed() {
 
   // ---------- kelderlog (~100)
   console.log("  kelderlog (100)");
-  const KL_ACTIES = ["ontstelen", "persen", "gisting_start", "roeren", "overhevelen", "filtreren", "klaring", "toevoeging", "koeling", "proeven", "reiniging"];
+  const KL_ACTIES = [
+    "ontstelen",
+    "persen",
+    "gisting_start",
+    "roeren",
+    "overhevelen",
+    "filtreren",
+    "klaring",
+    "toevoeging",
+    "koeling",
+    "proeven",
+    "reiniging",
+  ];
   const klTaken = Array.from({ length: 100 }, () => kies(partijen));
   await inBatches(klTaken, 10, (p) =>
     api("/api/collections/kelderlog/records", {
@@ -419,27 +516,48 @@ async function seed() {
       method: "POST",
       body: {
         ...V,
-        partij: p.id, producent, van_tank: p.tankB.id,
+        partij: p.id,
+        producent,
+        van_tank: p.tankB.id,
         botteldatum: datum(12, geheel(10, 20)),
-        aantal_flessen: flessen, flesinhoud_ml: 750,
-        flestype: "Bordeaux", kleur_fles: kies(["groen", "bruin"]),
-        parelwijn: false, lotnummer: p.lotnummer,
-        notities: `${PREFIX} bottelronde`, ingevoerd_door: kies(INVOERDERS),
+        aantal_flessen: flessen,
+        flesinhoud_ml: 750,
+        flestype: "Bordeaux",
+        kleur_fles: kies(["groen", "bruin"]),
+        parelwijn: false,
+        lotnummer: p.lotnummer,
+        notities: `${PREFIX} bottelronde`,
+        ingevoerd_door: kies(INVOERDERS),
       },
     });
     // bijbehorende tankboek-botteling zodat de tank leegloopt
     await api("/api/collections/tankboek/records", {
       method: "POST",
-      body: { ...V, partij: p.id, producent, actie: "botteling", van_tank: p.tankB.id, volume_l: rond(flessen * 0.75, 1), datum: br.botteldatum, verantwoordelijke: kies(INVOERDERS), notitie: `${PREFIX} gebotteld` },
+      body: {
+        ...V,
+        partij: p.id,
+        producent,
+        actie: "botteling",
+        van_tank: p.tankB.id,
+        volume_l: rond(flessen * 0.75, 1),
+        datum: br.botteldatum,
+        verantwoordelijke: kies(INVOERDERS),
+        notitie: `${PREFIX} gebotteld`,
+      },
     });
     const vr = await api("/api/collections/voorraad_flessen/records", {
       method: "POST",
       body: {
         ...V,
-        bottelronde: br.id, partij: p.id, producent,
-        wijnnaam: p.naam.replace(PREFIX + " ", ""), jaargang: 2026,
-        aantal_beginvoorraad: flessen, aantal_huidig: flessen,
-        locatie: `${PREFIX} stelling ${geheel(1, 6)}`, status: "op_voorraad",
+        bottelronde: br.id,
+        partij: p.id,
+        producent,
+        wijnnaam: p.naam.replace(PREFIX + " ", ""),
+        jaargang: 2026,
+        aantal_beginvoorraad: flessen,
+        aantal_huidig: flessen,
+        locatie: `${PREFIX} stelling ${geheel(1, 6)}`,
+        status: "op_voorraad",
       },
     });
     voorraden.push({ ...vr, flessen });
@@ -449,7 +567,14 @@ async function seed() {
   const mutTaken = [];
   for (const v of voorraden) {
     for (let i = 0; i < 8; i++) {
-      const type = kies(["verkocht", "verkocht", "verkocht", "eigen_gebruik", "kapot", "weggegeven"]);
+      const type = kies([
+        "verkocht",
+        "verkocht",
+        "verkocht",
+        "eigen_gebruik",
+        "kapot",
+        "weggegeven",
+      ]);
       mutTaken.push({ v, type, aantal: -geheel(1, 12) });
     }
   }
@@ -458,7 +583,9 @@ async function seed() {
       method: "POST",
       body: {
         ...V,
-        voorraad: t.v.id, mutatie_type: t.type, aantal: t.aantal,
+        voorraad: t.v.id,
+        mutatie_type: t.type,
+        aantal: t.aantal,
         datum: datum(12, geheel(15, 28)),
         afnemer_of_reden: `${PREFIX} ${kies(["wijnwinkel Den Ham", "restaurant De Linde", "proeverij", "eigen gebruik", "gebroken bij transport"])}`,
         ingevoerd_door: kies(INVOERDERS),
@@ -472,7 +599,10 @@ async function seed() {
     const saldo = v.flessen + muts.reduce((a, m) => a + m.aantal, 0);
     await api(`/api/collections/voorraad_flessen/records/${v.id}`, {
       method: "PATCH",
-      body: { aantal_huidig: Math.max(0, saldo), status: saldo > 0 ? "op_voorraad" : "uitverkocht" },
+      body: {
+        aantal_huidig: Math.max(0, saldo),
+        status: saldo > 0 ? "op_voorraad" : "uitverkocht",
+      },
     });
   }
 
@@ -480,14 +610,25 @@ async function seed() {
   console.log("  klanten (6) + orders (10)");
   const klanten = [];
   for (const [naam, type] of [
-    ["Wijnwinkel Den Ham", "winkel"], ["Restaurant De Linde", "horeca"],
-    ["Slijterij Overijssel", "winkel"], ["Fam. Jansen", "particulier"],
-    ["Wijnfestival Twente", "evenement"], ["Café De Druif", "horeca"],
+    ["Wijnwinkel Den Ham", "winkel"],
+    ["Restaurant De Linde", "horeca"],
+    ["Slijterij Overijssel", "winkel"],
+    ["Fam. Jansen", "particulier"],
+    ["Wijnfestival Twente", "evenement"],
+    ["Café De Druif", "horeca"],
   ]) {
-    klanten.push(await api("/api/collections/klanten/records", {
-      method: "POST",
-      body: { ...V, naam: `${PREFIX} ${naam}`, type, contact: "test@voorbeeld.nl", notities: `${PREFIX} testklant` },
-    }));
+    klanten.push(
+      await api("/api/collections/klanten/records", {
+        method: "POST",
+        body: {
+          ...V,
+          naam: `${PREFIX} ${naam}`,
+          type,
+          contact: "test@voorbeeld.nl",
+          notities: `${PREFIX} testklant`,
+        },
+      }),
+    );
   }
   for (let i = 0; i < 10; i++) {
     const v = kies(voorraden);

@@ -161,14 +161,17 @@ function NieuwePartijPage() {
     setPersDatum(voorstel.persDatum);
     setStartVolume(String(voorstel.startVolumeL));
     if (voorstel.dichtheid) setOechsle(String(voorstel.dichtheid.oechsle));
-  }, [voorstel]);
+  }, [voorstel, oogstGereed, metingenGereed]);
 
   // Het rendement verschuiven hoort het volume mee te nemen, óók nadat het
   // formulier is voorgevuld — anders is het schuifje een dood bedieningselement.
+  // Bewust alleen op startVolumeL reageren. Met `voorstel` in de lijst vuurt
+  // dit effect bij elke herberekening en overschrijft het een handmatig
+  // aangepast volume — precies wat de eenmalige vulling hierboven voorkomt.
   useEffect(() => {
     if (!voorgevuld.current || !voorstel) return;
     setStartVolume(String(voorstel.startVolumeL));
-    // bewust alleen op het volume uit het voorstel reageren
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voorstel?.startVolumeL]);
 
   const wisFout = (veld: string) =>
