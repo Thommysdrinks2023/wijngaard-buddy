@@ -1310,6 +1310,16 @@ async function main() {
   // SO₂-uitzondering: "<soort>:<veld>", bijv. "analyse:so2_vrij" betekent
   // "sluit zodra er voor deze partij een analyse is mét vrij SO₂ gemeten,
   // op of ná de taakdatum".
+  // Fase 13 Blok D — een inzicht bewaarde alleen een leesbaar LABEL in
+  // `onderwerp` ("Rij 22", of een partijnaam), geen verwijzing. Daardoor kon de
+  // melding "Rij 22 heeft bovengemiddelde uitval" nergens anders heen linken
+  // dan naar de assistent. `onderwerp_id` maakt van dat label een echte
+  // verwijzing; `onderwerp_soort` zegt naar welke collectie hij wijst.
+  await ensureVelden("inzichten", [
+    { name: "onderwerp_id", type: "text" },
+    { name: "onderwerp_soort", type: "text" },
+  ]);
+
   await ensureVelden("kelderlog", [
     { name: "taak_status", type: "select", maxSelect: 1, values: ["open", "afgerond"] },
     { name: "taak_afgerond_op", type: "text" },

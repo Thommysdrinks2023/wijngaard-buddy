@@ -69,6 +69,32 @@ export interface Signaal {
 
 export type SignaalProducent = () => Promise<Signaal[]>;
 
+/**
+ * Fase 13 Blok D — van bronrecord naar detailscherm.
+ *
+ * De melding "Rij 22 heeft bovengemiddelde uitval" linkte naar /assistent, en
+ * de SO₂-taak naar het algemene kelderdashboard: de melding wist wél over welk
+ * record hij ging, maar gooide dat bij het linken weg. Eén tabel houdt dat
+ * consistent en maakt meteen zichtbaar welke collecties géén detailscherm
+ * hebben (materieel, voorraadmutaties) — daar is het overzicht het beste doel.
+ */
+const DETAILROUTE: Record<string, (id: string) => string> = {
+  rijen: (id) => `/rij/${id}`,
+  partijen: (id) => `/kelder/partijen/${id}`,
+  tanks: (id) => `/kelder/tanks/${id}`,
+  voorraad_flessen: (id) => `/voorraad/${id}`,
+};
+
+/** Beste bestemming voor een signaal: het record zelf, anders het overzicht. */
+export function signaalLink(
+  bronRecord: { collectie: string; id: string } | undefined,
+  terugval: string,
+): string {
+  if (!bronRecord?.id) return terugval;
+  const maak = DETAILROUTE[bronRecord.collectie];
+  return maak ? maak(bronRecord.id) : terugval;
+}
+
 // ============= Onderhoud binnen 30 dagen (verhuisd uit meldingen.tsx) =============
 export async function onderhoudSignalen(): Promise<Signaal[]> {
   if (!isIngelogd()) return []; // auth-only bronnen, zie Fase 8-patroon
@@ -83,7 +109,9 @@ export async function onderhoudSignalen(): Promise<Signaal[]> {
       ernst: "info" as const,
       titel: `Onderhoud gepland: ${naam} vóór ${r.volgende_keer}.`,
       waarom: `${naam} heeft onderhoud gepland vóór ${r.volgende_keer} — dat valt binnen de 30-dagen-vooruitblik.`,
-      link: "/materieel",
+      // materieel heeft (nog) geen detailscherm; het overzicht is het beste doel
+      bronRecord: { collectie: "materieel", id: r.materieel },
+      link: signaalLink({ collectie: "materieel", id: r.materieel }, "/materieel"),
       datum: r.volgende_keer,
       // Fase 10 Blok 5: promoveerbaar tot taak via de bestaande
       // agent_acties-bevestigingsflow (besluit 4, geen nieuwe statusmachine).
@@ -211,7 +239,11 @@ export async function kelderlogTaakSignalen(): Promise<Signaal[]> {
             ? ` Hij sluit vanzelf zodra de bijbehorende meting is vastgelegd (${r.taak_sluit_bij}).`
             : "")
         : `Deze taak staat gepland voor ${r.datum} (${omschrijfAchterstand(status)}).`,
-      link: r.partij ? `/kelder/partijen/${r.partij}` : "/kelder",
+      // Het bronrecord is de kelderlogregel (nodig om af te vinken), maar
+      // kelderlog heeft geen eigen detailscherm — de partij waar de taak bij
+      // hoort is de plek waar je hem uitvoert. Vandaar hier een eigen doel
+      // in plaats van signaalLink().
+      link: signaalLink(r.partij ? { collectie: "partijen", id: r.partij } : undefined, "/kelder"),
       bronRecord: { collectie: "kelderlog", id: r.id },
       datum: r.datum,
     });
@@ -241,15 +273,27 @@ export async function kritiekeInzichtSignalen(): Promise<Signaal[]> {
     return items
       .filter((r) => KRITIEKE_INZICHTEN.has(r["inzicht_type"]))
       .slice(0, 5)
-      .map((r) => ({
-        id: `inzicht-${r.id}`,
-        bron: "inzicht",
-        ernst: "waarschuwing" as const,
-        titel: r["samenvatting_nl"] as string,
-        waarom: r["samenvatting_nl"] as string,
-        link: "/assistent",
-        datum: r["berekend_op"] as string,
-      }));
+      .map((r) => {
+        // Fase 13 Blok D: een inzicht bewaarde alleen een leesbaar label
+        // ("Rij 22"), dus linkte "Rij 22 heeft bovengemiddelde uitval" naar de
+        // assistent in plaats van naar die rij. Sinds deze fase legt
+        // bereken-inzichten.mjs ook de echte verwijzing vast. Oudere inzichten
+        // hebben die niet — die vallen terug op /assistent, waar de tekst
+        // tenminste besproken kan worden.
+        const soort = (r["onderwerp_soort"] as string) || "";
+        const id = (r["onderwerp_id"] as string) || "";
+        const bronRecord = soort && id ? { collectie: soort, id } : undefined;
+        return {
+          id: `inzicht-${r.id}`,
+          bron: "inzicht",
+          ernst: "waarschuwing" as const,
+          titel: r["samenvatting_nl"] as string,
+          waarom: r["samenvatting_nl"] as string,
+          bronRecord,
+          link: signaalLink(bronRecord, "/assistent"),
+          datum: r["berekend_op"] as string,
+        };
+      });
   } catch {
     return []; // niet ingelogd of offline — geen signalen
   }
@@ -284,7 +328,8 @@ export async function voorraadBijnaOpSignalen(): Promise<Signaal[]> {
       ernst: "info",
       titel: `${naam} nadert einde voorraad (${v.aantal_huidig} flessen).`,
       waarom: `Er zijn nog ${v.aantal_huidig} flessen ${naam} — dat is onder de drempel van ${drempel}${v.drempel_aantal ? " (eigen drempel voor deze wijn)" : " (globale standaard)"}.`,
-      link: "/voorraad",
+      bronRecord: { collectie: "voorraad_flessen", id: v.id },
+      link: signaalLink({ collectie: "voorraad_flessen", id: v.id }, "/voorraad"),
     });
   }
   return signalen;
@@ -329,13 +374,19 @@ export async function wachttijdSignalen(): Promise<Signaal[]> {
     const rijTekst = b.heleWijngaard
       ? "Hele wijngaard"
       : `Rij ${rijnummers.sort((x, y) => Number(x) - Number(y)).join(", ")}`;
+    // Fase 13 Blok D: gaat het over één rij, dan is die rij het doel. Bij meer
+    // rijen (of de hele wijngaard) is de kaart de enige zinnige bestemming —
+    // daar zie je in één oogopslag wat er wél en niet geplukt mag worden.
+    const eenRij = !b.heleWijngaard && perRij.size === 1;
+    const bronRecord = eenRij ? { collectie: "rijen", id: voorbeeld.rijId } : undefined;
     return {
       id: `wachttijd-${vrijVanaf}`,
       bron: "wachttijd",
       ernst: "waarschuwing" as SignaalErnst,
       titel: `${rijTekst}: niet oogsten vóór ${vrijVanaf} (nog ${voorbeeld.dagenTeGaan} ${voorbeeld.dagenTeGaan === 1 ? "dag" : "dagen"})`,
       waarom: omschrijfWachttijd(voorbeeld, b.heleWijngaard ? undefined : Number(rijnummers[0])),
-      link: "/perceelkaart",
+      bronRecord,
+      link: signaalLink(bronRecord, "/perceelkaart"),
       datum: vrijVanaf,
     };
   });

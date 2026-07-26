@@ -52,6 +52,7 @@ import {
   kelderlogTaakSignalen,
   kritiekeInzichtSignalen,
   onderhoudSignalen,
+  signaalLink,
   sorteerSignalen,
   verzamelSignalen,
 } from "./signalen";
@@ -266,5 +267,29 @@ describe("voorraadBijnaOpSignalen", () => {
     vi.mocked(isIngelogd).mockReturnValue(false);
     expect(await voorraadBijnaOpSignalen()).toEqual([]);
     expect(fetchVoorraadFlessen).not.toHaveBeenCalled();
+  });
+});
+
+// ============= Fase 13 Blok D — signalen linken naar het bronrecord =============
+describe("signaalLink", () => {
+  it("stuurt naar het detailscherm van het record", () => {
+    expect(signaalLink({ collectie: "rijen", id: "r1" }, "/perceelkaart")).toBe("/rij/r1");
+    expect(signaalLink({ collectie: "partijen", id: "p1" }, "/kelder")).toBe("/kelder/partijen/p1");
+    expect(signaalLink({ collectie: "tanks", id: "t1" }, "/kelder")).toBe("/kelder/tanks/t1");
+    expect(signaalLink({ collectie: "voorraad_flessen", id: "v1" }, "/voorraad")).toBe(
+      "/voorraad/v1",
+    );
+  });
+
+  it("valt terug op het overzicht als de collectie geen detailscherm heeft", () => {
+    // materieel en kelderlog hebben er (nog) geen — dan is het overzicht beter
+    // dan een kapotte link
+    expect(signaalLink({ collectie: "materieel", id: "m1" }, "/materieel")).toBe("/materieel");
+    expect(signaalLink({ collectie: "kelderlog", id: "k1" }, "/kelder")).toBe("/kelder");
+  });
+
+  it("valt terug als er helemaal geen bronrecord is (backup, AGP)", () => {
+    expect(signaalLink(undefined, "/kelder/accijns")).toBe("/kelder/accijns");
+    expect(signaalLink({ collectie: "rijen", id: "" }, "/perceelkaart")).toBe("/perceelkaart");
   });
 });

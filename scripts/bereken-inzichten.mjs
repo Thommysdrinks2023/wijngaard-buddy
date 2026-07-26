@@ -110,7 +110,19 @@ function isoWeek(datumStr) {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-async function schrijfInzicht(inzicht_type, onderwerp, periode, waarde, samenvatting_nl) {
+// Fase 13 Blok D — `onderwerp` is een LEESBAAR LABEL ("Rij 22", een partijnaam)
+// en geen verwijzing. Daardoor kon een melding als "Rij 22 heeft
+// bovengemiddelde uitval" nergens heen linken. `verwijzing` legt daarnaast het
+// echte record vast: { soort: "rijen" | "partijen", id }. Optioneel — een
+// inzicht over een ras of over de hele wijngaard heeft geen enkel record.
+async function schrijfInzicht(
+  inzicht_type,
+  onderwerp,
+  periode,
+  waarde,
+  samenvatting_nl,
+  verwijzing,
+) {
   await api("/api/collections/inzichten/records", {
     method: "POST",
     body: {
@@ -120,6 +132,8 @@ async function schrijfInzicht(inzicht_type, onderwerp, periode, waarde, samenvat
       berekend_op: new Date().toISOString(),
       waarde,
       samenvatting_nl,
+      onderwerp_soort: verwijzing?.soort ?? "",
+      onderwerp_id: verwijzing?.id ?? "",
     },
   });
   console.log(
@@ -198,6 +212,7 @@ async function berekenGistingSnelheid(partijen, analysesPerPartij) {
       `${vorige.datum} t/m ${laatste.datum}`,
       { daling_oechsle: daling, dagen, per_dag: round1(perDag), stagneert },
       samenvatting,
+      { soort: "partijen", id: partij.id },
     );
   }
 }
@@ -229,6 +244,7 @@ async function berekenUitvalCluster(rijen, observaties, huidigJaar) {
       String(huidigJaar),
       { telling, gemiddelde: round1(gem), drempel: round1(drempel) },
       `Rij ${rij.rijnummer} (${rij.ras}) heeft bovengemiddelde uitval: ${telling} melding(en) tegen een gemiddelde van ${round1(gem)} over alle rijen (drempel ${round1(drempel)}).`,
+      { soort: "rijen", id: rijId },
     );
   }
   if (gevonden === 0) console.log("  · [uitval_cluster] geen rij springt er statistisch uit.");
