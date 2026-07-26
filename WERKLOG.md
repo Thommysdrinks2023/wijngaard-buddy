@@ -951,3 +951,93 @@ Het belangrijkste resultaat van deze sessie is dus niet een vondst, maar een van
 1. **`partijen.samenstelling` van partij "Johanniter" (lot 260101) bevat `"100 johanitter"`.** Zal ik dat corrigeren naar `"100% Johanniter"`, of laat je het staan? Het blokkeert niets, maar het veld komt wel in het traceerbaarheidsrapport dat een controleur kan inzien. Ik wijzig je eigen invoer niet zonder je akkoord.
 2. **Inlogplicht op de assistent-endpoints.** De rate limit is er, maar dekt publieke bereikbaarheid niet af (per IP, geen authenticatie). Wil je dat ik `requireAuth()` op de drie `/api/agent/*`-endpoints zet? Dat betekent dat de assistent níét meer zonder inloggen werkt — een bewuste eerdere keuze van jou, dus dit is jouw afweging en geen technische.
 3. **`users`-collectie buiten de driftcontrole.** Wil je dat het setup-script ook de API-regels van `users` expliciet vastlegt, zodat die meegenomen worden? Dat is een kleine uitbreiding, maar het raakt inlogrechten en daar wil ik geen aannames doen.
+
+---
+
+# Sessie 26 juli 2026 — Fase 13 (blokken A–G) + inloggen verwijderd
+
+Pre-seizoensreparaties. Uitgangspunt van de fase: **wat je vindt is
+belangrijker dan wat je toevoegt.** Dat is precies zo uitgepakt — de meeste
+tijd ging naar bewijzen dat iets stuk was, niet naar nieuwe functies.
+
+## Los verzoek: inloggen volledig verwijderd (besluit Thomas)
+
+Thomas wilde nergens meer een e-mail en wachtwoord hoeven invoeren. Het risico
+is hem vooraf voorgelegd — iedereen die de server bereikt kan nu alle data
+lezen én wijzigen, inclusief tankboek en klantgegevens — en hij koos hier
+bewust voor. **Dit moet terug voordat de server van `127.0.0.1` af gaat**
+(Raspberry Pi of `pb.tappenmars.nl`); de weg terug staat stap voor stap in
+`CLAUDE.md` onder "Inloggen verwijderd".
+
+Bewust NIET opengezet: `tankboek` en `agent_acties` houden
+`create/update/delete = null` (onwijzigbaarheid, geen inlogbeveiliging — dit
+bewaakt de correctheid van het accijnsregister; direct schrijven geeft nog
+steeds 403), en `gebruikers.pb.js` houdt zijn `requireAuth()` zodat
+accountbeheer niet wereldwijd open komt te staan.
+
+## Wat er is gerepareerd
+
+| Blok | Probleem                                            | Bewijs                                                                       |
+| ---- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
+| A    | 0 werd getoond als meting (pH 0, vrij SO₂ 0, 0 °Oe) | 0 komt niet meer voor in analyses, grafieken, voorspelling en calculators    |
+| B    | Spuitwachttijd waarschuwde nergens                  | Waarschuwing op /oogst + /perceelkaart, bevestiging vastgelegd in het record |
+| C    | Taken konden niet worden afgerond                   | Handmatig afvinken + automatisch sluiten via `taak_sluit_bij`                |
+| D    | Signalen linkten naar moduleoverzichten             | Elk signaaltype gaat aantoonbaar naar het juiste detailscherm                |
+| E    | Oogst en kelder wisten niets van elkaar             | Oogst → voorgevulde partij, koppeling geverifieerd op de server              |
+| F    | Vier kleine punten uit de wijnboer-doorloop         | Tankfilter, "in kelder"-terugval, voorraadkop, onboarding                    |
+| G    | Assistent kon niet meten of oogsten                 | Twee nieuwe tools, records geverifieerd op de server                         |
+
+## Bugs die alleen bij écht gebruik bovenkwamen
+
+1. **Startdichtheid uit een meting van drie maanden oud.** De regel "laatste
+   meting vóór de oogst" pakte een Brix van 14 juni voor een oogst op 20
+   september — van vóór de véraison. Het voorstel oogde geloofwaardig en was
+   onzin. Nu geldt `MAX_MEETOUDERDOM_DAGEN = 21`, en uitgesloten rijen worden
+   geteld en op het scherm genoemd.
+
+2. **Koud kapot, warm goed.** Het partijformulier vulde zich zodra de oogst
+   binnen was, maar de dichtheid komt uit een tweede query die later landt. De
+   eenmalige vulling zette zichzelf op "gedaan" terwijl die nog leeg was: de
+   partij ging zonder startdichtheid de kelder in (0 in de database, terwijl
+   het scherm 84 °Oe toonde). Bij een tweede bezoek kwam alles uit de cache en
+   werkte het wél — dus precies bij het eerste gebruik van de dag zou het
+   misgaan.
+
+3. **Een verlopen token geeft 200 met een lege lijst, geen 401.** Dit trof
+   mijn eigen controlescript en leverde bijna een vals "alles is opgeruimd" op.
+   Zelfde faalpatroon dat dit project al vier fases achtervolgt.
+
+4. **Schemawijzigingen kwamen niet aan.** `ensureCollection()` is create-only
+   en `ensureVelden()` voegt alleen ontbrekende vélden toe; API-regels en
+   keuzelijstwaarden vielen door beide mazen. Een wijziging kon dus gecommit
+   worden zonder ooit toegepast te zijn. Opgelost met
+   `synchroniseerRegels()` en `synchroniseerKeuzelijsten()` (alleen
+   toevoegen, nooit verwijderen).
+
+5. **Een onbekend actietype liet het scherm wit worden** in plaats van een
+   lelijke kaart te tonen. Een nieuw agent-actietype raakt vier plekken;
+   vergeet je de frontend-config, dan crasht de pagina.
+
+## Stand
+
+173 unittests groen (27 nieuwe), 6/6 rooktests groen op telefoonformaat,
+schema-drift 0, build slaagt. Seizoensdata van de doorloop (1142 records)
+opgeruimd, recordaantallen terug op de uitgangsstand.
+
+## VRAGEN VOOR THOMAS
+
+1. **Klopt 70 liter per 100 kg als vuistregel voor je pers?** Dat getal vult
+   nu het startvolume van een nieuwe partij voor. Het schuifje staat erbij, dus
+   je kunt het per keer bijstellen, maar een betere standaard scheelt werk.
+
+2. **Is drie weken de juiste grens voor een rijpheidsmeting?** Metingen ouder
+   dan 21 dagen tellen niet meer mee voor de startdichtheid. Meet je vlak voor
+   de pluk altijd opnieuw, dan mag die grens strenger.
+
+3. **Wil je dat de assistent ook fenologie en gezondheid kan vastleggen?** Nu
+   kan hij meten, oogsten, observeren en de hele kelder bedienen — maar
+   knopbreek/bloei/véraison en vigor/snoeigewicht nog niet.
+
+4. **Het rolmodel staat uit maar de code staat er nog.** Wil je dat het
+   terugkomt zodra de app op de Pi draait, of mag alles daarna ook open blijven
+   binnen je eigen netwerk? Dit bepaalt hoeveel werk die stap wordt.
