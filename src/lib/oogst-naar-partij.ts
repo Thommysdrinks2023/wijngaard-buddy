@@ -47,11 +47,19 @@ export const STANDAARD_RENDEMENT_L_PER_100KG = 75;
  * waarop de suikeropbouw nog niet eens begonnen is. Het voorstel oogde
  * geloofwaardig (één getal, netjes gewogen) en was inhoudelijk onzin.
  *
- * Drie weken is ruim genoeg om een normale meetronde vóór de pluk te vangen, en
- * kort genoeg om een meting van een heel ander groeistadium buiten te sluiten.
- * Rijen die afvallen worden geteld en getoond, niet stilzwijgend genegeerd.
+ * WAAROM ZEVEN DAGEN (Thomas, 26 juli 2026: hij meet in september DAGELIJKS).
+ * De laatste meting is dan normaal hooguit een dag oud, dus deze grens bijt
+ * vrijwel nooit bij normaal gebruik — precies de bedoeling. De speling is er
+ * voor een regenweek of een rij die een ronde is overgeslagen. Strakker zetten
+ * zou vaker "geen bruikbare meting" opleveren en je alsnog laten overtypen;
+ * ruimer laat een meting van een ander rijpingsstadium meetellen (laat in het
+ * seizoen loopt het suikergehalte ruwweg 0,5–1 °Bx per week op, dus een week
+ * oude meting zit er hooguit één punt naast).
+ *
+ * Rijen die afvallen worden geteld en op het scherm genoemd, niet
+ * stilzwijgend genegeerd.
  */
-export const MAX_MEETOUDERDOM_DAGEN = 21;
+export const MAX_MEETOUDERDOM_DAGEN = 7;
 
 const MS_PER_DAG = 86400000;
 

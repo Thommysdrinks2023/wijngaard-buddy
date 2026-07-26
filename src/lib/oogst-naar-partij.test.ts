@@ -136,19 +136,19 @@ describe("gewogenStartdichtheid", () => {
     expect(d?.rijenTeOud).toBe(1);
   });
 
-  it("de grens ligt op precies 21 dagen: die telt nog wél mee", () => {
+  it("de grens ligt op precies 7 dagen: die telt nog wél mee", () => {
     const d = gewogenStartdichtheid(
       [o({ id: "a", rij: "rij1", kg: 100, datum: "2026-09-20" })],
-      [{ rij: "rij1", datum: "2026-08-30", brix: 18 }], // 21 dagen
+      [{ rij: "rij1", datum: "2026-09-13", brix: 18 }], // 7 dagen
     );
     expect(d?.brix).toBe(18);
-    expect(d?.oudsteMetingDagen).toBe(21);
+    expect(d?.oudsteMetingDagen).toBe(7);
   });
 
-  it("22 dagen valt af", () => {
+  it("8 dagen valt af", () => {
     const d = gewogenStartdichtheid(
       [o({ id: "a", rij: "rij1", kg: 100, datum: "2026-09-20" })],
-      [{ rij: "rij1", datum: "2026-08-29", brix: 18 }],
+      [{ rij: "rij1", datum: "2026-09-12", brix: 18 }],
     );
     expect(d).toBeNull();
   });
@@ -172,11 +172,11 @@ describe("gewogenStartdichtheid", () => {
     const d = gewogenStartdichtheid(
       [o({ id: "a", rij: "rij1", kg: 100 }), o({ id: "b", rij: "rij2", kg: 100 })],
       [
-        { rij: "rij1", datum: "2026-09-12", brix: 19 },
+        { rij: "rij1", datum: "2026-09-14", brix: 19 },
         { rij: "rij2", datum: "2026-09-18", brix: 21 },
       ],
     );
-    expect(d?.vanDatum).toBe("2026-09-12");
+    expect(d?.vanDatum).toBe("2026-09-14");
     expect(d?.totDatum).toBe("2026-09-18");
   });
 });

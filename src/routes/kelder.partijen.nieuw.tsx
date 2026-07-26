@@ -323,8 +323,9 @@ function NieuwePartijPage() {
             ) : (
               <p className="text-xs text-muted-foreground">
                 Geen bruikbare veldmeting gevonden voor deze rijen
-                {gekozenOogst.length > 0 && " (of alleen metingen ouder dan drie weken)"} — vul de
-                startdichtheid zelf in.
+                {gekozenOogst.length > 0 &&
+                  ` (of alleen metingen ouder dan ${MAX_MEETOUDERDOM_DAGEN} dagen)`}{" "}
+                — vul de startdichtheid zelf in.
               </p>
             )}
           </section>
