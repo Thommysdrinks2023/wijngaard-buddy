@@ -46,8 +46,17 @@ function VoorraadOverzicht() {
 
   return (
     <>
-      <AppHeader title="Voorraad" subtitle="Van fles tot verkoop" />
+      <AppHeader back title="Voorraad" subtitle="Van fles tot verkoop" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        {/* Fase 13 Blok F — dit scherm begon met een raster kale getallen,
+            zonder kop in de pagina zelf en zonder terugknop. Je landde op
+            "2 / 30" en moest raden waar je was. Nu dezelfde opzet als /kelder
+            en /oogst: titel, ondertitel, en terug via de header. */}
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Voorraad</h1>
+          <p className="text-sm text-muted-foreground">Flessen per wijn en jaargang</p>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-border bg-card p-3 text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

@@ -266,10 +266,25 @@ function PartijDetailPage() {
   }, [analysesQ.data]);
 
   const huidigVolume = Math.round(tanksVanPartij.reduce((acc, t) => acc + t.huidig_volume_l, 0));
-  const dagenInKelder = partij?.pers_datum
-    ? differenceInDays(new Date(), parseISO(partij.pers_datum))
-    : null;
   const laatsteMutatie = tankboekQ.data?.[0];
+
+  // Fase 13 Blok F — "In kelder — dgn".
+  //
+  // De teller hing volledig aan `pers_datum`, een optioneel veld. Bij een
+  // partij die via een tankboek-vulling ontstond zonder ingevulde persdatum
+  // stond er dus een streepje, terwijl de app de datum gewoon wist: de EERSTE
+  // tankboekregel is per definitie het moment dat de partij de kelder in ging.
+  // Het tankboek komt nieuwste-eerst binnen, dus dat is de laatste in de lijst.
+  const eersteBoeking = tankboekQ.data?.length
+    ? tankboekQ.data[tankboekQ.data.length - 1]
+    : undefined;
+  const kelderStart = partij?.pers_datum || eersteBoeking?.datum || "";
+  const kelderStartBron: "pers" | "tankboek" | "" = partij?.pers_datum
+    ? "pers"
+    : eersteBoeking?.datum
+      ? "tankboek"
+      : "";
+  const dagenInKelder = kelderStart ? differenceInDays(new Date(), parseISO(kelderStart)) : null;
   const laatsteAnalyse = analysesQ.data?.[0];
   const statusInfo = PARTIJ_STATUSSEN.find((s) => s.value === partij?.status);
 
@@ -545,8 +560,12 @@ function PartijDetailPage() {
                 <span className="text-xs font-normal"> dgn</span>
               </p>
               <p className="text-[10px] text-white/70">
-                {partij?.pers_datum
-                  ? `pers ${format(parseISO(partij.pers_datum), "d MMM", { locale: nl })}`
+                {kelderStart
+                  ? `${kelderStartBron === "pers" ? "pers" : "1e boeking"} ${format(
+                      parseISO(kelderStart),
+                      "d MMM",
+                      { locale: nl },
+                    )}`
                   : ""}
               </p>
             </div>

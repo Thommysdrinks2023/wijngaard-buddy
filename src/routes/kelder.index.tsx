@@ -12,6 +12,9 @@ import { ErrorState } from "@/components/error-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { ArrowLeftRight, BookOpen, Container, NotebookPen, Plus, Wine } from "lucide-react";
 
+/** Onthoudt of de tanklijst op "alleen gevuld" staat (Fase 13 Blok F). */
+const TANKFILTER_SLEUTEL = "wg.kelder.alleen_gevuld.v1";
+
 export const Route = createFileRoute("/kelder/")({
   component: KelderDashboard,
   head: () => ({
@@ -35,7 +38,29 @@ function KelderDashboard() {
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
   const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
   const [producentFilter, setProducentFilter] = useState("");
-  const [alleenGevuld, setAlleenGevuld] = useState(false);
+
+  // Fase 13 Blok F — standaard alleen de gevulde tanks.
+  //
+  // De kelder heeft 48 tanks en er staan er zelden meer dan een handvol vol.
+  // Op een telefoonscherm betekende de oude standaard (alles tonen) dat je
+  // langs tientallen lege tanks moest scrollen om te zien wat er ligt — precies
+  // de vraag waarvoor je dit scherm opent. De knop blijft staan om alles te
+  // zien, en de keuze wordt onthouden zodat hij niet elke keer terugspringt.
+  const [alleenGevuld, setAlleenGevuld] = useState(() => {
+    if (typeof localStorage === "undefined") return true;
+    const bewaard = localStorage.getItem(TANKFILTER_SLEUTEL);
+    return bewaard === null ? true : bewaard === "1";
+  });
+  const wisselAlleenGevuld = () =>
+    setAlleenGevuld((v) => {
+      const nieuw = !v;
+      try {
+        localStorage.setItem(TANKFILTER_SLEUTEL, nieuw ? "1" : "0");
+      } catch {
+        // privémodus of vol quotum: de keuze geldt dan alleen deze sessie
+      }
+      return nieuw;
+    });
 
   const partijenById = useMemo(() => {
     const m = new Map<string, Partij>();
@@ -63,10 +88,14 @@ function KelderDashboard() {
     [tanksInGebruik],
   );
 
+  // Staat er niets in de kelder, dan toch alle tanks tonen: anders lees je
+  // "Geen tanks gevonden" terwijl er 48 zijn, en dat is een storingsmelding
+  // in plaats van de waarheid ("de kelder is leeg").
   const getoondeTanks = useMemo(
-    () => (alleenGevuld ? tanksInGebruik : (tanksQ.data ?? [])),
+    () => (alleenGevuld && tanksInGebruik.length > 0 ? tanksInGebruik : (tanksQ.data ?? [])),
     [alleenGevuld, tanksInGebruik, tanksQ.data],
   );
+  const filterActief = alleenGevuld && tanksInGebruik.length > 0;
 
   const isError = tanksQ.isError || partijenQ.isError;
 
@@ -244,18 +273,22 @@ function KelderDashboard() {
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Tankinventaris
+              Tankinventaris{" "}
+              <span className="font-normal normal-case tracking-normal">
+                ({getoondeTanks.length}
+                {filterActief ? ` van ${(tanksQ.data ?? []).length}` : ""})
+              </span>
             </h2>
             <button
               type="button"
-              onClick={() => setAlleenGevuld((v) => !v)}
+              onClick={wisselAlleenGevuld}
               className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
-                alleenGevuld
+                filterActief
                   ? "border-primary bg-primary-soft text-primary"
                   : "border-border bg-card"
               }`}
             >
-              {alleenGevuld ? "Toon alle tanks" : "Alleen gevuld"}
+              {filterActief ? "Toon alle tanks" : "Alleen gevuld"}
             </button>
           </div>
           {tanksQ.isLoading ? (

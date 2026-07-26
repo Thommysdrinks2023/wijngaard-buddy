@@ -28,13 +28,22 @@ const STAPPEN = [
   },
 ];
 
-// Drie welkomstschermen bij het allereerste gebruik
+// Drie welkomstschermen bij het allereerste gebruik.
+//
+// Fase 13 Blok F — ALLEEN op het startscherm. Voorheen verscheen deze dialoog
+// bij de eerste paginalading ongeacht waar je binnenkwam: scan je een QR-code
+// op een rijpaal, of open je een signaal dat naar /kelder/partijen/<id> wijst,
+// dan lag er een introcarrousel over je werkscherm die eerst weggeklikt moest
+// worden. Wie diep binnenkomt weet waar hij is; wie op de hub begint niet.
+// Uitgesteld tonen is bovendien niet erg: bij het volgende bezoek aan het
+// startscherm komt hij alsnog, want de vlag is dan nog niet gezet.
 export function Onboarding() {
   const [stap, setStap] = useState(0);
   const [tonen, setTonen] = useState(false);
 
   useEffect(() => {
-    setTonen(!localStorage.getItem(LS_GEZIEN));
+    const opStartscherm = window.location.pathname === "/";
+    setTonen(opStartscherm && !localStorage.getItem(LS_GEZIEN));
   }, []);
 
   if (!tonen) return null;
