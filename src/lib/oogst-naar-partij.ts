@@ -30,8 +30,11 @@
 import { vanBrix } from "./dichtheid";
 import { meetwaarde } from "./meetwaarde";
 
-/** Liter most per 100 kg druiven — vuistregel, in de UI aanpasbaar. */
-export const STANDAARD_RENDEMENT_L_PER_100KG = 70;
+/**
+ * Liter most per 100 kg druiven — vuistregel, in de UI aanpasbaar.
+ * 75 is het getal waar Thomas zelf van uitgaat (bevestigd 26 juli 2026).
+ */
+export const STANDAARD_RENDEMENT_L_PER_100KG = 75;
 
 /**
  * Hoe oud mag een veldmeting zijn om nog iets over de oogstdichtheid te zeggen?

@@ -466,7 +466,12 @@ export type AgentActieType =
   | "order"
   | "onderhoud"
   | "meting"
-  | "oogst";
+  | "oogst"
+  | "fenologie"
+  | "gezondheid"
+  | "werkuren"
+  | "bodem"
+  | "proefnotitie";
 
 export type AgentActieStatus = "voorgesteld" | "bevestigd" | "afgewezen" | "uitgevoerd" | "mislukt";
 
@@ -540,6 +545,12 @@ export const AGENT_ACTIE_CONFIG: Record<
   // Fase 13 Blok G
   meting: { label: "Meting", emoji: "🧪", randKlasse: "border-primary" },
   oogst: { label: "Oogst", emoji: "🍇", randKlasse: "border-accent-gold" },
+  // Assistent over de hele app (besluit Thomas, 26 juli 2026)
+  fenologie: { label: "Fenologie", emoji: "🌸", randKlasse: "border-success" },
+  gezondheid: { label: "Gezondheid", emoji: "❤️", randKlasse: "border-warning" },
+  werkuren: { label: "Werkuren", emoji: "⏱️", randKlasse: "border-border" },
+  bodem: { label: "Bodem", emoji: "🌍", randKlasse: "border-accent-gold" },
+  proefnotitie: { label: "Proefnotitie", emoji: "👃", randKlasse: "border-success" },
 };
 
 /**

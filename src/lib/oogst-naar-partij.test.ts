@@ -224,7 +224,7 @@ describe("stelPartijVoor", () => {
     );
     expect(v?.totaalKg).toBe(1000);
     expect(v?.samenstelling).toBe("Johanniter 60% · Solaris 40%");
-    expect(v?.startVolumeL).toBe(700);
+    expect(v?.startVolumeL).toBe(750); // standaardrendement 75 L/100 kg
     expect(v?.persDatum).toBe("2026-09-20"); // laatste oogstdag
     expect(v?.jaargang).toBe(2026);
     expect(v?.naam).toBe("Johanniter cuvée");

@@ -321,5 +321,16 @@ export function actieTypeNaarLijstNaam(actieType: AgentActieType): string {
       return "metingen";
     case "oogst":
       return "oogst";
+    // Assistent over de hele app (besluit Thomas, 26 juli 2026)
+    case "fenologie":
+      return "fenologie";
+    case "gezondheid":
+      return "gezondheid";
+    case "werkuren":
+      return "werkuren";
+    case "bodem":
+      return "bodem";
+    case "proefnotitie":
+      return "proefnotities";
   }
 }

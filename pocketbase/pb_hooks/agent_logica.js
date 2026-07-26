@@ -439,6 +439,172 @@ const WIJNGAARD_TOOLS = [
       },
     },
   },
+  // Besluit Thomas (26 juli 2026): "de AI-assistent mag over de hele app
+  // werkbaar zijn". Onderstaande lees- en schrijftools sluiten de laatste
+  // gaten: fenologie, gezondheid, werkuren (incl. de wettelijk verplichte
+  // spuitregistratie), bodem en proefnotities.
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_gezondheid",
+      description:
+        "Gezondheidsmetingen per rij (vigor 1-5, snoeigewicht, dode planten, korte scheuten).",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          van: { type: "string", description: "yyyy-MM-dd" },
+          tot: { type: "string", description: "yyyy-MM-dd" },
+        },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_werkuren",
+      description:
+        "Geregistreerde werkzaamheden en uren, inclusief bespuitingen met middel en wachttijd.",
+      input_schema: {
+        type: "object",
+        properties: {
+          taak: { type: "string" },
+          rijnummer: { type: "integer" },
+          van: { type: "string", description: "yyyy-MM-dd" },
+          tot: { type: "string", description: "yyyy-MM-dd" },
+        },
+      },
+    },
+  },
+  {
+    actie_type: "fenologie",
+    schema: {
+      name: "stel_fenologie_voor",
+      description:
+        "Leg een fenologisch moment vast voor een rij (knopbreek, bloei, zetting, véraison, " +
+        "oogstrijp). Gebruik dit bij 'rij 12 staat in bloei' of 'de johanniter is aan het kleuren'.",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          moment: {
+            type: "string",
+            enum: ["Knopbreek", "Bloei", "Zetting", "Véraison", "Oogstrijp"],
+          },
+          datum: { type: "string", description: "yyyy-MM-dd; laat weg voor vandaag" },
+          notitie: { type: "string" },
+        },
+        required: ["rijnummer", "moment"],
+      },
+    },
+  },
+  {
+    actie_type: "gezondheid",
+    schema: {
+      name: "stel_gezondheid_voor",
+      description:
+        "Leg een gezondheidsmeting vast voor een rij: vigor (groeikracht 1-5), snoeigewicht in " +
+        "gram per plant, aantal dode planten en/of percentage korte scheuten.",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          vigor: { type: "integer", description: "1 (zwak) tot 5 (zeer sterk)" },
+          snoeigewicht: { type: "number", description: "gram per plant" },
+          dode_planten: { type: "integer" },
+          korte_scheuten: { type: "number", description: "percentage 0-100" },
+          notitie: { type: "string" },
+        },
+        required: ["rijnummer", "vigor"],
+      },
+    },
+  },
+  {
+    actie_type: "werkuren",
+    schema: {
+      name: "stel_werkuren_voor",
+      description:
+        "Registreer uitgevoerd werk met uren. Bij taak 'Spuiten' hoort dit ook het middel en de " +
+        "wachttijd te bevatten — dat is de wettelijk verplichte spuitregistratie. Laat `rijnummer` " +
+        "weg als het werk de hele wijngaard betrof.",
+      input_schema: {
+        type: "object",
+        properties: {
+          taak: {
+            type: "string",
+            enum: [
+              "Snoeien",
+              "Uitbreken",
+              "Aanbinden",
+              "Spuiten",
+              "Maaien",
+              "Bodembewerking",
+              "Oogsten",
+              "Overig",
+            ],
+          },
+          uren: { type: "number" },
+          rijnummer: { type: "integer", description: "Weglaten = hele wijngaard" },
+          datum: { type: "string", description: "yyyy-MM-dd; laat weg voor vandaag" },
+          middel: { type: "string", description: "Alleen bij Spuiten" },
+          wachttijd_dagen: { type: "integer", description: "Veiligheidstermijn, alleen bij Spuiten" },
+          notitie: { type: "string" },
+        },
+        required: ["taak", "uren"],
+      },
+    },
+  },
+  {
+    actie_type: "bodem",
+    schema: {
+      name: "stel_bodem_voor",
+      description:
+        "Leg een bodemobservatie vast: vochttoestand, veld-pH, structuur, bodemleven, " +
+        "verslemping en/of gebreksverschijnselen.",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          blok: { type: "string", description: "Als het geen specifieke rij betreft" },
+          bodemvocht: { type: "string", enum: ["droog", "vochtig", "nat", "verzadigd"] },
+          ph_veld: { type: "number" },
+          structuur: { type: "string" },
+          bodemleven: { type: "string" },
+          verslemping: { type: "boolean" },
+          gebreksverschijnselen: {
+            type: "array",
+            items: { type: "string", enum: ["N", "Mg", "K", "Fe", "B", "Zn", "Mn"] },
+          },
+          notitie: { type: "string" },
+        },
+      },
+    },
+  },
+  {
+    actie_type: "proefnotitie",
+    schema: {
+      name: "stel_proefnotitie_voor",
+      description:
+        "Leg een proefnotitie vast bij een partij: helderheid, kleur, geur, smaak, balans en een " +
+        "score van 1 tot 10.",
+      input_schema: {
+        type: "object",
+        properties: {
+          partij: { type: "string", description: "Naam of lotnummer van de partij" },
+          proever: { type: "string" },
+          helderheid: { type: "string" },
+          kleur: { type: "string" },
+          geur: { type: "string" },
+          smaak: { type: "string" },
+          balans: { type: "string" },
+          score: { type: "integer", description: "1-10" },
+          gebotteld_exemplaar: { type: "boolean" },
+          notities: { type: "string" },
+        },
+        required: ["partij"],
+      },
+    },
+  },
   // Fase 13 Blok G — GEVONDEN GAT (26 juli 2026). De assistent kon van alles
   // wegschrijven (observaties, analyses, tankboek, voorraad, orders) maar juist
   // NIET de twee handelingen die een wijnboer het vaakst doet: een rijpheids-

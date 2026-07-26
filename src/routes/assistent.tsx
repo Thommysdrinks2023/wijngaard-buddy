@@ -196,7 +196,19 @@ function aanpasBestemming(actie: AgentActie): {
     // brengt je naar dat rijdetail, waar beide formulieren staan.
     case "meting":
     case "oogst":
+    case "fenologie":
+    case "gezondheid":
       return { to: "/rij/$rijId", params: { rijId: String(payload.rij ?? "") } };
+    // Deze hebben geen detailscherm per record; de moduleroute is het dichtst bij.
+    case "werkuren":
+      return { to: "/werkrapport" };
+    case "bodem":
+      return { to: "/bodem" };
+    case "proefnotitie":
+      return {
+        to: "/kelder/partijen/$partijId",
+        params: { partijId: String(payload.partij ?? "") },
+      };
   }
 }
 

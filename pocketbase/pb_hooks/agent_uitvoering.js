@@ -169,6 +169,79 @@ const LEES_HANDLERS = {
       seizoen: f.getFloat("seizoen"),
     }));
   },
+  zoek_gezondheid(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.rijnummer != null) {
+      const rij = logica.vindRij(app, input.rijnummer);
+      if (!rij) return [];
+      delen.push("rij = {:rij}");
+      params.rij = rij.id;
+    }
+    if (input.van) {
+      delen.push("datum >= {:van}");
+      params.van = input.van;
+    }
+    if (input.tot) {
+      delen.push("datum <= {:tot}");
+      params.tot = input.tot;
+    }
+    const recs = app.findRecordsByFilter(
+      "gezondheid",
+      delen.join(" && ") || "id != ''",
+      "-datum",
+      50,
+      0,
+      params,
+    );
+    return recs.map((g) => ({
+      datum: g.getString("datum"),
+      vigor: g.getFloat("vigor"),
+      snoeigewicht: g.getFloat("snoeigewicht") || null,
+      dode_planten: g.getFloat("dode_planten") || null,
+      korte_scheuten: g.getFloat("korte_scheuten") || null,
+      notitie: g.getString("notitie"),
+    }));
+  },
+  zoek_werkuren(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.taak) {
+      delen.push("taak = {:taak}");
+      params.taak = input.taak;
+    }
+    if (input.rijnummer != null) {
+      const rij = logica.vindRij(app, input.rijnummer);
+      if (!rij) return [];
+      delen.push("rij = {:rij}");
+      params.rij = rij.id;
+    }
+    if (input.van) {
+      delen.push("datum >= {:van}");
+      params.van = input.van;
+    }
+    if (input.tot) {
+      delen.push("datum <= {:tot}");
+      params.tot = input.tot;
+    }
+    const recs = app.findRecordsByFilter(
+      "werkuren",
+      delen.join(" && ") || "id != ''",
+      "-datum",
+      50,
+      0,
+      params,
+    );
+    return recs.map((w) => ({
+      datum: w.getString("datum"),
+      taak: w.getString("taak"),
+      uren: w.getFloat("uren"),
+      ras: w.getString("ras"),
+      middel: w.getString("middel"),
+      wachttijd_dagen: w.getFloat("wachttijd_dagen") || null,
+      notitie: w.getString("notitie"),
+    }));
+  },
   zoek_kelderlog(app, input) {
     const delen = [];
     const params = {};
@@ -753,6 +826,171 @@ const VOORSTEL_BOUWERS = {
       `${input.ernst ? ` (ernst: ${input.ernst})` : ""}`;
     return { actie_type: "observatie", payload, samenvatting };
   },
+  // Besluit Thomas (26 juli 2026): de assistent moet over de hele app werkbaar
+  // zijn. Onderstaande bouwers dekken fenologie, gezondheid, werkuren, bodem
+  // en proefnotities.
+  stel_fenologie_voor(app, input) {
+    const rij = logica.vindRij(app, input.rijnummer);
+    if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+    const datum = input.datum || logica.vandaagStr();
+    const payload = {
+      rij: rij.id,
+      ras: rij.getString("ras"),
+      moment: input.moment,
+      datum,
+      seizoen: Number(datum.slice(0, 4)),
+      notitie: input.notitie || "",
+    };
+    const samenvatting =
+      `Fenologie: rij ${input.rijnummer} (${rij.getString("ras")}) - ${input.moment} op ${datum}` +
+      `${input.notitie ? ` - ${input.notitie}` : ""}`;
+    return { actie_type: "fenologie", payload, samenvatting };
+  },
+  stel_gezondheid_voor(app, input) {
+    const rij = logica.vindRij(app, input.rijnummer);
+    if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+    const vigor = Number(input.vigor);
+    if (!(vigor >= 1 && vigor <= 5)) {
+      return { fout: `Vigor ${input.vigor} valt buiten de schaal 1-5.` };
+    }
+    const pct = input.korte_scheuten == null ? null : Number(input.korte_scheuten);
+    if (pct !== null && (pct < 0 || pct > 100)) {
+      return { fout: `Korte scheuten ${input.korte_scheuten}% valt buiten 0-100.` };
+    }
+    const datum = logica.vandaagStr();
+    const payload = {
+      rij: rij.id,
+      datum,
+      seizoen: Number(datum.slice(0, 4)),
+      vigor,
+      notitie: input.notitie || "",
+    };
+    if (input.snoeigewicht != null) payload.snoeigewicht = Number(input.snoeigewicht);
+    if (input.dode_planten != null) payload.dode_planten = Number(input.dode_planten);
+    if (pct !== null) payload.korte_scheuten = pct;
+
+    const delen = [`vigor ${vigor}`];
+    if (input.snoeigewicht != null) delen.push(`${input.snoeigewicht} g snoeigewicht`);
+    if (input.dode_planten != null) delen.push(`${input.dode_planten} dode planten`);
+    if (pct !== null) delen.push(`${pct}% korte scheuten`);
+    const samenvatting =
+      `Gezondheid: rij ${input.rijnummer} (${rij.getString("ras")}) - ${delen.join(", ")}`;
+    return { actie_type: "gezondheid", payload, samenvatting };
+  },
+  stel_werkuren_voor(app, input) {
+    const uren = Number(input.uren);
+    if (!(uren > 0)) return { fout: "Het aantal uren moet groter dan 0 zijn." };
+    // Een bespuiting zonder middel is geen geldige spuitregistratie: dat is
+    // wettelijk verplichte administratie, geen vrij invulveld. Liever
+    // navragen dan een half record wegschrijven.
+    if (input.taak === "Spuiten" && !String(input.middel || "").trim()) {
+      return {
+        fout:
+          "Bij een bespuiting hoort het middel vastgelegd te worden (wettelijke " +
+          "spuitregistratie). Welk middel is gebruikt?",
+      };
+    }
+    let rij = null;
+    if (input.rijnummer != null) {
+      rij = logica.vindRij(app, input.rijnummer);
+      if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+    }
+    const datum = input.datum || logica.vandaagStr();
+    const payload = {
+      datum,
+      seizoen: Number(datum.slice(0, 4)),
+      taak: input.taak,
+      uren,
+      notitie: input.notitie || "",
+    };
+    if (rij) {
+      payload.rij = rij.id;
+      payload.ras = rij.getString("ras");
+    }
+    if (input.middel) payload.middel = input.middel;
+    if (input.wachttijd_dagen != null) payload.wachttijd_dagen = Number(input.wachttijd_dagen);
+
+    const samenvatting =
+      `Werk: ${input.taak}, ${uren} uur op ${datum}` +
+      `${rij ? `, rij ${input.rijnummer} (${rij.getString("ras")})` : ", hele wijngaard"}` +
+      `${input.middel ? `, middel ${input.middel}` : ""}` +
+      `${input.wachttijd_dagen != null ? `, wachttijd ${input.wachttijd_dagen} dagen` : ""}`;
+    return { actie_type: "werkuren", payload, samenvatting };
+  },
+  stel_bodem_voor(app, input) {
+    let rij = null;
+    if (input.rijnummer != null) {
+      rij = logica.vindRij(app, input.rijnummer);
+      if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+    }
+    if (!rij && !String(input.blok || "").trim()) {
+      return { fout: "Noem een rijnummer of een blok, anders is de waarneming niet te plaatsen." };
+    }
+    const ph = input.ph_veld == null ? null : Number(input.ph_veld);
+    if (ph !== null && (ph < 3 || ph > 10)) {
+      return { fout: `Bodem-pH ${input.ph_veld} is geen plausibele veldmeting (3-10).` };
+    }
+    const datum = logica.vandaagStr();
+    const payload = {
+      datum,
+      seizoen: Number(datum.slice(0, 4)),
+      notitie: input.notitie || "",
+    };
+    if (rij) payload.rij = rij.id;
+    if (input.blok) payload.blok = input.blok;
+    if (input.bodemvocht) payload.bodemvocht = input.bodemvocht;
+    if (ph !== null) payload.ph_veld = ph;
+    if (input.structuur) payload.structuur = input.structuur;
+    if (input.bodemleven) payload.bodemleven = input.bodemleven;
+    if (input.verslemping != null) payload.verslemping = Boolean(input.verslemping);
+    if (Array.isArray(input.gebreksverschijnselen) && input.gebreksverschijnselen.length > 0) {
+      payload.gebreksverschijnselen = input.gebreksverschijnselen;
+    }
+
+    const delen = [];
+    if (input.bodemvocht) delen.push(input.bodemvocht);
+    if (ph !== null) delen.push(`pH ${ph}`);
+    if (input.structuur) delen.push(input.structuur);
+    if (Array.isArray(input.gebreksverschijnselen) && input.gebreksverschijnselen.length > 0) {
+      delen.push(`gebrek: ${input.gebreksverschijnselen.join("/")}`);
+    }
+    const waar = rij ? `rij ${input.rijnummer}` : `blok ${input.blok}`;
+    const samenvatting =
+      `Bodem: ${waar}${delen.length ? " - " + delen.join(", ") : ""}` +
+      `${input.notitie ? ` (${input.notitie})` : ""}`;
+    return { actie_type: "bodem", payload, samenvatting };
+  },
+  stel_proefnotitie_voor(app, input) {
+    const partij = logica.vindPartij(app, input.partij);
+    if (!partij) return { fout: `Geen partij gevonden voor "${input.partij}".` };
+    const score = input.score == null ? null : Number(input.score);
+    if (score !== null && (score < 1 || score > 10)) {
+      return { fout: `Score ${input.score} valt buiten de schaal 1-10.` };
+    }
+    const payload = {
+      partij: partij.id,
+      datum: logica.vandaagStr(),
+      proever: input.proever || "",
+      helderheid: input.helderheid || "",
+      kleur: input.kleur || "",
+      geur: input.geur || "",
+      smaak: input.smaak || "",
+      balans: input.balans || "",
+      notities: input.notities || "",
+    };
+    if (score !== null) payload.score = score;
+    if (input.gebotteld_exemplaar != null) {
+      payload.gebotteld_exemplaar = Boolean(input.gebotteld_exemplaar);
+    }
+    const delen = [];
+    if (input.kleur) delen.push(input.kleur);
+    if (input.geur) delen.push(`geur: ${input.geur}`);
+    if (input.smaak) delen.push(`smaak: ${input.smaak}`);
+    if (score !== null) delen.push(`${score}/10`);
+    const samenvatting =
+      `Proefnotitie: ${partij.getString("naam")}${delen.length ? " - " + delen.join(", ") : ""}`;
+    return { actie_type: "proefnotitie", payload, samenvatting };
+  },
   // Fase 13 Blok G — zie de toelichting bij de tooldefinities in
   // agent_logica.js. De grenzen hieronder zijn dezelfde als in
   // src/lib/meetwaarde.ts: een Brix van 0 of een pH van 0 is geen meting maar
@@ -1012,6 +1250,36 @@ function voerBevestigdeActieUit(txApp, actieType, payload, verantwoordelijke) {
       rec.set("type", payload.type);
       rec.set("notitie", payload.notitie);
       rec.set("ingevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
+    }
+    // Besluit Thomas (26 juli 2026): assistent over de hele app. Deze vijf
+    // schrijven eenvoudige losse records; ze hebben geen atomische
+    // neveneffecten, dus een directe save binnen de transactie volstaat.
+    case "fenologie":
+    case "gezondheid":
+    case "werkuren":
+    case "bodem":
+    case "proefnotitie": {
+      const COLLECTIE = {
+        fenologie: "fenologie",
+        gezondheid: "gezondheid",
+        werkuren: "werkuren",
+        bodem: "bodem_observaties",
+        proefnotitie: "proefnotities",
+      };
+      const col = txApp.findCollectionByNameOrId(COLLECTIE[actieType]);
+      const rec = new Record(col);
+      for (const sleutel in payload) {
+        if (payload[sleutel] !== undefined) rec.set(sleutel, payload[sleutel]);
+      }
+      // proefnotities kent geen ingevoerd_door maar wel proever; laat een leeg
+      // proever-veld niet leeg als we weten wie het bevestigde.
+      if (actieType === "proefnotitie") {
+        if (!payload.proever) rec.set("proever", verantwoordelijke);
+      } else {
+        rec.set("ingevoerd_door", verantwoordelijke);
+      }
       txApp.save(rec);
       return { record_id: rec.id };
     }

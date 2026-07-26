@@ -283,6 +283,12 @@ const AGENT_ACTIE_TYPES = [
   // Fase 13 Blok G
   "meting",
   "oogst",
+  // Assistent over de hele app (besluit Thomas, 26 juli 2026)
+  "fenologie",
+  "gezondheid",
+  "werkuren",
+  "bodem",
+  "proefnotitie",
 ];
 const AGENT_ACTIE_STATUSSEN = ["voorgesteld", "bevestigd", "afgewezen", "uitgevoerd", "mislukt"];
 const INZICHT_TYPES = [
