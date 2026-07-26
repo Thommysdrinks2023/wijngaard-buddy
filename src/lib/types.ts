@@ -464,7 +464,9 @@ export type AgentActieType =
   | "bottelronde"
   | "voorraad_mutatie"
   | "order"
-  | "onderhoud";
+  | "onderhoud"
+  | "meting"
+  | "oogst";
 
 export type AgentActieStatus = "voorgesteld" | "bevestigd" | "afgewezen" | "uitgevoerd" | "mislukt";
 
@@ -535,7 +537,39 @@ export const AGENT_ACTIE_CONFIG: Record<
   voorraad_mutatie: { label: "Voorraadmutatie", emoji: "📦", randKlasse: "border-accent-gold" },
   order: { label: "Conceptorder", emoji: "🧾", randKlasse: "border-primary" },
   onderhoud: { label: "Onderhoud", emoji: "🔧", randKlasse: "border-warning" },
+  // Fase 13 Blok G
+  meting: { label: "Meting", emoji: "🧪", randKlasse: "border-primary" },
+  oogst: { label: "Oogst", emoji: "🍇", randKlasse: "border-accent-gold" },
 };
+
+/**
+ * Veilige opzoeking voor de bevestigingskaart.
+ *
+ * WAAROM DIT BESTAAT (gevonden 26 juli 2026): een nieuw actie_type moet op DRIE
+ * plekken geregistreerd worden — de tooldefinitie in agent_logica.js, de
+ * keuzelijst in setup-pocketbase.mjs, en deze config. Vergeet je de laatste,
+ * dan is het gevolg niet een lelijke kaart maar een WITTE PAGINA: de agent doet
+ * netjes zijn werk, de kaart probeert te renderen en het hele scherm klapt om
+ * met "Cannot read properties of undefined (reading 'randKlasse')". Precies dat
+ * gebeurde bij het toevoegen van "meting" en "oogst".
+ *
+ * Een onbekend type hoort een saaie kaart op te leveren, geen crash. De
+ * TypeScript-typering vangt dit niet: het actie_type komt als string van de
+ * server, dus de compiler ziet nooit dat er een sleutel ontbreekt.
+ */
+export function agentActieConfig(type: string): {
+  label: string;
+  emoji: string;
+  randKlasse: string;
+} {
+  return (
+    AGENT_ACTIE_CONFIG[type as AgentActieType] ?? {
+      label: type || "Voorstel",
+      emoji: "📋",
+      randKlasse: "border-border",
+    }
+  );
+}
 
 // ============= Verkoop licht (Eindsprint Blok L) =============
 // Geen facturatie/btw — de voorraadmutatie blijft de bron van waarheid;

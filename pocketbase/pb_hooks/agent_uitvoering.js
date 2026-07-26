@@ -753,6 +753,81 @@ const VOORSTEL_BOUWERS = {
       `${input.ernst ? ` (ernst: ${input.ernst})` : ""}`;
     return { actie_type: "observatie", payload, samenvatting };
   },
+  // Fase 13 Blok G — zie de toelichting bij de tooldefinities in
+  // agent_logica.js. De grenzen hieronder zijn dezelfde als in
+  // src/lib/meetwaarde.ts: een Brix van 0 of een pH van 0 is geen meting maar
+  // een leeg veld, en zo'n waarde mag niet als feit in de rijpheidsgrafiek
+  // belanden. De agent krijgt een leesbare weigering terug zodat hij het kan
+  // navragen in plaats van stil iets verkeerds op te slaan.
+  stel_meting_voor(app, input) {
+    const rij = logica.vindRij(app, input.rijnummer);
+    if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+
+    const getal = (v) => (v === null || v === undefined || v === "" ? null : Number(v));
+    const brix = getal(input.brix);
+    const ph = getal(input.ph);
+    const zuur = getal(input.zuurgraad);
+
+    if (brix === null && ph === null && zuur === null) {
+      return { fout: "Geen meetwaarde meegegeven — noem minstens brix, pH of zuurgraad." };
+    }
+    if (brix !== null && (brix <= 0 || brix > 45)) {
+      return { fout: `Brix ${input.brix} is geen plausibele meting (verwacht tussen 0 en 45).` };
+    }
+    if (ph !== null && (ph < 2 || ph > 4.5)) {
+      return { fout: `pH ${input.ph} is geen plausibele meting (verwacht tussen 2,0 en 4,5).` };
+    }
+    if (zuur !== null && (zuur <= 0 || zuur > 30)) {
+      return { fout: `Zuurgraad ${input.zuurgraad} is geen plausibele meting (0-30 g/L).` };
+    }
+
+    const datum = logica.vandaagStr();
+    const payload = {
+      rij: rij.id,
+      plant: input.plant || null,
+      datum,
+      seizoen: Number(datum.slice(0, 4)),
+      rijpheid_score: input.rijpheid_score || 3,
+      notitie: input.notitie || "",
+    };
+    if (brix !== null) payload.brix = brix;
+    if (ph !== null) payload.ph = ph;
+    if (zuur !== null) payload.zuurgraad = zuur;
+
+    const delen = [];
+    if (brix !== null) delen.push(`${brix} °Bx`);
+    if (ph !== null) delen.push(`pH ${ph}`);
+    if (zuur !== null) delen.push(`${zuur} g/L zuur`);
+    const samenvatting =
+      `Meting: rij ${input.rijnummer} (${rij.getString("ras")})` +
+      `${input.plant ? `, plant ${input.plant}` : ""} - ${delen.join(", ")}` +
+      `${input.notitie ? ` (${input.notitie})` : ""}`;
+    return { actie_type: "meting", payload, samenvatting };
+  },
+  stel_oogst_voor(app, input) {
+    const rij = logica.vindRij(app, input.rijnummer);
+    if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
+    const kg = Number(input.kg);
+    if (!(kg > 0)) return { fout: "Het aantal kilo's moet groter dan 0 zijn." };
+    // Ruime bovengrens: één rij van ~70 planten levert in een topjaar geen
+    // 1000 kg. Vangt een verschrijving als "840" i.p.v. "84".
+    if (kg > 1000) {
+      return { fout: `${kg} kg voor één rij is onwaarschijnlijk hoog — klopt dat getal?` };
+    }
+    const datum = input.datum || logica.vandaagStr();
+    const payload = {
+      rij: rij.id,
+      ras: rij.getString("ras"),
+      datum,
+      seizoen: Number(datum.slice(0, 4)),
+      kg,
+      notitie: input.notitie || "",
+    };
+    const samenvatting =
+      `Oogst: rij ${input.rijnummer} (${rij.getString("ras")}), ${kg} kg op ${datum}` +
+      `${input.notitie ? ` - ${input.notitie}` : ""}`;
+    return { actie_type: "oogst", payload, samenvatting };
+  },
   stel_uitval_voor(app, input) {
     const rij = logica.vindRij(app, input.rijnummer);
     if (!rij) return { fout: `Geen rij ${input.rijnummer} gevonden.` };
@@ -936,6 +1011,41 @@ function voerBevestigdeActieUit(txApp, actieType, payload, verantwoordelijke) {
       if (payload.seizoen) rec.set("seizoen", payload.seizoen);
       rec.set("type", payload.type);
       rec.set("notitie", payload.notitie);
+      rec.set("ingevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
+    }
+    // Fase 13 Blok G — metingen en oogst konden via de agent niet weggeschreven
+    // worden; zie de toelichting bij de tooldefinities in agent_logica.js.
+    case "meting": {
+      const col = txApp.findCollectionByNameOrId("metingen");
+      const rec = new Record(col);
+      rec.set("rij", payload.rij);
+      if (payload.plant) rec.set("plant", payload.plant);
+      rec.set("datum", payload.datum);
+      if (payload.seizoen) rec.set("seizoen", payload.seizoen);
+      // Alleen zetten wat werkelijk gemeten is: een niet-gezet getalveld komt
+      // in PocketBase als 0 terug, en dat leest de app (meetwaarde.ts) terecht
+      // als "niet gemeten". Zou ik hier 0 schrijven, dan was dat hetzelfde —
+      // maar expliciet niets zetten houdt de bedoeling zichtbaar in de code.
+      if (payload.brix != null) rec.set("brix", payload.brix);
+      if (payload.ph != null) rec.set("ph", payload.ph);
+      if (payload.zuurgraad != null) rec.set("zuurgraad", payload.zuurgraad);
+      rec.set("rijpheid_score", payload.rijpheid_score);
+      rec.set("notitie", payload.notitie || "");
+      rec.set("ingevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
+    }
+    case "oogst": {
+      const col = txApp.findCollectionByNameOrId("oogst");
+      const rec = new Record(col);
+      rec.set("rij", payload.rij);
+      rec.set("ras", payload.ras);
+      rec.set("datum", payload.datum);
+      if (payload.seizoen) rec.set("seizoen", payload.seizoen);
+      rec.set("kg", payload.kg);
+      rec.set("notitie", payload.notitie || "");
       rec.set("ingevoerd_door", verantwoordelijke);
       txApp.save(rec);
       return { record_id: rec.id };

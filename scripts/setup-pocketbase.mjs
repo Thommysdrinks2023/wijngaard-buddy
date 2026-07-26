@@ -264,6 +264,12 @@ const SEED_PRODUCENTEN = [
 
 // Fase 3 — AI-agent
 const AGENT_ROLLEN = ["user", "assistant", "tool"];
+// LET OP: deze lijst moet meegroeien met elke nieuwe stel_*_voor-tool in
+// pb_hooks/agent_logica.js. Staat een actie_type hier niet in, dan weigert
+// PocketBase het voorstel bij het opslaan — de agent doet dan zichtbaar zijn
+// werk en er komt niets in de bevestigingskaart. Dat is eerder misgegaan bij
+// "onderhoud" en "order" (zie WERKLOG), en zou bij "meting"/"oogst" opnieuw
+// zijn gebeurd.
 const AGENT_ACTIE_TYPES = [
   "tankboek_boeking",
   "observatie",
@@ -274,6 +280,9 @@ const AGENT_ACTIE_TYPES = [
   "voorraad_mutatie",
   "onderhoud",
   "order",
+  // Fase 13 Blok G
+  "meting",
+  "oogst",
 ];
 const AGENT_ACTIE_STATUSSEN = ["voorgesteld", "bevestigd", "afgewezen", "uitgevoerd", "mislukt"];
 const INZICHT_TYPES = [
@@ -371,7 +380,8 @@ async function ensureCollection(def) {
   try {
     const bestaand = await api(`/api/collections/${def.name}`);
     console.log(`  ✓ collectie "${def.name}" bestaat al`);
-    return await synchroniseerRegels(bestaand, def);
+    const naRegels = await synchroniseerRegels(bestaand, def);
+    return await synchroniseerKeuzelijsten(naRegels, def);
   } catch (e) {
     if (e.status !== 404) throw e;
   }
@@ -417,6 +427,47 @@ async function synchroniseerRegels(bestaand, def) {
   for (const [soort, waarde] of Object.entries(wijzigingen)) {
     console.log(`    ↻ ${def.name}.${soort}: ${omschrijf(waarde)}`);
   }
+  return bijgewerkt;
+}
+
+/**
+ * Vult ONTBREKENDE keuzelijstwaarden aan op een bestaande collectie.
+ *
+ * Derde keer raak (26 juli 2026). Een nieuw actie_type toevoegen in de code
+ * deed in de database niets, want ensureCollection() raakt een bestaande
+ * collectie niet aan en ensureVelden() voegt alleen ONTBREKENDE VELDEN toe —
+ * een bestaand veld met een gewijzigde `values`-lijst valt door beide mazen.
+ * Gevolg: de agent bouwt netjes een voorstel, PocketBase weigert het bij het
+ * opslaan, en op het scherm gebeurt er simpelweg niets. Dat is eerder gebeurd
+ * bij "onderhoud" en "order" (WERKLOG) en zou nu bij "meting"/"oogst" opnieuw
+ * zijn gebeurd.
+ *
+ * BEWUST ALLEEN TOEVOEGEN, NOOIT VERWIJDEREN. Een waarde weghalen die in
+ * bestaande records voorkomt maakt die records ongeldig; dat mag nooit een
+ * bijwerking van een routinematige schema-run zijn. Verwijderen blijft dus
+ * handwerk, met de driftcontrole als signaal.
+ */
+async function synchroniseerKeuzelijsten(bestaand, def) {
+  if (!Array.isArray(def.fields) || !Array.isArray(bestaand.fields)) return bestaand;
+  const velden = bestaand.fields.map((v) => ({ ...v }));
+  const toegevoegd = [];
+
+  for (const gewenst of def.fields) {
+    if (gewenst.type !== "select" || !Array.isArray(gewenst.values)) continue;
+    const huidig = velden.find((v) => v.name === gewenst.name && v.type === "select");
+    if (!huidig || !Array.isArray(huidig.values)) continue;
+    const missend = gewenst.values.filter((w) => !huidig.values.includes(w));
+    if (missend.length === 0) continue;
+    huidig.values = [...huidig.values, ...missend];
+    toegevoegd.push(`${gewenst.name}: +${missend.join(", +")}`);
+  }
+
+  if (toegevoegd.length === 0) return bestaand;
+  const bijgewerkt = await api(`/api/collections/${bestaand.id}`, {
+    method: "PATCH",
+    body: { fields: velden },
+  });
+  for (const regel of toegevoegd) console.log(`    ↻ ${def.name}.${regel}`);
   return bijgewerkt;
 }
 

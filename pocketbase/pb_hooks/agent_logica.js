@@ -439,6 +439,59 @@ const WIJNGAARD_TOOLS = [
       },
     },
   },
+  // Fase 13 Blok G — GEVONDEN GAT (26 juli 2026). De assistent kon van alles
+  // wegschrijven (observaties, analyses, tankboek, voorraad, orders) maar juist
+  // NIET de twee handelingen die een wijnboer het vaakst doet: een rijpheids-
+  // meting en een oogstregistratie. Bij de doorloop antwoordde hij letterlijk
+  // "Ik heb geen tool om een officiële brix/pH-wijngaardmeting weg te
+  // schrijven" en bood aan het als observatie te noteren — dan staat je Brix
+  // in een vrije tekst in plaats van in de rijpheidsgrafiek. Daarmee was de
+  // assistent als invoerroute in het veld onbruikbaar voor het hoofdwerk.
+  {
+    actie_type: "meting",
+    schema: {
+      name: "stel_meting_voor",
+      description:
+        "Stel een rijpheidsmeting voor bij een rij: Brix, pH en/of zuurgraad. Gebruik dit " +
+        "wanneer iemand een gemeten waarde doorgeeft ('rij 23 zit op 20,4 brix'). Niet " +
+        "gebruiken voor kelderanalyses van een partij — daarvoor is stel_analyse_voor.",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          plant: { type: "integer", description: "Plantnummer binnen de rij, optioneel" },
+          brix: { type: "number", description: "Suikergehalte in °Brix" },
+          ph: { type: "number" },
+          zuurgraad: { type: "number", description: "Totaal zuur in g/L" },
+          rijpheid_score: {
+            type: "integer",
+            description: "1-5, inschatting van de rijpheid. Laat weg als niet genoemd.",
+          },
+          notitie: { type: "string" },
+        },
+        required: ["rijnummer"],
+      },
+    },
+  },
+  {
+    actie_type: "oogst",
+    schema: {
+      name: "stel_oogst_voor",
+      description:
+        "Stel een oogstregistratie voor: geoogste kilo's voor een rij. Gebruik dit wanneer " +
+        "iemand een plukresultaat doorgeeft ('rij 12 gedaan, 84 kilo').",
+      input_schema: {
+        type: "object",
+        properties: {
+          rijnummer: { type: "integer" },
+          kg: { type: "number" },
+          datum: { type: "string", description: "yyyy-MM-dd; laat weg voor vandaag" },
+          notitie: { type: "string" },
+        },
+        required: ["rijnummer", "kg"],
+      },
+    },
+  },
   {
     actie_type: "uitval",
     schema: {

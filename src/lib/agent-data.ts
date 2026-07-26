@@ -316,5 +316,10 @@ export function actieTypeNaarLijstNaam(actieType: AgentActieType): string {
       return "orders";
     case "onderhoud":
       return "onderhoudslog";
+    // Fase 13 Blok G
+    case "meting":
+      return "metingen";
+    case "oogst":
+      return "oogst";
   }
 }

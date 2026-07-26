@@ -24,7 +24,7 @@ import { ErrorState } from "@/components/error-state";
 import { VerbindingBadge } from "@/components/verbinding-status";
 import { useWijngaardConfig } from "@/lib/use-wijngaard-config";
 import {
-  AGENT_ACTIE_CONFIG,
+  agentActieConfig,
   type AdviesOordeel,
   type AgentActie,
   type AgentBericht,
@@ -192,6 +192,11 @@ function aanpasBestemming(actie: AgentActie): {
       return { to: "/verkoop" };
     case "onderhoud":
       return { to: "/materieel" };
+    // Fase 13 Blok G — een meting of oogst hoort bij een rij; "aanpassen"
+    // brengt je naar dat rijdetail, waar beide formulieren staan.
+    case "meting":
+    case "oogst":
+      return { to: "/rij/$rijId", params: { rijId: String(payload.rij ?? "") } };
   }
 }
 
@@ -206,7 +211,7 @@ function ActieKaart({
   onBevestig: (id: string) => void;
   onAfwijs: (id: string) => void;
 }) {
-  const config = AGENT_ACTIE_CONFIG[actie.actie_type];
+  const config = agentActieConfig(actie.actie_type);
   const kanNogBeslissen = actie.status === "voorgesteld";
   const dest = aanpasBestemming(actie);
 

@@ -248,8 +248,12 @@ function OogstPage() {
     setSelectie((s) =>
       s.size === ongekoppeld.length ? new Set() : new Set(ongekoppeld.map((o) => o.id)),
     );
-  const geselecteerdeKg =
-    Math.round(zichtbareSelectie.reduce((som, o) => som + (o.kg || 0), 0) * 10) / 10;
+  // Hele kilo's met een Nederlandse duizendtalnotatie. Bij een volle plukdag
+  // stond hier "3680.9 kg": een Engelse punt én een decimaal die niemand
+  // interesseert als er bijna vier ton op de weegschaal ligt.
+  const geselecteerdeKg = Math.round(
+    zichtbareSelectie.reduce((som, o) => som + (o.kg || 0), 0),
+  ).toLocaleString("nl-NL");
 
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
@@ -636,15 +640,22 @@ function OogstPage() {
               })}
             </ul>
 
+            {/* Meelopend onderaan het scherm. Bij een volle plukdag staan hier
+                37+ regels en was deze knop 6 schermen naar beneden — je vinkt
+                bovenaan aan en moest daarna langs alles heen scrollen om iets
+                te kunnen doen. `bottom-20` houdt hem boven de navigatiebalk. */}
             {zichtbareSelectie.length > 0 && (
-              <Link
-                to="/kelder/partijen/nieuw"
-                search={{ oogst: zichtbareSelectie.map((o) => o.id).join(",") }}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
-              >
-                <Grape className="h-4 w-4" />
-                Nieuwe partij van {geselecteerdeKg} kg
-              </Link>
+              <div className="sticky bottom-20 z-10 pt-1">
+                <Link
+                  to="/kelder/partijen/nieuw"
+                  search={{ oogst: zichtbareSelectie.map((o) => o.id).join(",") }}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg"
+                >
+                  <Grape className="h-4 w-4" />
+                  Nieuwe partij van {zichtbareSelectie.length} regel
+                  {zichtbareSelectie.length === 1 ? "" : "s"} · {geselecteerdeKg} kg
+                </Link>
+              </div>
             )}
           </section>
         )}
