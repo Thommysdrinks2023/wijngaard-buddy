@@ -141,9 +141,14 @@ export function deelVerzoek<T>(sleutel: string, maak: () => Promise<T>): Promise
   return verzoek;
 }
 
+// INLOGGEN VERWIJDERD (besluit Thomas, 26 juli 2026). De app kent geen
+// accounts meer; alle API-regels staan open. Deze functie geeft daarom altijd
+// true terug in plaats van te verdwijnen: de signaalproducenten en datalagen
+// gebruiken hem als "mag ik de server bevragen?"-poortje, en dat antwoord is
+// nu onvoorwaardelijk ja. Zo blijft één plek de schakelaar als het inloggen
+// ooit terugkomt (verplicht vóór de Pi of pb.tappenmars.nl).
 export function isIngelogd(): boolean {
-  const pb = getPb();
-  return Boolean(pb?.authStore.isValid);
+  return true;
 }
 
 // Fase 8 — gedeelde leeshelper voor de ONLINE-ONLY datalagen (kelder, verkoop,
@@ -165,8 +170,10 @@ export async function haalLijst<T>(
 ): Promise<T> {
   const pb = getPb();
   if (!pb) return leeg; // geen server geconfigureerd — lege staat is dan correct
-  if (!isIngelogd())
-    throw new LaadFout("niet_ingelogd", `Log opnieuw in om ${wat} te kunnen laden.`);
+  // Hier stond een sessiecontrole; die is vervallen met het verwijderen van het
+  // inloggen (26 juli 2026). De rest van deze helper blijft onverminderd nodig:
+  // een onbereikbare server en een mislukte fetch moeten nog steeds een echte
+  // fout opleveren in plaats van een stille lege lijst.
   if (!(await ensureOnline()))
     throw new LaadFout(
       "geen_verbinding",

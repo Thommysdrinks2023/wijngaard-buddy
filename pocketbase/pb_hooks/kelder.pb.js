@@ -1,4 +1,12 @@
 /// <reference path="../pb_data/types.d.ts" />
+//
+// INLOGGEN VERWIJDERD (besluit Thomas, 26 juli 2026): de $apis.requireAuth()-
+// middleware is van elk endpoint in dit bestand weggehaald. Deze endpoints
+// zijn nu bereikbaar zonder account. De rolcontroles (eisSchrijfrecht/
+// eisBeheerder) staan er bewust N O G  I N: rolVan() in kelder_logica.js geeft
+// bij ontbrekende auth "beheerder" terug, dus ze laten alles door. Zo hoeft
+// alleen die ene functie terug als het inloggen ooit hersteld wordt.
+// Zie de toelichting in kelder_logica.js bij rolVan().
 // Kelder-endpoints: alle tankboek-boekingen lopen hierlangs, atomisch
 // (regel + tankcaches in één transactie). De tankboek-collectie zelf staat
 // dicht in de API-rules (create/update/delete = null): dit is de enige route
@@ -38,7 +46,6 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );
 
 // ---------- POST /api/tappenmars/partij-aanmaken ----------
@@ -124,7 +131,6 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );
 
 // ---------- POST /api/tappenmars/bottelronde-aanmaken ----------
@@ -160,7 +166,6 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );
 
 // ---------- POST /api/tappenmars/tanks-herbereken ----------
@@ -229,5 +234,4 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );

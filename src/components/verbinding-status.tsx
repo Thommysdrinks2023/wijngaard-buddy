@@ -1,43 +1,46 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Wifi, WifiOff, UserX } from "lucide-react";
-import { getPb, getPbStatus, isIngelogd, isPbConfigured, pingPb } from "@/lib/data";
+import { Wifi, WifiOff } from "lucide-react";
+import { getPbStatus, isPbConfigured, pingPb } from "@/lib/data";
 
+// INLOGGEN VERWIJDERD (besluit Thomas, 26 juli 2026): de badge toonde eerder
+// drie toestanden (offline / niet ingelogd / ingelogd als <naam>). De
+// middelste bestaat niet meer. `ingelogd` blijft wél in het Verbinding-type
+// staan en is altijd true: formulieren gebruiken hem voor de
+// foto-waarschuwing, en die aanroepen hoeven niet allemaal te wijzigen voor
+// een waarde die nu constant is.
 export interface Verbinding {
   online: boolean;
   ingelogd: boolean;
 }
 
-// Hook: volgt de PocketBase-verbinding en login-status.
+// Hook: volgt de PocketBase-verbinding.
 // Gebruikt door de header-badge en door formulieren (foto-waarschuwing).
 export function useVerbinding(): Verbinding {
-  const [staat, setStaat] = useState<Verbinding>({ online: false, ingelogd: false });
+  const [staat, setStaat] = useState<Verbinding>({ online: false, ingelogd: true });
 
   useEffect(() => {
     if (!isPbConfigured()) return;
-    const update = () => setStaat({ online: getPbStatus() === "online", ingelogd: isIngelogd() });
+    const update = () => setStaat({ online: getPbStatus() === "online", ingelogd: true });
 
     update();
     void pingPb().then(update);
 
     window.addEventListener("wg.pbstatus.changed", update);
     window.addEventListener("online", () => void pingPb().then(update));
-    const unsubscribeAuth = getPb()?.authStore.onChange(update);
     // elke 30s opnieuw controleren zodat de status actueel blijft
     const timer = setInterval(() => void pingPb().then(update), 30_000);
     return () => {
       window.removeEventListener("wg.pbstatus.changed", update);
       clearInterval(timer);
-      unsubscribeAuth?.();
     };
   }, []);
 
   return staat;
 }
 
-// Compacte badge voor in de app-header: offline / niet ingelogd / online
+// Compacte badge voor in de app-header: offline of online
 export function VerbindingBadge() {
-  const { online, ingelogd } = useVerbinding();
+  const { online } = useVerbinding();
   if (!isPbConfigured()) return null;
 
   if (!online) {
@@ -52,29 +55,13 @@ export function VerbindingBadge() {
     );
   }
 
-  if (!ingelogd) {
-    return (
-      <Link
-        to="/login"
-        className="flex h-8 items-center gap-1.5 rounded-full bg-warning px-2.5 text-[11px] font-semibold text-warning-foreground"
-        title="Je bent niet ingelogd — invoer synct pas na inloggen"
-      >
-        <UserX className="h-3.5 w-3.5" />
-        Niet ingelogd
-      </Link>
-    );
-  }
-
-  const record = getPb()?.authStore.record as { name?: string; email?: string } | null;
-  const naam = record?.name || record?.email?.split("@")[0] || "Online";
-
   return (
     <span
-      className="flex h-8 max-w-32 items-center gap-1.5 rounded-full bg-white/15 px-2.5 text-[11px] font-semibold text-nav-foreground"
-      title={`Verbonden en ingelogd als ${naam}`}
+      className="flex h-8 items-center gap-1.5 rounded-full bg-white/15 px-2.5 text-[11px] font-semibold text-nav-foreground"
+      title="Verbonden met de server"
     >
       <Wifi className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate">{naam}</span>
+      Online
     </span>
   );
 }

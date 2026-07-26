@@ -37,11 +37,35 @@ const droog = Boolean(DRIFT_DUMP);
 const driftDefinities = [];
 const driftVelden = [];
 
-const AUTH_RULE = "@request.auth.id != ''";
 // Leeg = geen restrictie (ook anonieme/niet-ingelogde clients mogen erbij).
-// Gebruikt voor de agent-collecties: de assistent werkt bewust ook zonder
-// inloggen, net als de rest van de app (zie CLAUDE.md).
 const OPEN_RULE = "";
+
+// INLOGGEN VERWIJDERD — besluit Thomas, 26 juli 2026.
+//
+// Was: "@request.auth.id != ''" (alleen ingelogde gebruikers). Thomas wilde
+// nergens meer een e-mail/wachtwoord hoeven invoeren en koos hier bewust voor,
+// nadat het risico hieronder expliciet is benoemd. Deze ene constante stuurt
+// alle 171 auth-regels tegelijk; daarom staat hij hier en niet verspreid.
+//
+// WAT DIT BETEKENT: iedereen die de PocketBase-server kan bereiken mag alle
+// data lezen EN wijzigen. Dat is nu te overzien omdat de server uitsluitend op
+// 127.0.0.1 luistert. Het is NIET te overzien zodra de app op de Raspberry Pi
+// in de schuur draait (bereikbaar voor het hele thuisnetwerk) of op
+// pb.tappenmars.nl (bereikbaar voor het hele internet). In beide gevallen
+// liggen dan het tankboek, de klantgegevens (AVG) en het gebruikersbeheer
+// open voor lezen en schrijven.
+//
+// TERUGZETTEN = deze regel terugveranderen in "@request.auth.id != ''", het
+// script opnieuw draaien, en de frontend-guards herstellen (git-geschiedenis:
+// de commit die dit weghaalde). Doe dat VOORDAT de server van 127.0.0.1 af
+// gaat, niet erna.
+//
+// NIET geraakt door deze wijziging, en dat is opzet: de collecties met
+// create/update/delete = null (tankboek, agent_acties). Die staan niet dicht
+// vanwege inloggen maar vanwege ONWIJZIGBAARHEID — schrijven kan daar
+// uitsluitend via de gecontroleerde serverendpoints, wat de correctheid van
+// het wettelijke accijnsregister bewaakt. Dat blijft zo.
+const AUTH_RULE = OPEN_RULE;
 
 const VAK4 = "4 planten per vak (i.p.v. standaard 5)";
 const VAK6 = "Laatste vak heeft 6 planten, zelfde rijlengte";
@@ -347,13 +371,53 @@ async function ensureCollection(def) {
   try {
     const bestaand = await api(`/api/collections/${def.name}`);
     console.log(`  ✓ collectie "${def.name}" bestaat al`);
-    return bestaand;
+    return await synchroniseerRegels(bestaand, def);
   } catch (e) {
     if (e.status !== 404) throw e;
   }
   const created = await api("/api/collections", { method: "POST", body: def });
   console.log(`  + collectie "${def.name}" aangemaakt`);
   return created;
+}
+
+const REGELSOORTEN = ["listRule", "viewRule", "createRule", "updateRule", "deleteRule"];
+
+/**
+ * Brengt de API-regels van een BESTAANDE collectie in lijn met de definitie.
+ *
+ * ensureCollection() is create-only en corrigeert een bestaande collectie
+ * nooit — precies de driftbron die AUDIT-VELDGEREEDHEID.md §3.1 beschrijft.
+ * Voor velden bestaat ensureVelden() al als migratiepad; voor API-REGELS
+ * bestond dat niet, waardoor een regelwijziging in de code wel gecommit maar
+ * nooit toegepast werd. Dat kwam aan het licht bij het verwijderen van het
+ * inloggen (26 juli 2026): AUTH_RULE aanpassen veranderde in de database
+ * niets.
+ *
+ * Bewust alleen de vijf regelvelden, en alleen bij een echt verschil: dit
+ * script moet idempotent blijven en mag geen veldwijzigingen forceren.
+ */
+async function synchroniseerRegels(bestaand, def) {
+  const wijzigingen = {};
+  for (const soort of REGELSOORTEN) {
+    if (!(soort in def)) continue;
+    const gewenst = def[soort];
+    const huidig = bestaand[soort];
+    // null en "" zijn in PocketBase wezenlijk verschillend: null = niemand
+    // (alleen hooks/superuser), "" = iedereen. Daarom strikt vergelijken.
+    if (huidig === gewenst) continue;
+    wijzigingen[soort] = gewenst;
+  }
+  if (Object.keys(wijzigingen).length === 0) return bestaand;
+
+  const bijgewerkt = await api(`/api/collections/${bestaand.id}`, {
+    method: "PATCH",
+    body: wijzigingen,
+  });
+  const omschrijf = (v) => (v === null ? "null (alleen hooks)" : v === "" ? "open" : v);
+  for (const [soort, waarde] of Object.entries(wijzigingen)) {
+    console.log(`    ↻ ${def.name}.${soort}: ${omschrijf(waarde)}`);
+  }
+  return bijgewerkt;
 }
 
 function wachtwoordGenereren() {

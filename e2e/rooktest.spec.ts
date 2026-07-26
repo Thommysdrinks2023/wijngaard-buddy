@@ -5,24 +5,27 @@
 // gevuld is — niet of er een bevestigingsmelding op het scherm stond.
 
 import { expect, test } from "@playwright/test";
-import { logIn, ruimOp, vulReactVeld } from "./hulp";
+import { openApp, ruimOp, vulReactVeld } from "./hulp";
 
 const TESTINVOERDER = "e2e-rooktest";
 
 async function telOpServer(page: import("@playwright/test").Page, collectie: string) {
   return page.evaluate(async (col) => {
-    const token = JSON.parse(localStorage.getItem("pocketbase_auth") ?? "{}").token ?? "";
+    // Geen Authorization-header: inloggen is verwijderd (26 juli 2026) en de
+    // API-regels staan open. Belangrijk voor de betrouwbaarheid van deze
+    // telling: een ONGELDIG token levert bij PocketBase geen 401 op maar een
+    // 200 met een lege lijst, dus meesturen "voor de zekerheid" zou hier tot
+    // een stille 0 leiden en de test valselijk laten slagen.
     const filter = encodeURIComponent('ingevoerd_door="e2e-rooktest"');
     const r = await fetch(
       `http://127.0.0.1:8090/api/collections/${col}/records?perPage=1&filter=${filter}`,
-      { headers: { Authorization: token } },
     );
     return ((await r.json()).totalItems as number) ?? 0;
   }, collectie);
 }
 
 test.beforeEach(async ({ page }) => {
-  await logIn(page);
+  await openApp(page);
 });
 
 test("1 — de hub laadt met echte cijfers, niet een lege huls", async ({ page }) => {
@@ -127,7 +130,18 @@ test("6 — geen enkel hoofdscherm toont een foutmelding", async ({ page }) => {
   ];
 
   for (const pad of schermen) {
-    await page.goto(pad);
+    // Op een koude server (eerste run na een build) kan een nog lopende
+    // client-side navigatie van het vorige scherm deze goto onderbreken:
+    // "Navigation to X is interrupted by another navigation to Y". Dat is een
+    // race in de test, geen fout in de app — één keer opnieuw proberen maakt
+    // hem stabiel zonder een echte storing weg te maskeren (de foutcontrole
+    // hieronder blijft onverkort gelden).
+    try {
+      await page.goto(pad);
+    } catch (fout) {
+      if (!/interrupted by another navigation/.test(String(fout))) throw fout;
+      await page.goto(pad);
+    }
     await page.waitForLoadState("networkidle");
     const meldingen = page.getByRole("alert");
     const aantal = await meldingen.count();

@@ -13,7 +13,6 @@ import {
   type Gebrek,
 } from "@/lib/bodem-data";
 import { useInvoerder } from "@/lib/use-invoerder";
-import { vereistIngelogd } from "@/lib/auth-guard";
 import { AppHeader } from "@/components/app-header";
 import { ErrorState } from "@/components/error-state";
 import { Loader2 } from "lucide-react";
@@ -21,7 +20,6 @@ import { Loader2 } from "lucide-react";
 // Fase 7 Blok B — bodem-invoer volgens het twee-tikken-principe: tik een rij,
 // tik een vochtklasse, klaar. pH/gebrek/notitie zijn optioneel verfijnen.
 export const Route = createFileRoute("/bodem")({
-  beforeLoad: () => vereistIngelogd("Log in om bodemobservaties vast te leggen."),
   component: BodemPage,
   head: () => ({ meta: [{ title: "Bodem — Wijngaard" }] }),
 });

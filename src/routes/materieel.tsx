@@ -20,12 +20,10 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { CalendarClock, Loader2, Plus, Tractor, Wrench } from "lucide-react";
-import { vereistIngelogd } from "@/lib/auth-guard";
 
 // Eindsprint Blok M — materieel & onderhoud. Bewust klein: een logboek per
 // machine plus de widget "onderhoud binnenkort", geen assetmanagement.
 export const Route = createFileRoute("/materieel")({
-  beforeLoad: () => vereistIngelogd("Log in om materieel te beheren."),
   component: MaterieelPage,
   head: () => ({ meta: [{ title: "Materieel — De Tappenmars Buddy" }] }),
 });
