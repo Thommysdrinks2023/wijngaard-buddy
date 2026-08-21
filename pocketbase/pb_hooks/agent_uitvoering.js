@@ -1702,6 +1702,39 @@ function verwerkBeurt(app, opties) {
     assistantBerichtId = rec.id;
 
     for (const voorstel of voorgesteldeActies) {
+      // DUBBELE REGISTRATIE VOORKOMEN (gevonden 26 juli 2026).
+      //
+      // Bij het testen bevestigde ik een fenologievoorstel, gaf daarna nog wat
+      // aanvullende informatie, en somde de assistent in zijn antwoord keurig
+      // op wat er klaarstond — inclusief de al bevestigde fenologie. Die kwam
+      // als nieuwe kaart terug; bevestigen leverde een TWEEDE identiek record.
+      // Voor een oogst of meting is dat geen schoonheidsfoutje maar vervuilde
+      // data: dubbele kilo's in het seizoenstotaal, een scheve gemiddelde Brix.
+      //
+      // De samenvatting is deterministisch afgeleid van de payload, dus twee
+      // gelijke samenvattingen binnen één gesprek betekenen dezelfde handeling.
+      // Bewust alleen blokkeren bij status "uitgevoerd": dan ligt het record er
+      // al. Twee openstaande kaarten naast elkaar zijn hinderlijk maar
+      // onschadelijk — je bevestigt er dan één.
+      const alGedaan = txApp.findRecordsByFilter(
+        "agent_acties",
+        "gesprek_id = {:g} && actie_type = {:t} && samenvatting = {:s} && status = 'uitgevoerd'",
+        "-created",
+        1,
+        0,
+        { g: gesprekId, t: voorstel.actie_type, s: voorstel.samenvatting },
+      );
+      if (alGedaan && alGedaan.length > 0) {
+        aangemaakteActies.push({
+          id: alGedaan[0].id,
+          actie_type: voorstel.actie_type,
+          samenvatting: voorstel.samenvatting,
+          status: "uitgevoerd",
+          al_geregistreerd: true,
+        });
+        continue;
+      }
+
       const actieCol = txApp.findCollectionByNameOrId("agent_acties");
       const actieRec = new Record(actieCol);
       actieRec.set("gesprek_id", gesprekId);
