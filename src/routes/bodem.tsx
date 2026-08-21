@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { vereistIngelogd } from "@/lib/auth-guard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
@@ -22,6 +23,7 @@ import { Loader2 } from "lucide-react";
 export const Route = createFileRoute("/bodem")({
   component: BodemPage,
   head: () => ({ meta: [{ title: "Bodem — Wijngaard" }] }),
+  beforeLoad: () => vereistIngelogd("Log in om bodemobservaties vast te leggen."),
 });
 
 const LS_LAATSTE_RIJ = "wg.bodem.laatsterij.v1";

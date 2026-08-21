@@ -5,27 +5,28 @@
 // gevuld is — niet of er een bevestigingsmelding op het scherm stond.
 
 import { expect, test } from "@playwright/test";
-import { openApp, ruimOp, vulReactVeld } from "./hulp";
+import { logIn, ruimOp, vulReactVeld } from "./hulp";
 
 const TESTINVOERDER = "e2e-rooktest";
 
 async function telOpServer(page: import("@playwright/test").Page, collectie: string) {
   return page.evaluate(async (col) => {
-    // Geen Authorization-header: inloggen is verwijderd (26 juli 2026) en de
-    // API-regels staan open. Belangrijk voor de betrouwbaarheid van deze
-    // telling: een ONGELDIG token levert bij PocketBase geen 401 op maar een
-    // 200 met een lege lijst, dus meesturen "voor de zekerheid" zou hier tot
-    // een stille 0 leiden en de test valselijk laten slagen.
+    // Inloggen hersteld (21 augustus 2026): de API-regels staan weer dicht,
+    // dus zonder token levert dit een lege lijst op — dat zou de test
+    // valselijk laten slagen ("0 gevonden, dus geen fout") in plaats van
+    // eerlijk te falen op wat er echt mis is.
+    const token = JSON.parse(localStorage.getItem("pocketbase_auth") ?? "{}").token ?? "";
     const filter = encodeURIComponent('ingevoerd_door="e2e-rooktest"');
     const r = await fetch(
       `http://127.0.0.1:8090/api/collections/${col}/records?perPage=1&filter=${filter}`,
+      { headers: { Authorization: token } },
     );
     return ((await r.json()).totalItems as number) ?? 0;
   }, collectie);
 }
 
 test.beforeEach(async ({ page }) => {
-  await openApp(page);
+  await logIn(page);
 });
 
 test("1 — de hub laadt met echte cijfers, niet een lege huls", async ({ page }) => {

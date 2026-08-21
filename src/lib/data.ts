@@ -141,14 +141,39 @@ export function deelVerzoek<T>(sleutel: string, maak: () => Promise<T>): Promise
   return verzoek;
 }
 
-// INLOGGEN VERWIJDERD (besluit Thomas, 26 juli 2026). De app kent geen
-// accounts meer; alle API-regels staan open. Deze functie geeft daarom altijd
-// true terug in plaats van te verdwijnen: de signaalproducenten en datalagen
-// gebruiken hem als "mag ik de server bevragen?"-poortje, en dat antwoord is
-// nu onvoorwaardelijk ja. Zo blijft één plek de schakelaar als het inloggen
-// ooit terugkomt (verplicht vóór de Pi of pb.tappenmars.nl).
+// INLOGGEN HERSTELD (21 augustus 2026, vóór de Pi-migratie — zie CLAUDE.md
+// "Inloggen hersteld"). Deze functie was tijdelijk hard `true`; nu weer een
+// echte controle op de PocketBase-authStore.
 export function isIngelogd(): boolean {
-  return true;
+  const pb = getPb();
+  return Boolean(pb?.authStore.isValid);
+}
+
+// Sessieduur op de server staat op een jaar (zie setup-pocketbase.mjs,
+// stelAuthDuurIn) zodat Thomas niet elke week hoeft in te loggen. Dat lost
+// alleen de VERVALTERMIJN op; PocketBase geeft een token pas een nieuwe volle
+// looptijd als je hem expliciet ververst. Zonder dit zou een sessie die je
+// zelden opnieuw opent alsnog kunnen verlopen na een jaar totale inactiviteit
+// — onwaarschijnlijk bij dagelijks gebruik in het seizoen, maar in de winter
+// (net als de Pi-planning) juist een reëel scenario. Daarom hier ververst
+// zodra een pagina laadt en er een geldige sessie is: elke keer dat de app
+// open is, schuift de vervaldatum weer een vol jaar op.
+let laatsteVerversing = 0;
+const VERVERS_INTERVAL_MS = 6 * 3600 * 1000; // hooguit 4x per dag proberen
+
+export function verversSessieIndienNodig(): void {
+  const pb = getPb();
+  if (!pb || !pb.authStore.isValid) return;
+  const nu = Date.now();
+  if (nu - laatsteVerversing < VERVERS_INTERVAL_MS) return;
+  laatsteVerversing = nu;
+  pb.collection("users")
+    .authRefresh()
+    .catch(() => {
+      // Geen verbinding of token inmiddels ongeldig: geen probleem, de
+      // volgende keer dat de app online is wordt het opnieuw geprobeerd.
+      // Nooit uitloggen op basis van een mislukte ververspoging.
+    });
 }
 
 // Fase 8 — gedeelde leeshelper voor de ONLINE-ONLY datalagen (kelder, verkoop,
@@ -170,10 +195,8 @@ export async function haalLijst<T>(
 ): Promise<T> {
   const pb = getPb();
   if (!pb) return leeg; // geen server geconfigureerd — lege staat is dan correct
-  // Hier stond een sessiecontrole; die is vervallen met het verwijderen van het
-  // inloggen (26 juli 2026). De rest van deze helper blijft onverminderd nodig:
-  // een onbereikbare server en een mislukte fetch moeten nog steeds een echte
-  // fout opleveren in plaats van een stille lege lijst.
+  if (!isIngelogd())
+    throw new LaadFout("niet_ingelogd", `Log opnieuw in om ${wat} te kunnen laden.`);
   if (!(await ensureOnline()))
     throw new LaadFout(
       "geen_verbinding",

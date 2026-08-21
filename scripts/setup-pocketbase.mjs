@@ -40,32 +40,30 @@ const driftVelden = [];
 // Leeg = geen restrictie (ook anonieme/niet-ingelogde clients mogen erbij).
 const OPEN_RULE = "";
 
-// INLOGGEN VERWIJDERD — besluit Thomas, 26 juli 2026.
+// INLOGGEN HERSTELD — 21 augustus 2026.
 //
-// Was: "@request.auth.id != ''" (alleen ingelogde gebruikers). Thomas wilde
-// nergens meer een e-mail/wachtwoord hoeven invoeren en koos hier bewust voor,
-// nadat het risico hieronder expliciet is benoemd. Deze ene constante stuurt
-// alle 171 auth-regels tegelijk; daarom staat hij hier en niet verspreid.
+// Korte geschiedenis, zodat niemand dit per ongeluk terugdraait: op 26 juli
+// 2026 is het inloggen op verzoek van Thomas volledig verwijderd (alles open).
+// Dat was verdedigbaar zolang de server uitsluitend op 127.0.0.1 luisterde,
+// maar het moest terug vóór de Raspberry Pi in de schuur. Die staat gepland
+// voor november/december 2026.
 //
-// WAT DIT BETEKENT: iedereen die de PocketBase-server kan bereiken mag alle
-// data lezen EN wijzigen. Dat is nu te overzien omdat de server uitsluitend op
-// 127.0.0.1 luistert. Het is NIET te overzien zodra de app op de Raspberry Pi
-// in de schuur draait (bereikbaar voor het hele thuisnetwerk) of op
-// pb.tappenmars.nl (bereikbaar voor het hele internet). In beide gevallen
-// liggen dan het tankboek, de klantgegevens (AVG) en het gebruikersbeheer
-// open voor lezen en schrijven.
+// WAAROM NU AL EN NIET PAS BIJ DE PI: beveiliging aanzetten op de dag van een
+// migratie is precies hoe je fouten maakt. Door het nu te herstellen draait
+// het een heel oogstseizoen mee op de laptop — waar de inzet laag is — en is
+// de Pi-stap in december een pure verhuizing in plaats van een verhuizing
+// plús een beveiligingsverbouwing.
 //
-// TERUGZETTEN = deze regel terugveranderen in "@request.auth.id != ''", het
-// script opnieuw draaien, en de frontend-guards herstellen (git-geschiedenis:
-// de commit die dit weghaalde). Doe dat VOORDAT de server van 127.0.0.1 af
-// gaat, niet erna.
+// WAT DIT NIET BETEKENT: dagelijks een wachtwoord intikken. De sessieduur van
+// de users-collectie staat bewust op een jaar (zie stelAuthDuurIn hieronder),
+// dus je logt één keer per apparaat in en blijft daarna ingelogd.
 //
-// NIET geraakt door deze wijziging, en dat is opzet: de collecties met
-// create/update/delete = null (tankboek, agent_acties). Die staan niet dicht
-// vanwege inloggen maar vanwege ONWIJZIGBAARHEID — schrijven kan daar
-// uitsluitend via de gecontroleerde serverendpoints, wat de correctheid van
-// het wettelijke accijnsregister bewaakt. Dat blijft zo.
-const AUTH_RULE = OPEN_RULE;
+// NIET geraakt, en dat is opzet: de collecties met create/update/delete = null
+// (tankboek, agent_acties). Die staan dicht vanwege ONWIJZIGBAARHEID, niet
+// vanwege inloggen — schrijven kan daar uitsluitend via de gecontroleerde
+// serverendpoints, wat de correctheid van het wettelijke accijnsregister
+// bewaakt.
+const AUTH_RULE = "@request.auth.id != ''";
 
 const VAK4 = "4 planten per vak (i.p.v. standaard 5)";
 const VAK6 = "Laatste vak heeft 6 planten, zelfde rijlengte";
@@ -475,6 +473,23 @@ async function synchroniseerKeuzelijsten(bestaand, def) {
   });
   for (const regel of toegevoegd) console.log(`    ↻ ${def.name}.${regel}`);
   return bijgewerkt;
+}
+
+/**
+ * Zet de sessieduur (authToken.duration, in seconden) van een auth-collectie.
+ * Idempotent: doet niets als de waarde al klopt, dus veilig om bij elke
+ * schema-run mee te draaien.
+ */
+async function stelAuthDuurIn(collectionNaam, seconden) {
+  if (droog) return;
+  const col = await api(`/api/collections/${collectionNaam}`);
+  const huidig = col.authToken && col.authToken.duration;
+  if (huidig === seconden) return;
+  await api(`/api/collections/${collectionNaam}`, {
+    method: "PATCH",
+    body: { authToken: { ...col.authToken, duration: seconden } },
+  });
+  console.log(`  ↻ ${collectionNaam}.authToken.duration: ${huidig ?? "?"}s -> ${seconden}s`);
 }
 
 function wachtwoordGenereren() {
@@ -2257,7 +2272,17 @@ async function main() {
     `  ✓ rijen: ${nieuw} nieuw, ${bijgewerkt} bijgewerkt, ${verwijderd} verwijderd (${SEED_RIJEN.length} totaal)`,
   );
 
-  // 5. gebruikers
+  // 5. sessieduur van de users-collectie: een jaar, niet de standaard 5 dagen.
+  //
+  // Zonder dit zou het herstelde inloggen (21 augustus 2026) elke week
+  // opnieuw om een wachtwoord vragen — precies wat Thomas expliciet niet wil
+  // ("niet iedere keer hoeven inloggen"). Een jaar is ruim boven een heel
+  // seizoen; de frontend ververst de token bovendien stilzwijgend bij elk
+  // bezoek (zie ververstIndienNodig() in data.ts) zodat de sessie binnen dat
+  // jaar nooit hoeft te verlopen door simpele inactiviteit.
+  await stelAuthDuurIn("users", 365 * 24 * 3600);
+
+  // 6. gebruikers
   console.log("Gebruikers aanmaken...");
   const accounts = [];
   for (const g of GEBRUIKERS) {

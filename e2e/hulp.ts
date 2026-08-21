@@ -1,18 +1,36 @@
 import type { Page } from "@playwright/test";
 
-// INLOGGEN VERWIJDERD (besluit Thomas, 26 juli 2026). Deze functie heette
-// logIn() en vulde e-mail + wachtwoord op /login. Die route bestaat niet meer
-// en de API-regels staan open, dus er valt niets meer in te loggen.
-//
-// De functie zelf blijft bestaan onder een eerlijke naam: élke rooktest moet
-// nog steeds de onboarding-dialoog wegzetten vóór hij iets aanklikt. Op een
-// vers apparaat legt die dialoog zich over het scherm en vangt alle kliks af —
-// dat was de oorspronkelijke reden dat hier een reload in zit, en die reden
-// staat los van het inloggen.
+// INLOGGEN HERSTELD (21 augustus 2026, zie CLAUDE.md). openApp() bleef
+// bestaan uit de inlogloze periode: elke rooktest moet de onboarding-dialoog
+// wegzetten vóór hij iets aanklikt, en die reden staat los van inloggen.
 export async function openApp(page: Page, pad = "/") {
   await page.goto(pad);
   await page.evaluate(() => localStorage.setItem("wg.onboarding.gezien.v1", "1"));
   await page.reload();
+}
+
+// Inloggegevens komen uit de omgeving, niet uit dit bestand: dit is een
+// gecommit bestand en een wachtwoord hoort daar niet in te staan.
+// Zetten met:  $env:E2E_EMAIL="..."; $env:E2E_WACHTWOORD="..."
+export const EMAIL = process.env.E2E_EMAIL ?? "";
+export const WACHTWOORD = process.env.E2E_WACHTWOORD ?? "";
+
+export function eisInloggegevens() {
+  if (!EMAIL || !WACHTWOORD) {
+    throw new Error(
+      "Zet E2E_EMAIL en E2E_WACHTWOORD in de omgeving voordat je de rooktests draait (zie CLAUDE.md).",
+    );
+  }
+}
+
+export async function logIn(page: Page) {
+  eisInloggegevens();
+  await openApp(page, "/login");
+  await page.getByLabel(/e-?mail/i).fill(EMAIL);
+  await page.getByLabel(/wachtwoord/i).fill(WACHTWOORD);
+  await page.getByRole("button", { name: /inloggen/i }).click();
+  // de app stuurt na inloggen door naar de hub of de laatst gebruikte module
+  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 15_000 });
 }
 
 // Records die een test aanmaakt, weer opruimen — de tests draaien tegen de
@@ -20,15 +38,20 @@ export async function openApp(page: Page, pad = "/") {
 export async function ruimOp(page: Page, collectie: string, invoerder: string) {
   await page.evaluate(
     async ([col, wie]) => {
-      // Geen Authorization-header meer: het inloggen is verwijderd en de
-      // API-regels staan open (26 juli 2026). Een meegestuurd leeg token
-      // zou hier stilletjes een lege lijst opleveren — dan zou de opruiming
-      // "slagen" zonder iets te verwijderen.
+      // Inloggen hersteld (21 augustus 2026): de API-regels staan weer dicht,
+      // dus zonder token levert dit stilletjes een lege lijst op — dan zou de
+      // opruiming "slagen" zonder iets te verwijderen. Token uit dezelfde
+      // authStore die de app zelf gebruikt (na logIn() in beforeEach gevuld).
+      const token = JSON.parse(localStorage.getItem("pocketbase_auth") ?? "{}").token ?? "";
       const basis = "http://127.0.0.1:8090/api/collections/" + col + "/records";
       const filter = encodeURIComponent(`ingevoerd_door="${wie}"`);
-      const lijst = await (await fetch(`${basis}?perPage=200&filter=${filter}`)).json();
+      const lijst = await (
+        await fetch(`${basis}?perPage=200&filter=${filter}`, {
+          headers: { Authorization: token },
+        })
+      ).json();
       for (const r of lijst.items ?? []) {
-        await fetch(`${basis}/${r.id}`, { method: "DELETE" });
+        await fetch(`${basis}/${r.id}`, { method: "DELETE", headers: { Authorization: token } });
       }
     },
     [collectie, invoerder] as const,

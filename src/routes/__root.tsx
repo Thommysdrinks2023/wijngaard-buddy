@@ -14,6 +14,8 @@ import { Onboarding } from "@/components/onboarding";
 import { SyncStatus } from "@/components/sync-status";
 import { Toaster } from "@/components/ui/sonner";
 import { pasWeergaveToe, ruimOudeCacheOp } from "@/lib/app-instellingen";
+import { verversSessieIndienNodig } from "@/lib/data";
+import { synchroniseerServerSessieMetCookie } from "@/lib/auth-guard";
 import { laadConfigVanServer } from "@/lib/wijngaard-config";
 import { ruimPrullenbakOp } from "@/lib/prullenbak";
 import { checkNewYearGreeting, migrateSeizoen } from "@/lib/seizoen";
@@ -47,6 +49,16 @@ function NotFoundComponent() {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  // Draait bij ELKE serverrender, voor ELKE route — bewust niet alleen in de
+  // guarded routes (auth-guard.ts). Zie de toelichting bij
+  // synchroniseerServerSessieMetCookie() voor het cross-user lek dat dit
+  // dicht: zonder deze root-brede aanroep bleven ONGEGIDste routes (de hub,
+  // /perceelkaart, /oogst, /werkrapport — die isIngelogd() gebruiken om
+  // auth-only content te tonen) de sessie van een eerdere, andere request
+  // zien. Op de client is dit een no-op (zie de functie zelf).
+  beforeLoad: () => {
+    synchroniseerServerSessieMetCookie();
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -111,6 +123,11 @@ function RootComponent() {
     pasWeergaveToe();
     // wijngaard-configuratie van de server halen (indien ingelogd) en lokaal cachen
     void laadConfigVanServer();
+    // Sessieduur staat op de server op een jaar (zie setup-pocketbase.mjs);
+    // dit schuift die vervaldatum bij elk bezoek weer op, zodat langdurige
+    // inactiviteit (bijv. de winterstop) niet alsnog tot een verlopen sessie
+    // leidt — zie de toelichting bij verversSessieIndienNodig() in data.ts.
+    verversSessieIndienNodig();
     // Service worker: maakt de app offline bruikbaar (alleen in productie,
     // in dev zou caching de hot-reload in de weg zitten)
     if (import.meta.env.PROD && "serviceWorker" in navigator) {

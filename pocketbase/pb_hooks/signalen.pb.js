@@ -1,12 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 //
-// INLOGGEN VERWIJDERD (besluit Thomas, 26 juli 2026): de $apis.requireAuth()-
-// middleware is van elk endpoint in dit bestand weggehaald. Deze endpoints
-// zijn nu bereikbaar zonder account. De rolcontroles (eisSchrijfrecht/
-// eisBeheerder) staan er bewust N O G  I N: rolVan() in kelder_logica.js geeft
-// bij ontbrekende auth "beheerder" terug, dus ze laten alles door. Zo hoeft
-// alleen die ene functie terug als het inloggen ooit hersteld wordt.
-// Zie de toelichting in kelder_logica.js bij rolVan().
+// INLOGGEN HERSTELD (21 augustus 2026): elk endpoint in dit bestand eist weer
+// $apis.requireAuth(). De rolcontroles waren tijdens de inlogloze periode al
+// blijven staan en werken nu weer echt, zie rolVan() in kelder_logica.js.
 
 // Fase 10 Blok 5 — signaal naar taak promoveren.
 //
@@ -79,4 +75,5 @@ routerAdd(
       throw uitvoering.leesbareFout(err);
     }
   },
+  $apis.requireAuth(),
 );

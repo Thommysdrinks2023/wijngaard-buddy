@@ -149,57 +149,70 @@ Set-ScheduledTask -TaskName "Wijngaard PocketBase Backup" -Settings $settings
 
 **C-schijf kan onopgemerkt vollopen door OneDrive-updateresten.** Op 4 juli 2026 raakte de C-schijf twee keer bijna/helemaal vol (0 bytes vrij, later opnieuw tot 1,2GB) door **~14GB aan verweesde `OneDriveDeltaPatch`/`NewCabinet`-mappen in `AppData\Local\Temp`** — tijdelijke uitpakmappen van OneDrive's eigen updater die na een update nooit worden opgeruimd en zich over maanden opstapelen (sommige dateerden van oktober 2025). Dit veroorzaakte zowel een PocketBase-crash als een mislukte dagelijkse backup. Bij een onverklaarbaar volle C-schijf: controleer eerst `du -sh /c/Users/Gebruiker/AppData/Local/Temp/*/ | sort -rh | head -20` op mappen met een `OneDriveDeltaPatch`- of `NewCabinet`-submap — die zijn veilig te verwijderen (OneDrive downloadt ze desnoods opnieuw).
 
-## Inloggen verwijderd (26 juli 2026) — LEES DIT VOOR ELKE DEPLOY
+## Inloggen hersteld (21 augustus 2026) — geschiedenis en huidige staat
 
-De app kent **geen accounts, geen wachtwoorden en geen rollen** meer. Thomas
-heeft hier expliciet voor gekozen nadat het risico hieronder is voorgelegd: hij
-wilde nergens meer een e-mail en wachtwoord hoeven invoeren.
+Op 26 juli 2026 is het inloggen op verzoek van Thomas volledig verwijderd
+(alles open, geen accounts). Dat was verdedigbaar zolang PocketBase
+uitsluitend op `127.0.0.1` luisterde. Thomas is daarna een aantal weken niet
+aan de app toegekomen; bij hervatting (21 augustus 2026) is besloten het
+inloggen **nu al** te herstellen in plaats van pas bij de Raspberry Pi-migratie
+(gepland november/december 2026, wanneer Thomas er een dag/weekend voor kan
+vrijmaken): zo draait de beveiliging een heel oogstseizoen mee op de laptop,
+waar de inzet laag is, en is de Pi-stap straks een pure verhuizing in plaats
+van een verhuizing plús een beveiligingsverbouwing onder tijdsdruk.
 
-**Wat dit betekent.** Iedereen die de PocketBase-server kan bereiken mag alle
-data **lezen én wijzigen** — inclusief het tankboek (het wettelijke register
-voor de accijnsaangifte), de klantgegevens (AVG) en alle kelderadministratie.
-Dat is nu aanvaardbaar omdat de server uitsluitend op `127.0.0.1` luistert.
+**Wat "hersteld" concreet betekent:**
 
-> **HARDE VOORWAARDE:** dit moet TERUG voordat de server van `127.0.0.1` af
-> gaat. Dus vóór de Raspberry Pi in de schuur (bereikbaar voor het hele
-> thuisnetwerk) en vóór `pb.tappenmars.nl` (bereikbaar voor het hele
-> internet). Niet erna. Zonder herstel ligt bij die stap alles open.
+- `scripts/setup-pocketbase.mjs`: `AUTH_RULE` staat weer op
+  `"@request.auth.id != ''"` (171 regels over 43 collecties, via
+  `synchroniseerRegels()` ook op bestaande collecties toegepast).
+- `pocketbase/pb_hooks/kelder_logica.js`: `rolVan()` geeft bij ontbrekende
+  auth weer `""` (geen rechten), niet meer automatisch `"beheerder"`.
+- `$apis.requireAuth()` staat weer op elk endpoint in `kelder.pb.js`,
+  `voorraad.pb.js` en `signalen.pb.js`.
+- Frontend: `/login`, `src/lib/auth-guard.ts`, de guards op
+  `/kelder`, `/voorraad`, `/bodem`, `/materieel`, `/verkoop`, de
+  "Uitloggen"-knop en het gebruikersbeheer in `/instellingen`, en de
+  drieledige verbindingsbadge (offline / niet ingelogd / ingelogd als
+  &lt;naam&gt;) zijn terug — teruggehaald uit de git-geschiedenis (commit
+  `28435a9` en zijn voorganger).
+- `isIngelogd()` in `data.ts` doet weer een echte controle op de
+  PocketBase-authStore in plaats van hard `true`.
 
-**Wat er NIET is opengezet, en dat is opzet:**
+**Randvoorwaarde van Thomas, expliciet gesteld en bewaakt: geen dagelijks
+opnieuw inloggen.** Dit is met twee maatregelen opgelost, niet met één:
 
-- `tankboek` en `agent_acties` houden `create/update/delete = null`. Die stonden
-  niet dicht vanwege inloggen maar vanwege **onwijzigbaarheid**: schrijven kan
-  daar alleen via de gecontroleerde serverendpoints, wat de correctheid van het
-  accijnsregister bewaakt. Geverifieerd: direct schrijven naar `tankboek` geeft
-  nog steeds **403**.
-- `pocketbase/pb_hooks/gebruikers.pb.js` houdt zijn `$apis.requireAuth()`.
-  Accountbeheer wereldwijd openzetten zou betekenen dat iedereen accounts kan
-  aanmaken; nu is dat endpoint alleen nog voor een superuser bereikbaar.
-- De ingebouwde `users`-collectie en de bestaande accounts zijn **niet
-  verwijderd** — dat is onomkeerbaar en is niet gevraagd.
+1. De `authToken.duration` van de `users`-collectie staat op **een jaar**
+   (was de PocketBase-standaard van 5 dagen) — zie `stelAuthDuurIn()` in
+   `setup-pocketbase.mjs`, aangeroepen bij elke schema-run.
+2. Dat lost alleen de vervaltermijn op, niet inactiviteit: PocketBase geeft
+   een token pas een nieuwe volle looptijd bij een expliciete refresh. Daarom
+   ververst `verversSessieIndienNodig()` (`data.ts`, aangeroepen vanuit
+   `__root.tsx` bij elk bezoek, hooguit eens per 6 uur) de sessie stilzwijgend
+   zolang hij geldig is. Zo schuift de vervaldatum bij normaal gebruik
+   voortdurend een jaar vooruit, en overleeft de sessie ook de winterstop
+   tussen seizoenen.
 
-**De weg terug (vier plekken, in deze volgorde):**
+Praktisch effect: één keer inloggen per apparaat, daarna nooit meer — tenzij
+je een jaar lang de app niet opent, of expliciet uitlogt.
 
-1. `scripts/setup-pocketbase.mjs`: `const AUTH_RULE = OPEN_RULE;` terug naar
-   `const AUTH_RULE = "@request.auth.id != ''";`, daarna het script draaien.
-   De nieuwe `synchroniseerRegels()` past dat op bestaande collecties toe —
-   dat deed `ensureCollection()` vroeger níét, waardoor regelwijzigingen wel
-   gecommit maar nooit toegepast werden.
-2. `pocketbase/pb_hooks/kelder_logica.js`: in `rolVan()` de regel
-   `if (!auth) return "beheerder";` terug naar `return "";`. De aanroepers
-   (`eisSchrijfrecht`/`eisBeheerder`) zijn bewust blijven staan en hoeven niet
-   mee te veranderen.
-3. `$apis.requireAuth()` terug als laatste argument van elke `routerAdd` in
-   `kelder.pb.js`, `voorraad.pb.js` en `signalen.pb.js`.
-4. Frontend: `src/lib/data.ts` (`isIngelogd()` geeft nu hard `true` terug),
-   plus `src/lib/auth-guard.ts`, `src/routes/login.tsx` en het
-   gebruikersbeheer in `/instellingen` terughalen uit de git-geschiedenis
-   (commit met "inloggen volledig verwijderd").
+**Bewust ONGEWIJZIGD gebleven, en dat blijft zo:**
 
-**Waarom `isIngelogd()` blijft bestaan en gewoon `true` teruggeeft:** een
-tiental datalagen en signaalproducenten gebruiken hem als poortje ("mag ik de
-server bevragen?"). Eén functie omzetten is de schakelaar; die aanroepen
-allemaal wegsnijden zou het herstel onnodig groot maken.
+- `tankboek` en `agent_acties` houden `create/update/delete = null`. Dat was
+  nooit een inlogmaatregel maar **onwijzigbaarheid**: schrijven kan alleen via
+  de gecontroleerde serverendpoints, wat de correctheid van het
+  accijnsregister bewaakt.
+- `pocketbase/pb_hooks/gebruikers.pb.js` had zijn `$apis.requireAuth()` de
+  hele inlogloze periode al behouden (accountbeheer mocht nooit wereldwijd
+  open staan) — hier verandert dus niets.
+- De `users`-collectie en bestaande accounts zijn nooit verwijderd geweest.
+
+**Wat dit NIET oplost, en waar bij de Pi-migratie nog naar gekeken moet
+worden:** het agent-endpoint (`POST /api/agent/bericht`) heeft nog steeds geen
+`requireAuth()` en geen rate-limiting — zie het punt "AI-agent-endpoint zonder
+rate-limit" verderop in dit bestand. Dat is bewust zo gelaten zolang de server
+alleen op `127.0.0.1` luistert, maar moet vóór de Pi/`pb.tappenmars.nl` alsnog
+worden opgelost.
 
 ## Codeerconventies
 
@@ -215,7 +228,7 @@ allemaal wegsnijden zou het herstel onnodig groot maken.
 - **Lint**: ESLint (`bun run lint`) — geen warnings in CI
 - **Tests**: Vitest (`npm test`) — dekt de pure rekenlibs (`dichtheid.ts`, `oenologie.ts`, `accijns.ts`, `gisting-verwachting.ts`). **Draai `npm test` vóór elke commit** die een van deze bestanden raakt; groen is een harde eis, niet optioneel. Nieuwe pure rekenlogica hoort een bijbehorend `*.test.ts`-bestand te krijgen (zelfde patroon: normaal geval, randgeval, limietoverschrijding waar van toepassing).
 - **Rooktests (E2E)**: Playwright (`npm run test:e2e`), 6 tests in `e2e/rooktest.spec.ts`. Draaien tegen de **productiebuild** (`playwright.config.ts` bouwt en start `vite preview` op poort 4173) op **telefoonformaat** (Pixel 7) — niet de dev-server en niet bureaubladbreedte, want dat is niet wat Thomas gebruikt. Ze verwachten een draaiende lokale PocketBase op `127.0.0.1:8090`.
-  - **Geen inloggegevens meer nodig** (sinds 26 juli 2026, zie "Inloggen verwijderd"): de tests draaien zonder account. `E2E_EMAIL`/`E2E_WACHTWOORD` zijn vervallen; `hulp.ts` biedt nu `openApp()` in plaats van `logIn()` — die zet alleen nog de onboarding-dialoog weg, want die legt zich anders over het scherm en vangt alle kliks af.
+  - **Inloggegevens weer nodig** (sinds 21 augustus 2026, zie "Inloggen hersteld"): zet `E2E_EMAIL` en `E2E_WACHTWOORD` voordat je de rooktests draait (`$env:E2E_EMAIL="…"; $env:E2E_WACHTWOORD="…"; npm run test:e2e`). `hulp.ts` biedt `logIn()` (bouwt voort op `openApp()`, die alleen de onboarding-dialoog wegzet — dat blijft nodig los van inloggen) en `eisInloggegevens()`, die zonder die variabelen met een duidelijke melding faalt in plaats van de tests te laten vastlopen op een lege inbox.
   - De tests controleren waar mogelijk of een record **écht op de server** staat, niet of er een bevestiging op het scherm stond — een groene toast bewijst niets over wat er is opgeslagen. Records die ze aanmaken ruimen ze zelf op (`ingevoerd_door = "e2e-rooktest"`).
   - Test 6 controleert dat **geen enkel hoofdscherm een `role="alert"` toont**. Dat is de goedkoopste bewaking tegen het terugkerende faalpatroon uit Fase 8/10 (datalaag faalt, scherm toont een foutstatus of blijft leeg).
   - **`retries: 0` is bewust**: een wisselvallige test is een bevinding, geen ruis om weg te retryen.
@@ -255,7 +268,7 @@ allemaal wegsnijden zou het herstel onnodig groot maken.
 - **Kelder-module (Tappenmars Buddy), Fase 0–2 gebouwd**: collecties `producenten`, `partijen` (met producent/opdracht_type/ouder_partij/lotnummer/dichtheden), `tanks` (48 stuks geseed uit Thomas' Excel-tankinventaris; `huidige_partij`/`huidig_volume_l` zijn CACHES), `tankboek` (onwijzigbaar register: API-rules create/update/delete = null), `analyses`, `kelderlog` (werklogboek), `regelgeving_instellingen` (scaffold). Datalagen: `kelder-data.ts` + `partijen-data.ts` (online-only, bewust géén sync-wachtrij). Dichtheidsconversie °Oe↔Brix↔SG in `src/lib/dichtheid.ts` (SG-gebaseerde formule, níet de lineaire benadering). Volgende fases (botteling, voorraad, cuvée/splitsing): zie `ARCHITECTURE.md`.
 - **Tankboek-boekingen lopen UITSLUITEND via server-endpoints** (`pocketbase/pb_hooks/kelder.pb.js`): `POST /api/tappenmars/partij-aanmaken`, `/tankboek-boeking`, `/tanks-herbereken`. Atomisch via `runInTransaction`; valideert capaciteit, bronvolume ("systeem toont X L, jij boekt Y L"), doeltank-partij, status, toekomstdatum. Correcties = nieuwe regel met `corrigeert`-verwijzing, nooit bewerken.
 - **PocketBase JSVM-valkuilen** (kostte een debugsessie — niet opnieuw ontdekken): (1) routerAdd-handlers draaien in een VM-pool waar closures én top-level functies/const-declaraties uit het .pb.js-bestand NIET bestaan — gedeelde code (én kleine helpers/constanten) via `require(`${\_\_hooks}/bestand.js`)` bínnen de handler (zie `kelder_logica.js`); (2) fouten gegooid binnen `runInTransaction` verliezen hun boodschap — valideer zonder te gooien (retourneer `{ fout }`) en gooi de `BadRequestError` pas buiten de transactie; (3) hooks herladen niet op Windows — PocketBase herstarten na elke wijziging in `pb_hooks/`; (4) **`record.get("jsonveld")` levert géén geparsed object en géén string op, maar een `types.JSONRaw` (een byte-array, `Array<number>`)** — `{...record.get("veld")}` spreidt dan bytes i.p.v. de echte sleutels, wat bv. een correct ingevulde `partij` liet verdwijnen tot "partij is verplicht". Gebruik `.string()` + `JSON.parse()` (zie `leesJsonVeld()` in `pocketbase/pb_hooks/agent_uitvoering.js`) om een json-veld terug te lezen na een `.get()`.
-- **Eindsprint-modules gebouwd (juli 2026)**: `/verkoop` (collecties `klanten`+`orders`; leveren UITSLUITEND via `POST /api/tappenmars/order-leveren` — atomisch: voorraadmutaties per orderregel + orderstatus in één transactie), `/kelder/accijns` (pure rekenlib `src/lib/accijns.ts`; bedragen alleen bij geverifieerd tarief in `regelgeving_instellingen`), `/materieel` (collecties `materieel`+`onderhoudslog`), jaarafsluiting op `/kelder/jaaroverzicht` (append-only collectie `archief`), `bodem_observaties` (collectie + agent-tool bestaan; invoer-UI nog niet). Rollen: het rolmodel (`users.rol`, beheerder/medewerker/alleen_lezen) is per 26 juli 2026 NIET meer actief — zie "Inloggen verwijderd". De code (`rolVan`/`eisSchrijfrecht`/`eisBeheerder` in `kelder_logica.js`) staat er nog en laat alles door; het gebruikersbeheer in /instellingen is verwijderd, `gebruikers.pb.js` behoudt bewust zijn `requireAuth()`. Agent-tool-registry telt 24 tools over 6 modules (kelder/wijngaard/voorraad/verkoop/materieel/algemeen).
+- **Eindsprint-modules gebouwd (juli 2026)**: `/verkoop` (collecties `klanten`+`orders`; leveren UITSLUITEND via `POST /api/tappenmars/order-leveren` — atomisch: voorraadmutaties per orderregel + orderstatus in één transactie), `/kelder/accijns` (pure rekenlib `src/lib/accijns.ts`; bedragen alleen bij geverifieerd tarief in `regelgeving_instellingen`), `/materieel` (collecties `materieel`+`onderhoudslog`), jaarafsluiting op `/kelder/jaaroverzicht` (append-only collectie `archief`), `bodem_observaties` (collectie + agent-tool bestaan; invoer-UI nog niet). Rollen: het rolmodel (`users.rol`, beheerder/medewerker/alleen_lezen) is sinds 21 augustus 2026 weer actief — zie "Inloggen hersteld". `rolVan`/`eisSchrijfrecht`/`eisBeheerder` in `kelder_logica.js` handhaven weer server-side; het gebruikersbeheer staat terug in /instellingen (`GebruikersBeheer`, zichtbaar voor rol "beheerder"); `gebruikers.pb.js` had zijn `requireAuth()` in de tussentijd al onafgebroken behouden. Agent-tool-registry telt 24 tools over 6 modules (kelder/wijngaard/voorraad/verkoop/materieel/algemeen).
 - **Superuser-credentials** (`pocketbase/backup-credentials.txt`): Thomas gaf op 16 juli 2026 expliciet toestemming om deze te gebruiken voor schema-runs en beheer-API-operaties. Losse bulk-deleties kunnen alsnog een aparte bevestiging van de permissielaag vragen.
 - **Fase 7 (Kelder Pro, juli 2026) gebouwd**: oenologische calculators (src/lib/oenologie.ts + docs/oenologie-formules.md, formule-versie in elke kelderlognotitie), verliezenboekhouding (opt-in verliesvoorstel bij overhevelen), reinigingslog + tankhistorie + hygiëne-waarschuwing, /kelder/qr (QR-printvel), controle-pakket-ZIP op /kelder/accijns (jszip), Ctgb-middelen (collectie middelen + scripts/import-ctgb.mjs + restrictiecheck in /werkrapport), voorspellende gistingscurve (src/lib/gisting-verwachting.ts), sensor-endpoint POST /api/sensor/meting (pb_hooks/sensor.pb.js, X-Sensor-Token uit .env; collectie sensor_metingen append-only; JSVM-valkuil 5: een gehele number-literal in DynamicModel wordt int64 — gebruik 0.1 als float-shape), sensoriek (collectie proefnotities + zoek_proefnotities). Security: EXIF-strip verplicht in foto-compressie.ts, backup-monitoring (statusrecord laatste_backup + hub-widget/melding), docs/security.md + docs/privacy.md. Agent-registry: 30 tools, module oenologie toegevoegd.
 - **TanStack Router — routes onder een bestaande pagina nesten automatisch.** Een bestand als `kelder.tanks.tsx` wordt door de router-generator een kind-route van `kelder.tsx` zodra die bestaat, en dan moet `kelder.tsx` een `<Outlet />` bevatten (patroon: `rij.$rijId.tsx`) — anders rendert de kind-route de verkeerde inhoud (dit ging eerder mis). Wil je bewust een "vlakke" route zonder nesting terwijl de ouder al bestaat, gebruik dan de trailing-underscore-escape (`kelder_.partijen.tsx` → `/kelder/partijen`, geen parent-layout).
