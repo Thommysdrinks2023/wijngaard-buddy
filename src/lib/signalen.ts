@@ -299,6 +299,50 @@ export async function kritiekeInzichtSignalen(): Promise<Signaal[]> {
   }
 }
 
+// ============= Sensor-alerts (Fase 14 Blok D) =============
+// Leest sensor_alerts uit (zie setup-pocketbase.mjs) — een collectie waar een
+// TOEKOMSTIGE regel-engine (Fase 15+, zodra er echte sensordata is) alerts in
+// zou zetten. Deze fase bouwt bewust geen drempels; deze producent bewijst
+// alleen dat een sensor-alert door de bestaande signaallaag heen komt, precies
+// zoals elk ander signaaltype — geen aparte code per sensortype nodig, want
+// het patroon (type/ernst/bron/onderbouwing/link) is al generiek.
+//
+// bron_type is hier altijd "tank" of leeg in de praktijk (zie
+// SENSOR_BRON_TYPES): DETAILROUTE kent al een ingang voor "tanks", dus zodra
+// bron_type "tank" is, linkt dit automatisch naar het juiste tankdetail
+// (Fase 13 Blok D — linken naar het record, niet naar de voordeur).
+export async function sensorAlertSignalen(): Promise<Signaal[]> {
+  const pb = getPb();
+  if (!pb || !isIngelogd()) return [];
+  try {
+    const { items } = await pb.collection("sensor_alerts").getList(1, 20, {
+      filter: "actief = true",
+      sort: "-created",
+      requestKey: null,
+    });
+    return items.map((r) => {
+      const bronType = (r["bron_type"] as string) || "";
+      // sensor_alerts.bron_type is "tank"/"kelder"/"overig"; DETAILROUTE
+      // kent alleen collectienamen ("tanks"), dus hier vertalen.
+      const collectie = bronType === "tank" ? "tanks" : "";
+      const bronId = (r["bron_id"] as string) || "";
+      const bronRecord = collectie && bronId ? { collectie, id: bronId } : undefined;
+      return {
+        id: r["signaal_id"] as string,
+        bron: "sensor",
+        ernst: r["ernst"] as SignaalErnst,
+        titel: r["titel"] as string,
+        waarom: r["waarom"] as string,
+        bronRecord,
+        link: signaalLink(bronRecord, "/kelder"),
+        datum: (r["created"] as string)?.slice(0, 10),
+      };
+    });
+  } catch {
+    return []; // collectie ontbreekt (oudere installatie) of niet bereikbaar
+  }
+}
+
 // ============= Voorraad bijna op (Fase 10 Blok 4, nieuw signaal) =============
 // Client-side filter omdat de drempel per wijn kan verschillen (eigen
 // drempel_aantal óf de globale standaard) — dat past in geen enkele
@@ -400,6 +444,7 @@ const PRODUCENTEN: SignaalProducent[] = [
   kritiekeInzichtSignalen,
   voorraadBijnaOpSignalen,
   wachttijdSignalen,
+  sensorAlertSignalen,
 ];
 
 // Verzamelt alle signalen; een falende producent blokkeert de rest nooit

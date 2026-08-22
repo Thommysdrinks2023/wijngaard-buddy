@@ -57,6 +57,7 @@ function TankDetailPage() {
 
   const [notitie, setNotitie] = useState<string | null>(null);
   const [capaciteit, setCapaciteit] = useState<string | null>(null);
+  const [nfcTag, setNfcTag] = useState<string | null>(null); // Fase 14 Blok B
   const [invoerder, setInvoerder] = useInvoerder();
 
   const updateM = useMutation({
@@ -401,6 +402,21 @@ function TankDetailPage() {
               />
             </label>
           </div>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">NFC/RFID-tag</span>
+            <input
+              value={nfcTag ?? tank?.nfc_tag ?? ""}
+              onChange={(e) => setNfcTag(e.target.value)}
+              onBlur={() => {
+                if (nfcTag != null) updateM.mutate({ nfc_tag: nfcTag });
+              }}
+              className={veldClass}
+              placeholder="Nog geen tag geplakt…"
+            />
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Voor als er straks een tag op deze tank zit — zoek 'm terug via het scanscherm.
+            </span>
+          </label>
         </section>
 
         {/* Tankhistorie: tankboek + reinigingen gemengd op datum (Fase 7 Blok D) */}

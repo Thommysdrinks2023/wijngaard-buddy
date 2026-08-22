@@ -235,3 +235,137 @@ Commit `54f0a11`: Wijngaard-tegel toont "69 rijen" (live geverifieerd, werkt ook
   manier om per ongeluk dubbel te registreren. Waard om in de gaten te houden
   in het echte seizoen; een oplossing hoort in de systeemprompt, niet in de
   code.
+
+---
+
+# Sessie 22 augustus 2026 — Fase 14: softwarevoorbereiding kelderhardware
+
+Doel: de softwarekant vastbouwen zodat toekomstige sensoren, NFC-tags en een
+gistingsprogramma straks alleen nog aangesloten hoeven te worden. **Geen
+hardware aangeschaft of gekoppeld** — alles getest met curl en verzonnen data.
+
+## Blok 0 — Nulmeting (verschillen met de opdrachtaannames)
+
+- De temperatuur-op-gistingscurve-integratie bestond al (Fase 7), gebouwd op
+  het oude vaste schema — moest meemigreren naar het generieke model.
+- `SENSOR_TOKEN` stond al in `.env`; het endpoint was niet uitgeschakeld.
+- `signaal_status` is alleen snooze/dismiss-*status*, geen signaalinhoud.
+  Voor een "handmatig testalert" is dus een aparte collectie nodig
+  (`sensor_alerts`) — zelfde patroon als `inzichten`.
+- De Vandaag-widget was al volledig generiek; Blok D punt 2 uit de opdracht
+  was dus al voldaan zonder wijziging.
+- `ARCHITECTURE.md` had nog geen sensor/IoT-sectie.
+
+## Blok A — Generiek sensormeting-endpoint
+
+`sensor_metingen` uitgebreid met `type`/`waarde`/`eenheid`/`bron_type`/
+`bron_id`/`ontvangen_op`, naast de oude velden (niet verwijderd, niet meer
+verplicht). `migreerSensorMetingen()` zette de 2 bestaande records om,
+idempotent. Endpoint valideert `type` tegen de select en `waarde` tegen
+per-type plausibiliteitsgrenzen (temperatuur −20..60, co2 0..50000 ppm,
+gewicht 0..5000 kg, dichtheid 0..200 °Oe — "overig" bewust zonder grens).
+Getest met curl: alle vier de types opgeslagen en opvraagbaar, implausibele
+waarde en onbekend type geven 400, verkeerd token geeft 401. Temperatuurlijn
+migreerde mee naar `bron_type`/`bron_id`-filtering en is bevestigd zichtbaar
+op een testpartij (4 lijnen in de fermentatiecurve: dichtheid, voorspelling,
+sensortemperatuur, programmatemperatuur — elk een eigen kleur).
+
+**Twee bugs gevonden tijdens het testen, allebei vóór livegang gedicht:**
+
+1. `ReferenceError: SENSOR_TYPES is not defined` — de bekende JSVM-eigenaardigheid
+   (top-level const in een .pb.js-bestand bestaat niet in de handler-VM-pool,
+   zie CLAUDE.md). Opgelost door de constanten binnen de handler te zetten.
+2. Elke nieuwe meting kreeg 400 ("temperatuur_c/gemeten_op cannot be blank")
+   omdat die velden nog op `required: true` stonden uit Fase 7 —
+   `ensureCollection`/`ensureVelden` corrigeren nooit een bestaand veld.
+   Vierde variant van hetzelfde architecturale gat als eerder bij API-regels
+   en keuzelijsten. Structureel gedicht met een nieuwe `ensureNietVerplicht()`
+   -helper (alleen "vereist uitzetten", nooit "aanzetten" — dat zou bestaande
+   records kunnen breken).
+
+## Blok B — Tag-opzoek (RFID/NFC)
+
+`tanks.nfc_tag` (uniek, optioneel) + `partijen.nfc_tag` (alleen het veld,
+geen endpoint — punt 4 van de opdracht, scope bewust klein gehouden).
+`GET /api/tappenmars/tank-bij-tag?tag=...`, normale gebruikersauth (geen
+sensor-token — dit is voor een mens die scant). Uniciteit afgedwongen met een
+partial unique index (`WHERE nfc_tag != ''`, anders zou de tweede tank zonder
+tag al een violation geven). Invoerveld toegevoegd op het tankdetailscherm
+(zonder dat was Blok B niet praktisch bruikbaar zonder directe
+database-toegang). Getest: bekende tag → juiste tank; onbekende tag → 404,
+geen crash; dubbele tag → geweigerd; geen auth → 401.
+
+## Blok C — Temperatuurprogramma per partij
+
+`partijen.temperatuur_programma` (JSON). Twee ankertypes — **dag** (dagen
+sinds `pers_datum`) en **dichtheid** (°Oechsle) — want gisting verloopt niet
+lineair in tijd. Pure lib `src/lib/temperatuurprogramma.ts` (18 unittests)
+rekent programmapunten om naar grafiekpunten: een dichtheid-anker krijgt zijn
+datum van de dichtstbijzijnde ECHTE meting, nooit geëxtrapoleerd naar een
+niveau dat de gisting nog niet bereikt heeft. Invoerscherm op partijdetail
+(`TemperatuurProgrammaSectie`). Nog niet doorgerekend naar een signaal (vereist
+echte sensordata voor een zinnige drempel) — het datamodel staat er al klaar
+voor, conform de opdracht. Getest met een programma van 2 punten op een
+testpartij: beide zichtbaar naast de werkelijke temperatuur, visueel
+onderscheiden (rood gestreept vs. oranje) omdat anders — bij gelijktijdig
+zichtbare werkelijke en programma-temperatuur — dezelfde kleur voor beide
+juist het vergelijken in de weg zou zitten.
+
+## Blok D — Sensor-alerts op het bestaande meldingssysteem
+
+`sensor_alerts` (nieuwe collectie): de plek waar een toekomstige regel-engine
+(Fase 15+) een alert in zou zetten. **Bewust geen drempelregels gebouwd** —
+alleen het pad. Naamconventie gedocumenteerd in `ARCHITECTURE.md` §8.4:
+`<bron_type>-<bron_id>-<meetsoort>-<richting>`, bijv.
+`tank-<id>-temperatuur-hoog`. Producent `sensorAlertSignalen()` in
+`signalen.ts` leest de collectie generiek uit via hetzelfde Signaal-patroon
+als elk ander signaal. Getest: een handmatig ingevoegd testalert
+("Tank 3: temperatuur boven 24 °C") verscheen correct in de Vandaag-widget en
+linkte naar `/kelder/tanks/<id>` — het tankrecord zelf, niet een overzicht
+(conform Fase 13 Blok D).
+
+## Wat de eerste échte sensor moet doen om aan te sluiten
+
+1. Vul `SENSOR_TOKEN` in `.env` in (staat er al).
+2. Configureer de sensor/gateway om te POSTen naar `/api/sensor/meting` met
+   `type`, `waarde`, `bron_type` en `tank_code` (of `bron_id`).
+3. Klaar — de meting verschijnt automatisch op de gistingscurve van de partij
+   in die tank. Geen codewijziging nodig.
+4. Voor een NFC-tag: plak 'm op de tank en vul de code in via het
+   tankdetailscherm (nieuw veld "NFC/RFID-tag").
+5. Voor een gistingsprogramma: stel het in op het partijdetail vóór (of
+   tijdens) de gisting — werkt al zonder enige sensor, puur als leesreferentie.
+
+Zie `docs/sensoren.md` voor het volledige aanroepformat en een
+(niet-bindende) tabel met hardware-opties.
+
+## Bijvangst — §7.11 in ARCHITECTURE.md gecorrigeerd
+
+Bij het herlezen van de architectuurdocumentatie bleek §7.11 een risico nog
+als "acceptabele trade-off voor later" te beschrijven, terwijl dat risico
+(de server-singleton cross-user session leak) in de vorige sessie al
+daadwerkelijk gevonden EN gedicht is. Tekst bijgewerkt zodat de documentatie
+niet langer een gedicht lek als open risico framet.
+
+## Stand
+
+191 unittests groen (18 nieuwe), 6/6 rooktests groen (met echte login), lint
+0 fouten, schema-drift 0, build slaagt. Testdata (metingen, tag, programma,
+alert) opgeruimd — één bestaand testrecord uit Fase 7 (`sensor_id: "test-01"`,
+16 juli) bewust ONGEMOEID gelaten, want dat was geen data van deze sessie.
+Verse `pb_data`-backup gemaakt.
+
+## VRAGEN VOOR THOMAS
+
+1. **Rendement/dichtheid-ankers**: het gistingsprogramma laat een
+   dichtheid-anker onzichtbaar totdat de gisting dat niveau écht bereikt
+   (geen extrapolatie). Is dat de juiste keuze, of zou je liever willen dat
+   het dichtstbijzijnde punt altijd getoond wordt, ook als het niveau nog ver
+   weg is?
+2. **Sensor-alert-drempels (Fase 15)**: zodra er echte temperatuursensoren
+   hangen, welke afwijking van het gistingsprogramma vind je meldenswaardig —
+   1°C, 2°C, meer? En moet dat per partij instelbaar zijn of een vaste
+   drempel voor de hele kelder?
+3. **NFC-tags op partijen** (Blok B punt 4): het veld staat klaar maar er is
+   geen scanscherm voor bottelronde. Is dat iets voor een latere fase, of wil
+   je dat nu al meenemen zodra de eerste tags er zijn?

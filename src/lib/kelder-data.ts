@@ -75,6 +75,7 @@ function tankFromPb(r: RecordModel): Tank {
     huidig_volume_l: r["huidig_volume_l"] ?? 0,
     locatie: r["locatie"] ?? "",
     notitie: r["notitie"] ?? "",
+    nfc_tag: r["nfc_tag"] ?? "",
   };
 }
 
@@ -111,6 +112,8 @@ export interface TankInput {
   status: TankStatus;
   locatie?: string;
   notitie?: string;
+  // Fase 14 Blok B
+  nfc_tag?: string;
 }
 
 export async function createTank(input: TankInput): Promise<Tank> {
@@ -128,7 +131,9 @@ export async function createTank(input: TankInput): Promise<Tank> {
 
 export async function updateTank(
   id: string,
-  input: Partial<Pick<TankInput, "soort" | "capaciteit_l" | "status" | "locatie" | "notitie">>,
+  input: Partial<
+    Pick<TankInput, "soort" | "capaciteit_l" | "status" | "locatie" | "notitie" | "nfc_tag">
+  >,
 ): Promise<void> {
   const pb = await pbOfFout();
   logAudit("gewijzigd", "tanks", "Tank bijgewerkt");

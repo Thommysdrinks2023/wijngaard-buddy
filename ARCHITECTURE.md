@@ -325,6 +325,20 @@ _Enige echte trade-off_: `getPb()` gebruikt een module-scoped singleton-`PocketB
 
 **Test**: ingelogd + F5 op `/kelder/partijen/nieuw` → blijft ingelogd (nog te bevestigen door Thomas met echte credentials, zie VRAGEN VOOR THOMAS in WERKLOG.md); uitgelogd + dezelfde URL → nog steeds nette redirect (bevestigd in de browser, ongewijzigd gedrag). Build/tsc/eslint/vitest allemaal schoon na de wijziging.
 
+**Update 21 augustus 2026 — de trade-off hierboven is GEDICHT, niet meer "acceptabel voor later".** Bij het herstellen van het inloggen bleek de beschreven singleton-trade-off geen theoretisch risico maar een reproduceerbaar cross-user session leak: een volledig anonieme `curl`-aanroep kreeg, direct na een ingelogd bezoek, de server-gerenderde kelderpagina én het beheerder-only gebruikersbeheer te zien. Gefixt in `synchroniseerServerSessieMetCookie()` (`src/lib/auth-guard.ts`, hernoemd vanuit `laadServerSessieUitCookie`): elke serverrender bepaalt de sessie nu altijd opnieuw uit de cookie van díe specifieke request — nooit meer uit de restwaarde van een vorige. Aangeroepen vanuit `__root.tsx`'s `beforeLoad`, dus voor élke route, niet alleen de guarded routes. Geverifieerd met 5x herhaalde curl-tests (ingelogd met cookie vs. direct daarna anoniem), consistent geen lek meer.
+
+## 8. Sensoren en signalen (Fase 14 — softwarevoorbereiding kelderhardware)
+
+**Status: alleen software, geen hardware aangeschaft of gekoppeld.** Doel: de eerste échte sensor sluit straks aan op iets dat al werkt, in plaats van dat hardware en backend tegelijk tijdens het oogstseizoen uitgevonden moeten worden.
+
+**8.1 Generiek sensormeting-model.** `sensor_metingen` (Fase 7 Blok F3) had vaste velden `tank`/`temperatuur_c`. Fase 14 Blok A generaliseerde dat naar `type` (select, uitbreidbaar: temperatuur/co2/gewicht/dichtheid/overig), `waarde`, `eenheid`, `bron_type` (tank/kelder/overig — bewust neutraal, geen aanname dat elke sensor aan een tank hangt) en `bron_id` (tekst, geen relatie: `bron_type` bepaalt welke collectie bedoeld is, en PocketBase kent geen polymorfe relaties). De oude velden (`tank`, `temperatuur_c`, `gemeten_op`) blijven bestaan — niet-required gemaakt, niet leidend, gevuld bij migratie (`migreerSensorMetingen()` in `setup-pocketbase.mjs`, idempotent) zodat niets breekt dat er nog op zou kunnen lezen. Endpoint `POST /api/sensor/meting` (`pocketbase/pb_hooks/sensor.pb.js`) valideert `type` tegen de select en `waarde` tegen per-type plausibiliteitsgrenzen (zelfde motivatie als `meetwaarde.ts`: een kapotte sonde mag geen vervuild datapunt in de gistingscurve zetten). Auth blijft het aparte `SENSOR_TOKEN`-mechanisme — een sensor logt nooit in als gebruiker.
+
+**8.2 Tag-opzoek (RFID/NFC), leverancier-neutraal.** `tanks.nfc_tag` (uniek, optioneel — niet elke tank hoeft er een) + `GET /api/tappenmars/tank-bij-tag?tag=...`. Getest met verzonnen tekst-tags; geen aanname over chip/protocol (Mifare, NTAG, wat dan ook levert gewoon een tekstwaarde). `partijen.nfc_tag` staat er ook alvast (voor toekomstige bottelronde-scanning), bewust zonder endpoint/UI in deze fase.
+
+**8.3 Gistingsprogramma (temperatuurcurve per partij).** `partijen.temperatuur_programma` (JSON): een lijst punten, elk verankerd op **dag** (dagen sinds `pers_datum`) óf op **dichtheidsniveau** (°Oechsle) — gisting verloopt niet lineair in tijd, dus één ankertype dekt niet alles. Zie `src/lib/temperatuurprogramma.ts` voor de omzetting naar grafiekpunten: een dichtheid-anker krijgt zijn datum van de dichtstbijzijnde ECHTE meting, nooit geëxtrapoleerd. Getoond als lijn naast de werkelijke temperatuur op de fermentatiecurve. Nog niet doorgerekend naar een signaal (dat vereist echte sensordata om een zinnige afwijkingsdrempel te kiezen) — logische Fase 15-uitbreiding; het datamodel staat er al klaar voor.
+
+**8.4 Sensor-alerts, naamconventie.** `sensor_alerts` is de plek waar een toekomstige regel-engine (Fase 15+) een alert in zou zetten; deze fase bouwt bewust geen drempelregels, alleen het pad. **Naamconventie voor `signaal_id`**: `<bron_type>-<bron_id>-<meetsoort>-<richting>`, bijv. `tank-<tank-id>-temperatuur-hoog`, `kelder-co2-hoog`. `<richting>` is vrije tekst (`hoog`/`laag`/`afwijking`/...) — geen vaste enum, want dat zou een aanname over toekomstige alertsoorten vastleggen. De bestaande signaallaag (`src/lib/signalen.ts`, `sensorAlertSignalen()`) leest dit generiek uit via hetzelfde `Signaal`-patroon (type/ernst/bron/onderbouwing/link) als elk ander signaal — geen aparte code per sensortype, en de Vandaag-widget/`signaal_status` (snooze/dismiss) werken er zonder wijziging mee. Linkt naar het brondetail via `bronRecord`/`signaalLink()` (Fase 13 Blok D), nooit naar een overzicht als het record bekend is.
+
 ---
 
 ## Open vragen (beslissen vóór fase 0)
@@ -341,6 +355,15 @@ _Enige echte trade-off_: `getPb()` gebruikt een module-scoped singleton-`PocketB
 ---
 
 ## Changelog
+
+### v1.3 — 22 augustus 2026 (Fase 14, softwarevoorbereiding kelderhardware)
+
+Zie §8 hierboven. Generiek sensormeting-model, NFC/RFID-tag-opzoek,
+gistingsprogramma (temperatuurcurve per partij), en sensor-alerts op de
+bestaande signaallaag — allemaal software-only, getest met verzonnen
+data, geen hardware aangeschaft. §7.11 bijgewerkt: het daar beschreven
+singleton-lek is inmiddels gedicht (21 augustus 2026), niet meer een
+"acceptabele trade-off voor later".
 
 ### v1.1 — 4 juli 2026 (Blok A, mega-prompt-traject "MVP naar écht goed")
 

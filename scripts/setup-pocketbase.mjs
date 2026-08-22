@@ -165,6 +165,15 @@ const PARTIJ_STATUSSEN = [
 const PRODUCENT_SOORTEN = ["eigen_wijngaard", "drankproductie", "extern_klant"];
 const OPDRACHT_TYPES = ["eigen_wijn", "drank", "loonproductie", "bottelservice"];
 const TANK_STATUSSEN = ["leeg", "in_gebruik", "reiniging", "defect"];
+
+// Fase 14 — generiek sensormeting-schema. Uitbreidbaar: een nieuw sensortype
+// (bijv. "vocht") is een waarde toevoegen aan deze lijst en aan
+// synchroniseerKeuzelijsten, geen schemamigratie.
+const SENSOR_TYPES = ["temperatuur", "co2", "gewicht", "dichtheid", "overig"];
+// Bewust neutraal (niet alleen "tank"): een wijngaardsensor of een algemene
+// kelderwaarneming (bijv. omgevings-CO2) heeft geen tank als bron. Zie
+// bron_type/bron_id hieronder en de toelichting in ARCHITECTURE.md.
+const SENSOR_BRON_TYPES = ["tank", "kelder", "overig"];
 const TANKBOEK_ACTIES = [
   "vullen",
   "overhevelen",
@@ -301,6 +310,8 @@ const FEEDBACK_OORDELEN = ["klopte", "klopte_niet", "deels"];
 // Fase 10 Blok 3: snooze = tijdelijk verbergen (tot snooze_tot),
 // genegeerd = permanent wegklikken.
 const SIGNAAL_ACTIES = ["gesnoozed", "genegeerd"];
+// Fase 14 Blok D — zelfde ernstschaal als Signaal["ernst"] in signalen.ts.
+const SENSOR_ALERT_ERNSTEN = ["kritiek", "waarschuwing", "info"];
 
 const GEBRUIKERS = [
   { email: "invoerder1@tappenmars.nl", name: "Invoerder 1" },
@@ -490,6 +501,95 @@ async function stelAuthDuurIn(collectionNaam, seconden) {
     body: { authToken: { ...col.authToken, duration: seconden } },
   });
   console.log(`  ↻ ${collectionNaam}.authToken.duration: ${huidig ?? "?"}s -> ${seconden}s`);
+}
+
+/**
+ * Fase 14 Blok A — migreert bestaande sensor_metingen (oud schema: tank,
+ * temperatuur_c, gemeten_op) naar het generieke model (type, waarde,
+ * eenheid, bron_type, bron_id). Idempotent: een record dat al bron_type
+ * heeft wordt overgeslagen. Niet-destructief: de oude velden blijven staan
+ * (nooit verwijderd), dus een eventuele externe integratie die nog op het
+ * oude model leest, blijft werken.
+ */
+async function migreerSensorMetingen() {
+  if (droog) return;
+  const { items } = await api(
+    "/api/collections/sensor_metingen/records?perPage=200&filter=" +
+      encodeURIComponent("bron_type = ''") +
+      "&fields=id,tank,temperatuur_c,gemeten_op,created",
+  );
+  const teMigreren = items.filter((r) => r.temperatuur_c != null && r.tank);
+  if (teMigreren.length === 0) return;
+  for (const r of teMigreren) {
+    await api(`/api/collections/sensor_metingen/records/${r.id}`, {
+      method: "PATCH",
+      body: {
+        type: "temperatuur",
+        waarde: r.temperatuur_c,
+        eenheid: "°C",
+        bron_type: "tank",
+        bron_id: r.tank,
+      },
+    });
+  }
+  console.log(
+    `  ↻ sensor_metingen: ${teMigreren.length} bestaande meting(en) gemigreerd naar het generieke model`,
+  );
+}
+
+/**
+ * Fase 14 Blok B — voegt een UNIEKE index toe aan een bestaand tekstveld op
+ * een bestaande collectie, idempotent (skip als de indexnaam er al staat).
+ *
+ * WHERE {veld} != '' is bewust: een kale UNIQUE index op nfc_tag zou na de
+ * TWEEDE tank zonder tag al een constraint-violatie geven, want lege strings
+ * zouden dan als "gelijk aan elkaar" gelden. De meeste tanks/partijen hebben
+ * (nog) geen tag — dat moet gewoon kunnen, alleen twee GEVULDE tags mogen
+ * nooit gelijk zijn.
+ */
+/**
+ * Fase 14 Blok A — zet `required: false` op bestaande velden die dat nodig
+ * hebben. Vierde variant van hetzelfde architecturale gat als
+ * synchroniseerRegels()/synchroniseerKeuzelijsten(): ensureCollection() is
+ * create-only en ensureVelden() voegt alleen ONTBREKENDE velden toe — geen
+ * van beide corrigeert een bestaand veld dat al iets anders (regels, select-
+ * waarden, of hier: required) heeft dan de nieuwe definitie. Gevonden bij het
+ * generaliseren van sensor_metingen: temperatuur_c/gemeten_op stonden nog op
+ * required=true uit Fase 7, waardoor elke NIEUWE meting (co2, gewicht, ...)
+ * zonder die twee vaste velden een 400 kreeg — het endpoint werkte voor geen
+ * enkel sensortype totdat dit hier stond.
+ *
+ * Bewust alleen "vereist uitzetten", nooit "vereist aanzetten": een veld
+ * plots verplicht maken zou bestaande records die het nooit invulden alsnog
+ * laten breken bij de eerstvolgende PATCH.
+ */
+async function ensureNietVerplicht(collectionNaam, veldnamen) {
+  if (droog) return;
+  const col = await api(`/api/collections/${collectionNaam}`);
+  let gewijzigd = false;
+  const velden = col.fields.map((v) => {
+    if (veldnamen.includes(v.name) && v.required) {
+      gewijzigd = true;
+      return { ...v, required: false };
+    }
+    return v;
+  });
+  if (!gewijzigd) return;
+  await api(`/api/collections/${collectionNaam}`, { method: "PATCH", body: { fields: velden } });
+  console.log(`  ↻ ${collectionNaam}: ${veldnamen.join(", ")} niet meer verplicht`);
+}
+
+async function ensureUniekeIndex(collectionNaam, veld, indexNaam) {
+  if (droog) return;
+  const col = await api(`/api/collections/${collectionNaam}`);
+  const huidig = col.indexes || [];
+  if (huidig.some((i) => i.includes(indexNaam))) return;
+  const nieuweIndex = `CREATE UNIQUE INDEX ${indexNaam} ON ${collectionNaam} (${veld}) WHERE ${veld} != ''`;
+  await api(`/api/collections/${collectionNaam}`, {
+    method: "PATCH",
+    body: { indexes: [...huidig, nieuweIndex] },
+  });
+  console.log(`  + unieke index ${indexNaam} toegevoegd aan ${collectionNaam}.${veld}`);
 }
 
 function wachtwoordGenereren() {
@@ -1832,6 +1932,11 @@ async function main() {
 
   // Fase 7 Blok F3 — sensor-metingen (IoT-voorbereiding; alleen het endpoint
   // in pb_hooks/sensor.pb.js schrijft hier, met een apart sensor-token).
+  // Fase 14 Blok A generaliseert dit: de vaste velden tank/temperatuur_c
+  // blijven bestaan (bestaande data, niet-destructief) maar zijn niet meer
+  // required en niet meer leidend — nieuwe metingen gebruiken
+  // type/waarde/eenheid/bron_type/bron_id. migreerSensorMetingen() hieronder
+  // vult de nieuwe velden voor bestaande records in.
   const tanksColF7 = await api("/api/collections/tanks");
   await ensureCollection({
     name: "sensor_metingen",
@@ -1844,8 +1949,8 @@ async function main() {
         cascadeDelete: false,
         maxSelect: 1,
       },
-      { name: "temperatuur_c", type: "number", required: true },
-      { name: "gemeten_op", type: "text", required: true },
+      { name: "temperatuur_c", type: "number" },
+      { name: "gemeten_op", type: "text" },
       { name: "sensor_id", type: "text" },
       ...autodateFields(),
     ],
@@ -1854,6 +1959,69 @@ async function main() {
     createRule: null,
     updateRule: null,
     deleteRule: null,
+  });
+  await ensureVelden("sensor_metingen", [
+    { name: "type", type: "select", maxSelect: 1, values: SENSOR_TYPES },
+    { name: "waarde", type: "number" },
+    { name: "eenheid", type: "text" },
+    { name: "bron_type", type: "select", maxSelect: 1, values: SENSOR_BRON_TYPES },
+    // Bewust tekst, geen relatie: bron_type bepaalt welke collectie bron_id
+    // bedoelt (tanks nu; kelder/overig hebben geen record om naar te
+    // verwijzen). Een polymorfe relatie kan in PocketBase niet naar
+    // meerdere collecties tegelijk wijzen.
+    { name: "bron_id", type: "text" },
+    { name: "ontvangen_op", type: "autodate", onCreate: true, onUpdate: false },
+  ]);
+  await ensureNietVerplicht("sensor_metingen", ["temperatuur_c", "gemeten_op"]);
+  await migreerSensorMetingen();
+
+  // Fase 14 Blok B — NFC/RFID-tag op een tank, om te identificeren door te
+  // scannen zonder de tags al besteld te hebben. Optioneel: niet elke tank
+  // hoeft er een te krijgen (bijv. de kleinere/minder gebruikte tanks eerst
+  // niet). Uniek zodat twee tanks nooit dezelfde tag kunnen dragen.
+  await ensureVelden("tanks", [{ name: "nfc_tag", type: "text" }]);
+  await ensureUniekeIndex("tanks", "nfc_tag", "idx_tanks_nfc_tag");
+
+  // Fase 14 Blok B punt 4 — ook op partijen, voor toekomstig gebruik bij
+  // bottelronde-scanning. Bewust ALLEEN het veld: geen endpoint, geen UI in
+  // deze fase (zou de scope van dit blok opblazen voor iets dat nog niet
+  // gebruikt wordt).
+  await ensureVelden("partijen", [{ name: "nfc_tag", type: "text" }]);
+  await ensureUniekeIndex("partijen", "nfc_tag", "idx_partijen_nfc_tag");
+
+  // Fase 14 Blok C — gistingsprogramma (curve i.p.v. één vaste temperatuur),
+  // bruikbaar zonder hardware: nu al iets om tegen af te lezen, later (Fase
+  // 15+) de basis voor een afwijkingssignaal zodra er echte sensordata is.
+  // JSON-structuur, geen aparte collectie: het is klein, hoort bij precies
+  // één partij, en hoeft niet doorzoekbaar te zijn los van die partij.
+  await ensureVelden("partijen", [{ name: "temperatuur_programma", type: "json", maxSize: 20000 }]);
+
+  // Fase 14 Blok D — sensor-alerts, klaar voor een toekomstige regel-engine
+  // (Fase 15+: echte drempelregels zodra er sensordata is). Deze fase bouwt
+  // BEWUST geen drempels — alleen de plek waar een regel straks een alert in
+  // zou zetten, getest met een handmatig ingevoegd record. `signaal_id` volgt
+  // de naamconventie uit ARCHITECTURE.md ("Sensor-signalen"), bijv.
+  // "tank-<id>-temperatuur-hoog"; `signaal_status` (Fase 10) handelt
+  // snooze/dismiss al generiek af op dat id, geen aanpassing nodig daar.
+  await ensureCollection({
+    name: "sensor_alerts",
+    type: "base",
+    fields: [
+      { name: "signaal_id", type: "text", required: true },
+      { name: "ernst", type: "select", required: true, maxSelect: 1, values: SENSOR_ALERT_ERNSTEN },
+      { name: "titel", type: "text", required: true },
+      { name: "waarom", type: "text", required: true },
+      { name: "bron_type", type: "select", maxSelect: 1, values: SENSOR_BRON_TYPES },
+      { name: "bron_id", type: "text" },
+      { name: "actief", type: "bool" },
+      ...autodateFields(),
+    ],
+    indexes: ["CREATE UNIQUE INDEX idx_sensor_alerts_signaal_id ON sensor_alerts (signaal_id)"],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: AUTH_RULE,
   });
 
   // Blok L — verkoop licht. Orders muteren voorraad UITSLUITEND via het
@@ -2197,6 +2365,7 @@ async function main() {
     // Fase 7
     "middelen",
     "sensor_metingen",
+    "sensor_alerts",
     "proefnotities",
     // Fase 10
     "app_instellingen",

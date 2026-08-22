@@ -140,6 +140,9 @@ export interface Partij {
   totaal_zuur_bij_aanmaak?: number | null;
   standtijd?: string;
   koeling?: string;
+  // Fase 14 Blok B/C
+  nfc_tag?: string;
+  temperatuur_programma?: import("./temperatuurprogramma").TemperatuurProgramma | null;
   created: string;
   updated?: string;
 }
@@ -182,6 +185,8 @@ export interface Tank {
   huidig_volume_l: number; // cache — waarheid is het tankboek
   locatie?: string;
   notitie?: string;
+  // Fase 14 Blok B
+  nfc_tag?: string;
 }
 
 // ============= Tankboek =============

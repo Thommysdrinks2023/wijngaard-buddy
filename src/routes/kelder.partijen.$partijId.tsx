@@ -48,6 +48,8 @@ import { CalculatorsSectie } from "@/components/calculators-sectie";
 import { berekenVerwachting } from "@/lib/gisting-verwachting";
 import { getPb } from "@/lib/data";
 import { ProefSectie } from "@/components/proef-sectie";
+import { TemperatuurProgrammaSectie } from "@/components/temperatuurprogramma-sectie";
+import { programmaAlsLijn } from "@/lib/temperatuurprogramma";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import {
@@ -201,7 +203,11 @@ function PartijDetailPage() {
     return analyseSerie.map((p) => ({ ...p, verwacht_oechsle: perDatum.get(p.datum) }));
   }, [analyseSerie, verwachting]);
 
-  // Fase 7 Blok F3 — sensor-temperatuur (indien aanwezig) per dag gemiddeld
+  // Fase 7 Blok F3 — sensor-temperatuur (indien aanwezig) per dag gemiddeld.
+  // Fase 14 Blok A: gemigreerd naar het generieke sensor_metingen-model
+  // (bron_type/bron_id/type/waarde i.p.v. de vaste velden tank/temperatuur_c
+  // — die blijven op oudere records staan maar zijn niet meer leidend, zie
+  // migreerSensorMetingen() in setup-pocketbase.mjs).
   const sensorQ = useQuery({
     queryKey: ["sensor", tanksVanPartij[0]?.id],
     queryFn: async () => {
@@ -209,8 +215,10 @@ function PartijDetailPage() {
       if (!pb || !tanksVanPartij[0]) return [];
       try {
         return await pb.collection("sensor_metingen").getFullList({
-          filter: `tank = "${tanksVanPartij[0].id}"`,
-          sort: "gemeten_op",
+          filter: pb.filter("bron_type = 'tank' && bron_id = {:id} && type = 'temperatuur'", {
+            id: tanksVanPartij[0].id,
+          }),
+          sort: "gemeten_op,ontvangen_op",
         });
       } catch {
         return [];
@@ -221,9 +229,13 @@ function PartijDetailPage() {
   const sensorPerDag = useMemo(() => {
     const sommen = new Map<string, { som: number; n: number }>();
     for (const r of sensorQ.data ?? []) {
-      const dag = String(r["gemeten_op"]).slice(0, 10);
+      // gemeten_op (door de sensor opgegeven tijdstip) is leidend; ontbreekt
+      // dat, dan valt terug op ontvangen_op (wanneer de server het kreeg).
+      const tijdstip = (r["gemeten_op"] as string) || (r["ontvangen_op"] as string) || "";
+      if (!tijdstip) continue;
+      const dag = tijdstip.slice(0, 10);
       const cur = sommen.get(dag) ?? { som: 0, n: 0 };
-      cur.som += r["temperatuur_c"] as number;
+      cur.som += r["waarde"] as number;
       cur.n++;
       sommen.set(dag, cur);
     }
@@ -231,7 +243,7 @@ function PartijDetailPage() {
     for (const [dag, { som, n }] of sommen) m.set(dag, Math.round((som / n) * 10) / 10);
     return m;
   }, [sensorQ.data]);
-  const serieMetAlles = useMemo(
+  const metTemperatuur = useMemo(
     () =>
       sensorPerDag.size === 0
         ? analyseSerieMetVerwachting
@@ -241,6 +253,40 @@ function PartijDetailPage() {
           })),
     [analyseSerieMetVerwachting, sensorPerDag],
   );
+
+  // Fase 14 Blok C — het gistingsprogramma als extra lijn. Een programmapunt
+  // kan op een datum vallen die nog geen analyse-/temperatuurpunt heeft (bijv.
+  // "dag 0" vóór de eerste meting); dat moet dan als EIGEN rij verschijnen,
+  // anders verdwijnt het programma-startpunt stilzwijgend uit de grafiek.
+  const programmaLijn = useMemo(
+    () =>
+      programmaAlsLijn(
+        partij?.temperatuur_programma,
+        partij?.pers_datum,
+        analyseSerieMetVerwachting,
+      ),
+    [partij?.temperatuur_programma, partij?.pers_datum, analyseSerieMetVerwachting],
+  );
+  const serieMetAlles = useMemo(() => {
+    type SerieRij = (typeof metTemperatuur)[number] & {
+      datum: string;
+      temperatuur_programma?: number;
+    };
+    if (programmaLijn.length === 0) return metTemperatuur as SerieRij[];
+    const perDatum = new Map<string, SerieRij>(
+      metTemperatuur.map((p) => [p.datum, { ...p } as SerieRij]),
+    );
+    for (const pp of programmaLijn) {
+      const bestaand = perDatum.get(pp.datum);
+      if (bestaand) bestaand.temperatuur_programma = pp.temperatuur_programma;
+      else
+        perDatum.set(pp.datum, {
+          datum: pp.datum,
+          temperatuur_programma: pp.temperatuur_programma,
+        } as SerieRij);
+    }
+    return [...perDatum.values()].sort((a, b) => a.datum.localeCompare(b.datum));
+  }, [metTemperatuur, programmaLijn]);
 
   // Fase 13 Blok A — de kopregel toonde "0 °Oe" zodra de laatste analyse dat
   // veld niet ingevuld had. Val terug op de meest recente analyse waarin de
@@ -999,9 +1045,14 @@ function PartijDetailPage() {
           )}
         </section>
 
+        <TemperatuurProgrammaSectie partijId={partijId} programma={partij?.temperatuur_programma} />
+
         {/* Fermentatiecurve + analysewaarden over tijd (Blok E). Temperatuur wordt
-            momenteel niet vastgelegd in `analyses` — alleen dichtheid. */}
-        {analyseSerie.length >= 2 && (
+            momenteel niet vastgelegd in `analyses` — alleen dichtheid.
+            Fase 14 Blok C: ook tonen als er nog geen 2 analyses zijn maar wél
+            een gistingsprogramma — anders is een net ingesteld programma
+            nergens te zien totdat er twee metingen bij zijn. */}
+        {(analyseSerie.length >= 2 || programmaLijn.length > 0) && (
           <>
             <ChartCard title="Fermentatiecurve — dichtheid (°Oe)">
               <ResponsiveContainer width="100%" height="100%">
@@ -1047,6 +1098,18 @@ function PartijDetailPage() {
                       stroke="#f59e0b"
                       strokeWidth={1.5}
                       dot={false}
+                      connectNulls
+                    />
+                  )}
+                  {programmaLijn.length > 0 && (
+                    <Line
+                      type="monotone"
+                      dataKey="temperatuur_programma"
+                      name="Temp. programma (°C)"
+                      stroke="#ef4444"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 3"
+                      dot={{ r: 3 }}
                       connectNulls
                     />
                   )}

@@ -33,6 +33,12 @@ function partijFromPb(r: RecordModel): Partij {
     totaal_zuur_bij_aanmaak: r["totaal_zuur_bij_aanmaak"] ?? null,
     standtijd: r["standtijd"] ?? "",
     koeling: r["koeling"] ?? "",
+    nfc_tag: r["nfc_tag"] ?? "",
+    // json-veld: leeg = geen programma ingesteld, niet "leeg object"
+    temperatuur_programma:
+      r["temperatuur_programma"] && Object.keys(r["temperatuur_programma"]).length > 0
+        ? r["temperatuur_programma"]
+        : null,
     created: r["created"],
     updated: r["updated"],
   };
@@ -103,6 +109,8 @@ export interface PartijUpdateInput {
   notitie?: string;
   lotnummer?: string;
   gist?: string;
+  nfc_tag?: string;
+  temperatuur_programma?: import("./temperatuurprogramma").TemperatuurProgramma | null;
 }
 
 export async function updatePartij(id: string, input: PartijUpdateInput): Promise<void> {
