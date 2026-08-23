@@ -57,6 +57,15 @@ function VoorraadOverzicht() {
           <p className="text-sm text-muted-foreground">Flessen per wijn en jaargang</p>
         </div>
 
+        {/* Fase 15 Blok B — nieuwe lege-flessenvoorraad, los van deze pagina
+            (die volle flessen toont en in Blok E wordt uitgefaseerd). */}
+        <Link
+          to="/voorraad/flessen"
+          className="block rounded-xl border border-border bg-card p-3 text-sm font-semibold active:scale-[0.99]"
+        >
+          📦 Flessenvoorraad (lege flessen) →
+        </Link>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-border bg-card p-3 text-center">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

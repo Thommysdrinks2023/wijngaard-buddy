@@ -46,7 +46,6 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );
 
 // ---------- POST /api/tappenmars/partij-aanmaken ----------
@@ -132,7 +131,6 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );
 
 // ---------- POST /api/tappenmars/bottelronde-aanmaken ----------
@@ -168,7 +166,6 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );
 
 // ---------- POST /api/tappenmars/tanks-herbereken ----------
@@ -237,5 +234,4 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );

@@ -456,6 +456,61 @@ export const VEELGEBRUIKTE_FLESTYPES = [
 ];
 export const VEELGEBRUIKTE_FLESKLEUREN = ["Antiek groen", "Wit", "Bruin", "Transparant"];
 
+// ============= Flessenvoorraad — lege flessen (Fase 15 Blok A/B) =============
+// Omkering t.o.v. Bottelronde/VoorraadFles hierboven: die gaan over VOLLE
+// flessen (uitgefaseerd, zie Fase 15 Blok E — nog niet uitgevoerd). Dit
+// model gaat over de LEGE-flessenvoorraad, de administratie die Thomas al
+// sinds 2011 in Flessen_admin.xlsx bijhoudt. "Glas is glas": één stapel per
+// flestype, niet per merk/klant.
+export interface Flestype {
+  id: string;
+  vorm: string;
+  inhoud_ml: number;
+  kleur?: string;
+  sluiting?: string;
+  omschrijving?: string;
+  leverancier?: string;
+  standaard_aantal_per_pallet?: number | null;
+  actief: boolean;
+  created: string;
+}
+
+export const VEELGEBRUIKTE_FLESVORMEN = ["bordeaux", "bourgogne", "alamos", "hugo", "schlegel"];
+export const VEELGEBRUIKTE_FLESKLEUREN_LEEG = ["transparant", "wit", "groen", "mat"];
+export const VEELGEBRUIKTE_FLESSLUITINGEN = ["schroef", "kurk", "vinolok"];
+
+export type FlessenMutatieType =
+  | "ontvangst"
+  | "verbruik_botteling"
+  | "breuk"
+  | "telcorrectie"
+  | "overig";
+export const FLESSEN_MUTATIE_TYPES: {
+  value: FlessenMutatieType;
+  label: string;
+  emoji: string;
+}[] = [
+  { value: "ontvangst", label: "Ontvangst", emoji: "📦" },
+  { value: "verbruik_botteling", label: "Verbruik (botteling)", emoji: "🍾" },
+  { value: "breuk", label: "Breuk", emoji: "💔" },
+  { value: "telcorrectie", label: "Telcorrectie", emoji: "🔢" },
+  { value: "overig", label: "Overig", emoji: "📝" },
+];
+
+export interface FlessenMutatie {
+  id: string;
+  flestype: string; // flestype id
+  mutatie_type: FlessenMutatieType;
+  aantal: number; // getekend — negatief bij verbruik/breuk
+  datum: string;
+  bottelronde?: string | null; // bottelronde id, gevuld bij verbruik_botteling
+  leverancier?: string;
+  aantal_pallets?: number | null;
+  toelichting?: string;
+  ingevoerd_door?: string;
+  created: string;
+}
+
 // ============= AI-agent (Fase 3) =============
 
 export type AgentRol = "user" | "assistant" | "tool";

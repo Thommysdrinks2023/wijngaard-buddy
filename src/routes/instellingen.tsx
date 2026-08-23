@@ -36,6 +36,7 @@ import {
   NotebookPen,
   ShoppingCart,
   Wrench,
+  PackagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -184,6 +185,18 @@ const MENU_GROEPEN = [
         label: "Voorraad",
         omschrijving: "Flessenvoorraad per wijn/jaargang",
         icon: Package,
+      },
+      {
+        to: "/voorraad/flessen",
+        label: "Flessenvoorraad (leeg)",
+        omschrijving: "Lege flessen per type — ontvangst en telcorrectie",
+        icon: PackagePlus,
+      },
+      {
+        to: "/instellingen/flestypes",
+        label: "Flestypes beheren",
+        omschrijving: "Vorm, inhoud, kleur en sluiting per flestype",
+        icon: PackagePlus,
       },
       {
         to: "/kelder/partijen",

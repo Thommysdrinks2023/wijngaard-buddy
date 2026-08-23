@@ -339,6 +339,39 @@ _Enige echte trade-off_: `getPb()` gebruikt een module-scoped singleton-`PocketB
 
 **8.4 Sensor-alerts, naamconventie.** `sensor_alerts` is de plek waar een toekomstige regel-engine (Fase 15+) een alert in zou zetten; deze fase bouwt bewust geen drempelregels, alleen het pad. **Naamconventie voor `signaal_id`**: `<bron_type>-<bron_id>-<meetsoort>-<richting>`, bijv. `tank-<tank-id>-temperatuur-hoog`, `kelder-co2-hoog`. `<richting>` is vrije tekst (`hoog`/`laag`/`afwijking`/...) — geen vaste enum, want dat zou een aanname over toekomstige alertsoorten vastleggen. De bestaande signaallaag (`src/lib/signalen.ts`, `sensorAlertSignalen()`) leest dit generiek uit via hetzelfde `Signaal`-patroon (type/ernst/bron/onderbouwing/link) als elk ander signaal — geen aparte code per sensortype, en de Vandaag-widget/`signaal_status` (snooze/dismiss) werken er zonder wijziging mee. Linkt naar het brondetail via `bronRecord`/`signaalLink()` (Fase 13 Blok D), nooit naar een overzicht als het record bekend is.
 
+## 9. Flessenvoorraad — lege flessen (Fase 15, Blok A/B gebouwd)
+
+**Omkering t.o.v. het oorspronkelijke voorraadmodel** (§1.7, `Bottelronde`/
+`VoorraadFles`): die gaan over VOLLE flessen (wie kocht welke wijn) en zijn
+in de praktijk niet bij te houden — niemand registreert wat er uit de kelder
+gaat naar winkel/horeca/proeverij. Fase 15 voegt een tweede, onafhankelijk
+model toe voor de LEGE-flessenvoorraad: de administratie die Thomas al sinds
+2011 in `Flessen_admin.xlsx` bijhoudt (negen tabbladen, één per flestype).
+
+**Datamodel**: `flestypes` (vorm/inhoud_ml/kleur/sluiting, "glas is glas" —
+geen scheiding per merk/klant) + `flessen_mutaties` (append-only, zelfde
+onwijzigbaarheidspatroon als `tankboek`: schrijven uitsluitend via
+`POST /api/tappenmars/flessen-mutatie`/`-telcorrectie`,
+`pocketbase/pb_hooks/flessen.pb.js`). De voorraadstand is een BEREKENING
+(som van mutaties), geen apart opgeslagen veld — zelfde principe als de
+tanks-herbereken-functie (§7.1), maar hier is er niet eens een cache: elke
+leesactie rekent opnieuw op.
+
+**"Tellen wint van rekenen"**: palletaantallen zijn schattingen, dus naast
+`ontvangst`/`verbruik_botteling`/`breuk`/`overig` bestaat `telcorrectie` —
+een fysieke telling wordt de waarheid en de server boekt zelf het verschil
+t.o.v. de actuele (berekende) stand op het moment van boeken.
+
+**Nog niet gebouwd (zie WERKLOG.md, Fase 15 sessie 23-08-2026, "Nog open")**:
+de koppeling bottelronde→flestype (Blok C), het herbasen van de
+accijnsberekening op gebotteld volume i.p.v. uitslag — De Tappenmars draagt
+de volledige accijns af bij BOTTELING, niet bij uitslag (Blok D) — en het
+uitfaseren van de volle-flessenvoorraad met behoud van order→lot-
+traceerbaarheid (Blok E). Tot die blokken gebouwd zijn bestaan het oude
+volle-flessenmodel (§1.7) en dit nieuwe lege-flessenmodel naast elkaar, met
+een aparte route (`/voorraad/flessen`) i.p.v. de bestaande `/voorraad` te
+vervangen.
+
 ---
 
 ## Open vragen (beslissen vóór fase 0)

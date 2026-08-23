@@ -50,7 +50,6 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );
 
 // ---------- POST /api/tappenmars/order-leveren ----------
@@ -130,7 +129,6 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );
 
 // ---------- PATCH /api/tappenmars/voorraad-drempel ----------
@@ -160,5 +158,4 @@ routerAdd(
       throw logica.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );

@@ -37,6 +37,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as VoorraadIndexRouteImport } from './routes/voorraad.index'
 import { Route as SteekproevenIndexRouteImport } from './routes/steekproeven.index'
 import { Route as KelderIndexRouteImport } from './routes/kelder.index'
+import { Route as VoorraadFlessenRouteImport } from './routes/voorraad_.flessen'
 import { Route as VoorraadVoorraadIdRouteImport } from './routes/voorraad.$voorraadId'
 import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.beheer'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
@@ -46,9 +47,11 @@ import { Route as KelderOverhevelenRouteImport } from './routes/kelder.overhevel
 import { Route as KelderLogboekRouteImport } from './routes/kelder.logboek'
 import { Route as KelderJaaroverzichtRouteImport } from './routes/kelder.jaaroverzicht'
 import { Route as KelderAccijnsRouteImport } from './routes/kelder.accijns'
+import { Route as InstellingenFlestypesRouteImport } from './routes/instellingen_.flestypes'
 import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
 import { Route as KelderTanksIndexRouteImport } from './routes/kelder.tanks.index'
 import { Route as KelderPartijenIndexRouteImport } from './routes/kelder.partijen.index'
+import { Route as VoorraadFlessenFlestypeIdRouteImport } from './routes/voorraad_.flessen_.$flestypeId'
 import { Route as SteekproevenPuntIdInvoerRouteImport } from './routes/steekproeven.$puntId.invoer'
 import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten'
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
@@ -200,6 +203,11 @@ const KelderIndexRoute = KelderIndexRouteImport.update({
   path: '/',
   getParentRoute: () => KelderRoute,
 } as any)
+const VoorraadFlessenRoute = VoorraadFlessenRouteImport.update({
+  id: '/voorraad_/flessen',
+  path: '/voorraad/flessen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VoorraadVoorraadIdRoute = VoorraadVoorraadIdRouteImport.update({
   id: '/$voorraadId',
   path: '/$voorraadId',
@@ -245,6 +253,11 @@ const KelderAccijnsRoute = KelderAccijnsRouteImport.update({
   path: '/accijns',
   getParentRoute: () => KelderRoute,
 } as any)
+const InstellingenFlestypesRoute = InstellingenFlestypesRouteImport.update({
+  id: '/instellingen_/flestypes',
+  path: '/instellingen/flestypes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -260,6 +273,12 @@ const KelderPartijenIndexRoute = KelderPartijenIndexRouteImport.update({
   path: '/partijen/',
   getParentRoute: () => KelderRoute,
 } as any)
+const VoorraadFlessenFlestypeIdRoute =
+  VoorraadFlessenFlestypeIdRouteImport.update({
+    id: '/voorraad_/flessen_/$flestypeId',
+    path: '/voorraad/flessen/$flestypeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const SteekproevenPuntIdInvoerRoute =
   SteekproevenPuntIdInvoerRouteImport.update({
     id: '/steekproeven/$puntId/invoer',
@@ -339,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/instellingen/flestypes': typeof InstellingenFlestypesRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
@@ -348,6 +368,7 @@ export interface FileRoutesByFullPath {
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/voorraad/$voorraadId': typeof VoorraadVoorraadIdRoute
+  '/voorraad/flessen': typeof VoorraadFlessenRoute
   '/kelder/': typeof KelderIndexRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
   '/voorraad/': typeof VoorraadIndexRoute
@@ -360,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
   '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
+  '/voorraad/flessen/$flestypeId': typeof VoorraadFlessenFlestypeIdRoute
   '/kelder/partijen/': typeof KelderPartijenIndexRoute
   '/kelder/tanks/': typeof KelderTanksIndexRoute
   '/rij/$rijId/': typeof RijRijIdIndexRoute
@@ -389,6 +411,7 @@ export interface FileRoutesByTo {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/instellingen/flestypes': typeof InstellingenFlestypesRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
@@ -397,6 +420,7 @@ export interface FileRoutesByTo {
   '/kelder/tankboek': typeof KelderTankboekRoute
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/voorraad/$voorraadId': typeof VoorraadVoorraadIdRoute
+  '/voorraad/flessen': typeof VoorraadFlessenRoute
   '/kelder': typeof KelderIndexRoute
   '/steekproeven': typeof SteekproevenIndexRoute
   '/voorraad': typeof VoorraadIndexRoute
@@ -409,6 +433,7 @@ export interface FileRoutesByTo {
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
   '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
+  '/voorraad/flessen/$flestypeId': typeof VoorraadFlessenFlestypeIdRoute
   '/kelder/partijen': typeof KelderPartijenIndexRoute
   '/kelder/tanks': typeof KelderTanksIndexRoute
   '/rij/$rijId': typeof RijRijIdIndexRoute
@@ -441,6 +466,7 @@ export interface FileRoutesById {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/instellingen_/flestypes': typeof InstellingenFlestypesRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
@@ -450,6 +476,7 @@ export interface FileRoutesById {
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/voorraad/$voorraadId': typeof VoorraadVoorraadIdRoute
+  '/voorraad_/flessen': typeof VoorraadFlessenRoute
   '/kelder/': typeof KelderIndexRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
   '/voorraad/': typeof VoorraadIndexRoute
@@ -462,6 +489,7 @@ export interface FileRoutesById {
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
   '/rij/$rijId/planten': typeof RijRijIdPlantenRoute
   '/steekproeven/$puntId/invoer': typeof SteekproevenPuntIdInvoerRoute
+  '/voorraad_/flessen_/$flestypeId': typeof VoorraadFlessenFlestypeIdRoute
   '/kelder/partijen/': typeof KelderPartijenIndexRoute
   '/kelder/tanks/': typeof KelderTanksIndexRoute
   '/rij/$rijId/': typeof RijRijIdIndexRoute
@@ -495,6 +523,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/instellingen/flestypes'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
@@ -504,6 +533,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId'
     | '/steekproeven/beheer'
     | '/voorraad/$voorraadId'
+    | '/voorraad/flessen'
     | '/kelder/'
     | '/steekproeven/'
     | '/voorraad/'
@@ -516,6 +546,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
     | '/steekproeven/$puntId/invoer'
+    | '/voorraad/flessen/$flestypeId'
     | '/kelder/partijen/'
     | '/kelder/tanks/'
     | '/rij/$rijId/'
@@ -545,6 +576,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/instellingen/flestypes'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
@@ -553,6 +585,7 @@ export interface FileRouteTypes {
     | '/kelder/tankboek'
     | '/steekproeven/beheer'
     | '/voorraad/$voorraadId'
+    | '/voorraad/flessen'
     | '/kelder'
     | '/steekproeven'
     | '/voorraad'
@@ -565,6 +598,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
     | '/steekproeven/$puntId/invoer'
+    | '/voorraad/flessen/$flestypeId'
     | '/kelder/partijen'
     | '/kelder/tanks'
     | '/rij/$rijId'
@@ -596,6 +630,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/instellingen_/flestypes'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
@@ -605,6 +640,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId'
     | '/steekproeven/beheer'
     | '/voorraad/$voorraadId'
+    | '/voorraad_/flessen'
     | '/kelder/'
     | '/steekproeven/'
     | '/voorraad/'
@@ -617,6 +653,7 @@ export interface FileRouteTypes {
     | '/rij/$rijId/observatie'
     | '/rij/$rijId/planten'
     | '/steekproeven/$puntId/invoer'
+    | '/voorraad_/flessen_/$flestypeId'
     | '/kelder/partijen/'
     | '/kelder/tanks/'
     | '/rij/$rijId/'
@@ -649,11 +686,14 @@ export interface RootRouteChildren {
   WerkrapportRoute: typeof WerkrapportRoute
   WijngaardRoute: typeof WijngaardRoute
   ZoekenRoute: typeof ZoekenRoute
+  InstellingenFlestypesRoute: typeof InstellingenFlestypesRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
   SteekproevenBeheerRoute: typeof SteekproevenBeheerRoute
+  VoorraadFlessenRoute: typeof VoorraadFlessenRoute
   SteekproevenIndexRoute: typeof SteekproevenIndexRoute
   FenologieFenIdBewerkenRoute: typeof FenologieFenIdBewerkenRoute
   SteekproevenPuntIdInvoerRoute: typeof SteekproevenPuntIdInvoerRoute
+  VoorraadFlessenFlestypeIdRoute: typeof VoorraadFlessenFlestypeIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -854,6 +894,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KelderIndexRouteImport
       parentRoute: typeof KelderRoute
     }
+    '/voorraad_/flessen': {
+      id: '/voorraad_/flessen'
+      path: '/voorraad/flessen'
+      fullPath: '/voorraad/flessen'
+      preLoaderRoute: typeof VoorraadFlessenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/voorraad/$voorraadId': {
       id: '/voorraad/$voorraadId'
       path: '/$voorraadId'
@@ -917,6 +964,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KelderAccijnsRouteImport
       parentRoute: typeof KelderRoute
     }
+    '/instellingen_/flestypes': {
+      id: '/instellingen_/flestypes'
+      path: '/instellingen/flestypes'
+      fullPath: '/instellingen/flestypes'
+      preLoaderRoute: typeof InstellingenFlestypesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rij/$rijId/': {
       id: '/rij/$rijId/'
       path: '/'
@@ -937,6 +991,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/kelder/partijen/'
       preLoaderRoute: typeof KelderPartijenIndexRouteImport
       parentRoute: typeof KelderRoute
+    }
+    '/voorraad_/flessen_/$flestypeId': {
+      id: '/voorraad_/flessen_/$flestypeId'
+      path: '/voorraad/flessen/$flestypeId'
+      fullPath: '/voorraad/flessen/$flestypeId'
+      preLoaderRoute: typeof VoorraadFlessenFlestypeIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/steekproeven/$puntId/invoer': {
       id: '/steekproeven/$puntId/invoer'
@@ -1106,11 +1167,14 @@ const rootRouteChildren: RootRouteChildren = {
   WerkrapportRoute: WerkrapportRoute,
   WijngaardRoute: WijngaardRoute,
   ZoekenRoute: ZoekenRoute,
+  InstellingenFlestypesRoute: InstellingenFlestypesRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
   SteekproevenBeheerRoute: SteekproevenBeheerRoute,
+  VoorraadFlessenRoute: VoorraadFlessenRoute,
   SteekproevenIndexRoute: SteekproevenIndexRoute,
   FenologieFenIdBewerkenRoute: FenologieFenIdBewerkenRoute,
   SteekproevenPuntIdInvoerRoute: SteekproevenPuntIdInvoerRoute,
+  VoorraadFlessenFlestypeIdRoute: VoorraadFlessenFlestypeIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

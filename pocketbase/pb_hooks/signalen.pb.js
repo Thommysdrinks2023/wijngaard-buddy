@@ -78,5 +78,4 @@ routerAdd(
       throw uitvoering.leesbareFout(err);
     }
   },
-  $apis.requireAuth(),
 );

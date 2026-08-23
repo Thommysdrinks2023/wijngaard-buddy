@@ -1513,6 +1513,144 @@ async function main() {
     deleteRule: null,
   });
 
+  // Fase 15 Blok A/B — Flessenvoorraad (lege flessen) & accijnsafdracht.
+  // Omkering van de voorraadmodule: niet volle flessen tellen (niemand
+  // registreert wat er uit de kelder gaat), maar lege flessen beheren —
+  // exact de administratie die Thomas al sinds 2011 in Flessen_admin.xlsx
+  // voert. "Glas is glas" (besluit vooraf): één stapel per flestype, niet
+  // per merk/klant. Mutaties zijn append-only als het tankboek: create/
+  // update/delete alleen via het endpoint hieronder (flessen.pb.js),
+  // correcties zijn nieuwe regels (mutatie_type "telcorrectie"), nooit
+  // bewerkingen van bestaande regels.
+  const flestypesCol = await ensureCollection({
+    name: "flestypes",
+    type: "base",
+    fields: [
+      { name: "vorm", type: "text", required: true },
+      { name: "inhoud_ml", type: "number", required: true },
+      { name: "kleur", type: "text" },
+      { name: "sluiting", type: "text" },
+      { name: "omschrijving", type: "text" },
+      { name: "leverancier", type: "text" },
+      { name: "standaard_aantal_per_pallet", type: "number" },
+      { name: "actief", type: "bool" },
+      { name: "vineyard_id", type: "text" },
+      { name: "deleted", type: "bool" },
+      ...autodateFields(),
+    ],
+    indexes: ["CREATE INDEX idx_flestypes_actief ON flestypes (actief)"],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    // Nooit hard verwijderen — er hangen mutaties en (straks) bottelrondes
+    // aan een flestype. Op inactief zetten is een gewone update.
+    deleteRule: null,
+  });
+
+  const FLESSEN_MUTATIE_TYPES = [
+    "ontvangst",
+    "verbruik_botteling",
+    "breuk",
+    "telcorrectie",
+    "overig",
+  ];
+  const flessenMutatiesCol = await ensureCollection({
+    name: "flessen_mutaties",
+    type: "base",
+    fields: [
+      {
+        name: "flestype",
+        type: "relation",
+        required: true,
+        collectionId: flestypesCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "mutatie_type",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: FLESSEN_MUTATIE_TYPES,
+      },
+      // signed: positief bij ontvangst/telcorrectie omhoog, negatief bij
+      // verbruik/breuk/telcorrectie omlaag — zie flessen_logica.js
+      { name: "aantal", type: "number", required: true, onlyInt: true },
+      { name: "datum", type: "text", required: true },
+      {
+        name: "bottelronde",
+        type: "relation",
+        collectionId: bottelrondesCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "leverancier", type: "text" },
+      { name: "aantal_pallets", type: "number" },
+      { name: "toelichting", type: "text" },
+      { name: "ingevoerd_door", type: "text" },
+      { name: "vineyard_id", type: "text" },
+      { name: "deleted", type: "bool" },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+    ],
+    indexes: [
+      "CREATE INDEX idx_flessen_mutaties_flestype ON flessen_mutaties (flestype)",
+      "CREATE INDEX idx_flessen_mutaties_datum ON flessen_mutaties (datum)",
+      "CREATE INDEX idx_flessen_mutaties_type ON flessen_mutaties (mutatie_type)",
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    // Append-only: schrijven kan uitsluitend via POST /api/tappenmars/
+    // flessen-mutatie (pb_hooks/flessen.pb.js), zelfde patroon als tankboek.
+    createRule: null,
+    updateRule: null,
+    deleteRule: null,
+  });
+  void flessenMutatiesCol;
+
+  // Seed de negen bestaande flestypes uit Flessen_admin.xlsx (create-only).
+  // Saldo per type op 23-08-2026 berekend uit inkoop−gebruikt in die Excel
+  // (ter info, NIET overgenomen als beginvoorraad — dat is Blok F, een
+  // bewuste telling door Thomas): wit vinolok 3306, groen vinolok 1248,
+  // wit schroef 12378, groen schroef 7724, groen kurk 0, wit kurk 0,
+  // wit mat schroef 904, wit 375 1458, groen 375 3570.
+  {
+    const SEED_FLESTYPES = [
+      { vorm: "vinolok", inhoud_ml: 750, kleur: "wit", sluiting: "vinolok" },
+      { vorm: "vinolok", inhoud_ml: 750, kleur: "groen", sluiting: "vinolok" },
+      { vorm: "bordeaux", inhoud_ml: 750, kleur: "wit", sluiting: "schroef" },
+      { vorm: "bordeaux", inhoud_ml: 750, kleur: "groen", sluiting: "schroef" },
+      { vorm: "bordeaux", inhoud_ml: 750, kleur: "groen", sluiting: "kurk" },
+      { vorm: "bordeaux", inhoud_ml: 750, kleur: "wit", sluiting: "kurk" },
+      { vorm: "bordeaux", inhoud_ml: 750, kleur: "wit mat", sluiting: "schroef" },
+      // Sluiting voor de twee 375ml-types staat niet in de Excel — leeg
+      // gelaten. VRAAG VOOR THOMAS (zie WERKLOG.md): welke sluiting hebben
+      // de 375ml-flessen?
+      { vorm: "375", inhoud_ml: 375, kleur: "wit", sluiting: "" },
+      { vorm: "375", inhoud_ml: 375, kleur: "groen", sluiting: "" },
+    ];
+    const bestaandeFlestypes = await api("/api/collections/flestypes/records?perPage=200");
+    const sleutel = (t) => `${t.vorm}|${t.inhoud_ml}|${t.kleur}|${t.sluiting}`;
+    const bestaandeSleutels = new Set(
+      (bestaandeFlestypes.items ?? []).map((t) =>
+        sleutel({ vorm: t.vorm, inhoud_ml: t.inhoud_ml, kleur: t.kleur, sluiting: t.sluiting }),
+      ),
+    );
+    let nieuweFlestypes = 0;
+    for (const t of SEED_FLESTYPES) {
+      if (bestaandeSleutels.has(sleutel(t))) continue;
+      const liter = (t.inhoud_ml / 1000).toFixed(2).replace(/0$/, "").replace(/\.$/, ",0");
+      const omschrijving = `${t.kleur} ${t.sluiting || "?"} ${liter} L`.replace(/\s+/g, " ").trim();
+      await api("/api/collections/flestypes/records", {
+        method: "POST",
+        body: { ...t, omschrijving, actief: true },
+      });
+      nieuweFlestypes++;
+    }
+    if (nieuweFlestypes > 0)
+      console.log(`  + ${nieuweFlestypes} flestype(s) geseed uit Flessen_admin.xlsx`);
+  }
+
   // corrigeert = zelfverwijzing; kan pas ná aanmaak (id nog onbekend in de definitie)
   await ensureVelden("tankboek", [
     {
@@ -2376,6 +2514,9 @@ async function main() {
     // Fase 10
     "app_instellingen",
     "signaal_status",
+    // Fase 15
+    "flestypes",
+    "flessen_mutaties",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);

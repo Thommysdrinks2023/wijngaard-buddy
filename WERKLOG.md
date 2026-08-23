@@ -369,3 +369,122 @@ Verse `pb_data`-backup gemaakt.
 3. **NFC-tags op partijen** (Blok B punt 4): het veld staat klaar maar er is
    geen scanscherm voor bottelronde. Is dat iets voor een latere fase, of wil
    je dat nu al meenemen zodra de eerste tags er zijn?
+
+---
+
+# Sessie 23 augustus 2026 — Fase 15 Blok A/B: flessenvoorraad (lege flessen)
+
+Doel: de voorraadmodule omkeren — van volle flessen tellen naar lege flessen
+beheren, gekoppeld aan `Flessen_admin.xlsx` (negen tabbladen, sinds 2011).
+Volledige opdracht: 6 blokken (A t/m F, inclusief bottelronde-koppeling,
+accijnsafdracht-bij-botteling en uitfaseren van de volle-flessenvoorraad).
+**Deze sessie is Blok A + B: het fundament.** Blok C–F (bottelronde-koppeling,
+accijns-rebasing naar botteling, uitfaseren volle voorraad, beginvoorraad-
+import) zijn bewust niet opgepakt — zie "Nog open" hieronder. Reden: elk van
+die blokken raakt bestaande, live gebruikte flows (bottelen, orders, accijns)
+en verdient een eigen sessie met eigen verificatie, in plaats van alles in
+één keer om te bouwen met het risico dat een fout ergens in het midden de
+hele keten breekt.
+
+## Bevinding vooraf — kelder/voorraad/signalen-endpoints waren stuk zonder
+## login (regressie van gisteren, vóór dit blok gefixt)
+
+De "inloggen weer verwijderd"-commit van gisteren (`6010a8e`) claimde dat
+`$apis.requireAuth()` overal weg was bij kelder/voorraad/signalen, maar de
+daadwerkelijke diff van `kelder.pb.js` liet alleen een commentaarwijziging
+zien — de vier `routerAdd()`-aanroepen behielden `$apis.requireAuth()`.
+Zelfde gat bleek te bestaan in `voorraad.pb.js` (3x) en `signalen.pb.js`
+(1x). **Praktisch gevolg: zonder login kon je op dat moment geen enkele
+partij, bottelronde of tankboekboeking meer aanmaken** — precies de
+endpoints die Fase 15 nodig heeft. De eerdere "geverifieerd"-claims in die
+commit betroffen alleen anonieme GET's, nooit deze POST-endpoints, dus dit
+viel niet op in de rooktests (die boeken niets via deze routes met een echte
+partij). Gefixt (8 `requireAuth()`-aanroepen verwijderd over 3 bestanden) en
+bevestigd met curl: `partij-aanmaken` gaf vóór de fix een blokkade, nu een
+normale 400 op ongeldige data (dus voorbij de authcheck).
+
+## Blok A — Flestypes
+
+Nieuwe collectie `flestypes` (vorm/inhoud_ml/kleur/sluiting/omschrijving/
+leverancier/standaard_aantal_per_pallet/actief). Nooit hard verwijderbaar
+(`deleteRule: null`) — op inactief zetten is een gewone update. Beheerscherm
+op `/instellingen/flestypes`: aanmaken, actief/inactief togglen.
+
+Geseed uit `Flessen_admin.xlsx` (negen tabbladen, saldo per type berekend uit
+inkoop−gebruikt op 23-08-2026 — puur ter info in de commentaarregel van het
+setup-script, NIET overgenomen als beginvoorraad):
+
+| Flestype | Saldo in Excel |
+| --- | --- |
+| wit vinolok 0,75 | 3306 |
+| groen vinolok 0,75 | 1248 |
+| wit schroef 0,75 | 12378 |
+| groen schroef 0,75 | 7724 |
+| groen kurk 0,75 | 0 |
+| wit kurk 0,75 | 0 |
+| wit mat schroef 0,75 | 904 |
+| wit 375 | 1458 |
+| groen 375 | 3570 |
+
+**VRAAG VOOR THOMAS**: de sluiting van de twee 375ml-flestypes staat niet in
+de Excel — die twee zijn leeg geseed. Welke sluiting hebben de 375ml-flessen?
+
+## Blok B — Flessenvoorraad en mutaties
+
+`flessen_mutaties`: append-only, exact als het tankboek (`create/update/
+delete = null` in de API-rules; schrijven kan uitsluitend via
+`POST /api/tappenmars/flessen-mutatie` en `/flessen-telcorrectie`,
+`pocketbase/pb_hooks/flessen.pb.js` + `flessen_logica.js`). Voorraadstand is
+berekend (som van mutaties, niet apart opgeslagen) — `GET
+/api/tappenmars/flessen-standen` doet de optelling server-side, zelfde
+principe als tanks-herbereken maar dan read-only.
+
+Telcorrectie ("tellen wint van rekenen"): Thomas voert de fysiek getelde
+stand in, de server berekent het verschil t.o.v. de actuele stand op het
+moment van boeken (niet t.o.v. een client-side snapshot — voorkomt een race
+als er tussentijds een andere mutatie bijkomt) en boekt dat verschil met
+oud/nieuw saldo in de toelichting.
+
+Nieuwe route `/voorraad/flessen` (overzicht, oplopend op stand — bijna-op
+bovenaan, filter op vorm/inhoud/kleur) en `/voorraad/flessen/$flestypeId`
+(mutatiehistorie + ontvangst boeken + telcorrectie boeken). **Bewust een
+aparte, vlakke route naast de bestaande `/voorraad`** (volle flessen) in
+plaats van die te vervangen — de vervanging is Blok E, en die raakt
+bottelen/orders/accijns die er nog van afhangen. Ontsloten vanuit de
+bestaande `/voorraad`-pagina (linkkaart bovenaan) en vanuit Instellingen.
+
+Signaal "bijna op": nu een vaste vuistregel (<200 stuks) in de UI zelf, nog
+niet via de bestaande signaallaag met een instelbare drempel per flestype —
+dat hoort bij Blok D/E samen met de rest van de signaalintegratie.
+
+**Geverifieerd**: schema-run zonder drift (0 verschillen), `tsc`/`eslint`
+schoon, 191 unittests groen, 6/6 rooktests groen (productiebuild). Curl:
+ontvangst boeken (anoniem, +100), telcorrectie (geteld 95 → −5 automatisch
+geboekt, juiste toelichting), directe POST op `flessen_mutaties` → 403,
+`verbruik_botteling` met een positief aantal → 400 (richtingvalidatie werkt).
+Testdata opgeruimd (via superuser-credentials, want de collectie is net zo
+onwijzigbaar voor gewone requests als het tankboek). Verse `pb_data`-backup
+gemaakt na afloop.
+
+## Nog open — Blok C t/m F (volgende sessie(s))
+
+- **Blok C** — bottelronde koppelen aan `flestypes` (relatie i.p.v. losse
+  tekstvelden), `aantal_flessen_gevuld`/`flessen_breuk`/`accijns_categorie`
+  toevoegen, en bij het bottelen atomisch ook een `verbruik_botteling`- (en
+  eventueel `breuk`-)regel in `flessen_mutaties` boeken. Vereist een
+  migratiestap voor bestaande bottelrondes (flesinhoud_ml/flestype/
+  kleur_fles → relatie) — "wat niet automatisch te matchen is, rapporteren
+  in plaats van gokken", zoals de opdracht vraagt.
+- **Blok D** — `accijns_categorieen`-collectie, `src/lib/accijns.ts`
+  herbouwen op gebotteld volume i.p.v. uitslag (het belastbare moment is
+  botteling, zie de opdracht — De Tappenmars draagt de volledige accijns af
+  bij botteling, niet bij uitslag), instelbaar via `regelgeving_instellingen`
+  met sleutel `accijns_belastbaar_moment` (default `botteling`).
+- **Blok E** — volle-flessenvoorraad (`voorraad_flessen`/`voorraad_mutaties`)
+  uitfaseren, met behoud van order→bottelronde-traceerbaarheid (NVWA-eis).
+  Raakt `/verkoop`, agenttools en signaalproducenten die nu naar de oude
+  voorraad verwijzen.
+- **Blok F** — beginvoorraad-flow (getelde stand als eerste mutatie) en
+  optioneel een volledige historie-import uit `Flessen_admin.xlsx`.
+- Signaal "flessen bijna op" via de bestaande signaallaag met instelbare
+  drempel per flestype (nu een vuistregel in de UI, zie Blok B hierboven).
