@@ -29,35 +29,10 @@ const PB_URL = import.meta.env.VITE_POCKETBASE_URL as string | undefined;
 let pbInstance: PocketBase | null = null;
 let pbStatus: "unknown" | "online" | "offline" = "unknown";
 
-// Fase 9 Blok D: de PocketBase-sessie ook in een cookie spiegelen, zodat
-// SSR (waar localStorage niet bestaat) een ingelogde gebruiker herkent bij
-// een harde refresh op een gegidste route (zie auth-guard.ts). Cookie is
-// bewust NIET httpOnly — dat kan niet vanuit een client-side authStore, en
-// de PocketBase-authtoken staat toch al leesbaar in localStorage op dit
-// device; het is geen extra blootstelling. Wel SameSite=Lax altijd, en
-// Secure zodra de app over https draait (lokaal nog http).
-function syncAuthCookie(pb: PocketBase) {
-  if (typeof document === "undefined") return;
-  const secure = typeof location !== "undefined" && location.protocol === "https:";
-  // expires wordt door exportToCookie zelf al goed gezet: token-vervaldatum
-  // bij een geldige sessie, 1-1-1970 (= direct verlopen) bij uitloggen.
-  document.cookie = pb.authStore.exportToCookie({
-    httpOnly: false,
-    secure,
-    sameSite: "Lax",
-    path: "/",
-  });
-}
-
 export function getPb(): PocketBase | null {
   if (!PB_URL) return null;
   if (!pbInstance) {
     pbInstance = new PocketBase(PB_URL);
-    // Bij het eerste gebruik ook meteen synchroniseren (bijv. na een
-    // pagina-herlaad waarbij authStore al uit localStorage is gevuld maar
-    // de cookie nog de oude/lege staat heeft).
-    syncAuthCookie(pbInstance);
-    pbInstance.authStore.onChange(() => syncAuthCookie(pbInstance!));
   }
   return pbInstance;
 }
@@ -141,39 +116,15 @@ export function deelVerzoek<T>(sleutel: string, maak: () => Promise<T>): Promise
   return verzoek;
 }
 
-// INLOGGEN HERSTELD (21 augustus 2026, vóór de Pi-migratie — zie CLAUDE.md
-// "Inloggen hersteld"). Deze functie was tijdelijk hard `true`; nu weer een
-// echte controle op de PocketBase-authStore.
+// INLOGGEN WEER VERWIJDERD (besluit Thomas, 22 augustus 2026 — zie CLAUDE.md
+// "Inloggen verwijderd"). De app kent geen accounts meer; alle API-regels
+// staan open. Deze functie geeft daarom altijd true terug in plaats van te
+// verdwijnen: de signaalproducenten en datalagen gebruiken hem als "mag ik de
+// server bevragen?"-poortje, en dat antwoord is nu onvoorwaardelijk ja. Zo
+// blijft één plek de schakelaar als het inloggen ooit terugkomt (verplicht
+// vóór de Pi of pb.tappenmars.nl).
 export function isIngelogd(): boolean {
-  const pb = getPb();
-  return Boolean(pb?.authStore.isValid);
-}
-
-// Sessieduur op de server staat op een jaar (zie setup-pocketbase.mjs,
-// stelAuthDuurIn) zodat Thomas niet elke week hoeft in te loggen. Dat lost
-// alleen de VERVALTERMIJN op; PocketBase geeft een token pas een nieuwe volle
-// looptijd als je hem expliciet ververst. Zonder dit zou een sessie die je
-// zelden opnieuw opent alsnog kunnen verlopen na een jaar totale inactiviteit
-// — onwaarschijnlijk bij dagelijks gebruik in het seizoen, maar in de winter
-// (net als de Pi-planning) juist een reëel scenario. Daarom hier ververst
-// zodra een pagina laadt en er een geldige sessie is: elke keer dat de app
-// open is, schuift de vervaldatum weer een vol jaar op.
-let laatsteVerversing = 0;
-const VERVERS_INTERVAL_MS = 6 * 3600 * 1000; // hooguit 4x per dag proberen
-
-export function verversSessieIndienNodig(): void {
-  const pb = getPb();
-  if (!pb || !pb.authStore.isValid) return;
-  const nu = Date.now();
-  if (nu - laatsteVerversing < VERVERS_INTERVAL_MS) return;
-  laatsteVerversing = nu;
-  pb.collection("users")
-    .authRefresh()
-    .catch(() => {
-      // Geen verbinding of token inmiddels ongeldig: geen probleem, de
-      // volgende keer dat de app online is wordt het opnieuw geprobeerd.
-      // Nooit uitloggen op basis van een mislukte ververspoging.
-    });
+  return true;
 }
 
 // Fase 8 — gedeelde leeshelper voor de ONLINE-ONLY datalagen (kelder, verkoop,
@@ -195,8 +146,10 @@ export async function haalLijst<T>(
 ): Promise<T> {
   const pb = getPb();
   if (!pb) return leeg; // geen server geconfigureerd — lege staat is dan correct
-  if (!isIngelogd())
-    throw new LaadFout("niet_ingelogd", `Log opnieuw in om ${wat} te kunnen laden.`);
+  // Hier stond een sessiecontrole; die is vervallen met het verwijderen van het
+  // inloggen (22 augustus 2026). De rest van deze helper blijft onverminderd nodig:
+  // een onbereikbare server en een mislukte fetch moeten nog steeds een echte
+  // fout opleveren in plaats van een stille lege lijst.
   if (!(await ensureOnline()))
     throw new LaadFout(
       "geen_verbinding",

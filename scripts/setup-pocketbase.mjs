@@ -40,30 +40,36 @@ const driftVelden = [];
 // Leeg = geen restrictie (ook anonieme/niet-ingelogde clients mogen erbij).
 const OPEN_RULE = "";
 
-// INLOGGEN HERSTELD — 21 augustus 2026.
+// INLOGGEN WEER VERWIJDERD — 22 augustus 2026.
 //
-// Korte geschiedenis, zodat niemand dit per ongeluk terugdraait: op 26 juli
-// 2026 is het inloggen op verzoek van Thomas volledig verwijderd (alles open).
-// Dat was verdedigbaar zolang de server uitsluitend op 127.0.0.1 luisterde,
-// maar het moest terug vóór de Raspberry Pi in de schuur. Die staat gepland
-// voor november/december 2026.
+// Geschiedenis, zodat niemand dit per ongeluk verkeerd terugdraait:
+//  26 juli 2026    — verwijderd (besluit Thomas: geen accounts nodig).
+//  21 augustus 2026 — hersteld vóór de Pi-migratie, met een jaar-sessieduur
+//                     zodat dagelijks inloggen niet nodig zou zijn.
+//  22 augustus 2026 — Thomas zat zichzelf buiten zijn eigen app op de dag
+//                     dat hij hem juist wilde gebruiken. Expliciet besluit,
+//                     bewust van de trade-off (zijn woorden: "weet ik, maar
+//                     daar houden we dan wel rekening mee"): weer weg, tot
+//                     de Pi-migratie het opnieuw noodzakelijk maakt.
 //
-// WAAROM NU AL EN NIET PAS BIJ DE PI: beveiliging aanzetten op de dag van een
-// migratie is precies hoe je fouten maakt. Door het nu te herstellen draait
-// het een heel oogstseizoen mee op de laptop — waar de inzet laag is — en is
-// de Pi-stap in december een pure verhuizing in plaats van een verhuizing
-// plús een beveiligingsverbouwing.
+// WAT DIT BETEKENT: iedereen die de PocketBase-server kan bereiken mag alle
+// data lezen EN wijzigen. Dat is nu te overzien omdat de server uitsluitend op
+// 127.0.0.1 luistert. Het is NIET te overzien zodra de app op de Raspberry Pi
+// in de schuur draait of op pb.tappenmars.nl — dan liggen het tankboek, de
+// klantgegevens (AVG) en het gebruikersbeheer open voor lezen en schrijven.
 //
-// WAT DIT NIET BETEKENT: dagelijks een wachtwoord intikken. De sessieduur van
-// de users-collectie staat bewust op een jaar (zie stelAuthDuurIn hieronder),
-// dus je logt één keer per apparaat in en blijft daarna ingelogd.
+// TERUGZETTEN = deze regel terug naar "@request.auth.id != ''", het script
+// opnieuw draaien, en de frontend-guards herstellen (git-geschiedenis: zoek
+// de commit "inloggen hersteld" van 21 augustus 2026 — die deed dit exact).
+// Doe dat VOORDAT de server van 127.0.0.1 af gaat, niet erna.
 //
 // NIET geraakt, en dat is opzet: de collecties met create/update/delete = null
 // (tankboek, agent_acties). Die staan dicht vanwege ONWIJZIGBAARHEID, niet
 // vanwege inloggen — schrijven kan daar uitsluitend via de gecontroleerde
 // serverendpoints, wat de correctheid van het wettelijke accijnsregister
-// bewaakt.
-const AUTH_RULE = "@request.auth.id != ''";
+// bewaakt. gebruikers.pb.js houdt ook nu zijn requireAuth() — accountbeheer
+// mag nooit wereldwijd open staan.
+const AUTH_RULE = OPEN_RULE;
 
 const VAK4 = "4 planten per vak (i.p.v. standaard 5)";
 const VAK6 = "Laatste vak heeft 6 planten, zelfde rijlengte";

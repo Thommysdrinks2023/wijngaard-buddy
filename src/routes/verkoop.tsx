@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { vereistIngelogd } from "@/lib/auth-guard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
@@ -34,7 +33,6 @@ import { Loader2, Plus, Sheet, ShoppingCart, Trash2, Truck, UserPlus } from "luc
 export const Route = createFileRoute("/verkoop")({
   component: VerkoopPage,
   head: () => ({ meta: [{ title: "Verkoop — De Tappenmars Buddy" }] }),
-  beforeLoad: () => vereistIngelogd("Log in om verkoop te beheren."),
 });
 
 const veldClass = "h-11 w-full rounded-xl border border-input bg-card px-3 text-sm";

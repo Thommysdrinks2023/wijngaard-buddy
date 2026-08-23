@@ -288,11 +288,15 @@ function voerBottelrondeUit(txApp, b) {
 // (least privilege zonder de gewone invoer te blokkeren). Handhaving zit
 // hier server-side, niet alleen in de UI.
 //
-// INLOGGEN HERSTELD (21 augustus 2026): elke aanroep heeft weer een echte
-// `auth`. Geen auth betekent nu weer "geen rechten" (""), niet automatisch
-// beheerder — dat was de tijdelijke maatregel tijdens de inlogloze periode.
+// INLOGGEN WEER VERWIJDERD (besluit Thomas, 22 augustus 2026): er is geen
+// ingelogde gebruiker meer, dus `auth` is bij elke aanroep leeg. Zonder
+// aanpassing zou rolVan() dan "" teruggeven en eisBeheerder() ALLES
+// weigeren — de kelder- en voorraadendpoints zouden onbruikbaar worden.
+// Daarom telt "geen auth" weer als beheerder. Geschiedenis: tweede keer
+// (eerder 26 juli 2026, op 21 augustus hersteld naar "" bij geen auth, nu
+// weer terug naar "beheerder"). Zie CLAUDE.md.
 function rolVan(auth) {
-  if (!auth) return "";
+  if (!auth) return "beheerder";
   if (typeof auth.isSuperuser === "function" && auth.isSuperuser()) return "beheerder";
   return auth.getString("rol") || "medewerker";
 }

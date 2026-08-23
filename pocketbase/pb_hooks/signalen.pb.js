@@ -1,8 +1,11 @@
 /// <reference path="../pb_data/types.d.ts" />
 //
-// INLOGGEN HERSTELD (21 augustus 2026): elk endpoint in dit bestand eist weer
-// $apis.requireAuth(). De rolcontroles waren tijdens de inlogloze periode al
-// blijven staan en werken nu weer echt, zie rolVan() in kelder_logica.js.
+// INLOGGEN WEER VERWIJDERD (besluit Thomas, 22 augustus 2026): de
+// $apis.requireAuth()-middleware is opnieuw van elk endpoint in dit bestand
+// weggehaald. De rolcontroles staan er bewust NOG IN: rolVan() in
+// kelder_logica.js geeft bij ontbrekende auth weer "beheerder" terug, dus ze
+// laten alles door. Geschiedenis: tweede keer (eerder 26 juli 2026, op 21
+// augustus hersteld, nu weer weg). Zie CLAUDE.md.
 
 // Fase 10 Blok 5 — signaal naar taak promoveren.
 //

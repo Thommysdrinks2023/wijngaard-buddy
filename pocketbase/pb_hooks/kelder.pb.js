@@ -1,9 +1,12 @@
 /// <reference path="../pb_data/types.d.ts" />
 //
-// INLOGGEN HERSTELD (21 augustus 2026): elk endpoint in dit bestand eist weer
-// $apis.requireAuth(). De rolcontroles (eisSchrijfrecht/eisBeheerder) waren
-// tijdens de inlogloze periode al blijven staan en werken nu weer echt, zie
-// rolVan() in kelder_logica.js.
+// INLOGGEN WEER VERWIJDERD (besluit Thomas, 22 augustus 2026): de
+// $apis.requireAuth()-middleware is opnieuw van elk endpoint in dit bestand
+// weggehaald — Thomas zat zichzelf buiten zijn eigen app. De rolcontroles
+// (eisSchrijfrecht/eisBeheerder) staan er bewust NOG IN: rolVan() in
+// kelder_logica.js geeft bij ontbrekende auth weer "beheerder" terug, dus ze
+// laten alles door. Geschiedenis: dit is de TWEEDE keer (eerder 26 juli
+// 2026, toen op 21 augustus hersteld, nu weer weg). Zie CLAUDE.md.
 // Kelder-endpoints: alle tankboek-boekingen lopen hierlangs, atomisch
 // (regel + tankcaches in één transactie). De tankboek-collectie zelf staat
 // dicht in de API-rules (create/update/delete = null): dit is de enige route
