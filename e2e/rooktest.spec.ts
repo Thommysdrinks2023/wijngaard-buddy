@@ -119,6 +119,14 @@ test("6 — geen enkel hoofdscherm toont een foutmelding", async ({ page }) => {
   // en het scherm toont een ErrorState. Die heeft role="alert", dus één
   // controle dekt alle schermen. Ook de Vandaag-widget hoort erbij: verdwijnt
   // de kop "VANDAAG", dan is de signaallaag stuk zonder dat er iets rood wordt.
+  //
+  // Die widget-controle verwachtte eerst simpelweg dat er ALTIJD een signaal
+  // is. Dat bleek data-afhankelijk: op 26 augustus 2026 was de laatste bron
+  // weg (de twee resterende signalen waren op 26 juli met de hand genegeerd,
+  // de wachttijd was verlopen en de backup was vers) en faalde deze test
+  // terwijl de signaallaag prima werkte. Een test die afgaat op wat er
+  // toevallig in de database staat, meet niet wat hij belooft — daarom zet
+  // hij nu zelf een signaal klaar en ruimt het daarna weer op.
   const schermen = [
     "/",
     "/voorraad",
@@ -150,6 +158,38 @@ test("6 — geen enkel hoofdscherm toont een foutmelding", async ({ page }) => {
     }
   }
 
-  await page.goto("/");
-  await expect(page.getByText("VANDAAG").first()).toBeVisible({ timeout: 15_000 });
+  // Eigen signaal klaarzetten (sensor_alerts is de generieke ingang van de
+  // signaallaag, zie ARCHITECTURE.md §8.4) zodat de assertie hieronder over de
+  // WERKING van de widget gaat en niet over de toevallige inhoud van de database.
+  const alertId = await page.evaluate(async () => {
+    const r = await fetch("http://127.0.0.1:8090/api/collections/sensor_alerts/records", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        signaal_id: "e2e-rooktest-vandaag",
+        ernst: "waarschuwing",
+        titel: "Rooktest: signaallaag",
+        waarom: "Tijdelijk signaal van de rooktest; wordt aan het eind opgeruimd.",
+        bron_type: "kelder",
+        actief: true,
+      }),
+    });
+    return (await r.json()).id as string;
+  });
+
+  try {
+    await page.goto("/");
+    await expect(page.getByText("VANDAAG").first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Rooktest: signaallaag")).toBeVisible({ timeout: 15_000 });
+  } finally {
+    // In een finally: ook als de assertie faalt mag er geen testsignaal
+    // achterblijven dat Thomas morgen op zijn startscherm ziet staan.
+    await page.evaluate(
+      (id) =>
+        fetch("http://127.0.0.1:8090/api/collections/sensor_alerts/records/" + id, {
+          method: "DELETE",
+        }),
+      alertId,
+    );
+  }
 });

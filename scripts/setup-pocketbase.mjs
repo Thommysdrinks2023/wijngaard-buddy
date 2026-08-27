@@ -544,6 +544,84 @@ async function migreerSensorMetingen() {
 }
 
 /**
+ * Fase 15 Blok A — leesbare omschrijving van een flestype ("groen schroef
+ * 0,75 L"). Nederlandse decimale komma en geen kunstmatige afronding op twee
+ * cijfers: 375 ml moet "0,375 L" opleveren, niet "0,38 L".
+ * Bewust hier én in src/lib/flessen-data.ts (omschrijvingVoor) — het seed-
+ * script mag niet uit de frontend-broncode importeren.
+ */
+function flestypeOmschrijving(t) {
+  const liter = String(t.inhoud_ml / 1000).replace(".", ",");
+  return [t.kleur, t.sluiting, `${liter} L`].filter(Boolean).join(" ");
+}
+
+/**
+ * Fase 15 Blok C — koppelt bestaande bottelrondes aan een flestype-record.
+ *
+ * Matcht op inhoud (verplicht) plus, waar mogelijk, kleur en sluiting uit de
+ * oude vrije-tekstvelden `kleur_fles`/`flestype`. Idempotent: een bottelronde
+ * die al een `flestype_ref` heeft wordt overgeslagen.
+ *
+ * BEWUST NIET GOKKEN: als de inhoud op meer dan één flestype past en de
+ * tekstvelden geen uitsluitsel geven, blijft de koppeling leeg en wordt de
+ * bottelronde GERAPPORTEERD (conform de opdracht: "wat niet automatisch te
+ * matchen is, rapporteren in plaats van gokken"). Een verkeerd gekoppeld
+ * flestype zou stilzwijgend de verkeerde flessenvoorraad afboeken.
+ */
+async function migreerBottelrondesNaarFlestypes() {
+  if (droog) return;
+  const { items: bottelrondes } = await api(
+    "/api/collections/bottelrondes/records?perPage=500&filter=" +
+      encodeURIComponent("flestype_ref = ''"),
+  );
+  if (bottelrondes.length === 0) return;
+  const { items: flestypes } = await api("/api/collections/flestypes/records?perPage=200");
+
+  const normaliseer = (s) => String(s || "").toLowerCase();
+  let gekoppeld = 0;
+  const nietGematcht = [];
+
+  for (const b of bottelrondes) {
+    const kandidaten = flestypes.filter((f) => f.inhoud_ml === b.flesinhoud_ml);
+    let keuze = null;
+    if (kandidaten.length === 1) {
+      keuze = kandidaten[0];
+    } else if (kandidaten.length > 1) {
+      const tekst = `${normaliseer(b.kleur_fles)} ${normaliseer(b.flestype)}`;
+      const passend = kandidaten.filter(
+        (f) =>
+          (!f.kleur || tekst.includes(normaliseer(f.kleur))) &&
+          (!f.sluiting || tekst.includes(normaliseer(f.sluiting))),
+      );
+      if (passend.length === 1) keuze = passend[0];
+    }
+
+    if (!keuze) {
+      nietGematcht.push(
+        `${b.id} (${b.botteldatum}, ${b.flesinhoud_ml} ml` +
+          `${b.kleur_fles ? `, "${b.kleur_fles}"` : ""}` +
+          `${b.flestype ? `, "${b.flestype}"` : ""}) — ` +
+          `${kandidaten.length === 0 ? "geen flestype met deze inhoud" : `${kandidaten.length} kandidaten, geen uitsluitsel`}`,
+      );
+      continue;
+    }
+    await api(`/api/collections/bottelrondes/records/${b.id}`, {
+      method: "PATCH",
+      body: { flestype_ref: keuze.id },
+    });
+    gekoppeld++;
+  }
+
+  if (gekoppeld > 0) console.log(`  ↻ bottelrondes: ${gekoppeld} gekoppeld aan een flestype`);
+  if (nietGematcht.length > 0) {
+    console.log(
+      `  ⚠ ${nietGematcht.length} bottelronde(s) NIET automatisch gekoppeld — koppel handmatig:`,
+    );
+    for (const regel of nietGematcht) console.log(`      ${regel}`);
+  }
+}
+
+/**
  * Fase 14 Blok B — voegt een UNIEKE index toe aan een bestaand tekstveld op
  * een bestaande collectie, idempotent (skip als de indexnaam er al staat).
  *
@@ -1282,6 +1360,11 @@ async function main() {
     fields: [
       { name: "sleutel", type: "text", required: true },
       { name: "waarde", type: "number" },
+      // Fase 15 — niet elke regelgevingsinstelling is een getal: het
+      // belastbare moment (botteling/uitslag) is een keuze. Apart veld i.p.v.
+      // `waarde` misbruiken, zodat een numerieke uitlezing nooit per ongeluk
+      // 0 leest waar een tekstwaarde staat.
+      { name: "waarde_tekst", type: "text" },
       { name: "eenheid", type: "text" },
       { name: "geldig_vanaf", type: "text" },
       { name: "laatst_gecontroleerd", type: "text" },
@@ -1639,17 +1722,181 @@ async function main() {
     let nieuweFlestypes = 0;
     for (const t of SEED_FLESTYPES) {
       if (bestaandeSleutels.has(sleutel(t))) continue;
-      const liter = (t.inhoud_ml / 1000).toFixed(2).replace(/0$/, "").replace(/\.$/, ",0");
-      const omschrijving = `${t.kleur} ${t.sluiting || "?"} ${liter} L`.replace(/\s+/g, " ").trim();
       await api("/api/collections/flestypes/records", {
         method: "POST",
-        body: { ...t, omschrijving, actief: true },
+        body: { ...t, omschrijving: flestypeOmschrijving(t), actief: true },
       });
       nieuweFlestypes++;
     }
     if (nieuweFlestypes > 0)
       console.log(`  + ${nieuweFlestypes} flestype(s) geseed uit Flessen_admin.xlsx`);
   }
+
+  // ensureCollection() is create-only: op een bestaande installatie moet
+  // waarde_tekst er alsnog bij (zie synchroniseerRegels-commentaar).
+  await ensureVelden("regelgeving_instellingen", [{ name: "waarde_tekst", type: "text" }]);
+
+  // Fase 15 Blok D-voorbereiding — accijnscategorieën als BEHEERBARE LIJST,
+  // niet hardgecodeerd. Elke categorie verwijst naar een tariefsleutel in
+  // regelgeving_instellingen; de app toont een bedrag pas als dat tarief een
+  // waarde én een laatst_gecontroleerd-datum heeft (zie src/lib/accijns.ts).
+  // De indeling "wijn" versus "overige gegiste drank" hangt af van de
+  // PRODUCTIEWIJZE, niet alleen van het alcoholpercentage — daarom stelt de
+  // app een categorie alleen voor en bevestigt Thomas hem bij het bottelen.
+  await ensureCollection({
+    name: "accijns_categorieen",
+    type: "base",
+    fields: [
+      { name: "naam", type: "text", required: true },
+      { name: "tariefsleutel", type: "text", required: true },
+      {
+        name: "heffing",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        // Verbruiksbelasting (alcoholvrij/sap) is een ANDERE heffing met een
+        // eigen aangifte — moet apart getoond worden, niet bij de accijns
+        // opgeteld.
+        values: ["accijns", "verbruiksbelasting"],
+      },
+      { name: "mousserend", type: "bool" },
+      // "" = niet van toepassing (bv. alcoholvrij, of OGD mousserend waar
+      // beide bereiken onder één tarief vallen)
+      { name: "alcohol_bereik", type: "select", maxSelect: 1, values: ["laag", "hoog"] },
+      { name: "volgorde", type: "number" },
+      { name: "actief", type: "bool" },
+      { name: "vineyard_id", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: null,
+  });
+
+  {
+    // Bereiken conform de opdracht: ≤ 8,5% vol = "laag", > 8,5% vol = "hoog".
+    const SEED_ACCIJNS_CATEGORIEEN = [
+      {
+        naam: "Wijn, stil, ≤ 8,5% vol",
+        tariefsleutel: "accijns_stille_wijn_laag_per_hl",
+        heffing: "accijns",
+        mousserend: false,
+        alcohol_bereik: "laag",
+        volgorde: 1,
+      },
+      {
+        naam: "Wijn, stil, > 8,5% vol",
+        tariefsleutel: "accijns_stille_wijn_per_hl",
+        heffing: "accijns",
+        mousserend: false,
+        alcohol_bereik: "hoog",
+        volgorde: 2,
+      },
+      {
+        naam: "Wijn, mousserend, ≤ 8,5% vol",
+        tariefsleutel: "accijns_mousserende_wijn_laag_per_hl",
+        heffing: "accijns",
+        mousserend: true,
+        alcohol_bereik: "laag",
+        volgorde: 3,
+      },
+      {
+        naam: "Wijn, mousserend, > 8,5% vol",
+        tariefsleutel: "accijns_mousserende_wijn_per_hl",
+        heffing: "accijns",
+        mousserend: true,
+        alcohol_bereik: "hoog",
+        volgorde: 4,
+      },
+      {
+        naam: "Overige gegiste drank, stil, ≤ 8,5% vol",
+        tariefsleutel: "accijns_ogd_stil_laag_per_hl",
+        heffing: "accijns",
+        mousserend: false,
+        alcohol_bereik: "laag",
+        volgorde: 5,
+      },
+      {
+        naam: "Overige gegiste drank, stil, > 8,5% vol",
+        tariefsleutel: "accijns_ogd_stil_per_hl",
+        heffing: "accijns",
+        mousserend: false,
+        alcohol_bereik: "hoog",
+        volgorde: 6,
+      },
+      {
+        // Bewust géén alcohol_bereik: beide bereiken vallen hier onder één
+        // tarief (conform de opdracht).
+        naam: "Overige gegiste drank, mousserend",
+        tariefsleutel: "accijns_ogd_mousserend_per_hl",
+        heffing: "accijns",
+        mousserend: true,
+        volgorde: 7,
+      },
+      {
+        naam: "Alcoholvrij / vruchtensap (verbruiksbelasting)",
+        tariefsleutel: "verbruiksbelasting_alcoholvrij_per_hl",
+        heffing: "verbruiksbelasting",
+        mousserend: false,
+        volgorde: 8,
+      },
+    ];
+    const bestaande = await api("/api/collections/accijns_categorieen/records?perPage=200");
+    const bestaandeSleutels = new Set((bestaande.items ?? []).map((c) => c.tariefsleutel));
+    let nieuw = 0;
+    for (const c of SEED_ACCIJNS_CATEGORIEEN) {
+      if (bestaandeSleutels.has(c.tariefsleutel)) continue;
+      await api("/api/collections/accijns_categorieen/records", {
+        method: "POST",
+        body: { ...c, actief: true },
+      });
+      nieuw++;
+    }
+    if (nieuw > 0) console.log(`  + ${nieuw} accijnscategorie(ën) geseed`);
+  }
+
+  // Fase 15 Blok C — bottelronde koppelen aan een flestype en aan de
+  // accijnsadministratie.
+  //
+  // `flestype_ref` is een NIEUW veld naast het bestaande tekstveld
+  // `flestype`: PocketBase kan het type van een bestaand veld niet wijzigen,
+  // en het oude veld overschrijven zou de historie van bestaande
+  // bottelrondes weggooien. Zelfde niet-destructieve migratiepatroon als
+  // sensor_metingen in Fase 14 (§8.1): oude velden blijven staan, het nieuwe
+  // veld is leidend. Zie migreerBottelrondesNaarFlestypes() hieronder.
+  await ensureVelden("bottelrondes", [
+    {
+      name: "flestype_ref",
+      type: "relation",
+      collectionId: flestypesCol.id,
+      cascadeDelete: false,
+      maxSelect: 1,
+    },
+    // Het EXACTE aantal gevulde flessen (na bottelverlies). `aantal_flessen`
+    // blijft bestaan voor bestaande records en valt hierop terug.
+    { name: "aantal_flessen_gevuld", type: "number", onlyInt: true },
+    { name: "flessen_breuk", type: "number", onlyInt: true },
+    // Het volume dat werkelijk UIT DE TANK ging. Dit is niet hetzelfde als
+    // het gebottelde volume: het verschil is het bottelverlies, en dat is
+    // precies het getal dat bij een controle verklaard moet worden.
+    { name: "volume_uit_tank_l", type: "number" },
+    { name: "accijnsplichtig_volume_l", type: "number" },
+  ]);
+
+  const accijnsCategorieenCol = await api("/api/collections/accijns_categorieen");
+  await ensureVelden("bottelrondes", [
+    {
+      name: "accijns_categorie",
+      type: "relation",
+      collectionId: accijnsCategorieenCol.id,
+      cascadeDelete: false,
+      maxSelect: 1,
+    },
+  ]);
+
+  await migreerBottelrondesNaarFlestypes();
 
   // corrigeert = zelfverwijzing; kan pas ná aanmaak (id nog onbekend in de definitie)
   await ensureVelden("tankboek", [
@@ -2339,6 +2586,52 @@ async function main() {
       eenheid: "L/jaar",
       bron: "Invullen na verificatie: AGP-/vrijstellingsdrempel",
     },
+    // Fase 15 — de resterende accijnscategorieën uit accijns_categorieen.
+    // Allemaal ZONDER bedrag: geen tarieven in code, Thomas vult ze in na
+    // verificatie bij de Douane en de app rekent pas met een geverifieerd
+    // tarief (waarde > 0 én laatst_gecontroleerd ingevuld).
+    {
+      sleutel: "accijns_stille_wijn_laag_per_hl",
+      eenheid: "EUR/hl",
+      bron: "Invullen na verificatie bij de Douane (stille wijn ≤ 8,5% vol)",
+    },
+    {
+      sleutel: "accijns_mousserende_wijn_laag_per_hl",
+      eenheid: "EUR/hl",
+      bron: "Invullen na verificatie bij de Douane (mousserende wijn ≤ 8,5% vol)",
+    },
+    {
+      sleutel: "accijns_ogd_stil_laag_per_hl",
+      eenheid: "EUR/hl",
+      bron: "Invullen na verificatie bij de Douane (overige gegiste drank, stil, ≤ 8,5% vol)",
+    },
+    {
+      sleutel: "accijns_ogd_stil_per_hl",
+      eenheid: "EUR/hl",
+      bron: "Invullen na verificatie bij de Douane (overige gegiste drank, stil, > 8,5% vol)",
+    },
+    {
+      sleutel: "accijns_ogd_mousserend_per_hl",
+      eenheid: "EUR/hl",
+      bron: "Invullen na verificatie bij de Douane (overige gegiste drank, mousserend)",
+    },
+    {
+      sleutel: "verbruiksbelasting_alcoholvrij_per_hl",
+      eenheid: "EUR/hl",
+      bron: "Invullen na verificatie (verbruiksbelasting alcoholvrij/vruchtensap — andere heffing dan accijns, eigen aangifte)",
+    },
+    // Fase 15 — het belastbare moment als INSTELLING, niet hardgecodeerd.
+    // De Tappenmars heeft een AGP maar draagt de volledige accijns af bij
+    // BOTTELING (zo staat het genoteerd bij de Douane en zo werkt het al
+    // jaren). Elke gevulde fles is dus een fles waarover al is afgedragen;
+    // er is geen accijnsadministratie meer ná de botteling. Als de vergunning
+    // ooit wijzigt is dat een instellingswijziging, geen verbouwing.
+    {
+      sleutel: "accijns_belastbaar_moment",
+      waarde_tekst: "botteling",
+      eenheid: "botteling | uitslag",
+      bron: "Zoals genoteerd bij de Douane: volledige afdracht bij botteling, niet bij uitslag.",
+    },
     // Fase 7 Blok A — AVG-bewaartermijn klanten zonder orders (opschoonlijst)
     {
       sleutel: "klant_bewaartermijn_maanden",
@@ -2517,6 +2810,7 @@ async function main() {
     // Fase 15
     "flestypes",
     "flessen_mutaties",
+    "accijns_categorieen",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);

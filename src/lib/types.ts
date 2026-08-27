@@ -379,6 +379,20 @@ export interface Bottelronde {
   botteldatum: string;
   aantal_flessen: number;
   flesinhoud_ml: number;
+  /**
+   * Fase 15 Blok C — het exacte aantal gevulde flessen (na bottelverlies).
+   * Leidend vanaf Fase 15; `aantal_flessen` blijft de terugval voor records
+   * van vóór die fase en voor de agent-actieflow.
+   */
+  aantal_flessen_gevuld?: number | null;
+  flessen_breuk?: number | null;
+  /** Volume dat uit de tank ging — verschil met het gebottelde volume is het bottelverlies. */
+  volume_uit_tank_l?: number | null;
+  /** Wat er in de flessen zit; hierover is bij botteling accijns afgedragen. */
+  accijnsplichtig_volume_l?: number | null;
+  /** Relatie naar flestypes (Fase 15). Het oude tekstveld `flestype` blijft voor historie. */
+  flestype_ref?: string | null;
+  accijns_categorie?: string | null;
   flestype?: string;
   kleur_fles?: string;
   parelwijn?: boolean;
@@ -496,6 +510,25 @@ export const FLESSEN_MUTATIE_TYPES: {
   { value: "telcorrectie", label: "Telcorrectie", emoji: "🔢" },
   { value: "overig", label: "Overig", emoji: "📝" },
 ];
+
+// ============= Accijnscategorieën (Fase 15 Blok C/D) =============
+// Beheerbare lijst, geen enum: de indeling wijn vs. overige gegiste drank
+// hangt af van de PRODUCTIEWIJZE, niet alleen van het alcoholpercentage —
+// de app stelt voor, Thomas bevestigt bij het bottelen.
+export type AccijnsHeffing = "accijns" | "verbruiksbelasting";
+
+export interface AccijnsCategorie {
+  id: string;
+  naam: string;
+  /** Sleutel in regelgeving_instellingen waar het tarief staat (EUR/hl). */
+  tariefsleutel: string;
+  heffing: AccijnsHeffing;
+  mousserend: boolean;
+  /** "laag" = ≤ 8,5% vol, "hoog" = > 8,5% vol, leeg = beide/n.v.t. */
+  alcohol_bereik?: "laag" | "hoog" | "";
+  volgorde?: number | null;
+  actief: boolean;
+}
 
 export interface FlessenMutatie {
   id: string;

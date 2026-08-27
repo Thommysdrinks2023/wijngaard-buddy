@@ -160,6 +160,11 @@ routerAdd(
         id: resultaat.bottelrondeId,
         voorraad_id: resultaat.voorraadId,
         waarschuwing: resultaat.waarschuwing || "",
+        // Fase 15 Blok C — het bottelverlies zoals de server het heeft
+        // vastgelegd, zodat de client niet zijn eigen berekening hoeft te
+        // vertrouwen bij het terugmelden.
+        bottelverlies_l: resultaat.bottelverliesL || 0,
+        gebotteld_l: resultaat.gebotteldL || 0,
       });
     } catch (err) {
       if (resultaat && resultaat.fout) throw new BadRequestError(resultaat.fout);

@@ -466,25 +466,126 @@ Testdata opgeruimd (via superuser-credentials, want de collectie is net zo
 onwijzigbaar voor gewone requests als het tankboek). Verse `pb_data`-backup
 gemaakt na afloop.
 
-## Nog open — Blok C t/m F (volgende sessie(s))
+## Nog open — Blok D t/m F
 
-- **Blok C** — bottelronde koppelen aan `flestypes` (relatie i.p.v. losse
-  tekstvelden), `aantal_flessen_gevuld`/`flessen_breuk`/`accijns_categorie`
-  toevoegen, en bij het bottelen atomisch ook een `verbruik_botteling`- (en
-  eventueel `breuk`-)regel in `flessen_mutaties` boeken. Vereist een
-  migratiestap voor bestaande bottelrondes (flesinhoud_ml/flestype/
-  kleur_fles → relatie) — "wat niet automatisch te matchen is, rapporteren
-  in plaats van gokken", zoals de opdracht vraagt.
-- **Blok D** — `accijns_categorieen`-collectie, `src/lib/accijns.ts`
-  herbouwen op gebotteld volume i.p.v. uitslag (het belastbare moment is
-  botteling, zie de opdracht — De Tappenmars draagt de volledige accijns af
-  bij botteling, niet bij uitslag), instelbaar via `regelgeving_instellingen`
-  met sleutel `accijns_belastbaar_moment` (default `botteling`).
-- **Blok E** — volle-flessenvoorraad (`voorraad_flessen`/`voorraad_mutaties`)
-  uitfaseren, met behoud van order→bottelronde-traceerbaarheid (NVWA-eis).
-  Raakt `/verkoop`, agenttools en signaalproducenten die nu naar de oude
-  voorraad verwijzen.
+Blok C is gebouwd in de sessie hieronder; de actuele openstaande lijst staat
+daar onder "Nog open na Blok C".
+
+# Sessie 26 augustus 2026 — Fase 15 Blok C: bottelronde gekoppeld aan flessen en accijns
+
+Vervolg op Blok A/B. Doel: bottelen boekt voortaan zelf de lege-flessenvoorraad
+af en legt vast wat er accijnsplichtig is. Daarmee zijn punt 3 en 4 uit de
+aanleiding ("dat aantal gaat van de lege-flessenvoorraad af" en "over het
+gebottelde volume wordt accijns afgedragen") geautomatiseerd.
+
+## Wat er is gebouwd
+
+**Bottelronde gekoppeld aan een flestype.** `bottelrondes.flestype_ref`
+(relatie) vervangt functioneel de losse tekstvelden `flestype`/`kleur_fles` en
+de vrij ingetypte `flesinhoud_ml`. De oude velden zijn NIET verwijderd en
+worden nog gevuld: PocketBase kan het type van een bestaand veld niet wijzigen,
+en overschrijven zou de historie van bestaande bottelrondes weggooien. Zelfde
+niet-destructieve patroon als de sensor_metingen-migratie in Fase 14 (§8.1).
+
+**Migratie van bestaande bottelrondes** (`migreerBottelrondesNaarFlestypes()`):
+matcht op inhoud, en bij meerdere kandidaten op kleur/sluiting uit de oude
+tekstvelden. Bewust NIET gokken — bij twijfel blijft de koppeling leeg en wordt
+de bottelronde gerapporteerd. Resultaat van de eerste run: **1 bottelronde niet
+automatisch gekoppeld**, `nxc17cp6rga88z7` (16 juli 2026, 750 ml, geen kleur-
+of typetekst, dus 7 kandidaten). Die moet met de hand gekoppeld worden; een
+verkeerde gok zou stilzwijgend de verkeerde flessenvoorraad afboeken.
+
+**Bottelverlies is nu een echt getal.** Nieuw veld `volume_uit_tank_l`: wat er
+werkelijk uit de tank ging. Dat is niet hetzelfde als wat er in de flessen komt
+— het verschil is het bottelverlies, en dat is precies het getal dat bij een
+controle verklaard moet worden. Het formulier vult dit voor met het huidige
+tankvolume (een bottelronde leegt normaal de tank) en toont het verlies in
+liters én procenten, zowel tijdens het invullen als op het bevestigingsscherm.
+Vóór deze wijziging boekte de app exact het gebottelde volume van de tank af,
+waardoor het verlies als spookvoorraad in de tank bleef staan.
+
+**Atomische flessenafboeking.** Bij het bottelen worden nu binnen dezelfde
+transactie geboekt: de tankboekregel, de bottelronde, het voorraadrecord, een
+`verbruik_botteling`-mutatie en (indien ingevuld) een `breuk`-mutatie. Faalt
+één stap, dan rolt alles terug.
+
+**Ontoereikende flessenvoorraad waarschuwt, blokkeert niet** (besluit vooraf:
+de fysieke werkelijkheid wint). Zowel in het formulier als in het antwoord van
+de server, met het advies daarna een telcorrectie te boeken.
+
+**Accijnscategorieën als beheerbare lijst** (`accijns_categorieen`, 8 geseed
+conform de opdracht) met per categorie een tariefsleutel in
+`regelgeving_instellingen`. Alle nieuwe tariefsleutels zijn ZONDER bedrag
+aangemaakt — geen tarieven in code. Verbruiksbelasting (alcoholvrij/sap) is als
+aparte heffing gemarkeerd, want dat is een andere aangifte dan accijns. Het
+belastbare moment staat als instelling (`accijns_belastbaar_moment`, standaard
+`botteling`); daarvoor is `waarde_tekst` toegevoegd aan
+`regelgeving_instellingen`, want niet elke regelgevingsinstelling is een getal.
+
+De app **stelt een categorie alleen voor** (op basis van het alcoholpercentage
+uit de laatste analyse en de parelwijn-vlag) en laat Thomas bevestigen: de
+indeling wijn versus overige gegiste drank volgt uit de productiewijze, en dat
+kan de app niet weten.
+
+## Geverifieerd
+
+Het kernscenario uit de testchecklist, met curl tegen de echte server:
+1.500 L uit de tank, 1.980 flessen van 750 ml gevuld, 4 breuk.
+
+| Verwacht | Gemeten |
+| --- | --- |
+| tankboek afgeboekt | 1500 L, notitie "bottelverlies 15 L", tank daarna 0 L en leeg |
+| flessenvoorraad −1.984 | 3000 naar 1016, twee losse regels (−1980 verbruik, −4 breuk) |
+| bottelverlies 15 L (1%) | `bottelverlies_l: 15`, `gebotteld_l: 1485` |
+| accijnsvolume 1.485 L | `accijnsplichtig_volume_l: 1485` |
+
+Verder: ontoereikende voorraad → geboekt mét waarschuwing, niet geblokkeerd;
+botteling met een onbestaand flestype → **volledig teruggerold**, de tank hield
+zijn 400 L en er bleef geen bottelronde, voorraadrecord of tankboekregel
+achter. Alle testdata opgeruimd en `tanks-herbereken` gedraaid om de tankcaches
+weer gelijk te trekken.
+
+Schema-drift 0, tsc/eslint schoon, 191 unittests groen, 6/6 rooktests groen.
+
+## Bijvangst — rooktest 6 leunde op toevallige data
+
+Rooktest 6 controleert onder meer dat de Vandaag-widget zichtbaar is
+("verdwijnt de kop VANDAAG, dan is de signaallaag stuk"). Die viel deze sessie
+om, terwijl de signaallaag aantoonbaar werkte: er was simpelweg **niets meer te
+melden**. De twee resterende signalen (een SO₂-taak en een uitval-inzicht) waren
+op 26 juli met de hand genegeerd, de spuit-wachttijd was verlopen en de backup
+was vers.
+
+Eerst geverifieerd dát het aan de data lag en niet aan de code, door tijdelijk
+één `sensor_alerts`-record te plaatsen: de widget verscheen direct en de test
+werd groen. Daarna de test zelfvoorzienend gemaakt — hij zet nu zelf een
+signaal klaar, controleert dat het verschijnt, en ruimt het in een `finally`
+weer op (ook als de assertie faalt, zodat er nooit een testsignaal op het
+startscherm blijft staan). Een test die afgaat op wat er toevallig in de
+database staat, meet niet wat hij belooft.
+
+De twee bestaande "genegeerd"-registraties zijn ongemoeid gelaten.
+
+## Nog open na Blok C
+
+- **Blok D** — de accijnspagina zelf: `src/lib/accijns.ts` rekent nog op
+  UITSLAG (verkocht/eigen gebruik) in plaats van op gebotteld volume, en kent
+  de nieuwe categorieën nog niet. Het datamodel ligt er nu volledig klaar voor
+  (`accijnsplichtig_volume_l` en `accijns_categorie` per bottelronde,
+  `accijns_belastbaar_moment` als instelling); wat rest is het rekenwerk plus
+  de UI: per periode per categorie, verbruiksbelasting apart getoond, export,
+  en de prominente melding dat het belastbare moment botteling is.
+- **Blok E** — volle-flessenvoorraad uitfaseren, met behoud van
+  order→bottelronde-traceerbaarheid (NVWA). Raakt `/verkoop`, de agenttools en
+  de signaalproducenten die nu naar de oude voorraad verwijzen.
 - **Blok F** — beginvoorraad-flow (getelde stand als eerste mutatie) en
-  optioneel een volledige historie-import uit `Flessen_admin.xlsx`.
-- Signaal "flessen bijna op" via de bestaande signaallaag met instelbare
-  drempel per flestype (nu een vuistregel in de UI, zie Blok B hierboven).
+  optioneel een historie-import uit `Flessen_admin.xlsx`. De saldi uit die
+  Excel staan al als commentaar in het setup-script.
+- Signaal "flessen bijna op" via de bestaande signaallaag met een instelbare
+  drempel per flestype (nu nog een vaste vuistregel van 200 in de UI).
+- **Handmatig koppelen**: bottelronde `nxc17cp6rga88z7`, zie hierboven.
+- **VRAAG VOOR THOMAS** (staat nog open uit Blok A): welke sluiting hebben de
+  twee 375ml-flestypes? Die staat niet in `Flessen_admin.xlsx`.
+
+---
+

@@ -3,7 +3,7 @@
 // (pb_hooks/flessen.pb.js), zelfde reden als kelder-data.ts.
 
 import type { RecordModel } from "pocketbase";
-import type { Flestype, FlessenMutatie, FlessenMutatieType } from "./types";
+import type { AccijnsCategorie, Flestype, FlessenMutatie, FlessenMutatieType } from "./types";
 import { ensureOnline, getPb, haalLijst } from "./data";
 import { logAudit } from "./audit";
 
@@ -51,8 +51,14 @@ export interface FlestypeInput {
   actief?: boolean;
 }
 
-function omschrijvingVoor(input: FlestypeInput): string {
-  const liter = (input.inhoud_ml / 1000).toString().replace(".", ",");
+// Zelfde formattering als flestypeOmschrijving() in scripts/setup-pocketbase.mjs
+// (dat script mag niet uit de frontend-broncode importeren).
+export function omschrijvingVoor(input: {
+  kleur?: string;
+  sluiting?: string;
+  inhoud_ml: number;
+}): string {
+  const liter = String(input.inhoud_ml / 1000).replace(".", ",");
   return [input.kleur, input.sluiting, `${liter} L`].filter(Boolean).join(" ");
 }
 
@@ -179,4 +185,54 @@ export async function boekTelcorrectie(input: TelcorrectieInput): Promise<Flesse
   const pb = await pbOfFout();
   logAudit("aangemaakt", "flessen_mutaties", `telcorrectie · ${input.geteld_aantal}`);
   return await pb.send("/api/tappenmars/flessen-telcorrectie", { method: "POST", body: input });
+}
+
+// ============= Accijnscategorieën (Fase 15 Blok C/D) =============
+function accijnsCategorieFromPb(r: RecordModel): AccijnsCategorie {
+  return {
+    id: r.id,
+    naam: r["naam"],
+    tariefsleutel: r["tariefsleutel"],
+    heffing: r["heffing"],
+    mousserend: r["mousserend"] ?? false,
+    alcohol_bereik: r["alcohol_bereik"] ?? "",
+    volgorde: r["volgorde"] ?? null,
+    actief: r["actief"] ?? true,
+  };
+}
+
+export async function fetchAccijnsCategorieen(): Promise<AccijnsCategorie[]> {
+  return haalLijst("accijnscategorieën", [], async (pb) => {
+    const records = await pb.collection("accijns_categorieen").getFullList({
+      sort: "volgorde",
+      filter: pb.filter("actief = true"),
+    });
+    return records.map(accijnsCategorieFromPb);
+  });
+}
+
+/**
+ * Stelt een categorie VOOR op basis van alcoholpercentage en parelwijn.
+ * Bewust alleen een voorstel: de indeling "wijn" versus "overige gegiste
+ * drank" volgt uit de productiewijze, en dat kan de app niet weten — Thomas
+ * bevestigt bij het bottelen. Geeft null als er niets zinnigs te zeggen is
+ * (geen alcoholpercentage bekend).
+ */
+export function stelCategorieVoor(
+  categorieen: AccijnsCategorie[],
+  opties: { alcoholPct: number | null; parelwijn: boolean },
+): AccijnsCategorie | null {
+  if (opties.alcoholPct == null) return null;
+  const bereik = opties.alcoholPct <= 8.5 ? "laag" : "hoog";
+  // Voorstel gaat altijd naar "wijn" (het gangbare geval voor De Tappenmars);
+  // overige gegiste drank vergt een bewuste keuze van Thomas.
+  return (
+    categorieen.find(
+      (c) =>
+        c.heffing === "accijns" &&
+        c.mousserend === opties.parelwijn &&
+        c.alcohol_bereik === bereik &&
+        c.naam.startsWith("Wijn"),
+    ) ?? null
+  );
 }

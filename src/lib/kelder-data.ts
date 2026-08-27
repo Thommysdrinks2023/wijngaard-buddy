@@ -514,6 +514,16 @@ function bottelrondeFromPb(r: RecordModel): Bottelronde {
     botteldatum: r["botteldatum"],
     aantal_flessen: r["aantal_flessen"] ?? 0,
     flesinhoud_ml: r["flesinhoud_ml"] ?? 0,
+    // Fase 15 Blok C — 0 betekent hier "niet vastgelegd" (PocketBase geeft een
+    // leeg getalveld altijd als 0 terug, zie de valkuil bij analyses/
+    // gemeten_velden). Voor bottelrondes van vóór Fase 15 valt de UI daarom
+    // terug op aantal_flessen.
+    aantal_flessen_gevuld: r["aantal_flessen_gevuld"] || null,
+    flessen_breuk: r["flessen_breuk"] || null,
+    volume_uit_tank_l: r["volume_uit_tank_l"] || null,
+    accijnsplichtig_volume_l: r["accijnsplichtig_volume_l"] || null,
+    flestype_ref: r["flestype_ref"] || null,
+    accijns_categorie: r["accijns_categorie"] || null,
     flestype: r["flestype"] ?? "",
     kleur_fles: r["kleur_fles"] ?? "",
     parelwijn: r["parelwijn"] ?? false,
@@ -560,6 +570,13 @@ export interface BottelrondeInput {
   botteldatum: string;
   aantal_flessen: number;
   flesinhoud_ml: number;
+  // Fase 15 Blok C — het exacte aantal na bottelverlies, de breuk tijdens het
+  // bottelen, het volume dat uit de tank ging en de flestype-/accijnskoppeling.
+  aantal_flessen_gevuld?: number;
+  flessen_breuk?: number;
+  volume_uit_tank_l?: number;
+  flestype_ref?: string;
+  accijns_categorie?: string;
   flestype?: string;
   kleur_fles?: string;
   parelwijn?: boolean;
@@ -577,6 +594,8 @@ export interface BottelrondeResultaat {
   id: string;
   voorraad_id: string;
   waarschuwing: string;
+  bottelverlies_l?: number;
+  gebotteld_l?: number;
 }
 
 export async function createBottelrondeViaEndpoint(

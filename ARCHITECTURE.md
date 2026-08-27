@@ -362,15 +362,43 @@ leesactie rekent opnieuw op.
 een fysieke telling wordt de waarheid en de server boekt zelf het verschil
 t.o.v. de actuele (berekende) stand op het moment van boeken.
 
-**Nog niet gebouwd (zie WERKLOG.md, Fase 15 sessie 23-08-2026, "Nog open")**:
-de koppeling bottelronde→flestype (Blok C), het herbasen van de
-accijnsberekening op gebotteld volume i.p.v. uitslag — De Tappenmars draagt
-de volledige accijns af bij BOTTELING, niet bij uitslag (Blok D) — en het
-uitfaseren van de volle-flessenvoorraad met behoud van order→lot-
-traceerbaarheid (Blok E). Tot die blokken gebouwd zijn bestaan het oude
-volle-flessenmodel (§1.7) en dit nieuwe lege-flessenmodel naast elkaar, met
-een aparte route (`/voorraad/flessen`) i.p.v. de bestaande `/voorraad` te
-vervangen.
+**Botteling boekt de flessenvoorraad af (Blok C, gebouwd).** `bottelrondes`
+verwijst met `flestype_ref` naar een flestype; bij het bottelen boekt
+`voerBottelrondeUit()` binnen dezelfde transactie de tankboekregel, de
+bottelronde, het voorraadrecord, een `verbruik_botteling`-mutatie en (indien
+ingevuld) een `breuk`-mutatie. Alles-of-niets, zoals elke samengestelde
+boeking (§7.6). Een ontoereikende flessenvoorraad WAARSCHUWT maar blokkeert
+niet: de botteling heeft fysiek al plaatsgevonden, en tegenhouden zou de
+administratie verder uit de pas laten lopen in plaats van dichterbij.
+
+**Bottelverlies is expliciet.** `volume_uit_tank_l` (wat er uit de tank ging)
+staat naast het gebottelde volume (flessen x inhoud). Het verschil is het
+bottelverlies — het getal dat bij een controle verklaard moet worden. Vóór
+Fase 15 boekte de app precies het gebottelde volume van de tank af, waardoor
+het verlies als spookvoorraad in de tank achterbleef.
+
+**Accijns: het belastbare moment is BOTTELING.** De Tappenmars heeft een AGP
+maar draagt de volledige accijns af bij botteling, niet bij uitslag — zo staat
+het genoteerd bij de Douane. Gevolg voor het model: elke gevulde fles is een
+fles waarover al is afgedragen, en ná de botteling is er geen
+accijnsadministratie meer nodig. Per bottelronde legt de app daarom
+`accijnsplichtig_volume_l` en `accijns_categorie` vast. Het moment zelf is een
+INSTELLING (`regelgeving_instellingen.accijns_belastbaar_moment`, standaard
+`botteling`), niet hardgecodeerd: een wijziging in de vergunning mag geen
+verbouwing vereisen. `accijns_categorieen` is een beheerbare lijst met per
+categorie een tariefsleutel; tarieven staan NOOIT in code en de app toont een
+bedrag pas bij een geverifieerd tarief (waarde > 0 én laatst_gecontroleerd).
+De categorie wordt alleen VOORGESTELD (op alcoholpercentage en parelwijn) en
+door Thomas bevestigd: wijn versus overige gegiste drank volgt uit de
+productiewijze, en dat kan de app niet afleiden.
+
+**Nog niet gebouwd (zie WERKLOG.md, sessie 26-08-2026, "Nog open na Blok C")**:
+de accijnspagina zelf rekent nog op uitslag in plaats van op gebotteld volume
+(Blok D), en het uitfaseren van de volle-flessenvoorraad met behoud van
+order→lot-traceerbaarheid (Blok E) moet nog gebeuren. Tot dat laatste bestaan
+het oude volle-flessenmodel (§1.7) en dit lege-flessenmodel naast elkaar, met
+een aparte route (`/voorraad/flessen`) in plaats van een vervanging van
+`/voorraad`.
 
 ---
 

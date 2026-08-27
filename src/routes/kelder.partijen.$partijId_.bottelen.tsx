@@ -9,18 +9,20 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import {
   createBottelrondeViaEndpoint,
+  fetchAnalyses,
   fetchProducenten,
   fetchTanks,
   fetchVoedingswaardeBerekeningen,
 } from "@/lib/kelder-data";
 import { fetchPartijById } from "@/lib/partijen-data";
+import {
+  fetchAccijnsCategorieen,
+  fetchFlessenStanden,
+  fetchFlestypes,
+  stelCategorieVoor,
+} from "@/lib/flessen-data";
 import { foutenPerVeld, isGeldig, valideerBottelronde } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
-import {
-  VEELGEBRUIKTE_FLESINHOUD_ML,
-  VEELGEBRUIKTE_FLESKLEUREN,
-  VEELGEBRUIKTE_FLESTYPES,
-} from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { ErrorState } from "@/components/error-state";
 import { Loader2 } from "lucide-react";
@@ -45,6 +47,20 @@ function BottelenPage() {
     queryKey: ["voedingswaarde", partijId],
     queryFn: () => fetchVoedingswaardeBerekeningen(partijId),
   });
+  // Fase 15 Blok C — flestypes, hun huidige stand en de accijnscategorieën.
+  const flestypesQ = useQuery({
+    queryKey: ["flestypes", { alleenActief: true }],
+    queryFn: () => fetchFlestypes({ alleenActief: true }),
+  });
+  const standenQ = useQuery({ queryKey: ["flessen-standen"], queryFn: fetchFlessenStanden });
+  const categorieenQ = useQuery({
+    queryKey: ["accijns-categorieen"],
+    queryFn: fetchAccijnsCategorieen,
+  });
+  const analysesQ = useQuery({
+    queryKey: ["analyses", partijId],
+    queryFn: () => fetchAnalyses(partijId),
+  });
 
   const partij = partijQ.data;
   const tanksVanPartij = useMemo(
@@ -56,9 +72,10 @@ function BottelenPage() {
   const [botteldatum, setBotteldatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [vanTank, setVanTank] = useState("");
   const [aantalFlessen, setAantalFlessen] = useState("");
-  const [flesinhoudMl, setFlesinhoudMl] = useState("750");
-  const [flestype, setFlestype] = useState("");
-  const [kleurFles, setKleurFles] = useState("");
+  const [flessenBreuk, setFlessenBreuk] = useState("");
+  const [flestypeRef, setFlestypeRef] = useState("");
+  const [volumeUitTank, setVolumeUitTank] = useState("");
+  const [accijnsCategorie, setAccijnsCategorie] = useState("");
   const [parelwijn, setParelwijn] = useState(false);
   const [lotnummer, setLotnummer] = useState(() => partij?.lotnummer ?? "");
   const [voedingswaardeId, setVoedingswaardeId] = useState("");
@@ -72,9 +89,47 @@ function BottelenPage() {
   }, [partij]);
 
   const gekozenTank = tanksVanPartij.find((t) => t.id === vanTank);
-  const volumeL =
-    aantalFlessen && flesinhoudMl ? (Number(aantalFlessen) * Number(flesinhoudMl)) / 1000 : 0;
-  const resterendNaTank = gekozenTank ? gekozenTank.huidig_volume_l - volumeL : null;
+  const gekozenFlestype = (flestypesQ.data ?? []).find((t) => t.id === flestypeRef);
+  const flesinhoudMl = gekozenFlestype?.inhoud_ml ?? 0;
+
+  // Bij het kiezen van een tank het tankvolume voorstellen als "volume uit
+  // tank": een bottelronde leegt normaal de tank. Blijft aanpasbaar — soms
+  // wordt maar een deel gebotteld.
+  const kiesTank = (id: string) => {
+    setVanTank(id);
+    const tank = tanksVanPartij.find((t) => t.id === id);
+    if (tank && !volumeUitTank) setVolumeUitTank(String(tank.huidig_volume_l));
+  };
+
+  // Alcoholpercentage uit de meest recente analyse — alleen om een categorie
+  // VOOR te stellen, nooit om er zelf een te kiezen (productiewijze bepaalt
+  // wijn vs. overige gegiste drank, en dat weet de app niet).
+  const laatsteAlcohol = useMemo(() => {
+    const metAlcohol = (analysesQ.data ?? []).find(
+      (a) => a.alcohol_pct != null && a.alcohol_pct > 0,
+    );
+    return metAlcohol?.alcohol_pct ?? null;
+  }, [analysesQ.data]);
+
+  const voorstelCategorie = useMemo(
+    () =>
+      stelCategorieVoor(categorieenQ.data ?? [], {
+        alcoholPct: laatsteAlcohol,
+        parelwijn,
+      }),
+    [categorieenQ.data, laatsteAlcohol, parelwijn],
+  );
+
+  const gebotteldL =
+    aantalFlessen && flesinhoudMl ? (Number(aantalFlessen) * flesinhoudMl) / 1000 : 0;
+  const uitTankL = volumeUitTank ? Number(volumeUitTank) : 0;
+  const bottelverliesL = uitTankL > 0 && gebotteldL > 0 ? uitTankL - gebotteldL : 0;
+  const bottelverliesPct = uitTankL > 0 ? (bottelverliesL / uitTankL) * 100 : 0;
+  const resterendNaTank = gekozenTank ? gekozenTank.huidig_volume_l - uitTankL : null;
+
+  const flessenNodig = Number(aantalFlessen || 0) + Number(flessenBreuk || 0);
+  const flessenStand = flestypeRef ? (standenQ.data?.[flestypeRef] ?? 0) : null;
+  const flessenTekort = flessenStand != null && flessenNodig > flessenStand;
 
   const m = useMutation({
     mutationFn: () =>
@@ -84,9 +139,16 @@ function BottelenPage() {
         van_tank: vanTank,
         botteldatum,
         aantal_flessen: Number(aantalFlessen),
-        flesinhoud_ml: Number(flesinhoudMl),
-        flestype,
-        kleur_fles: kleurFles,
+        aantal_flessen_gevuld: Number(aantalFlessen),
+        flessen_breuk: flessenBreuk ? Number(flessenBreuk) : undefined,
+        volume_uit_tank_l: uitTankL,
+        flesinhoud_ml: flesinhoudMl,
+        flestype_ref: flestypeRef || undefined,
+        accijns_categorie: accijnsCategorie || undefined,
+        // De oude vrije-tekstvelden blijven gevuld met wat het flestype zegt,
+        // zodat schermen die er nog op lezen niet leeglopen.
+        flestype: gekozenFlestype?.vorm ?? "",
+        kleur_fles: gekozenFlestype?.kleur ?? "",
         parelwijn,
         lotnummer,
         voedingswaarde_berekening: voedingswaardeId || null,
@@ -95,7 +157,7 @@ function BottelenPage() {
       }),
     onSuccess: (r) => {
       toast.success("Bottelronde vastgelegd ✓");
-      if (r.waarschuwing) toast.warning(r.waarschuwing);
+      if (r.waarschuwing) toast.warning(r.waarschuwing, { duration: 10_000 });
       navigate({ to: "/voorraad/$voorraadId", params: { voorraadId: r.voorraad_id } });
     },
     onError: (e: Error) => {
@@ -110,7 +172,7 @@ function BottelenPage() {
       van_tank: vanTank,
       botteldatum,
       aantal_flessen: aantalFlessen ? Number(aantalFlessen) : undefined,
-      flesinhoud_ml: flesinhoudMl ? Number(flesinhoudMl) : undefined,
+      flesinhoud_ml: flesinhoudMl || undefined,
       ingevoerd_door: invoerder,
     });
     if (!isGeldig(validatie)) {
@@ -118,9 +180,25 @@ function BottelenPage() {
       toast.error(validatie[0].bericht);
       return;
     }
+    if (!flestypeRef) {
+      setFouten({ flestype_ref: "Kies een flestype" });
+      toast.error("Kies een flestype — daarmee wordt de flessenvoorraad afgeboekt.");
+      return;
+    }
+    if (uitTankL <= 0) {
+      setFouten({ volume_uit_tank_l: "Vul het volume in dat uit de tank gaat" });
+      toast.error("Vul in hoeveel liter er uit de tank gaat.");
+      return;
+    }
+    if (bottelverliesL < 0) {
+      toast.error(
+        `Er kan niet meer gebotteld worden (${gebotteldL.toFixed(1)} L) dan er uit de tank gaat (${uitTankL.toFixed(1)} L).`,
+      );
+      return;
+    }
     if (resterendNaTank != null && resterendNaTank < 0) {
       toast.error(
-        `Tank ${gekozenTank?.code} heeft maar ${gekozenTank?.huidig_volume_l} L — dit bottelt ${volumeL.toFixed(1)} L, dat past niet.`,
+        `Tank ${gekozenTank?.code} heeft maar ${gekozenTank?.huidig_volume_l} L — je boekt ${uitTankL.toFixed(1)} L af, dat past niet.`,
       );
       return;
     }
@@ -169,7 +247,7 @@ function BottelenPage() {
                   <span className="mb-1.5 block text-sm font-medium">Van tank</span>
                   <select
                     value={vanTank}
-                    onChange={(e) => setVanTank(e.target.value)}
+                    onChange={(e) => kiesTank(e.target.value)}
                     className={`${veldClass} ${fouten.van_tank ? "border-destructive" : ""}`}
                   >
                     <option value="">Kies tank…</option>
@@ -190,16 +268,41 @@ function BottelenPage() {
                 </label>
               </div>
 
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Flestype</span>
+                <select
+                  value={flestypeRef}
+                  onChange={(e) => setFlestypeRef(e.target.value)}
+                  className={`${veldClass} ${fouten.flestype_ref ? "border-destructive" : ""}`}
+                >
+                  <option value="">Kies flestype…</option>
+                  {(flestypesQ.data ?? []).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.omschrijving || `${t.vorm} ${t.inhoud_ml} ml`} ·{" "}
+                      {standenQ.data?.[t.id] ?? 0} op voorraad
+                    </option>
+                  ))}
+                </select>
+                {fouten.flestype_ref && (
+                  <span className="mt-1 block text-sm text-destructive">{fouten.flestype_ref}</span>
+                )}
+                {(flestypesQ.data ?? []).length === 0 && !flestypesQ.isLoading && (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Nog geen flestypes — voeg ze toe onder Instellingen → Flestypes.
+                  </span>
+                )}
+              </label>
+
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium">Aantal flessen</span>
+                  <span className="mb-1.5 block text-sm font-medium">Flessen gevuld</span>
                   <input
                     type="number"
                     inputMode="numeric"
                     value={aantalFlessen}
                     onChange={(e) => setAantalFlessen(e.target.value)}
                     className={`${veldClass} ${fouten.aantal_flessen ? "border-destructive" : ""}`}
-                    placeholder="bijv. 300"
+                    placeholder="bijv. 1980"
                   />
                   {fouten.aantal_flessen && (
                     <span className="mt-1 block text-sm text-destructive">
@@ -208,69 +311,95 @@ function BottelenPage() {
                   )}
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium">Flesinhoud (ml)</span>
+                  <span className="mb-1.5 block text-sm font-medium">Breuk (optioneel)</span>
                   <input
                     type="number"
                     inputMode="numeric"
-                    list="flesinhoud-suggesties"
-                    value={flesinhoudMl}
-                    onChange={(e) => setFlesinhoudMl(e.target.value)}
-                    className={`${veldClass} ${fouten.flesinhoud_ml ? "border-destructive" : ""}`}
+                    value={flessenBreuk}
+                    onChange={(e) => setFlessenBreuk(e.target.value)}
+                    className={veldClass}
+                    placeholder="0"
                   />
-                  <datalist id="flesinhoud-suggesties">
-                    {VEELGEBRUIKTE_FLESINHOUD_ML.map((ml) => (
-                      <option key={ml} value={ml} />
-                    ))}
-                  </datalist>
-                  {fouten.flesinhoud_ml && (
-                    <span className="mt-1 block text-sm text-destructive">
-                      {fouten.flesinhoud_ml}
-                    </span>
-                  )}
                 </label>
               </div>
 
-              {volumeL > 0 && (
-                <p className="rounded-lg bg-primary-soft px-3 py-2 text-sm">
-                  Dit is {volumeL.toFixed(1)} L wijn
-                  {gekozenTank
-                    ? ` — tank ${gekozenTank.code} heeft nu ${gekozenTank.huidig_volume_l} L`
-                    : ""}
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Volume uit de tank (L)</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  value={volumeUitTank}
+                  onChange={(e) => setVolumeUitTank(e.target.value)}
+                  className={`${veldClass} ${fouten.volume_uit_tank_l ? "border-destructive" : ""}`}
+                  placeholder="bijv. 1500"
+                />
+                {fouten.volume_uit_tank_l ? (
+                  <span className="mt-1 block text-sm text-destructive">
+                    {fouten.volume_uit_tank_l}
+                  </span>
+                ) : (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Wat er werkelijk uit de tank gaat. Het verschil met wat er in de flessen komt is
+                    het bottelverlies.
+                  </span>
+                )}
+              </label>
+
+              {gebotteldL > 0 && uitTankL > 0 && (
+                <div className="rounded-lg bg-primary-soft px-3 py-2 text-sm">
+                  <p>
+                    In de flessen: <strong>{gebotteldL.toFixed(1)} L</strong> · uit de tank:{" "}
+                    <strong>{uitTankL.toFixed(1)} L</strong>
+                  </p>
+                  <p className={bottelverliesL < 0 ? "text-destructive" : ""}>
+                    Bottelverlies: <strong>{bottelverliesL.toFixed(1)} L</strong> (
+                    {bottelverliesPct.toFixed(1)}%)
+                    {bottelverliesL < 0 && " — dat kan niet, controleer de aantallen."}
+                  </p>
+                </div>
+              )}
+
+              {flessenTekort && (
+                <p
+                  role="status"
+                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                >
+                  De flessenvoorraad toont <strong>{flessenStand}</strong> stuks, maar je hebt er{" "}
+                  <strong>{flessenNodig}</strong> nodig. Dit blokkeert het bottelen niet — de
+                  fysieke werkelijkheid wint — maar boek daarna een telcorrectie op dit flestype.
                 </p>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium">Flestype</span>
-                  <input
-                    list="flestype-suggesties"
-                    value={flestype}
-                    onChange={(e) => setFlestype(e.target.value)}
-                    className={veldClass}
-                    placeholder="bijv. Bordeaux-fles"
-                  />
-                  <datalist id="flestype-suggesties">
-                    {VEELGEBRUIKTE_FLESTYPES.map((t) => (
-                      <option key={t} value={t} />
-                    ))}
-                  </datalist>
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium">Kleur fles</span>
-                  <input
-                    list="fleskleur-suggesties"
-                    value={kleurFles}
-                    onChange={(e) => setKleurFles(e.target.value)}
-                    className={veldClass}
-                    placeholder="bijv. Antiek groen"
-                  />
-                  <datalist id="fleskleur-suggesties">
-                    {VEELGEBRUIKTE_FLESKLEUREN.map((k) => (
-                      <option key={k} value={k} />
-                    ))}
-                  </datalist>
-                </label>
-              </div>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Accijnscategorie</span>
+                <select
+                  value={accijnsCategorie}
+                  onChange={(e) => setAccijnsCategorie(e.target.value)}
+                  className={veldClass}
+                >
+                  <option value="">Kies categorie…</option>
+                  {(categorieenQ.data ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.naam}
+                    </option>
+                  ))}
+                </select>
+                {voorstelCategorie && accijnsCategorie !== voorstelCategorie.id && (
+                  <button
+                    type="button"
+                    onClick={() => setAccijnsCategorie(voorstelCategorie.id)}
+                    className="mt-1 text-xs text-primary underline-offset-2 hover:underline"
+                  >
+                    Voorstel op basis van {laatsteAlcohol}% vol: {voorstelCategorie.naam} —
+                    gebruiken
+                  </button>
+                )}
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Wijn of overige gegiste drank hangt af van de productiewijze, niet alleen van het
+                  percentage — bevestig zelf.
+                </span>
+              </label>
 
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input
@@ -365,7 +494,7 @@ function BottelenPage() {
                 Controleer vóór het boeken
               </h2>
               <p className="text-sm">
-                Er wordt <strong>{volumeL.toFixed(1)} L</strong> afgeboekt uit{" "}
+                Er wordt <strong>{uitTankL.toFixed(1)} L</strong> afgeboekt uit{" "}
                 <strong>tank {gekozenTank.code}</strong> (nu {gekozenTank.huidig_volume_l} L).
               </p>
               <p className="text-sm">
@@ -378,6 +507,38 @@ function BottelenPage() {
               <p className="text-sm">
                 Er komt een voorraadrecord van <strong>{aantalFlessen} flessen</strong> ×{" "}
                 {flesinhoudMl} ml bij ({partij?.naam} {partij?.jaargang}).
+              </p>
+
+              {/* Fase 15 Blok C — het bottelverlies is het getal dat bij een
+                  controle verklaard moet worden, dus het staat hier expliciet
+                  en niet verstopt in een detailscherm. */}
+              <p className="rounded-lg bg-muted/60 px-3 py-2 text-sm">
+                Bottelverlies: <strong>{bottelverliesL.toFixed(1)} L</strong> (
+                {bottelverliesPct.toFixed(1)}%) — {uitTankL.toFixed(1)} L uit de tank versus{" "}
+                {gebotteldL.toFixed(1)} L in de flessen.
+              </p>
+
+              <p className="text-sm">
+                Flessenvoorraad <strong>{gekozenFlestype?.omschrijving}</strong>: −{flessenNodig}
+                {Number(flessenBreuk || 0) > 0
+                  ? ` (${aantalFlessen} gevuld + ${flessenBreuk} breuk)`
+                  : ""}
+                {flessenStand != null
+                  ? ` · van ${flessenStand} naar ${flessenStand - flessenNodig}`
+                  : ""}
+                .
+              </p>
+
+              <p className="text-sm">
+                Accijnsplichtig volume: <strong>{gebotteldL.toFixed(1)} L</strong>
+                {accijnsCategorie
+                  ? ` · ${(categorieenQ.data ?? []).find((c) => c.id === accijnsCategorie)?.naam}`
+                  : " · geen categorie gekozen"}
+                .
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Het belastbare moment is botteling: over elke gevulde fles is na deze boeking
+                accijns afgedragen. Breuk telt niet mee — die flessen komen nooit in de handel.
               </p>
             </section>
             <div className="flex gap-2">

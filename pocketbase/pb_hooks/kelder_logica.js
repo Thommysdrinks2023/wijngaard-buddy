@@ -222,11 +222,41 @@ function voerBoekingUit(txApp, b) {
 function voerBottelrondeUit(txApp, b) {
   if (!b.partij) return { fout: "partij is verplicht" };
   if (!b.van_tank) return { fout: "van_tank is verplicht" };
-  const aantalFlessen = Number(b.aantal_flessen);
+
+  // Fase 15 Blok C — `aantal_flessen_gevuld` is het exacte aantal na
+  // bottelverlies en is vanaf nu leidend. `aantal_flessen` blijft de
+  // terugval: de agent-actieflow (agent_uitvoering.js) en bestaande
+  // integraties sturen nog het oude veld, en die moeten blijven werken.
+  const aantalFlessen = Number(
+    b.aantal_flessen_gevuld != null && b.aantal_flessen_gevuld !== ""
+      ? b.aantal_flessen_gevuld
+      : b.aantal_flessen,
+  );
   const flesinhoudMl = Number(b.flesinhoud_ml);
   if (!aantalFlessen || aantalFlessen <= 0) return { fout: "aantal_flessen moet positief zijn" };
   if (!flesinhoudMl || flesinhoudMl <= 0) return { fout: "flesinhoud_ml moet positief zijn" };
-  const volumeL = (aantalFlessen * flesinhoudMl) / 1000;
+  const breuk = Number(b.flessen_breuk || 0);
+  if (breuk < 0) return { fout: "flessen_breuk kan niet negatief zijn" };
+
+  // Het gebottelde volume (wat in de flessen zit).
+  const gebotteldL = (aantalFlessen * flesinhoudMl) / 1000;
+  // Het volume dat werkelijk uit de tank ging. Zonder opgave is dat gelijk
+  // aan het gebottelde volume (geen verlies geregistreerd) — het oude
+  // gedrag, zodat bestaande aanroepen ongewijzigd blijven werken.
+  const volumeUitTankL =
+    b.volume_uit_tank_l != null && b.volume_uit_tank_l !== ""
+      ? Number(b.volume_uit_tank_l)
+      : gebotteldL;
+  if (!(volumeUitTankL > 0)) return { fout: "volume_uit_tank_l moet positief zijn" };
+  if (volumeUitTankL < gebotteldL)
+    return {
+      fout:
+        "Er kan niet meer gebotteld zijn dan er uit de tank ging: " +
+        Math.round(gebotteldL * 100) / 100 +
+        " L in flessen versus " +
+        volumeUitTankL +
+        " L uit de tank.",
+    };
 
   const resultaat = voerBoekingUit(txApp, {
     datum: b.botteldatum,
@@ -234,9 +264,13 @@ function voerBottelrondeUit(txApp, b) {
     producent: b.producent,
     actie: "botteling",
     van_tank: b.van_tank,
-    volume_l: volumeL,
+    volume_l: volumeUitTankL,
     verantwoordelijke: b.ingevoerd_door || "onbekend",
-    notitie: `Bottelronde: ${aantalFlessen} x ${flesinhoudMl} ml`,
+    notitie:
+      `Bottelronde: ${aantalFlessen} x ${flesinhoudMl} ml` +
+      (volumeUitTankL > gebotteldL
+        ? ` (bottelverlies ${Math.round((volumeUitTankL - gebotteldL) * 100) / 100} L)`
+        : ""),
     vineyard_id: b.vineyard_id,
   });
   if (resultaat.fout) return { fout: resultaat.fout };
@@ -250,7 +284,17 @@ function voerBottelrondeUit(txApp, b) {
   bottelronde.set("van_tank", b.van_tank);
   bottelronde.set("botteldatum", b.botteldatum);
   bottelronde.set("aantal_flessen", aantalFlessen);
+  bottelronde.set("aantal_flessen_gevuld", aantalFlessen);
+  bottelronde.set("flessen_breuk", breuk);
+  bottelronde.set("volume_uit_tank_l", Math.round(volumeUitTankL * 100) / 100);
+  // Accijnsplichtig volume = wat er in de flessen zit. Het belastbare moment
+  // is BOTTELING (regelgeving_instellingen: accijns_belastbaar_moment), dus
+  // dit getal is meteen definitief: over elke gevulde fles is afgedragen.
+  // Breuk telt niet mee — die flessen komen nooit in de handel.
+  bottelronde.set("accijnsplichtig_volume_l", Math.round(gebotteldL * 100) / 100);
+  if (b.accijns_categorie) bottelronde.set("accijns_categorie", b.accijns_categorie);
   bottelronde.set("flesinhoud_ml", flesinhoudMl);
+  if (b.flestype_ref) bottelronde.set("flestype_ref", b.flestype_ref);
   bottelronde.set("flestype", b.flestype || "");
   bottelronde.set("kleur_fles", b.kleur_fles || "");
   bottelronde.set("parelwijn", !!b.parelwijn);
@@ -276,10 +320,68 @@ function voerBottelrondeUit(txApp, b) {
   voorraad.set("vineyard_id", b.vineyard_id || "");
   txApp.save(voorraad);
 
+  // Fase 15 Blok C — de lege-flessenvoorraad afboeken, binnen DEZELFDE
+  // transactie: faalt dit, dan rollen de tankboekregel, de bottelronde en
+  // het voorraadrecord allemaal mee terug. Geen halve administratie.
+  //
+  // Alleen als er een flestype gekoppeld is: bestaande aanroepen (agent,
+  // oude clients) sturen dat veld niet en mogen niet gaan falen op een
+  // voorraad die ze niet kennen.
+  let voorraadWaarschuwing = "";
+  if (b.flestype_ref) {
+    const flessen = require(`${__hooks}/flessen_logica.js`);
+
+    // Waarschuwen, NIET blokkeren (besluit vooraf: de fysieke werkelijkheid
+    // wint). Als de administratie minder flessen kent dan er zijn gevuld,
+    // klopt de administratie niet — maar de botteling heeft al
+    // plaatsgevonden, dus die tegenhouden helpt niemand.
+    const standVoor = flessen.huidigeStand(txApp, b.flestype_ref);
+    const nodig = aantalFlessen + breuk;
+    if (standVoor < nodig) {
+      voorraadWaarschuwing =
+        "Let op: de flessenvoorraad toont " +
+        standVoor +
+        " stuks, maar er zijn er " +
+        nodig +
+        " nodig. De stand komt op " +
+        (standVoor - nodig) +
+        " — boek een telcorrectie zodra je de werkelijke stand hebt geteld.";
+    }
+
+    const verbruik = flessen.voerMutatieUit(txApp, {
+      flestype: b.flestype_ref,
+      mutatie_type: "verbruik_botteling",
+      aantal: -aantalFlessen,
+      datum: b.botteldatum,
+      bottelronde: bottelronde.id,
+      toelichting: `Botteling ${partijRecord.getString("naam")} (${aantalFlessen} flessen)`,
+      ingevoerd_door: b.ingevoerd_door,
+      vineyard_id: b.vineyard_id,
+    });
+    if (verbruik.fout) return { fout: verbruik.fout };
+
+    if (breuk > 0) {
+      const breukRegel = flessen.voerMutatieUit(txApp, {
+        flestype: b.flestype_ref,
+        mutatie_type: "breuk",
+        aantal: -breuk,
+        datum: b.botteldatum,
+        bottelronde: bottelronde.id,
+        toelichting: `Breuk tijdens botteling ${partijRecord.getString("naam")}`,
+        ingevoerd_door: b.ingevoerd_door,
+        vineyard_id: b.vineyard_id,
+      });
+      if (breukRegel.fout) return { fout: breukRegel.fout };
+    }
+  }
+
+  const waarschuwingen = [resultaat.waarschuwing || "", voorraadWaarschuwing].filter(Boolean);
   return {
-    waarschuwing: resultaat.waarschuwing || "",
+    waarschuwing: waarschuwingen.join(" "),
     bottelrondeId: bottelronde.id,
     voorraadId: voorraad.id,
+    bottelverliesL: Math.round((volumeUitTankL - gebotteldL) * 100) / 100,
+    gebotteldL: Math.round(gebotteldL * 100) / 100,
   };
 }
 
