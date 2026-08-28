@@ -4,8 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { fetchTanks } from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
-import { fetchProducenten } from "@/lib/kelder-data";
-import { PARTIJ_STATUSSEN, TANK_STATUSSEN, type Partij, type Tank } from "@/lib/types";
+import { fetchEigenaars } from "@/lib/kelder-data";
+import {
+  PARTIJ_STATUSSEN,
+  TANK_STATUSSEN,
+  type Partij,
+  type Tank,
+  eigenaarLabel,
+} from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -36,8 +42,8 @@ function tankStatusInfo(status: Tank["status"]) {
 function KelderDashboard() {
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
-  const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
-  const [producentFilter, setProducentFilter] = useState("");
+  const eigenaarsQ = useQuery({ queryKey: ["eigenaars"], queryFn: fetchEigenaars });
+  const [eigenaarFilter, setEigenaarFilter] = useState("");
 
   // Fase 13 Blok F — standaard alleen de gevulde tanks.
   //
@@ -74,9 +80,9 @@ function KelderDashboard() {
         (p) =>
           p.status !== "afgevoerd" &&
           p.status !== "gebotteld" &&
-          (!producentFilter || p.producent === producentFilter),
+          (!eigenaarFilter || p.eigenaar === eigenaarFilter),
       ),
-    [partijenQ.data, producentFilter],
+    [partijenQ.data, eigenaarFilter],
   );
 
   const tanksInGebruik = useMemo(
@@ -211,16 +217,16 @@ function KelderDashboard() {
               Alle partijen
             </Link>
           </div>
-          {(producentenQ.data ?? []).length > 1 && (
+          {(eigenaarsQ.data ?? []).length > 1 && (
             <select
-              value={producentFilter}
-              onChange={(e) => setProducentFilter(e.target.value)}
+              value={eigenaarFilter}
+              onChange={(e) => setEigenaarFilter(e.target.value)}
               className="mb-2 h-10 w-full rounded-xl border border-input bg-card px-3 text-sm"
             >
-              <option value="">Alle producenten</option>
-              {(producentenQ.data ?? []).map((p) => (
+              <option value="">Alle eigenaars</option>
+              {(eigenaarsQ.data ?? []).map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.naam}
+                  {eigenaarLabel(p)}
                 </option>
               ))}
             </select>

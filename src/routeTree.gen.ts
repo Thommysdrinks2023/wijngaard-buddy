@@ -48,6 +48,7 @@ import { Route as KelderLogboekRouteImport } from './routes/kelder.logboek'
 import { Route as KelderJaaroverzichtRouteImport } from './routes/kelder.jaaroverzicht'
 import { Route as KelderAccijnsRouteImport } from './routes/kelder.accijns'
 import { Route as InstellingenFlestypesRouteImport } from './routes/instellingen_.flestypes'
+import { Route as InstellingenEigenaarsRouteImport } from './routes/instellingen_.eigenaars'
 import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
 import { Route as KelderTanksIndexRouteImport } from './routes/kelder.tanks.index'
 import { Route as KelderPartijenIndexRouteImport } from './routes/kelder.partijen.index'
@@ -258,6 +259,11 @@ const InstellingenFlestypesRoute = InstellingenFlestypesRouteImport.update({
   path: '/instellingen/flestypes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InstellingenEigenaarsRoute = InstellingenEigenaarsRouteImport.update({
+  id: '/instellingen_/eigenaars',
+  path: '/instellingen/eigenaars',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -358,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/instellingen/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen/flestypes': typeof InstellingenFlestypesRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
@@ -411,6 +418,7 @@ export interface FileRoutesByTo {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/instellingen/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen/flestypes': typeof InstellingenFlestypesRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
@@ -466,6 +474,7 @@ export interface FileRoutesById {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/instellingen_/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen_/flestypes': typeof InstellingenFlestypesRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
@@ -523,6 +532,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/instellingen/eigenaars'
     | '/instellingen/flestypes'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
@@ -576,6 +586,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/instellingen/eigenaars'
     | '/instellingen/flestypes'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
@@ -630,6 +641,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/instellingen_/eigenaars'
     | '/instellingen_/flestypes'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
@@ -686,6 +698,7 @@ export interface RootRouteChildren {
   WerkrapportRoute: typeof WerkrapportRoute
   WijngaardRoute: typeof WijngaardRoute
   ZoekenRoute: typeof ZoekenRoute
+  InstellingenEigenaarsRoute: typeof InstellingenEigenaarsRoute
   InstellingenFlestypesRoute: typeof InstellingenFlestypesRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
   SteekproevenBeheerRoute: typeof SteekproevenBeheerRoute
@@ -971,6 +984,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InstellingenFlestypesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/instellingen_/eigenaars': {
+      id: '/instellingen_/eigenaars'
+      path: '/instellingen/eigenaars'
+      fullPath: '/instellingen/eigenaars'
+      preLoaderRoute: typeof InstellingenEigenaarsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rij/$rijId/': {
       id: '/rij/$rijId/'
       path: '/'
@@ -1167,6 +1187,7 @@ const rootRouteChildren: RootRouteChildren = {
   WerkrapportRoute: WerkrapportRoute,
   WijngaardRoute: WijngaardRoute,
   ZoekenRoute: ZoekenRoute,
+  InstellingenEigenaarsRoute: InstellingenEigenaarsRoute,
   InstellingenFlestypesRoute: InstellingenFlestypesRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
   SteekproevenBeheerRoute: SteekproevenBeheerRoute,

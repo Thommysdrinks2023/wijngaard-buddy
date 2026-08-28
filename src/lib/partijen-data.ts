@@ -17,7 +17,7 @@ function partijFromPb(r: RecordModel): Partij {
     samenstelling: r["samenstelling"] ?? "",
     start_volume_l: r["start_volume_l"] ?? null,
     notitie: r["notitie"] ?? "",
-    producent: r["producent"] || null,
+    eigenaar: r["eigenaar"] || null,
     opdracht_type: r["opdracht_type"] || null,
     ouder_partij: r["ouder_partij"] || null,
     lotnummer: r["lotnummer"] ?? "",
@@ -47,7 +47,7 @@ function partijFromPb(r: RecordModel): Partij {
 export async function fetchPartijen(): Promise<Partij[]> {
   const pb = getPb();
   if (!pb) return [];
-  // Zie kelder-data.ts (fetchProducenten/fetchTanks): zonder deze check gaf
+  // Zie kelder-data.ts (fetchEigenaars/fetchTanks): zonder deze check gaf
   // een niet-ingelogde sessie hier stil een lege lijst terug in plaats van
   // een herkenbare fout.
   if (!isIngelogd()) throw new Error("Log opnieuw in om partijen te kunnen laden.");
@@ -87,7 +87,7 @@ export interface PartijInput {
   samenstelling?: string;
   start_volume_l?: number | null;
   notitie?: string;
-  producent?: string | null;
+  eigenaar?: string | null;
   opdracht_type?: OpdrachtType | null;
   lotnummer?: string;
   pers_datum?: string;

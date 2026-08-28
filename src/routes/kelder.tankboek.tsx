@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
-import { fetchProducenten, fetchTankboek, fetchTanks } from "@/lib/kelder-data";
+import { fetchEigenaars, fetchTankboek, fetchTanks } from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { exporteerCsv } from "@/lib/csv-export";
-import { TANKBOEK_ACTIES } from "@/lib/types";
+import { TANKBOEK_ACTIES, eigenaarLabel } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -25,20 +25,20 @@ export const Route = createFileRoute("/kelder/tankboek")({
 function TankboekPage() {
   const [tankFilter, setTankFilter] = useState("");
   const [partijFilter, setPartijFilter] = useState("");
-  const [producentFilter, setProducentFilter] = useState("");
+  const [eigenaarFilter, setEigenaarFilter] = useState("");
   const [vanaf, setVanaf] = useState("");
   const [tot, setTot] = useState("");
 
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
-  const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
+  const eigenaarsQ = useQuery({ queryKey: ["eigenaars"], queryFn: fetchEigenaars });
   const tankboekQ = useQuery({
-    queryKey: ["tankboek", { tankFilter, partijFilter, producentFilter, vanaf, tot }],
+    queryKey: ["tankboek", { tankFilter, partijFilter, eigenaarFilter, vanaf, tot }],
     queryFn: () =>
       fetchTankboek({
         tank: tankFilter || undefined,
         partij: partijFilter || undefined,
-        producent: producentFilter || undefined,
+        eigenaar: eigenaarFilter || undefined,
         vanaf: vanaf || undefined,
         tot: tot || undefined,
       }),
@@ -54,11 +54,11 @@ function TankboekPage() {
     partijenQ.data?.forEach((p) => m.set(p.id, p.naam));
     return m;
   }, [partijenQ.data]);
-  const producentNaam = useMemo(() => {
+  const eigenaarNaam = useMemo(() => {
     const m = new Map<string, string>();
-    producentenQ.data?.forEach((p) => m.set(p.id, p.naam));
+    eigenaarsQ.data?.forEach((p) => m.set(p.id, eigenaarLabel(p)));
     return m;
-  }, [producentenQ.data]);
+  }, [eigenaarsQ.data]);
 
   const veldClass = "h-10 w-full rounded-xl border border-input bg-card px-2.5 text-sm";
 
@@ -84,7 +84,7 @@ function TankboekPage() {
                     "Tijd",
                     "Actie",
                     "Partij",
-                    "Producent",
+                    "Eigenaar",
                     "Van",
                     "Naar",
                     "Liters",
@@ -98,7 +98,7 @@ function TankboekPage() {
                     r.tijd ?? "",
                     TANKBOEK_ACTIES.find((a) => a.value === r.actie)?.label ?? r.actie,
                     partijNaam.get(r.partij) ?? "",
-                    r.producent ? (producentNaam.get(r.producent) ?? "") : "",
+                    r.eigenaar ? (eigenaarNaam.get(r.eigenaar) ?? "") : "",
                     r.van_tank ? (tankCode.get(r.van_tank) ?? "") : "",
                     r.naar_tank ? (tankCode.get(r.naar_tank) ?? "") : "",
                     r.volume_l,
@@ -150,14 +150,14 @@ function TankboekPage() {
             ))}
           </select>
           <select
-            value={producentFilter}
-            onChange={(e) => setProducentFilter(e.target.value)}
+            value={eigenaarFilter}
+            onChange={(e) => setEigenaarFilter(e.target.value)}
             className={veldClass}
           >
-            <option value="">Alle producenten</option>
-            {(producentenQ.data ?? []).map((p) => (
+            <option value="">Alle eigenaars</option>
+            {(eigenaarsQ.data ?? []).map((p) => (
               <option key={p.id} value={p.id}>
-                {p.naam}
+                {eigenaarLabel(p)}
               </option>
             ))}
           </select>
@@ -180,7 +180,7 @@ function TankboekPage() {
             onClick={() => {
               setTankFilter("");
               setPartijFilter("");
-              setProducentFilter("");
+              setEigenaarFilter("");
               setVanaf("");
               setTot("");
             }}
@@ -234,9 +234,9 @@ function TankboekPage() {
                       </td>
                       <td className="px-2 py-2">
                         {partijNaam.get(r.partij) ?? "…"}
-                        {r.producent ? (
+                        {r.eigenaar ? (
                           <span className="block text-xs text-muted-foreground">
-                            {producentNaam.get(r.producent) ?? ""}
+                            {eigenaarNaam.get(r.eigenaar) ?? ""}
                           </span>
                         ) : null}
                       </td>

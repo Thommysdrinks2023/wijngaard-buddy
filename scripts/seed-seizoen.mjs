@@ -170,8 +170,8 @@ async function seed() {
   if (rijen.length === 0)
     throw new Error("Geen rijen gevonden — draai eerst setup-pocketbase.mjs.");
   const tanks = (await alleRecords("tanks")).filter((t) => t.capaciteit_l > 0);
-  const producenten = await alleRecords("producenten");
-  const producent = producenten[0]?.id || "";
+  const eigenaars = await alleRecords("eigenaars");
+  const eigenaar = eigenaars[0]?.id || "";
   console.log(`  basis: ${rijen.length} rijen, ${tanks.length} bruikbare tanks\n`);
 
   const V = { vineyard_id: MARKER };
@@ -301,7 +301,7 @@ async function seed() {
         status: i < 4 ? "gebotteld" : kies(["gisting", "opvoeding", "klaar_voor_botteling"]),
         samenstelling: `100% ${ras}`,
         start_volume_l: startVol,
-        producent,
+        eigenaar,
         opdracht_type: "eigen_wijn",
         lotnummer: `L26-F11-${String(i + 1).padStart(2, "0")}`,
         pers_datum: datum(9, geheel(5, 28)),
@@ -348,7 +348,7 @@ async function seed() {
     const tankA = tanks[tankIdx++ % tanks.length];
     const tankB = tanks[tankIdx++ % tanks.length];
     const vol = Math.min(p.startVol, tankA.capaciteit_l, tankB.capaciteit_l);
-    const basis = { partij: p.id, producent, verantwoordelijke: kies(INVOERDERS) };
+    const basis = { partij: p.id, eigenaar, verantwoordelijke: kies(INVOERDERS) };
     // 1. vullen
     tankboekRegels.push({
       ...basis,
@@ -423,7 +423,7 @@ async function seed() {
     const p = kies(partijen);
     tankboekRegels.push({
       partij: p.id,
-      producent,
+      eigenaar,
       verantwoordelijke: kies(INVOERDERS),
       actie: "monster",
       van_tank: p.tankB.id,
@@ -517,7 +517,7 @@ async function seed() {
       body: {
         ...V,
         partij: p.id,
-        producent,
+        eigenaar,
         van_tank: p.tankB.id,
         botteldatum: datum(12, geheel(10, 20)),
         aantal_flessen: flessen,
@@ -536,7 +536,7 @@ async function seed() {
       body: {
         ...V,
         partij: p.id,
-        producent,
+        eigenaar,
         actie: "botteling",
         van_tank: p.tankB.id,
         volume_l: rond(flessen * 0.75, 1),
@@ -551,7 +551,7 @@ async function seed() {
         ...V,
         bottelronde: br.id,
         partij: p.id,
-        producent,
+        eigenaar,
         wijnnaam: p.naam.replace(PREFIX + " ", ""),
         jaargang: 2026,
         aantal_beginvoorraad: flessen,

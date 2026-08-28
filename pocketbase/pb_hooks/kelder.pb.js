@@ -73,7 +73,7 @@ routerAdd(
           "samenstelling",
           "start_volume_l",
           "notitie",
-          "producent",
+          "eigenaar",
           "opdracht_type",
           "ouder_partij",
           "lotnummer",
@@ -110,7 +110,7 @@ routerAdd(
           resultaat = logica.voerBoekingUit(txApp, {
             datum: b.pers_datum || b.boek_datum || vandaag,
             partij: partij.id,
-            producent: b.producent,
+            eigenaar: b.eigenaar,
             actie: "vullen",
             naar_tank: b.start_tank,
             volume_l: startVolume,

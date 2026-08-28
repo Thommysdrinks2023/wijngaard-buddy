@@ -11,7 +11,7 @@ import {
   fetchAnalyses,
   fetchBottelrondes,
   fetchKelderlog,
-  fetchProducenten,
+  fetchEigenaars,
   fetchTankboek,
   fetchTanks,
   fetchVoedingswaardeBerekeningen,
@@ -42,6 +42,7 @@ import {
   type KelderlogActie,
   type KelderlogEenheid,
   type PartijStatus,
+  eigenaarLabel,
 } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { CalculatorsSectie } from "@/components/calculators-sectie";
@@ -88,7 +89,7 @@ function PartijDetailPage() {
   });
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
-  const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
+  const eigenaarsQ = useQuery({ queryKey: ["eigenaars"], queryFn: fetchEigenaars });
   const tankboekQ = useQuery({
     queryKey: ["tankboek", partijId],
     queryFn: () => fetchTankboek({ partij: partijId }),
@@ -120,10 +121,10 @@ function PartijDetailPage() {
   }, [voorraadVanPartijQ.data]);
 
   const partij = partijQ.data;
-  const producentNaam = useMemo(
-    () => producentenQ.data?.find((p) => p.id === partij?.producent)?.naam ?? "",
-    [producentenQ.data, partij],
-  );
+  const eigenaarNaam = useMemo(() => {
+    const e = eigenaarsQ.data?.find((p) => p.id === partij?.eigenaar);
+    return e ? eigenaarLabel(e) : "";
+  }, [eigenaarsQ.data, partij]);
   const tanksVanPartij = useMemo(
     () => (tanksQ.data ?? []).filter((t) => t.huidige_partij === partijId),
     [tanksQ.data, partijId],
@@ -551,7 +552,7 @@ function PartijDetailPage() {
       <AppHeader
         back
         title={partij?.naam ?? "Partij"}
-        subtitle={partij ? `${partij.jaargang} · ${producentNaam}` : ""}
+        subtitle={partij ? `${partij.jaargang} · ${eigenaarNaam}` : ""}
       />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
         {/* Statuspaneel */}
@@ -565,7 +566,7 @@ function PartijDetailPage() {
                 {partij?.naam} · {partij?.jaargang}
               </p>
               <p className="text-xs text-white/80">
-                {producentNaam}
+                {eigenaarNaam}
                 {partij?.lotnummer ? ` · lot ${partij.lotnummer}` : ""}
                 {partij?.samenstelling ? ` · ${partij.samenstelling}` : ""}
               </p>

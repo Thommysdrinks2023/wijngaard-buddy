@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { fetchProducenten, fetchVoorraadFlessen } from "@/lib/kelder-data";
-import { VOORRAAD_STATUSSEN, type VoorraadStatus } from "@/lib/types";
+import { fetchEigenaars, fetchVoorraadFlessen } from "@/lib/kelder-data";
+import { VOORRAAD_STATUSSEN, type VoorraadStatus, eigenaarLabel } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -22,24 +22,24 @@ function statusInfo(status: VoorraadStatus) {
 
 function VoorraadOverzicht() {
   const voorraadQ = useQuery({ queryKey: ["voorraad"], queryFn: () => fetchVoorraadFlessen() });
-  const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
-  const [producentFilter, setProducentFilter] = useState("");
+  const eigenaarsQ = useQuery({ queryKey: ["eigenaars"], queryFn: fetchEigenaars });
+  const [eigenaarFilter, setEigenaarFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<VoorraadStatus | "">("");
 
-  const producentNaam = useMemo(() => {
+  const eigenaarNaam = useMemo(() => {
     const m = new Map<string, string>();
-    producentenQ.data?.forEach((p) => m.set(p.id, p.naam));
+    eigenaarsQ.data?.forEach((p) => m.set(p.id, eigenaarLabel(p)));
     return m;
-  }, [producentenQ.data]);
+  }, [eigenaarsQ.data]);
 
   const gefilterd = useMemo(
     () =>
       (voorraadQ.data ?? []).filter(
         (v) =>
-          (!producentFilter || v.producent === producentFilter) &&
+          (!eigenaarFilter || v.eigenaar === eigenaarFilter) &&
           (!statusFilter || v.status === statusFilter),
       ),
-    [voorraadQ.data, producentFilter, statusFilter],
+    [voorraadQ.data, eigenaarFilter, statusFilter],
   );
 
   const totaalFlessen = gefilterd.reduce((acc, v) => acc + v.aantal_huidig, 0);
@@ -86,16 +86,16 @@ function VoorraadOverzicht() {
         )}
 
         <div className="flex gap-2">
-          {(producentenQ.data ?? []).length > 1 && (
+          {(eigenaarsQ.data ?? []).length > 1 && (
             <select
-              value={producentFilter}
-              onChange={(e) => setProducentFilter(e.target.value)}
+              value={eigenaarFilter}
+              onChange={(e) => setEigenaarFilter(e.target.value)}
               className="h-11 flex-1 rounded-xl border border-input bg-card px-3 text-sm"
             >
-              <option value="">Alle producenten</option>
-              {(producentenQ.data ?? []).map((p) => (
+              <option value="">Alle eigenaars</option>
+              {(eigenaarsQ.data ?? []).map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.naam}
+                  {eigenaarLabel(p)}
                 </option>
               ))}
             </select>
@@ -141,7 +141,7 @@ function VoorraadOverzicht() {
                           <p className="truncate text-sm font-semibold">{v.wijnnaam}</p>
                           <p className="text-xs text-muted-foreground">
                             {v.jaargang}
-                            {v.producent ? ` · ${producentNaam.get(v.producent) ?? ""}` : ""}
+                            {v.eigenaar ? ` · ${eigenaarNaam.get(v.eigenaar) ?? ""}` : ""}
                             {v.locatie ? ` · ${v.locatie}` : ""}
                           </p>
                         </div>

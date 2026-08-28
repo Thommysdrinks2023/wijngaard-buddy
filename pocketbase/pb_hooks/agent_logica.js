@@ -140,11 +140,16 @@ const KELDER_TOOLS = [
     lezen: true,
     schema: {
       name: "zoek_partijen",
-      description: "Zoek partijen op producent, ras/type, status of lotnummer.",
+      description: "Zoek partijen op eigenaar, ras/type, status of lotnummer.",
       input_schema: {
         type: "object",
         properties: {
           zoekterm: { type: "string", description: "Naam, lotnummer of ras (vrij zoeken)" },
+          eigenaar: {
+            type: "string",
+            description:
+              "Naam of tweecijferige code van de eigenaar, bijv. \"Thommy's Drinks\" of \"07\".",
+          },
           status: {
             type: "string",
             enum: [

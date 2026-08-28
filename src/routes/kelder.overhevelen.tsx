@@ -111,7 +111,7 @@ function OverhevelenPage() {
       const r = await boekTankboek({
         datum,
         partij: partij!.id,
-        producent: partij?.producent ?? undefined,
+        eigenaar: partij?.eigenaar ?? undefined,
         actie: "overhevelen",
         van_tank: vanTank,
         naar_tank: naarTank,
@@ -123,7 +123,7 @@ function OverhevelenPage() {
         await boekTankboek({
           datum,
           partij: partij!.id,
-          producent: partij?.producent ?? undefined,
+          eigenaar: partij?.eigenaar ?? undefined,
           actie: "verlies",
           van_tank: vanTank,
           volume_l: verschil,

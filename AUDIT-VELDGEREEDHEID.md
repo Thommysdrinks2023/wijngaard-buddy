@@ -5,6 +5,11 @@
 **Datum onderzoek**: 24–25 juli 2026
 **Voor**: Thomas Drinks (eigenaar) en zijn adviseur
 
+> **Correctie (Fase 16, 28 augustus 2026):** het merk heet **Thommy's Drinks**,
+> niet "Thomas Drinks". De regel hierboven blijft staan zoals hij destijds is
+> geschreven; de juiste schrijfwijze staat vanaf Fase 16 in de code, de
+> database en de systeemprompt van de assistent.
+
 Dit document is bedoeld om zelfstandig leesbaar te zijn. Voorkennis van de app of van de code is niet nodig.
 
 Het onderzoek was uitdrukkelijk geen bouwopdracht. De opdracht was om te zoeken naar wat er misgaat vóórdat het seizoen begint, en alleen te repareren wat er onderweg werd gevonden. **Wat is gevonden is belangrijker dan wat is toegevoegd.**

@@ -37,6 +37,7 @@ import {
   ShoppingCart,
   Wrench,
   PackagePlus,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -191,6 +192,12 @@ const MENU_GROEPEN = [
         label: "Flessenvoorraad (leeg)",
         omschrijving: "Lege flessen per type — ontvangst en telcorrectie",
         icon: PackagePlus,
+      },
+      {
+        to: "/instellingen/eigenaars",
+        label: "Eigenaars beheren",
+        omschrijving: "Van wie is de partij — met administratiecode",
+        icon: Users,
       },
       {
         to: "/instellingen/flestypes",

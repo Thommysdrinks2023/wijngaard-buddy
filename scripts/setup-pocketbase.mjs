@@ -168,7 +168,7 @@ const PARTIJ_STATUSSEN = [
   "gebotteld",
   "afgevoerd",
 ];
-const PRODUCENT_SOORTEN = ["eigen_wijngaard", "drankproductie", "extern_klant"];
+const EIGENAAR_SOORTEN = ["eigen_wijngaard", "drankproductie", "extern_klant"];
 const OPDRACHT_TYPES = ["eigen_wijn", "drank", "loonproductie", "bottelservice"];
 const TANK_STATUSSEN = ["leeg", "in_gebruik", "reiniging", "defect"];
 
@@ -270,9 +270,14 @@ const SEED_TANKS = [
   ["IBC1", "IBC1000", 1000],
 ];
 
-const SEED_PRODUCENTEN = [
-  ["De Tappenmars", "eigen_wijngaard"],
-  ["Thomas Drinks", "drankproductie"],
+// Fase 16 — eigenaars met hun tweecijferige administratiecode. "Thomas
+// Drinks" was een schrijffout: het merk heet Thommy's Drinks.
+// De codes van de externe loonproductie-eigenaars tussen 01 en 07 zijn nog
+// niet bekend; die worden bewust NIET geraden (een verzonnen code kan botsen
+// met een code die elders al in gebruik is) — zie WERKLOG.md, Fase 16.
+const SEED_EIGENAARS = [
+  ["De Tappenmars", "eigen_wijngaard", "01"],
+  ["Thommy's Drinks", "drankproductie", "07"],
 ];
 
 // Fase 3 — AI-agent
@@ -663,6 +668,62 @@ async function ensureNietVerplicht(collectionNaam, veldnamen) {
   console.log(`  ↻ ${collectionNaam}: ${veldnamen.join(", ")} niet meer verplicht`);
 }
 
+/**
+ * Fase 16 — hernoemt een COLLECTIE, niet-destructief en idempotent.
+ *
+ * PocketBase hernoemt bij een PATCH op `name` de onderliggende tabel; de
+ * records blijven staan en relaties uit andere collecties blijven werken,
+ * want die verwijzen naar de collectie-id en niet naar de naam. Doet niets
+ * als de nieuwe naam al bestaat (dan is de migratie al gedraaid) en faalt
+ * bewust niet als de oude naam niet meer bestaat.
+ *
+ * Moet vóór de ensureCollection()-aanroepen draaien: die zijn create-only en
+ * zouden anders een tweede, lege collectie onder de nieuwe naam aanmaken.
+ */
+async function hernoemCollectie(oudeNaam, nieuweNaam) {
+  if (droog) return;
+  try {
+    await api(`/api/collections/${nieuweNaam}`);
+    return; // al hernoemd
+  } catch (e) {
+    if (e.status !== 404) throw e;
+  }
+  let oud;
+  try {
+    oud = await api(`/api/collections/${oudeNaam}`);
+  } catch (e) {
+    if (e.status === 404) return; // verse installatie: niets te hernoemen
+    throw e;
+  }
+  await api(`/api/collections/${oud.id}`, { method: "PATCH", body: { name: nieuweNaam } });
+  console.log(`  ↻ collectie "${oudeNaam}" hernoemd naar "${nieuweNaam}"`);
+}
+
+/**
+ * Fase 16 — hernoemt een VELD binnen een bestaande collectie, met behoud van
+ * de inhoud. Cruciaal detail: het veld-id blijft ongewijzigd en alleen `name`
+ * verandert. Zou je het veld op naam matchen en opnieuw aanmaken, dan ziet
+ * PocketBase dat als "oud veld weg, nieuw veld erbij" en is de kolominhoud
+ * weg — bij `partijen.producent` zou dat betekenen dat elke partij zijn
+ * eigenaar kwijtraakt. Idempotent en stil als er niets te doen valt.
+ */
+async function hernoemVeld(collectieNaam, oudVeld, nieuwVeld) {
+  if (droog) return;
+  let col;
+  try {
+    col = await api(`/api/collections/${collectieNaam}`);
+  } catch (e) {
+    if (e.status === 404) return;
+    throw e;
+  }
+  const heeftNieuw = col.fields.some((f) => f.name === nieuwVeld);
+  const heeftOud = col.fields.some((f) => f.name === oudVeld);
+  if (heeftNieuw || !heeftOud) return;
+  const velden = col.fields.map((f) => (f.name === oudVeld ? { ...f, name: nieuwVeld } : f));
+  await api(`/api/collections/${col.id}`, { method: "PATCH", body: { fields: velden } });
+  console.log(`  ↻ ${collectieNaam}.${oudVeld} hernoemd naar ${nieuwVeld}`);
+}
+
 async function ensureUniekeIndex(collectionNaam, veld, indexNaam) {
   if (droog) return;
   const col = await api(`/api/collections/${collectionNaam}`);
@@ -708,6 +769,20 @@ async function main() {
     adminToken = auth.token;
   }
   console.log("  ✓ ingelogd als admin");
+
+  // Fase 16 — "producent" heette het verkeerd: het gaat om de EIGENAAR van
+  // een partij/vat/bottelronde. De Tappenmars verwerkt en bottelt ook voor
+  // andere wijngaarden en fruittelers (loonproductie); die klanten zijn geen
+  // producent in de zin waarop de app het woord gebruikte, ze zijn eigenaar
+  // van hun eigen product terwijl het in de kelder van De Tappenmars staat.
+  //
+  // Deze hernoeming moet HIER staan, vóór elke ensureCollection(): die is
+  // create-only en zou anders een tweede, lege "eigenaars"-collectie naast de
+  // gevulde "producenten" zetten.
+  await hernoemCollectie("producenten", "eigenaars");
+  for (const col of ["partijen", "tankboek", "bottelrondes", "voorraad_flessen"]) {
+    await hernoemVeld(col, "producent", "eigenaar");
+  }
 
   // 3. collecties
   console.log("Collecties aanmaken...");
@@ -1081,32 +1156,45 @@ async function main() {
     deleteRule: null,
   });
 
-  // 3a-2. Kelder — producenten en tanks.
-  // Producenten: eigen wijn, Thomas Drinks en externe klanten (loonproductie/
-  // bottelservice). Relatieveld i.p.v. vrije tekst zodat records nooit
-  // versnipperen over spellingsvarianten.
-  const producentenCol = await ensureCollection({
-    name: "producenten",
+  // 3a-2. Kelder — eigenaars en tanks.
+  // Eigenaars: De Tappenmars zelf, Thommy's Drinks, en externe klanten
+  // (loonproductie/bottelservice) die eigenaar blijven van hun product
+  // terwijl het hier in de kelder staat. Relatieveld i.p.v. vrije tekst
+  // zodat records nooit versnipperen over spellingsvarianten.
+  const eigenaarsCol = await ensureCollection({
+    name: "eigenaars",
     type: "base",
     fields: [
       { name: "naam", type: "text", required: true },
+      // Fase 16 Blok C — tweecijferige administratiecode (De Tappenmars = 01,
+      // Thommy's Drinks = 07). NIET required in het schema: bestaande
+      // eigenaars die nog geen code hebben moeten gewoon bruikbaar blijven
+      // totdat Thomas de code opzoekt. Voor NIEUWE records dwingt de hook
+      // (pb_hooks/eigenaars.pb.js) de code wel af — zie de overgangsregel daar.
+      { name: "code", type: "text", pattern: "^[0-9]{2}$" },
       {
         name: "soort",
         type: "select",
         required: true,
         maxSelect: 1,
-        values: PRODUCENT_SOORTEN,
+        values: EIGENAAR_SOORTEN,
       },
       { name: "actief", type: "bool" },
       { name: "notitie", type: "text" },
       ...autodateFields(),
     ],
+    indexes: ["CREATE UNIQUE INDEX idx_eigenaars_code ON eigenaars (code) WHERE code != ''"],
     listRule: AUTH_RULE,
     viewRule: AUTH_RULE,
     createRule: AUTH_RULE,
     updateRule: AUTH_RULE,
     deleteRule: AUTH_RULE,
   });
+
+  // Bestaande installatie: het code-veld en de unieke index moeten er alsnog
+  // bij (ensureCollection raakt een bestaande collectie niet aan).
+  await ensureVelden("eigenaars", [{ name: "code", type: "text", pattern: "^[0-9]{2}$" }]);
+  await ensureUniekeIndex("eigenaars", "code", "idx_eigenaars_code");
 
   // Tanks: fysieke keldervaten. huidige_partij/huidig_volume_l zijn CACHES —
   // de waarheid is het tankboek; alleen de server-endpoints muteren deze velden.
@@ -1165,14 +1253,14 @@ async function main() {
     },
   ]);
 
-  // 3a-4. Partijen-uitbreiding (Fase 0–2 kelder): producent, opdrachttype,
+  // 3a-4. Partijen-uitbreiding (Fase 0–2 kelder): eigenaar, opdrachttype,
   // genealogie-voorbereiding (ouder_partij, UI komt later), lot, dichtheden
   // (°Oe primair; Brix/SG worden altijd meegeschreven) en starttank.
   await ensureVelden("partijen", [
     {
-      name: "producent",
+      name: "eigenaar",
       type: "relation",
-      collectionId: producentenCol.id,
+      collectionId: eigenaarsCol.id,
       cascadeDelete: false,
       maxSelect: 1,
     },
@@ -1229,9 +1317,9 @@ async function main() {
         maxSelect: 1,
       },
       {
-        name: "producent",
+        name: "eigenaar",
         type: "relation",
-        collectionId: producentenCol.id,
+        collectionId: eigenaarsCol.id,
         cascadeDelete: false,
         maxSelect: 1,
       },
@@ -1468,9 +1556,9 @@ async function main() {
         maxSelect: 1,
       },
       {
-        name: "producent",
+        name: "eigenaar",
         type: "relation",
-        collectionId: producentenCol.id,
+        collectionId: eigenaarsCol.id,
         cascadeDelete: false,
         maxSelect: 1,
       },
@@ -1529,9 +1617,9 @@ async function main() {
         maxSelect: 1,
       },
       {
-        name: "producent",
+        name: "eigenaar",
         type: "relation",
-        collectionId: producentenCol.id,
+        collectionId: eigenaarsCol.id,
         cascadeDelete: false,
         maxSelect: 1,
       },
@@ -1954,17 +2042,52 @@ async function main() {
     { name: "taak_sluit_bij", type: "text" },
   ]);
 
-  // 3a-9. Seeds: producenten en tankinventaris (create-only, nooit overschrijven)
+  // 3a-9. Seeds: eigenaars en tankinventaris (create-only, nooit overschrijven)
   {
-    const bestaandeProducenten = await api("/api/collections/producenten/records?perPage=200");
-    const namen = new Set((bestaandeProducenten.items ?? []).map((p) => p.naam));
-    for (const [naam, soort] of SEED_PRODUCENTEN) {
-      if (namen.has(naam)) continue;
-      await api("/api/collections/producenten/records", {
-        method: "POST",
-        body: { naam, soort, actief: true },
+    const bestaandeEigenaars = await api("/api/collections/eigenaars/records?perPage=200");
+    const perNaam = new Map((bestaandeEigenaars.items ?? []).map((e) => [e.naam, e]));
+
+    // Fase 16 — de schrijffout "Thomas Drinks" corrigeren op het BESTAANDE
+    // record, niet door een nieuw record aan te maken: de partijen, tankboek-
+    // regels en bottelrondes die eraan hangen zouden anders hun eigenaar
+    // kwijtraken.
+    const foutGespeld = perNaam.get("Thomas Drinks");
+    if (foutGespeld && !perNaam.has("Thommy's Drinks")) {
+      await api(`/api/collections/eigenaars/records/${foutGespeld.id}`, {
+        method: "PATCH",
+        body: { naam: "Thommy's Drinks" },
       });
-      console.log(`  + producent "${naam}" aangemaakt`);
+      perNaam.set("Thommy's Drinks", { ...foutGespeld, naam: "Thommy's Drinks" });
+      perNaam.delete("Thomas Drinks");
+      console.log(`  ↻ eigenaar "Thomas Drinks" hernoemd naar "Thommy's Drinks"`);
+    }
+
+    for (const [naam, soort, code] of SEED_EIGENAARS) {
+      const bestaand = perNaam.get(naam);
+      if (!bestaand) {
+        await api("/api/collections/eigenaars/records", {
+          method: "POST",
+          body: { naam, soort, code, actief: true },
+        });
+        console.log(`  + eigenaar "${code} — ${naam}" aangemaakt`);
+      } else if (!bestaand.code) {
+        await api(`/api/collections/eigenaars/records/${bestaand.id}`, {
+          method: "PATCH",
+          body: { code },
+        });
+        console.log(`  ↻ eigenaar "${naam}" kreeg code ${code}`);
+      }
+    }
+
+    // Eigenaars zonder code melden in plaats van er een te verzinnen: een
+    // geraden code kan botsen met een code die Thomas elders al gebruikt.
+    const naSeed = await api("/api/collections/eigenaars/records?perPage=200");
+    const zonderCode = (naSeed.items ?? []).filter((e) => !e.code);
+    if (zonderCode.length > 0) {
+      console.log(
+        `  ⚠ ${zonderCode.length} eigenaar(s) zonder code — vul aan via Instellingen → Eigenaars:`,
+      );
+      for (const e of zonderCode) console.log(`      ${e.naam}`);
     }
 
     const bestaandeTanks = await api("/api/collections/tanks/records?perPage=200");
@@ -2777,7 +2900,7 @@ async function main() {
     "rij_locaties",
     "ai_gesprekken",
     "partijen",
-    "producenten",
+    "eigenaars",
     "tanks",
     "tankboek",
     "analyses",

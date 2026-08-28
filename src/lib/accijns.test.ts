@@ -11,7 +11,7 @@ function bottelronde(overrides: Partial<Bottelronde>): Bottelronde {
   return {
     id: "b1",
     partij: "p1",
-    producent: null,
+    eigenaar: null,
     van_tank: "t1",
     botteldatum: "2026-06-01",
     aantal_flessen: 100,

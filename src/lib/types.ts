@@ -123,7 +123,7 @@ export interface Partij {
   start_volume_l?: number | null;
   notitie?: string;
   // kelder Fase 0–2
-  producent?: string | null; // producent id
+  eigenaar?: string | null; // eigenaar id
   opdracht_type?: OpdrachtType | null;
   ouder_partij?: string | null; // partij id — genealogie (cuvée/splitsing, UI later)
   lotnummer?: string;
@@ -155,15 +155,31 @@ export const OPDRACHT_TYPES: { value: OpdrachtType; label: string }[] = [
   { value: "bottelservice", label: "Bottelservice" },
 ];
 
-// ============= Producenten =============
-export type ProducentSoort = "eigen_wijngaard" | "drankproductie" | "extern_klant";
+// ============= Eigenaars =============
+// Fase 16: heette eerder "producent". Dat was het verkeerde woord — De
+// Tappenmars bottelt en verwerkt ook voor andere wijngaarden en fruittelers,
+// en die klanten zijn geen producent maar EIGENAAR van hun eigen product
+// terwijl het hier in de kelder staat.
+export type EigenaarSoort = "eigen_wijngaard" | "drankproductie" | "extern_klant";
 
-export interface Producent {
+export interface Eigenaar {
   id: string;
   naam: string;
-  soort: ProducentSoort;
+  /**
+   * Tweecijferige administratiecode (De Tappenmars = 01, Thommy's Drinks =
+   * 07). Leeg bij eigenaars die van vóór Fase 16 dateren en waarvan de code
+   * nog opgezocht moet worden — zie de overgangsregel in
+   * pocketbase/pb_hooks/eigenaars.pb.js. Nieuwe eigenaars krijgen hem verplicht.
+   */
+  code?: string;
+  soort: EigenaarSoort;
   actief: boolean;
   notitie?: string;
+}
+
+/** "01 — De Tappenmars", of alleen de naam als de code nog ontbreekt. */
+export function eigenaarLabel(e: { naam: string; code?: string }): string {
+  return e.code ? `${e.code} — ${e.naam}` : e.naam;
 }
 
 // ============= Tanks =============
@@ -216,7 +232,7 @@ export interface TankboekRegel {
   datum: string;
   tijd?: string;
   partij: string; // partij id
-  producent?: string | null;
+  eigenaar?: string | null;
   actie: TankboekActie;
   van_tank?: string | null;
   naar_tank?: string | null;
@@ -374,7 +390,7 @@ export interface VoedingswaardeBerekening {
 export interface Bottelronde {
   id: string;
   partij: string; // partij id
-  producent?: string | null;
+  eigenaar?: string | null;
   van_tank: string; // tank id
   botteldatum: string;
   aantal_flessen: number;
@@ -415,7 +431,7 @@ export interface VoorraadFles {
   id: string;
   bottelronde: string; // bottelronde id
   partij: string; // partij id
-  producent?: string | null;
+  eigenaar?: string | null;
   wijnnaam: string;
   jaargang?: number | null;
   aantal_beginvoorraad: number;

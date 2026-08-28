@@ -10,7 +10,7 @@ import {
 } from "@/lib/oogst-naar-partij";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { createPartijViaEndpoint, fetchProducenten, fetchTanks } from "@/lib/kelder-data";
+import { createPartijViaEndpoint, fetchEigenaars, fetchTanks } from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerPartij } from "@/lib/validatie";
 import { vanBrix, vanOechsle } from "@/lib/dichtheid";
@@ -24,6 +24,7 @@ import {
   type OpdrachtType,
   type PartijStatus,
   type PartijType,
+  eigenaarLabel,
 } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { Loader2 } from "lucide-react";
@@ -46,7 +47,7 @@ function NieuwePartijPage() {
   const [jaar] = useSeizoen();
   const [invoerder, setInvoerder] = useInvoerder();
   const { oogst: oogstParam } = Route.useSearch();
-  const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
+  const eigenaarsQ = useQuery({ queryKey: ["eigenaars"], queryFn: fetchEigenaars });
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
 
@@ -97,7 +98,7 @@ function NieuwePartijPage() {
   const [jaargang, setJaargang] = useState(String(jaar));
   const [type, setType] = useState<PartijType>("wit");
   const [status, setStatus] = useState<PartijStatus>("most");
-  const [producent, setProducent] = useState("");
+  const [eigenaar, setEigenaar] = useState("");
   const [opdrachtType, setOpdrachtType] = useState<OpdrachtType>("eigen_wijn");
   const [lotnummer, setLotnummer] = useState("");
   const [samenstelling, setSamenstelling] = useState("");
@@ -189,7 +190,7 @@ function NieuwePartijPage() {
         jaargang: Number(jaargang),
         type,
         status,
-        producent: producent || null,
+        eigenaar: eigenaar || null,
         opdracht_type: opdrachtType,
         lotnummer,
         samenstelling,
@@ -247,7 +248,7 @@ function NieuwePartijPage() {
       status,
       start_volume_l: startVolume ? Number(startVolume) : undefined,
     });
-    if (!producent) validatie.push({ veld: "producent", bericht: "Kies een producent" });
+    if (!eigenaar) validatie.push({ veld: "eigenaar", bericht: "Kies een eigenaar" });
     if (startTank && !startVolume)
       validatie.push({ veld: "start_volume_l", bericht: "Vul het startvolume in (liter)" });
     if (!invoerder.trim())
@@ -337,43 +338,43 @@ function NieuwePartijPage() {
         <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-medium">Producent</span>
+              <span className="mb-1.5 block text-sm font-medium">Eigenaar</span>
               <select
-                value={producent}
+                value={eigenaar}
                 onChange={(e) => {
-                  setProducent(e.target.value);
-                  wisFout("producent");
+                  setEigenaar(e.target.value);
+                  wisFout("eigenaar");
                 }}
-                disabled={producentenQ.isError}
-                className={`${veldClass} ${fouten.producent || producentenQ.isError ? "border-destructive" : ""}`}
+                disabled={eigenaarsQ.isError}
+                className={`${veldClass} ${fouten.eigenaar || eigenaarsQ.isError ? "border-destructive" : ""}`}
               >
                 <option value="">
-                  {producentenQ.isError ? "Kon producenten niet laden" : "Kies producent…"}
+                  {eigenaarsQ.isError ? "Kon eigenaars niet laden" : "Kies eigenaar…"}
                 </option>
-                {(producentenQ.data ?? [])
+                {(eigenaarsQ.data ?? [])
                   .filter((p) => p.actief)
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.naam}
+                      {eigenaarLabel(p)}
                     </option>
                   ))}
               </select>
-              {producentenQ.isError && (
+              {eigenaarsQ.isError && (
                 <span className="mt-1 flex items-center justify-between gap-2 text-sm text-destructive">
-                  {producentenQ.error instanceof Error
-                    ? producentenQ.error.message
-                    : "Kon producenten niet laden — probeer opnieuw."}
+                  {eigenaarsQ.error instanceof Error
+                    ? eigenaarsQ.error.message
+                    : "Kon eigenaars niet laden — probeer opnieuw."}
                   <button
                     type="button"
-                    onClick={() => producentenQ.refetch()}
+                    onClick={() => eigenaarsQ.refetch()}
                     className="shrink-0 underline underline-offset-2"
                   >
                     Opnieuw
                   </button>
                 </span>
               )}
-              {!producentenQ.isError && fouten.producent && (
-                <span className="mt-1 block text-sm text-destructive">{fouten.producent}</span>
+              {!eigenaarsQ.isError && fouten.eigenaar && (
+                <span className="mt-1 block text-sm text-destructive">{fouten.eigenaar}</span>
               )}
             </label>
             <label className="block">

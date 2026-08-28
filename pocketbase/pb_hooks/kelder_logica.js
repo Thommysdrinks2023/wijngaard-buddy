@@ -173,7 +173,7 @@ function voerBoekingUit(txApp, b) {
   regel.set("datum", b.datum);
   regel.set("tijd", b.tijd || "");
   regel.set("partij", b.partij);
-  regel.set("producent", b.producent || partij.getString("producent") || "");
+  regel.set("eigenaar", b.eigenaar || partij.getString("eigenaar") || "");
   regel.set("actie", b.actie);
   regel.set("van_tank", b.van_tank || "");
   regel.set("naar_tank", b.naar_tank || "");
@@ -261,7 +261,7 @@ function voerBottelrondeUit(txApp, b) {
   const resultaat = voerBoekingUit(txApp, {
     datum: b.botteldatum,
     partij: b.partij,
-    producent: b.producent,
+    eigenaar: b.eigenaar,
     actie: "botteling",
     van_tank: b.van_tank,
     volume_l: volumeUitTankL,
@@ -280,7 +280,7 @@ function voerBottelrondeUit(txApp, b) {
   const bcol = txApp.findCollectionByNameOrId("bottelrondes");
   const bottelronde = new Record(bcol);
   bottelronde.set("partij", b.partij);
-  if (b.producent) bottelronde.set("producent", b.producent);
+  if (b.eigenaar) bottelronde.set("eigenaar", b.eigenaar);
   bottelronde.set("van_tank", b.van_tank);
   bottelronde.set("botteldatum", b.botteldatum);
   bottelronde.set("aantal_flessen", aantalFlessen);
@@ -310,7 +310,7 @@ function voerBottelrondeUit(txApp, b) {
   const voorraad = new Record(vcol);
   voorraad.set("bottelronde", bottelronde.id);
   voorraad.set("partij", b.partij);
-  if (b.producent) voorraad.set("producent", b.producent);
+  if (b.eigenaar) voorraad.set("eigenaar", b.eigenaar);
   voorraad.set("wijnnaam", b.wijnnaam || partijRecord.getString("naam"));
   voorraad.set("jaargang", b.jaargang || partijRecord.getFloat("jaargang"));
   voorraad.set("aantal_beginvoorraad", aantalFlessen);

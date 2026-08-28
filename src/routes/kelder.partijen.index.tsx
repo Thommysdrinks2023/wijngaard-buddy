@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { fetchOogst, type OogstRecord } from "@/lib/extra-data";
 import { fetchPartijen } from "@/lib/partijen-data";
-import { fetchProducenten, fetchTanks } from "@/lib/kelder-data";
+import { fetchEigenaars, fetchTanks } from "@/lib/kelder-data";
 import { useSeizoen } from "@/lib/seizoen";
-import { PARTIJ_STATUSSEN, type PartijStatus } from "@/lib/types";
+import { PARTIJ_STATUSSEN, type PartijStatus, eigenaarLabel } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
@@ -31,15 +31,15 @@ function PartijenPage() {
   const [jaar] = useSeizoen();
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
   const oogstQ = useQuery({ queryKey: ["oogst-records"], queryFn: fetchOogst });
-  const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
+  const eigenaarsQ = useQuery({ queryKey: ["eigenaars"], queryFn: fetchEigenaars });
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
-  const [producentFilter, setProducentFilter] = useState("");
+  const [eigenaarFilter, setEigenaarFilter] = useState("");
 
-  const producentNaam = useMemo(() => {
+  const eigenaarNaam = useMemo(() => {
     const m = new Map<string, string>();
-    producentenQ.data?.forEach((p) => m.set(p.id, p.naam));
+    eigenaarsQ.data?.forEach((p) => m.set(p.id, eigenaarLabel(p)));
     return m;
-  }, [producentenQ.data]);
+  }, [eigenaarsQ.data]);
 
   const oogstPerPartij = useMemo(() => {
     const map = new Map<string, OogstRecord[]>();
@@ -55,9 +55,9 @@ function PartijenPage() {
   const partijenSeizoen = useMemo(
     () =>
       (partijenQ.data ?? []).filter(
-        (p) => p.jaargang === jaar && (!producentFilter || p.producent === producentFilter),
+        (p) => p.jaargang === jaar && (!eigenaarFilter || p.eigenaar === eigenaarFilter),
       ),
-    [partijenQ.data, jaar, producentFilter],
+    [partijenQ.data, jaar, eigenaarFilter],
   );
 
   return (
@@ -83,16 +83,16 @@ function PartijenPage() {
           <ErrorState error={partijenQ.error} onRetry={() => partijenQ.refetch()} />
         )}
 
-        {(producentenQ.data ?? []).length > 1 && (
+        {(eigenaarsQ.data ?? []).length > 1 && (
           <select
-            value={producentFilter}
-            onChange={(e) => setProducentFilter(e.target.value)}
+            value={eigenaarFilter}
+            onChange={(e) => setEigenaarFilter(e.target.value)}
             className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm"
           >
-            <option value="">Alle producenten</option>
-            {(producentenQ.data ?? []).map((p) => (
+            <option value="">Alle eigenaars</option>
+            {(eigenaarsQ.data ?? []).map((p) => (
               <option key={p.id} value={p.id}>
-                {p.naam}
+                {eigenaarLabel(p)}
               </option>
             ))}
           </select>
@@ -128,7 +128,7 @@ function PartijenPage() {
                           <p className="truncate text-sm font-semibold">{p.naam}</p>
                           <p className="text-xs text-muted-foreground">
                             {p.jaargang} · {p.type}
-                            {p.producent ? ` · ${producentNaam.get(p.producent) ?? ""}` : ""}
+                            {p.eigenaar ? ` · ${eigenaarNaam.get(p.eigenaar) ?? ""}` : ""}
                             {p.lotnummer ? ` · lot ${p.lotnummer}` : ""}
                           </p>
                         </div>

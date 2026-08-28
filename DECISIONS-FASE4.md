@@ -1,5 +1,13 @@
 # Fase 4 — Botteling & Voorraad: beslissingenlog
 
+> **Correctie (Fase 16, 28 augustus 2026):** waar dit document "producent"
+> schrijft, heet dat vanaf Fase 16 **eigenaar** (collectie `eigenaars`, veld
+> `eigenaar`). De term is gewijzigd omdat De Tappenmars ook voor andere
+> wijngaarden en fruittelers verwerkt en bottelt; die klanten zijn geen
+> producent maar eigenaar van hun eigen product. De tekst hieronder blijft
+> staan zoals hij destijds is geschreven.
+
+
 Autonome bouwsessie, vervolg op Fase 0–2 (Kelder), de kelder-uitbreiding en Fase 3 (AI-agent). Vóóraf: `pb_data` gekopieerd naar `pocketbase/pb_data_backup_fase4`.
 
 ## Vooraf: discrepanties tussen de opdracht en de werkelijke codebase

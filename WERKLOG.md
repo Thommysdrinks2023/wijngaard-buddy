@@ -589,3 +589,156 @@ De twee bestaande "genegeerd"-registraties zijn ongemoeid gelaten.
 
 ---
 
+
+
+---
+
+# Sessie 28 augustus 2026 — Fase 16: eigenaar in plaats van producent, en Thommy's Drinks
+
+Drie samenhangende correcties: het verkeerde woord ("producent" waar het om de
+eigenaar gaat), een merknaam die fout gespeld was ("Thomas Drinks"), en een
+ontbrekend gegeven (de tweecijferige administratiecode per eigenaar).
+
+## Blok A — Nulmeting
+
+**De opdracht ging uit van veldnamen die niet bestaan.** `producer_id` en
+`producer_type` komen uit `DECISIONS-FASE4.md`, waar juist staat dat ze in
+Fase 4 al zijn vertaald naar de Nederlandse conventie. De werkelijke situatie:
+
+| Opdracht | Werkelijkheid |
+| --- | --- |
+| `producer_id` | veld heet `producent` (relatie), op 4 collecties |
+| `producer_type` | bestaat niet — wel `eigenaars.soort` en `partijen.opdracht_type` |
+| collectie `producenten` | klopte |
+
+Gevonden: 25 bronbestanden met "producent" in de bedrijfsbetekenis (de zwaarste:
+`kelder-data.ts` 24×, `setup-pocketbase.mjs` 23×, `kelder.partijen.nieuw.tsx`
+20×, `kelder.tankboek.tsx` 17×), 4 plekken met "Thomas Drinks", en één regel in
+`agent_systeemprompt.md` met **beide** fouten tegelijk.
+
+**Drie soorten valse treffers, bewust ongemoeid gelaten:**
+
+1. **"Producent" in de softwarezin** — `SignaalProducent`/`PRODUCENTEN` in
+   `signalen.ts` en de "signaalproducent"-commentaren in `data.ts`,
+   `materieel-data.ts`, `app-instellingen-data.ts` en twee testbestanden. Dat is
+   een functie die signalen produceert, geen eigenaar van een partij.
+   Meehernoemen had werkende code gesloopt.
+2. **Algemeen Nederlands/juridisch** — "kleine producenten" (wettelijke term uit
+   de accijnsvrijstelling), "wijnproducenten", "gistproducent" in
+   `docs/wettelijke-checklist.md`, `ARCHITECTURE.md` en
+   `docs/oenologie-formules.md`.
+3. **`pb_migrations/*`** — append-only migratiegeschiedenis, zelfde regel als bij
+   de Souvignier Gris-fix: niet bewerken.
+
+De vrije tekstvelden in de database (kelderlog, notities, proefnotities,
+exportlabels) zijn gecontroleerd en bleken schoon.
+
+## Blok B — Technische hernoeming
+
+Collectie `producenten` → `eigenaars`; veld `producent` → `eigenaar` op
+`partijen`, `tankboek`, `bottelrondes` en `voorraad_flessen`. Verder de
+TypeScript-types (`Producent` → `Eigenaar`, `ProducentSoort` → `EigenaarSoort`),
+`fetchProducenten` → `fetchEigenaars`, de React-Query-keys, de twee
+geparameteriseerde filters uit Fase 9 (`pb.filter("producent = {:producent}")`),
+alle hooks, de agenttools en alle zichtbare labels.
+
+**Het risico zat in de veldhernoeming, niet in de collectie.** Twee nieuwe,
+idempotente helpers in het setup-script:
+
+- `hernoemCollectie()` — PATCH op `name`. Relaties uit andere collecties
+  verwijzen naar de collectie-**id**, niet naar de naam, dus die overleven het.
+- `hernoemVeld()` — PATCH op de fields-array waarbij het veld-**id** ongewijzigd
+  blijft en alleen `name` verandert. Zou je het veld op naam matchen en opnieuw
+  aanmaken, dan ziet PocketBase dat als "oud veld weg, nieuw veld erbij" en is de
+  kolominhoud weg: elke partij zou zijn eigenaar kwijtraken.
+
+Beide draaien vóór de `ensureCollection()`-aanroepen, want die zijn create-only
+en zouden anders een tweede, lege `eigenaars`-collectie naast de gevulde
+`producenten` zetten.
+
+**Geverifieerd na de migratie:** de partijen Johanniter en Sg 2025 wijzen nog
+naar dezelfde eigenaar-id, het tankboek houdt zijn eigenaar-verwijzingen, en het
+oude veld `producent` bestaat niet meer. Een partij aanmaken met eigenaar via
+het endpoint werkt, en de eigenaar wordt automatisch overgenomen op de
+tankboekregel.
+
+## Blok C — Eigenaarscode
+
+`eigenaars.code` (tekst, patroon `^[0-9]{2}$`, unieke index met
+`WHERE code != ''` zodat meerdere records zonder code naast elkaar mogen
+bestaan). Geseed: De Tappenmars = **01**, Thommy's Drinks = **07**.
+
+**Er zijn geen eigenaars zonder code**: de database bevatte alleen die twee
+records. De externe loonproductieklanten bestaan nog niet als record — Thomas
+maakt ze zelf aan zodra hij de codes heeft opgezocht. De code-ontbreekt-afhandeling
+is er wel volledig, want die is nodig zodra hij er een aanmaakt.
+
+**Overgangsregel** (`pb_hooks/eigenaars.pb.js`): bij aanmaken is de code
+verplicht en moet hij uit precies twee cijfers bestaan; bij wijzigen mag hij
+leeg blijven, maar een ingevulde code moet wél kloppen. Het schema zet `code`
+bewust niet op `required` — dat zou elke PATCH op een record zonder code laten
+falen, en dan kun je zo'n record ook niet meer op inactief zetten.
+
+**Nieuw beheerscherm** `/instellingen/eigenaars` (bestond nog niet, terwijl de
+opdracht ernaar verwees): aanmaken met verplichte code, een "Code ontbreekt"-label
+plus een "Code aanvullen"-knop per record, en een samenvattende melding bovenaan.
+
+De code staat nu naast de naam in alle keuzelijsten en overzichten:
+`01 — De Tappenmars`. De lotnummerconventie is **niet** aangeraakt — zie de
+vraag hieronder.
+
+## Blok D — Thommy's Drinks
+
+Gecorrigeerd in het seed-script, de systeemprompt en het databaserecord. Dat
+laatste via een PATCH op het **bestaande** record: een nieuw record aanmaken zou
+de partijen die eraan hangen hun eigenaar hebben laten verliezen.
+
+De regel in `agent_systeemprompt.md` bevatte beide fouten en is herschreven tot
+een instructie die de agent ook uitlegt *waarom* het eigenaar heet — inclusief de
+expliciete opdracht die klanten "eigenaar" te noemen en nooit "producent".
+
+Historische documenten (`AUDIT-VELDGEREEDHEID.md`, de vier `ONTWERP-*.md`,
+`DECISIONS-FASE4.md`) zijn niet herschreven maar hebben een correctieregel
+gekregen, net als bij de Souvignier Gris-fix.
+
+## Bijvangst — de assistent beloofde iets wat hij niet kon
+
+Bij de agent-regressietest bleek `zoek_partijen` **nooit** op eigenaar te hebben
+kunnen filteren, terwijl de tooldescriptie sinds Fase 3 zegt "Zoek partijen op
+producent". De eigenaar kwam ook niet terug in `partijSamenvatting`, dus op de
+vraag "van wie is deze partij" moest de assistent eerlijk antwoorden dat hij het
+niet kon zien. Een bestaande fout die de hernoeming aan het licht bracht.
+
+Gedicht: `zoek_partijen` accepteert nu een `eigenaar`-parameter (matcht op naam
+óf op de tweecijferige code) en `partijSamenvatting` geeft het eigenaarslabel
+terug. Getest met een echte agent-beurt: hij riep de tool twee keer aan (op
+"De Tappenmars" en op "01") en antwoordde met "Bij eigenaar **01 — De
+Tappenmars** staan 3 partijen", met de juiste schrijfwijze van Thommy's Drinks.
+
+## Stand
+
+Schema-drift 0, tsc schoon, lint 0 fouten, 191 unittests groen, 6/6 rooktests
+groen. Handmatig doorgeklikt: het partijformulier toont "Eigenaar" met
+`01 — De Tappenmars` / `07 — Thommy's Drinks`, het tankboek toont de kolom
+"Eigenaar" en het exportfilter "Alle eigenaars", en een nieuwe eigenaar zonder
+code wordt in de UI geweigerd met de Nederlandse melding. Geen consolefouten.
+Testdata opgeruimd, `tanks-herbereken` gedraaid, verse backup vooraf gemaakt.
+
+**Operationele observatie:** de dagelijkse backuptaak faalde deze sessie één keer
+met exitcode `0xC000013A` (afgebroken) zonder zip achter te laten. Handmatig
+draaien van `scripts/backup-pocketbase.ps1` werkte direct wel. Waarschijnlijk een
+botsing met de sessie zelf (`Start-ScheduledTask` gevolgd door een aflopende
+PowerShell-timeout), maar het is het noteren waard mocht het vaker gebeuren.
+
+## VRAGEN VOOR THOMAS
+
+1. **Codes voor de externe loonproductie-eigenaars** tussen 01 en 07: zodra je ze
+   hebt opgezocht kun je ze zelf aanmaken via Instellingen → Eigenaars beheren.
+   De code is daar verplicht, dus je kunt er geen aanmaken zonder.
+2. **Moet de eigenaarscode in de lotnummerconventie?** Nu is dat
+   `L<jj>-<PARTIJCODE>-<volgnr>` (bijv. `L26-JOH-01`), zonder eigenaarscode. Het
+   is denkbaar dat je `01`/`07` daarin wilt zien zodra er meer voor derden
+   gebotteld wordt, maar dat is een structurele wijziging op een conventie die al
+   in gebruik is — bewust niet zelf besloten.
+3. **375ml-flestypes** (staat nog open uit Fase 15): welke sluiting hebben die?
+   Dat staat niet in `Flessen_admin.xlsx`.

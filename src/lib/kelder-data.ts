@@ -1,4 +1,4 @@
-// Datalaag kelder Fase 0–2: producenten, tanks, tankboek, analyses, kelderlog.
+// Datalaag kelder Fase 0–2: eigenaars, tanks, tankboek, analyses, kelderlog.
 // Bewust online-only en zonder sync-wachtrij: tankboek-boekingen vereisen
 // server-side atomiciteit (pb_hooks/kelder.pb.js) — zie ARCHITECTURE.md §7.6.
 
@@ -10,7 +10,8 @@ import type {
   KelderlogActie,
   KelderlogEenheid,
   KelderlogRegel,
-  Producent,
+  Eigenaar,
+  EigenaarSoort,
   Tank,
   TankboekActie,
   TankboekRegel,
@@ -33,18 +34,21 @@ async function pbOfFout() {
   return pb;
 }
 
-// ============= Producenten =============
-function producentFromPb(r: RecordModel): Producent {
+// ============= Eigenaars =============
+function eigenaarFromPb(r: RecordModel): Eigenaar {
   return {
     id: r.id,
     naam: r["naam"],
+    // Fase 16 — leeg bij eigenaars van vóór deze fase; die blijven bruikbaar,
+    // maar worden in het beheerscherm zichtbaar gemarkeerd.
+    code: r["code"] ?? "",
     soort: r["soort"],
     actief: r["actief"] ?? true,
     notitie: r["notitie"] ?? "",
   };
 }
 
-export async function fetchProducenten(): Promise<Producent[]> {
+export async function fetchEigenaars(): Promise<Eigenaar[]> {
   const pb = getPb();
   if (!pb) return [];
   // Bug gevonden (Fase 7-nazorg): zonder deze expliciete check gaf een
@@ -52,15 +56,61 @@ export async function fetchProducenten(): Promise<Producent[]> {
   // laat het verzoek gewoon door (200, items: []), dus dat werd nergens als
   // fout herkend. Nu een duidelijke fout die de aanroepende query.isError
   // maakt (zie kelder.partijen.nieuw.tsx).
-  if (!isIngelogd()) throw new Error("Log opnieuw in om producenten te kunnen laden.");
+  if (!isIngelogd()) throw new Error("Log opnieuw in om eigenaars te kunnen laden.");
   if (!(await ensureOnline()))
-    throw new Error("Geen verbinding met de server — kon producenten niet laden.");
+    throw new Error("Geen verbinding met de server — kon eigenaars niet laden.");
   try {
-    const records = await pb.collection("producenten").getFullList({ sort: "naam" });
-    return records.map(producentFromPb);
+    const records = await pb.collection("eigenaars").getFullList({ sort: "naam" });
+    return records.map(eigenaarFromPb);
   } catch {
-    throw new Error("Kon producenten niet laden — probeer het opnieuw.");
+    throw new Error("Kon eigenaars niet laden — probeer het opnieuw.");
   }
+}
+
+export interface EigenaarInput {
+  naam: string;
+  code: string;
+  soort: EigenaarSoort;
+  actief?: boolean;
+  notitie?: string;
+}
+
+/**
+ * Fase 16 Blok C — de code is verplicht voor NIEUWE eigenaars. De harde
+ * afdwinging zit server-side (pb_hooks/eigenaars.pb.js); deze check hier is
+ * er alleen om de gebruiker een melding te geven vóór het verzoek de deur
+ * uit gaat.
+ */
+export async function createEigenaar(input: EigenaarInput): Promise<Eigenaar> {
+  const pb = await pbOfFout();
+  const code = (input.code ?? "").trim();
+  if (!/^[0-9]{2}$/.test(code))
+    throw new Error(
+      "Een nieuwe eigenaar heeft een tweecijferige code nodig (bijvoorbeeld 01 voor De Tappenmars, 07 voor Thommy's Drinks).",
+    );
+  logAudit("aangemaakt", "eigenaars", `${code} — ${input.naam}`);
+  const r = await pb.collection("eigenaars").create({
+    ...input,
+    code,
+    actief: input.actief ?? true,
+    notitie: input.notitie ?? "",
+  });
+  return eigenaarFromPb(r);
+}
+
+/**
+ * Bijwerken mag WEL zonder code: eigenaars van vóór Fase 16 moeten bruikbaar
+ * blijven (op inactief zetten, notitie aanvullen) terwijl Thomas hun code nog
+ * opzoekt. Een ingevulde code moet wel kloppen.
+ */
+export async function updateEigenaar(id: string, input: Partial<EigenaarInput>): Promise<Eigenaar> {
+  const pb = await pbOfFout();
+  const code = input.code?.trim();
+  if (code && !/^[0-9]{2}$/.test(code))
+    throw new Error("De eigenaarscode moet uit precies twee cijfers bestaan, bijvoorbeeld 03.");
+  logAudit("gewijzigd", "eigenaars", id);
+  const r = await pb.collection("eigenaars").update(id, { ...input, ...(code ? { code } : {}) });
+  return eigenaarFromPb(r);
 }
 
 // ============= Tanks =============
@@ -147,7 +197,7 @@ function tankboekFromPb(r: RecordModel): TankboekRegel {
     datum: r["datum"],
     tijd: r["tijd"] ?? "",
     partij: r["partij"],
-    producent: r["producent"] || null,
+    eigenaar: r["eigenaar"] || null,
     actie: r["actie"],
     van_tank: r["van_tank"] || null,
     naar_tank: r["naar_tank"] || null,
@@ -164,7 +214,7 @@ function tankboekFromPb(r: RecordModel): TankboekRegel {
 export interface TankboekFilter {
   partij?: string;
   tank?: string; // matcht van_tank óf naar_tank
-  producent?: string;
+  eigenaar?: string;
   vanaf?: string; // datum >=
   tot?: string; // datum <=
 }
@@ -175,8 +225,8 @@ export async function fetchTankboek(filter?: TankboekFilter): Promise<TankboekRe
     if (filter?.partij) delen.push(pb.filter("partij = {:partij}", { partij: filter.partij }));
     if (filter?.tank)
       delen.push(pb.filter("(van_tank = {:tank} || naar_tank = {:tank})", { tank: filter.tank }));
-    if (filter?.producent)
-      delen.push(pb.filter("producent = {:producent}", { producent: filter.producent }));
+    if (filter?.eigenaar)
+      delen.push(pb.filter("eigenaar = {:eigenaar}", { eigenaar: filter.eigenaar }));
     if (filter?.vanaf) delen.push(pb.filter("datum >= {:vanaf}", { vanaf: filter.vanaf }));
     if (filter?.tot) delen.push(pb.filter("datum <= {:tot}", { tot: filter.tot }));
     const records = await pb.collection("tankboek").getFullList({
@@ -191,7 +241,7 @@ export interface BoekingInput {
   datum: string;
   tijd?: string;
   partij: string;
-  producent?: string;
+  eigenaar?: string;
   actie: TankboekActie;
   van_tank?: string;
   naar_tank?: string;
@@ -509,7 +559,7 @@ function bottelrondeFromPb(r: RecordModel): Bottelronde {
   return {
     id: r.id,
     partij: r["partij"],
-    producent: r["producent"] || null,
+    eigenaar: r["eigenaar"] || null,
     van_tank: r["van_tank"],
     botteldatum: r["botteldatum"],
     aantal_flessen: r["aantal_flessen"] ?? 0,
@@ -565,7 +615,7 @@ export async function fetchBottelrondeById(id: string): Promise<Bottelronde | nu
 
 export interface BottelrondeInput {
   partij: string;
-  producent?: string | null;
+  eigenaar?: string | null;
   van_tank: string;
   botteldatum: string;
   aantal_flessen: number;
@@ -615,7 +665,7 @@ function voorraadFlesFromPb(r: RecordModel): VoorraadFles {
     id: r.id,
     bottelronde: r["bottelronde"],
     partij: r["partij"],
-    producent: r["producent"] || null,
+    eigenaar: r["eigenaar"] || null,
     wijnnaam: r["wijnnaam"] ?? "",
     jaargang: r["jaargang"] ?? null,
     aantal_beginvoorraad: r["aantal_beginvoorraad"] ?? 0,
@@ -631,7 +681,7 @@ function voorraadFlesFromPb(r: RecordModel): VoorraadFles {
 }
 
 export interface VoorraadFilter {
-  producent?: string;
+  eigenaar?: string;
   status?: string;
   partij?: string;
 }
@@ -641,12 +691,12 @@ export async function fetchVoorraadFlessen(filter?: VoorraadFilter): Promise<Voo
   // op. requestKey: null voorkomt dat ze elkaar annuleren, deelVerzoek dat
   // dezelfde query dubbel over de lijn gaat — de sleutel bevat daarom het
   // filter, anders zouden verschillende filters elkaars antwoord krijgen.
-  const sleutel = `voorraad_flessen:${filter?.producent ?? ""}|${filter?.status ?? ""}|${filter?.partij ?? ""}`;
+  const sleutel = `voorraad_flessen:${filter?.eigenaar ?? ""}|${filter?.status ?? ""}|${filter?.partij ?? ""}`;
   return deelVerzoek(sleutel, () =>
     haalLijst("de voorraad", [], async (pb) => {
       const delen: string[] = [];
-      if (filter?.producent)
-        delen.push(pb.filter("producent = {:producent}", { producent: filter.producent }));
+      if (filter?.eigenaar)
+        delen.push(pb.filter("eigenaar = {:eigenaar}", { eigenaar: filter.eigenaar }));
       if (filter?.status) delen.push(pb.filter("status = {:status}", { status: filter.status }));
       if (filter?.partij) delen.push(pb.filter("partij = {:partij}", { partij: filter.partij }));
       const records = await pb.collection("voorraad_flessen").getFullList({

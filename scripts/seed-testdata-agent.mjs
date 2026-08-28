@@ -88,9 +88,9 @@ async function seed() {
   token = await inloggen();
   console.log(`Ingelogd op ${base}`);
 
-  const producenten = await api("/api/collections/producenten/records?perPage=1");
-  const producent = producenten.items[0];
-  if (!producent) throw new Error("Geen producent gevonden — draai eerst setup-pocketbase.mjs.");
+  const eigenaars = await api("/api/collections/eigenaars/records?perPage=1");
+  const eigenaar = eigenaars.items[0];
+  if (!eigenaar) throw new Error("Geen eigenaar gevonden — draai eerst setup-pocketbase.mjs.");
 
   const tanks = await api(
     `/api/collections/tanks/records?perPage=3&sort=code&filter=${encodeURIComponent('status="leeg"')}`,
@@ -115,7 +115,7 @@ async function seed() {
       type: "rood",
       status: "gisting",
       lotnummer: "PINTEST01",
-      producent: producent.id,
+      eigenaar: eigenaar.id,
       start_tank: tank1.id,
       start_volume_l: 300,
       verantwoordelijke: "Testscript",
@@ -133,7 +133,7 @@ async function seed() {
       type: "wit",
       status: "opvoeding",
       lotnummer: "MUSTEST01",
-      producent: producent.id,
+      eigenaar: eigenaar.id,
       start_tank: tank2.id,
       start_volume_l: 200,
       verantwoordelijke: "Testscript",
@@ -148,7 +148,7 @@ async function seed() {
     body: {
       datum: vandaagMinus(2),
       partij: partijGisting.id,
-      producent: producent.id,
+      eigenaar: eigenaar.id,
       actie: "overhevelen",
       van_tank: tank1.id,
       naar_tank: tank3.id,

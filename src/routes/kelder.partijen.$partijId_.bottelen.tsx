@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import {
   createBottelrondeViaEndpoint,
   fetchAnalyses,
-  fetchProducenten,
+  fetchEigenaars,
   fetchTanks,
   fetchVoedingswaardeBerekeningen,
 } from "@/lib/kelder-data";
@@ -42,7 +42,7 @@ function BottelenPage() {
     queryFn: () => fetchPartijById(partijId),
   });
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
-  const producentenQ = useQuery({ queryKey: ["producenten"], queryFn: fetchProducenten });
+  const eigenaarsQ = useQuery({ queryKey: ["eigenaars"], queryFn: fetchEigenaars });
   const voedingswaardeQ = useQuery({
     queryKey: ["voedingswaarde", partijId],
     queryFn: () => fetchVoedingswaardeBerekeningen(partijId),
@@ -135,7 +135,7 @@ function BottelenPage() {
     mutationFn: () =>
       createBottelrondeViaEndpoint({
         partij: partijId,
-        producent: partij?.producent ?? undefined,
+        eigenaar: partij?.eigenaar ?? undefined,
         van_tank: vanTank,
         botteldatum,
         aantal_flessen: Number(aantalFlessen),

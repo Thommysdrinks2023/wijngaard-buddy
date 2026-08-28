@@ -1,5 +1,13 @@
 # Fase 10 — Proactieve assistent: Fase 1, Architectuur
 
+> **Correctie (Fase 16, 28 augustus 2026):** waar dit document "producent"
+> schrijft, heet dat vanaf Fase 16 **eigenaar** (collectie `eigenaars`, veld
+> `eigenaar`). De term is gewijzigd omdat De Tappenmars ook voor andere
+> wijngaarden en fruittelers verwerkt en bottelt; die klanten zijn geen
+> producent maar eigenaar van hun eigen product. De tekst hieronder blijft
+> staan zoals hij destijds is geschreven.
+
+
 **Status: concept, wacht op akkoord van Thomas. Geen code, schema of data aangepast tijdens het opstellen van dit document.**
 
 ---

@@ -17,15 +17,34 @@ const LEES_HANDLERS = {
     if (input.zoekterm) delen.push(`(naam ~ {:z} || lotnummer ~ {:z})`);
     if (input.status) delen.push(`status = {:status}`);
     if (input.jaargang) delen.push(`jaargang = {:jaargang}`);
+
+    // Fase 16 — op eigenaar filteren. Zoekt op naam of op de tweecijferige
+    // code, zodat zowel "Thommy's Drinks" als "07" werkt.
+    let eigenaarId = "";
+    if (input.eigenaar) {
+      const gevonden = app.findRecordsByFilter(
+        "eigenaars",
+        "naam ~ {:e} || code = {:e}",
+        "naam",
+        1,
+        0,
+        { e: input.eigenaar },
+      );
+      if (gevonden.length === 0)
+        return { gevonden: false, notitie: `Geen eigenaar gevonden voor "${input.eigenaar}".` };
+      eigenaarId = gevonden[0].id;
+      delen.push(`eigenaar = {:eig}`);
+    }
+
     const partijen = app.findRecordsByFilter(
       "partijen",
       delen.join(" && ") || "id != ''",
       "-jaargang",
       20,
       0,
-      { z: input.zoekterm, status: input.status, jaargang: input.jaargang },
+      { z: input.zoekterm, status: input.status, jaargang: input.jaargang, eig: eigenaarId },
     );
-    return partijen.map(partijSamenvatting);
+    return partijen.map((p) => partijSamenvatting(p, app));
   },
   partij_detail(app, input) {
     const partij = logica.vindPartij(app, input.partij);
@@ -49,7 +68,7 @@ const LEES_HANDLERS = {
     });
     return {
       gevonden: true,
-      partij: partijSamenvatting(partij),
+      partij: partijSamenvatting(partij, app),
       huidige_tanks: tanks.map((t) => ({
         code: t.getString("code"),
         volume_l: t.getFloat("huidig_volume_l"),
@@ -717,7 +736,22 @@ function voerLeesToolUit(app, naam, input) {
   return handler(app, input);
 }
 
-function partijSamenvatting(p) {
+// Fase 16 — de eigenaar hoort hierin thuis. De tooldescriptie beloofde al
+// sinds Fase 3 "zoek partijen op producent", maar de eigenaar kwam nergens in
+// de output terug en er werd ook niet op gefilterd; de assistent kon de vraag
+// "van wie is deze partij" dus niet beantwoorden. Gevonden bij de
+// eigenaar-regressietest van Fase 16.
+function eigenaarLabelVoor(app, id) {
+  if (!id) return "";
+  try {
+    const e = app.findRecordById("eigenaars", id);
+    const code = e.getString("code");
+    return code ? code + " — " + e.getString("naam") : e.getString("naam");
+  } catch (err) {
+    return "";
+  }
+}
+function partijSamenvatting(p, app) {
   return {
     id: p.id,
     naam: p.getString("naam"),
@@ -726,6 +760,7 @@ function partijSamenvatting(p) {
     status: p.getString("status"),
     lotnummer: p.getString("lotnummer"),
     samenstelling: p.getString("samenstelling"),
+    eigenaar: app ? eigenaarLabelVoor(app, p.getString("eigenaar")) : undefined,
   };
 }
 function analyseSamenvatting(a) {
@@ -791,7 +826,7 @@ const VOORSTEL_BOUWERS = {
     const payload = {
       datum: input.datum || logica.vandaagStr(),
       partij: partij.id,
-      producent: partij.getString("producent"),
+      eigenaar: partij.getString("eigenaar"),
       actie: input.actie,
       van_tank: vanTank ? vanTank.id : "",
       naar_tank: naarTank ? naarTank.id : "",
@@ -1127,7 +1162,7 @@ const VOORSTEL_BOUWERS = {
     if (!tank) return { fout: `Geen tank gevonden voor "${input.van_tank}".` };
     const payload = {
       partij: partij.id,
-      producent: partij.getString("producent"),
+      eigenaar: partij.getString("eigenaar"),
       van_tank: tank.id,
       botteldatum: input.botteldatum || logica.vandaagStr(),
       aantal_flessen: input.aantal_flessen,
