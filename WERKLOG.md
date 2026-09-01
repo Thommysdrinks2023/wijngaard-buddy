@@ -909,3 +909,53 @@ tests totaal groen, tsc/eslint schoon.
 `docs/pasteurisatie-formules.md` toegevoegd: alle formules, bronnen en
 aannames in gewone taal, inclusief expliciet wat wél en niet als ijkpunt is
 gebruikt.
+
+
+---
+
+## Blok C — Datamodel
+
+Nieuwe collecties: `sluitingen` (naam/type/`max_druk_bar`/geschikt-voor-
+gecarboniseerd/liner/leverancier), `pasteurisatie_runs` (relaties naar
+eigenaars/partijen/bottelrondes/flestypes/sluitingen/users, plus alle velden
+uit de opdracht), `pasteurisatie_certificaten` (onveranderlijk zodra
+uitgegeven — `updateRule: null`), en `rekenmodel_validaties` (Blok I:
+validatiestatus per model, beheerbaar met datum/toelichting i.p.v. hardcoded).
+
+**`max_druk_bar` bewust leeg gelaten** voor kroonkurk en Stelvin Pressure —
+niet geraden. PocketBase geeft een leeg number-veld terug als `0`, dus de
+UI (Blok D) moet `0` op dit veld als "onbekend" behandelen, dezelfde valkuil
+als eerder gedocumenteerd in CLAUDE.md. Alleen de BVS-standaarddop heeft een
+bekende specificatie (6 bar) en is meteen gemarkeerd als niet geschikt voor
+gecarboniseerd werk.
+
+`flestypes.sluiting` (Fase 15, vrije tekst) is BEWUST NIET omgezet naar een
+relatie met `sluitingen`: dat zou bestaande flestype-records met tekst als
+"vinolok"/"schroef"/"kurk" moeten mappen naar specifieke sluitingsrecords
+(bijv. welke van de twee schroefdop-varianten?), en dat is precies het soort
+gok dat deze fase wil vermijden. Het verband staat nu alleen gedocumenteerd:
+een pasteurisatie-run kiest zijn eigen `sluiting`-relatie los van het
+flestype. Zie VRAGEN VOOR THOMAS.
+
+**Bijvangst — een generieke schemavalkuil, niet pasteurisatie-specifiek**:
+`sensor_metingen.bron_type` kreeg de nieuwe waarde `pasteurisatie_run` niet
+automatisch, ondanks dat de constante was bijgewerkt. Oorzaak:
+`synchroniseerKeuzelijsten()` vergelijkt alleen select-velden die in de
+oorspronkelijke `ensureCollection()`-definitie staan; `bron_type` was later
+via `ensureVelden()` toegevoegd (Fase 14) en viel daardoor buiten die check —
+exact het "architecturale gat" dat CLAUDE.md al drie keer eerder beschrijft
+(API-regels, keuzelijstwaarden, `required`-vlaggen), nu een vierde variant.
+Gedicht met een nieuwe generieke helper `ensureKeuzelijstWaarden()` (bewust
+alleen toevoegen, nooit verwijderen — zelfde regel als de bestaande
+`synchroniseerKeuzelijsten()`), niet met een pasteurisatie-specifieke lap.
+
+**Onderzoek Blok F vooruitgehaald (geen wijziging nodig gebleken)**: de
+"alleen bottelen"-partij (geen oogst, geen tankhistorie) is AL mogelijk
+zonder enige schemawijziging. `partijen` heeft maar vier verplichte velden
+(`naam`, `jaargang`, `type`, `status`) — alle kelder-specifieke velden
+(`start_volume_l`, `start_tank`, `pers_datum`, dichtheden) zijn via
+`ensureVelden()` toegevoegd en dus al optioneel. Geen velden versoepeld,
+geen bevinding om te melden — Blok F kan hierop bouwen zonder migratie.
+
+Schema-drift 0 na de migratie, 219 tests groen (schema raakt de pure
+rekenkernen niet), eslint schoon. Verse backup vóór de migratie gemaakt.

@@ -179,7 +179,7 @@ const SENSOR_TYPES = ["temperatuur", "co2", "gewicht", "dichtheid", "overig"];
 // Bewust neutraal (niet alleen "tank"): een wijngaardsensor of een algemene
 // kelderwaarneming (bijv. omgevings-CO2) heeft geen tank als bron. Zie
 // bron_type/bron_id hieronder en de toelichting in ARCHITECTURE.md.
-const SENSOR_BRON_TYPES = ["tank", "kelder", "overig"];
+const SENSOR_BRON_TYPES = ["tank", "kelder", "overig", "pasteurisatie_run"];
 const TANKBOEK_ACTIES = [
   "vullen",
   "overhevelen",
@@ -722,6 +722,30 @@ async function hernoemVeld(collectieNaam, oudVeld, nieuwVeld) {
   const velden = col.fields.map((f) => (f.name === oudVeld ? { ...f, name: nieuwVeld } : f));
   await api(`/api/collections/${col.id}`, { method: "PATCH", body: { fields: velden } });
   console.log(`  ↻ ${collectieNaam}.${oudVeld} hernoemd naar ${nieuwVeld}`);
+}
+
+/**
+ * Fase 17 — vult ontbrekende keuzelijstwaarden aan op een select-veld dat via
+ * ensureVelden() is toegevoegd (dus NA de oorspronkelijke ensureCollection()-
+ * definitie). synchroniseerKeuzelijsten() dekt dat geval niet: die vergelijkt
+ * alleen de velden die in het `fields`-array van de ensureCollection()-call
+ * zelf staan. Zonder deze helper zou bijv. sensor_metingen.bron_type (via
+ * ensureVelden toegevoegd in Fase 14) een nieuwe waarde als
+ * "pasteurisatie_run" (Fase 17) nooit krijgen. Bewust alleen toevoegen, nooit
+ * verwijderen — zelfde regel als synchroniseerKeuzelijsten().
+ */
+async function ensureKeuzelijstWaarden(collectionNaam, veldNaam, waarden) {
+  if (droog) return;
+  const col = await api(`/api/collections/${collectionNaam}`);
+  const veld = col.fields.find((f) => f.name === veldNaam && f.type === "select");
+  if (!veld) return;
+  const missend = waarden.filter((w) => !veld.values.includes(w));
+  if (missend.length === 0) return;
+  const velden = col.fields.map((f) =>
+    f.name === veldNaam ? { ...f, values: [...f.values, ...missend] } : f,
+  );
+  await api(`/api/collections/${col.id}`, { method: "PATCH", body: { fields: velden } });
+  console.log(`  ↻ ${collectionNaam}.${veldNaam}: +${missend.join(", +")}`);
 }
 
 async function ensureUniekeIndex(collectionNaam, veld, indexNaam) {
@@ -2489,6 +2513,14 @@ async function main() {
   await ensureNietVerplicht("sensor_metingen", ["temperatuur_c", "gemeten_op"]);
   await migreerSensorMetingen();
 
+  // Fase 17 Blok C — een pasteurisatie-run heeft meerdere sensoren
+  // (referentiefles, waterbad, omgeving). sensor_label zegt WELKE dat is;
+  // welke sensor de referentiefles is, staat op de run zelf
+  // (pasteurisatie_runs.sensor_positie), niet hier — dit veld is puur
+  // identificatie, geen betekenistoekenning.
+  await ensureVelden("sensor_metingen", [{ name: "sensor_label", type: "text" }]);
+  await ensureKeuzelijstWaarden("sensor_metingen", "bron_type", SENSOR_BRON_TYPES);
+
   // Fase 14 Blok B — NFC/RFID-tag op een tank, om te identificeren door te
   // scannen zonder de tags al besteld te hebben. Optioneel: niet elke tank
   // hoeft er een te krijgen (bijv. de kleinere/minder gebruikte tanks eerst
@@ -2882,6 +2914,275 @@ async function main() {
     console.log("  + eerste wijngaard-configuratie (De Tappenmars) aangemaakt");
   }
 
+  // Fase 17 Blok C — datamodel voor pasteurisatie & drukveiligheid.
+  const PRODUCT_SOORTEN = ["wijn", "sap", "overige_gegiste_drank"];
+  const VEILIGHEIDSOORDELEN = ["veilig", "marginaal", "onveilig"];
+  const RUN_STATUSSEN = ["gepland", "actief", "afgerond", "afgebroken"];
+  const SLUITING_TYPES = ["kroonkurk", "schroefdop", "vinolok", "kurk"];
+
+  const sluitingenCol = await ensureCollection({
+    name: "sluitingen",
+    type: "base",
+    fields: [
+      { name: "naam", type: "text", required: true },
+      { name: "type", type: "select", required: true, maxSelect: 1, values: SLUITING_TYPES },
+      // Bewust GEEN default/0: een lege max_druk_bar betekent "onbekend", en
+      // dat moet zichtbaar blijven i.p.v. een geraden getal te suggereren
+      // (zie de opdracht: "vul max_druk_bar alleen in waar het bekend is").
+      { name: "max_druk_bar", type: "number" },
+      { name: "geschikt_voor_gecarboniseerd", type: "bool" },
+      { name: "liner", type: "text" },
+      { name: "leverancier", type: "text" },
+      { name: "notities", type: "text" },
+      { name: "actief", type: "bool" },
+      { name: "vineyard_id", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    // Nooit hard verwijderen — er hangen pasteurisatie_runs aan.
+    deleteRule: null,
+  });
+
+  {
+    // Geseed conform wat bekend is (zie de opdracht/WERKLOG Fase 17). Kroonkurk
+    // en Stelvin Pressure hebben BEWUST geen max_druk_bar: dat is niet
+    // bekend en wordt niet geraden — zie VRAGEN VOOR THOMAS #3.
+    const SEED_SLUITINGEN = [
+      {
+        naam: "Kroonkurk 26 mm",
+        type: "kroonkurk",
+        geschikt_voor_gecarboniseerd: true,
+        notities:
+          "Bewezen formaat op 250 ml Alamos-flesjes (~10.000-12.000 flessen zonder systematische problemen). max_druk_bar onbekend — fabrieksspecificatie nog niet vastgelegd.",
+      },
+      {
+        naam: "BVS schroefdop standaard",
+        type: "schroefdop",
+        max_druk_bar: 6,
+        geschikt_voor_gecarboniseerd: false,
+        liner: "geen",
+        notities:
+          "Verlaten na dopfalen en barstend glas op het 750 ml BVS-formaat: geen liner (niet geschikt voor gecarboniseerd product), te hoog vulniveau, en carbonatie die bij pasteurisatietemperatuur ver boven de 6 bar-specificatie uitkwam. Niet gebruiken voor gecarboniseerd werk.",
+      },
+      {
+        naam: "Stelvin Pressure BVS 30x60",
+        type: "schroefdop",
+        geschikt_voor_gecarboniseerd: true,
+        leverancier: "Amcor",
+        notities:
+          "Aangewezen schroefsluiting voor toekomstig gecarboniseerd werk. max_druk_bar onbekend — fabrieksspecificatie nog niet vastgelegd.",
+      },
+    ];
+    const bestaande = await api("/api/collections/sluitingen/records?perPage=200");
+    const namen = new Set((bestaande.items ?? []).map((s) => s.naam));
+    let nieuw = 0;
+    for (const s of SEED_SLUITINGEN) {
+      if (namen.has(s.naam)) continue;
+      await api("/api/collections/sluitingen/records", {
+        method: "POST",
+        body: { ...s, actief: true },
+      });
+      nieuw++;
+    }
+    if (nieuw > 0) console.log(`  + ${nieuw} sluiting(en) geseed`);
+  }
+
+  const pasteurisatieRunsCol = await ensureCollection({
+    name: "pasteurisatie_runs",
+    type: "base",
+    fields: [
+      {
+        name: "eigenaar",
+        type: "relation",
+        collectionId: eigenaarsCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "partij",
+        type: "relation",
+        required: true,
+        collectionId: partijenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      // Bewust bewaard als tekst NAAST de relatie: als de partij later
+      // hernoemd wordt, blijft zichtbaar met welk lotnummer deze run is
+      // gestart (zie de opdracht).
+      { name: "lotnummer", type: "text" },
+      {
+        name: "bottelronde",
+        type: "relation",
+        collectionId: bottelrondesCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "product_soort",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: PRODUCT_SOORTEN,
+      },
+      { name: "datum", type: "text", required: true },
+      { name: "starttijd", type: "text" },
+      { name: "eindtijd", type: "text" },
+      {
+        name: "flestype",
+        type: "relation",
+        collectionId: flestypesCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      {
+        name: "sluiting",
+        type: "relation",
+        collectionId: sluitingenCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "aantal_flessen", type: "number", onlyInt: true },
+      { name: "vulvolume_ml", type: "number" },
+      { name: "co2_gehalte_gl", type: "number" },
+      { name: "doel_pu_min", type: "number" },
+      { name: "doel_pu_max", type: "number" },
+      { name: "doeltemperatuur_c", type: "number" },
+      { name: "berekende_max_druk_bar", type: "number" },
+      {
+        name: "veiligheidsoordeel",
+        type: "select",
+        maxSelect: 1,
+        values: VEILIGHEIDSOORDELEN,
+      },
+      {
+        name: "oordeel_geaccepteerd_door",
+        type: "relation",
+        collectionId: usersCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "sensor_positie", type: "text" },
+      { name: "totale_pu", type: "number" },
+      { name: "pu_opwarm", type: "number" },
+      { name: "pu_houd", type: "number" },
+      { name: "pu_afkoel", type: "number" },
+      { name: "piektemperatuur_c", type: "number" },
+      {
+        name: "status",
+        type: "select",
+        required: true,
+        maxSelect: 1,
+        values: RUN_STATUSSEN,
+      },
+      { name: "opmerkingen", type: "text" },
+      {
+        name: "uitgevoerd_door",
+        type: "relation",
+        collectionId: usersCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "vineyard_id", type: "text" },
+      { name: "deleted", type: "bool" },
+      ...autodateFields(),
+    ],
+    indexes: [
+      "CREATE INDEX idx_pasteurisatie_runs_status ON pasteurisatie_runs (status)",
+      "CREATE INDEX idx_pasteurisatie_runs_partij ON pasteurisatie_runs (partij)",
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    // Aanmaken/afronden loopt via het server-endpoint (Blok D/E) zodat de
+    // kelderlogregels en het veiligheidsoordeel er altijd bij horen —
+    // zelfde patroon als bottelrondes/tankboek.
+    createRule: null,
+    updateRule: null,
+    deleteRule: null,
+  });
+
+  await ensureCollection({
+    name: "pasteurisatie_certificaten",
+    type: "base",
+    fields: [
+      {
+        name: "run",
+        type: "relation",
+        required: true,
+        collectionId: pasteurisatieRunsCol.id,
+        cascadeDelete: false,
+        maxSelect: 1,
+      },
+      { name: "uitgiftedatum", type: "text", required: true },
+      { name: "uitgegeven_door", type: "text" },
+      {
+        name: "bestand",
+        type: "file",
+        maxSelect: 1,
+        maxSize: 20971520,
+        mimeTypes: ["application/pdf"],
+      },
+      { name: "versienummer", type: "number", required: true, onlyInt: true },
+      { name: "vineyard_id", type: "text" },
+      ...autodateFields(),
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    // Onveranderlijk zodra uitgegeven: een nieuwe generatie is een nieuw
+    // record met een hoger versienummer, nooit een overschrijving.
+    updateRule: null,
+    deleteRule: null,
+  });
+
+  // Fase 17 Blok I — validatiestatus per rekenmodel, beheerbaar met datum en
+  // toelichting (i.p.v. de "gevalideerd: false" hardcoded te laten totdat er
+  // een code-wijziging voor nodig is).
+  await ensureCollection({
+    name: "rekenmodel_validaties",
+    type: "base",
+    fields: [
+      // bijv. "pasteurisatie_pu", "drukveiligheid_co2"
+      { name: "model_sleutel", type: "text", required: true },
+      { name: "gevalideerd", type: "bool" },
+      { name: "gevalideerd_op", type: "text" },
+      { name: "gevalideerd_door", type: "text" },
+      { name: "toelichting", type: "text" },
+      { name: "vineyard_id", type: "text" },
+      ...autodateFields(),
+    ],
+    indexes: [
+      "CREATE UNIQUE INDEX idx_rekenmodel_validaties_sleutel ON rekenmodel_validaties (model_sleutel)",
+    ],
+    listRule: AUTH_RULE,
+    viewRule: AUTH_RULE,
+    createRule: AUTH_RULE,
+    updateRule: AUTH_RULE,
+    deleteRule: null,
+  });
+
+  {
+    const MODEL_SLEUTELS = ["pasteurisatie_pu", "drukveiligheid_co2"];
+    for (const sleutel of MODEL_SLEUTELS) {
+      const bestaand = await api(
+        `/api/collections/rekenmodel_validaties/records?perPage=1&filter=${encodeURIComponent(`model_sleutel='${sleutel}'`)}`,
+      );
+      if (bestaand.totalItems === 0) {
+        await api("/api/collections/rekenmodel_validaties/records", {
+          method: "POST",
+          body: {
+            model_sleutel: sleutel,
+            gevalideerd: false,
+            toelichting: "Nog niet gevalideerd tegen een echte, nagemeten run.",
+          },
+        });
+        console.log(`  + validatiestatus "${sleutel}" aangemaakt (niet gevalideerd)`);
+      }
+    }
+  }
+
   // 3c. Multi-tenant voorbereiding: vineyard_id op alle datacollecties.
   // Puur schema-voorbereiding (niet geactiveerd in de UI). Default-tenant = "tappenmars".
   const TENANT_COLLECTIES = [
@@ -2934,6 +3235,11 @@ async function main() {
     "flestypes",
     "flessen_mutaties",
     "accijns_categorieen",
+    // Fase 17
+    "sluitingen",
+    "pasteurisatie_runs",
+    "pasteurisatie_certificaten",
+    "rekenmodel_validaties",
   ];
   for (const naam of TENANT_COLLECTIES) {
     await ensureVelden(naam, [{ name: "vineyard_id", type: "text" }]);
