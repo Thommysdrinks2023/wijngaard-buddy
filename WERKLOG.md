@@ -742,3 +742,110 @@ PowerShell-timeout), maar het is het noteren waard mocht het vaker gebeuren.
    in gebruik is — bewust niet zelf besloten.
 3. **375ml-flestypes** (staat nog open uit Fase 15): welke sluiting hebben die?
    Dat staat niet in `Flessen_admin.xlsx`.
+
+
+---
+
+# Sessie 1 september 2026 — Fase 17 Blok 0/A: pasteurisatiemonitor, nulmeting en PU-rekenkern
+
+Meerdaagse fase (Pasteurisatiemonitor & drukveiligheid). Deze sessie: Blok 0
+(nulmeting) en Blok A (PU-rekenkern). Blok B (drukveiligheid) is BEWUST NIET
+afgerond deze sessie — zie de bevinding hieronder, die precies het
+"rapporteren in plaats van wegpoetsen"-principe uit de opdracht raakt.
+
+## Blok 0 — Nulmeting
+
+1. **Sensorinfrastructuur (Fase 14)**: bevestigd aanwezig. `sensor_metingen`
+   heeft `type`/`waarde`/`eenheid`/`bron_type`/`bron_id`/`ontvangen_op`;
+   `bron_type` is een select met vaste waarden (`tank`, `kelder`, `overig`) —
+   **`pasteurisatie_run` staat er nog niet in** en moet in Blok C als
+   toegevoegde keuzelijstwaarde bij (niet verwijderen, alleen aanvullen,
+   zelfde regel als overal in dit project). Endpoint `POST /api/sensor/meting`
+   bestaat (`pb_hooks/sensor.pb.js`, token-auth).
+2. **`flestypes` (Fase 15)**: bevestigd aanwezig met `inhoud_ml` en een vrije-
+   tekst `sluiting`-veld (geen relatie). Blok C moet dus zelf beslissen of
+   dat tekstveld naar een relatie met de nieuwe `sluitingen`-collectie gaat —
+   nog niet uitgevoerd deze sessie.
+3. **Exportlaag**: `src/lib/controle-pakket.ts` bundelt bestaande CSV-exports
+   in een ZIP (jszip) zonder zelf iets te berekenen. Er is **geen bestaande
+   PDF-generator met grafieken** in de codebase — het PU-certificaat (Blok G,
+   met temperatuurcurve als grafiek) heeft dus een nieuwe renderaanpak nodig,
+   niet alleen hergebruik van het controle-pakket-patroon.
+4. **Signaallaag (Fase 10)**: bevestigd — `src/lib/signalen.ts` met
+   `SignaalProducent`-array, `signaal_status` voor snooze/dismiss, en de
+   naamconventie uit Fase 14 §8.4 (`<bron_type>-<bron_id>-<meetsoort>-<richting>`)
+   voor `sensor_alerts`. Pasteurisatiemeldingen (Blok E) passen op dit patroon.
+
+## Blok A — Rekenkern PU (`src/lib/pasteurisatie.ts`)
+
+Pure functies, zelfde patroon als `oenologie.ts`: `puPerMinuut()`,
+`puOverCurve()` (trapeziumintegratie over de volledige curve, fase-opsplitsing
+opwarm/houd/afkoel via een tolerantieband rond de piektemperatuur, gat-
+detectie die NIET stilzwijgend interpoleert maar `betrouwbaar: false` +
+de gaten teruggeeft), en `voorspelPuVerloop()` (expliciete "onvoldoende
+data"/"temperatuur stijgt nog"-uitkomsten in plaats van een gegokte
+voorspelling — zelfde regel als `gisting-verwachting.ts`).
+
+**Bevinding tijdens het testen (klein, direct opgelost)**: de vuistwaarden uit
+de opdracht (0,036 / 5,3 / 27,5 PU/min bij 50/65/70 °C) zijn gebaseerd op de
+afgeronde basis 1,393. Deze module rekent met de exacte `10^((T-ref)/z)`, wat
+~3-4% hoger uitkomt. Geen modelfout — vastgelegd in de test met een
+toelichting, zodat het verschil zichtbaar blijft in plaats van weggerond.
+
+**15 tests groen**, inclusief: 60 °C/120 min = exact 120 PU, de
+houdfase-vs-volledige-curve-vergelijking (aantoonbaar >10% verschil), alle
+gevraagde randgevallen (lege reeks, één meetpunt, verkeerde volgorde, gat in
+de reeks), en de indicatieve validatie tegen Thomas' praktijkbeschrijving
+(een aangenomen 15-20-20-minutencurve valt binnen 115–145 PU — expliciet
+gedocumenteerd in de test als AANNAME, niet als meting). Gecontroleerd dat
+een gemanipuleerde constante (z=8 i.p.v. 7) de tests zichtbaar rood maakt.
+Regressie: alle 206 bestaande + nieuwe unittests groen, tsc en eslint schoon.
+
+## Bevinding die Blok B blokkeert — MOET GERAPPORTEERD WORDEN, NIET WEGGEPOETST
+
+Bij het voorbereiden van Blok B (drukveiligheid) is het CO₂-Henry-model
+doorgerekend tegen het gegeven ijkpunt (2,2 bar bij 10 °C → circa 8 bar bij
+48 °C), VOORDAT er code voor is gecommit. Met de standaard, breed
+gepubliceerde temperatuurcoëfficiënt voor de Henry-constante van CO₂ in water
+(het "van 't Hoff"-getal ≈ 2400 K, overeenkomend met een oplossingsenthalpie
+van ongeveer 19,4 kJ/mol — de gangbare tekstboekwaarde) komt de voorspelde
+drukstijging op ongeveer 6,0 bar uit bij 48 °C, niet de gerapporteerde ~8 bar
+— **een afwijking van rond de 25%, ruim boven de 10%-grens** die de opdracht
+zelf als onderzoeksplicht aanmerkt.
+
+Twee mogelijke verklaringen, geen van beide simpelweg "het getal aanpassen":
+
+1. Het ijkpunt van Thomas is een ECHTE GEMETEN FLESDRUK (dopmanometer op een
+   dichte fles), niet een zuivere Henry-evenwichtsdruk. Een gesloten fles
+   herverdeelt CO₂ tussen vloeistof en kopruimte zodra de temperatuur stijgt
+   en de kopruimte door thermische uitzetting van de vloeistof kleiner wordt
+   — dat effect komt BOVENOP de zuivere oplosbaarheidsdaling en zou de extra
+   ~25% kunnen verklaren. Dit vraagt een gekoppeld vloeistof/kopruimte-model
+   (massabalans CO₂ over beide fasen), niet alleen `co2Oplosbaarheid(T)` los.
+2. Of de temperatuurcoëfficiënt die specifiek voor GECARBONISEERDE DRANKEN
+   (met suiker/alcohol, niet zuiver water) gepubliceerd wordt, wijkt af van
+   de tekstboekwaarde voor zuiver water.
+
+**Besluit deze sessie**: NIET doorbouwen op een ongevalideerd getal. Blok B
+is bewust opengelaten voor een vervolgsessie die het gekoppelde
+vloeistof/kopruimte-massabalansmodel (verklaring 1) implementeert — dat is
+sowieso nodig voor de thermische-uitzettingsbijdrage die de opdracht apart
+vraagt, dus dit is geen omweg maar het eigenlijke model. Tot die tijd blijft
+`src/lib/drukveiligheid.ts` ongeschreven: beter geen drukberekening dan een
+drukberekening die 25% te laag uitkomt op een veiligheidskritisch getal.
+
+## Stand
+
+Committed: `src/lib/pasteurisatie.ts` + `pasteurisatie.test.ts`. Geen
+schemawijzigingen deze sessie (Blok 0/A raken de database niet) — geen
+backup nodig geweest.
+
+## VRAGEN VOOR THOMAS (aanvullend op de zeven uit de opdracht)
+
+8. **Is het ijkpunt "2,2 bar bij 10 °C → ~8 bar bij 48 °C" een gemeten
+   flesdruk (manometer op een dichte fles) of een berekende/afgeleide
+   waarde?** Dit bepaalt of Blok B een massabalansmodel nodig heeft (fles
+   dicht, kopruimte krimpt met temperatuur) of dat de temperatuurcoëfficiënt
+   van de oplosbaarheid zelf moet worden bijgesteld voor dit product.
+9. Welke kopruimte (ml, of vulhoogte) hoorde bij die meting? Nodig om het
+   massabalansmodel te kalibreren op hetzelfde ijkpunt.
