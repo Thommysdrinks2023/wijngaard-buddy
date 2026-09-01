@@ -849,3 +849,63 @@ backup nodig geweest.
    van de oplosbaarheid zelf moet worden bijgesteld voor dit product.
 9. Welke kopruimte (ml, of vulhoogte) hoorde bij die meting? Nodig om het
    massabalansmodel te kalibreren op hetzelfde ijkpunt.
+
+
+---
+
+## Blok B — Rekenkern druk (`src/lib/drukveiligheid.ts`), na Thomas' correctie
+
+Vervolg op de bevinding hierboven. Thomas bevestigde: het "2,2 bar/10°C → ~8
+bar/48°C"-getal was zelf een eerdere berekening, geen gemeten flesdruk — dus
+niet bruikbaar als ijkpunt. De kopruimte bij het historische faalscenario is
+ook niet vastgelegd; wel staat vast dat het vulniveau destijds te hoog was.
+Het enige harde gegeven: het 750 ml BVS-formaat met 6 bar-doppen is
+daadwerkelijk bezweken (doppen + barstend glas) bij dat te hoge vulniveau.
+
+**Gebouwd zoals Thomas opdroeg:**
+
+1. Het volledige gekoppelde massabalansmodel: vloeistof + kopruimte, CO2
+   verdeeld volgens de wet van Henry (temperatuurafhankelijke oplosbaarheid,
+   van 't Hoff-vorm met de gepubliceerde coëfficiënt B≈2400 K — Sander 2015),
+   thermische uitzetting van de vloeistof (standaard waterdichtheidstabel),
+   waterdampdruk (Antoine-vergelijking, NIST). Alle drie apart controleerbaar
+   in `verwachteDruk()`'s resultaat.
+2. Een conservatieve bovengrens ernaast: dezelfde vergelijking zonder de term
+   voor de CO2-capaciteit van de kopruimte — per constructie altijd ≥ het
+   gekoppelde model (bewezen in een test). **Het veiligheidsoordeel gebruikt
+   uitsluitend deze bovengrens**, op Thomas' expliciete instructie.
+3. Het historische faalscenario gereproduceerd met een realistisch KLEIN
+   kopruimtevolume (niet geraden op een specifiek getal, wel klein — "hoog
+   vulniveau"): 750 ml, 730 ml gevuld (~2,7% kopruimte), 2,2 bar/10°C, 48°C.
+   Uitkomst: conservatieve bovengrens ≈7,7 bar tegen een dopspecificatie van
+   6 bar → **oordeel "onveilig"**. Klopt met wat er is gebeurd.
+4. Validatiestatus: elk resultaat draagt `gevalideerd: false`
+   (`DRUKVEILIGHEID_NIET_GEVALIDEERD`) tot een echte meting.
+
+**Bevinding, gerapporteerd i.p.v. weggepoetst**: `maximaleCarbonatie()` geeft
+voor het 6 bar-dopscenario (750 ml, 650 ml vulling, 48°C) een uitkomst van
+ongeveer **1,1 bar bij 10°C**, tegen de eerder genoemde vuistwaarde van
+0,6–0,7 bar. Die vuistwaarde is met het inmiddels losgelaten model bepaald,
+dus het verschil is niet verrassend — maar dit concrete getal (1,1 bar) mag
+NIET gebruikt worden om een productiebeslissing op te baseren zonder Thomas'
+validatie. Vastgelegd in `docs/pasteurisatie-formules.md` en als expliciete
+kanttekening in de test zelf.
+
+**Twee andere vuistwaarden zijn wél binnen ~2% bevestigd**: de waterdampdruk
+bij 48°C (0,1115 bar berekend tegen "circa 0,11 bar" genoemd) en de
+thermische uitzetting van 10 naar 48°C (~1,09% berekend tegen "~1,2%"
+genoemd) — dat geeft vertrouwen dat de niet-CO2-onderdelen van het model
+solide staan; de resterende onzekerheid zit in de absolute schaal van de
+CO2-oplosbaarheid, wat exact het onderdeel is dat een echte meting moet
+bevestigen.
+
+**Tests**: 13 nieuw, alle groen — inclusief kleinere kopruimte geeft hogere
+druk, bovengrens ≥ gekoppeld model, het historische faalscenario (onveilig),
+het huidige proces (veilig, met een conservatief lage kroonkurk-aanname van 8
+bar in afwachting van de echte specificatie uit Blok C), en een expliciete
+"nooit alleen groen/rood"-test voor het marginale gebied. Regressie: 219
+tests totaal groen, tsc/eslint schoon.
+
+`docs/pasteurisatie-formules.md` toegevoegd: alle formules, bronnen en
+aannames in gewone taal, inclusief expliciet wat wél en niet als ijkpunt is
+gebruikt.
