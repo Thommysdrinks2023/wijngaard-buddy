@@ -29,11 +29,25 @@ import {
 import { fetchSluitingen } from "@/lib/pasteurisatie-data";
 import { puOverCurve, voorspelPuVerloop, type TemperatuurMeting } from "@/lib/pasteurisatie";
 import { verwachteDruk, veiligheidsoordeel } from "@/lib/drukveiligheid";
-import { maxDrukBekend, PASTEURISATIE_OORDELEN } from "@/lib/types";
+import { maxDrukBekend, PASTEURISATIE_OORDELEN, type PasteurisatieOordeel } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { Loader2 } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
+import { Loader2, Thermometer } from "lucide-react";
+
+const OORDEEL_TOON: Record<PasteurisatieOordeel, "success" | "warning" | "destructive"> = {
+  veilig: "success",
+  marginaal: "warning",
+  onveilig: "destructive",
+};
+
+function oordeelBadge(oordeel: PasteurisatieOordeel | null | undefined) {
+  const def = PASTEURISATIE_OORDELEN.find((o) => o.value === oordeel);
+  if (!def) return null;
+  return <StatusBadge label={def.label} emoji={def.emoji} toon={OORDEEL_TOON[def.value]} />;
+}
 
 export const Route = createFileRoute("/pasteurisatie/run/$runId")({
   component: MonitorPagina,
@@ -268,10 +282,37 @@ function MonitorPagina() {
 
   return (
     <>
-      <AppHeader back title={`Run — lot ${run.lotnummer}`} subtitle={`Status: ${run.status}`} />
+      <AppHeader
+        back
+        title={`Run — lot ${run.lotnummer}`}
+        subtitle={run.status === "actief" ? "Live monitor" : "Overzicht"}
+      />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge
+            label={
+              run.status === "actief"
+                ? "Actief"
+                : run.status === "afgerond"
+                  ? "Afgerond"
+                  : run.status === "afgebroken"
+                    ? "Afgebroken"
+                    : "Gepland"
+            }
+            emoji={run.status === "actief" ? "🔴" : run.status === "afgerond" ? "✅" : undefined}
+            toon={
+              run.status === "actief"
+                ? "info"
+                : run.status === "afgebroken"
+                  ? "destructive"
+                  : "neutraal"
+            }
+          />
+          {oordeelBadge(run.veiligheidsoordeel)}
+        </div>
+
         {!puResultaat.betrouwbaar && (
-          <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm">
             {puResultaat.gaten.length} meetgat(en) gevonden — de PU-berekening is minder zeker.
             Grootste gat: {Math.max(...puResultaat.gaten.map((g) => g.minuten)).toFixed(0)} minuten.
           </p>
@@ -285,9 +326,9 @@ function MonitorPagina() {
           <p
             className={`text-5xl font-bold tabular-nums ${
               puResultaat.totalePu >= run.doel_pu_min && puResultaat.totalePu <= run.doel_pu_max
-                ? "text-green-600"
+                ? "text-success"
                 : puResultaat.totalePu > run.doel_pu_max
-                  ? "text-amber-600"
+                  ? "text-warning"
                   : ""
             }`}
           >
@@ -314,33 +355,44 @@ function MonitorPagina() {
               </span>
             )}
           </h2>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="tijd" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} unit="°C" />
-                <Tooltip />
-                <Legend />
-                {run.doeltemperatuur_c && (
-                  <ReferenceArea
-                    y1={run.doeltemperatuur_c - 1}
-                    y2={run.doeltemperatuur_c + 1}
-                    fill="#4a8c5c"
-                    fillOpacity={0.08}
+          {referentieMetingen.length === 0 ? (
+            <EmptyState
+              message={
+                run.status === "actief"
+                  ? "Nog geen metingen binnen — zodra de sensor meldt of je handmatig invoert, verschijnt de curve hier."
+                  : "Geen metingen vastgelegd voor deze run."
+              }
+              icon={<Thermometer className="h-6 w-6" />}
+            />
+          ) : (
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="tijd" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} unit="°C" />
+                  <Tooltip />
+                  <Legend />
+                  {run.doeltemperatuur_c && (
+                    <ReferenceArea
+                      y1={run.doeltemperatuur_c - 1}
+                      y2={run.doeltemperatuur_c + 1}
+                      fill="#4a8c5c"
+                      fillOpacity={0.08}
+                    />
+                  )}
+                  <Line
+                    type="monotone"
+                    dataKey="temperatuur"
+                    name="Referentiefles"
+                    stroke="#4a8c5c"
+                    dot={false}
+                    strokeWidth={2}
                   />
-                )}
-                <Line
-                  type="monotone"
-                  dataKey="temperatuur"
-                  name="Referentiefles"
-                  stroke="#4a8c5c"
-                  dot={false}
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </section>
 
         {/* Cumulatieve PU-curve */}
@@ -348,30 +400,37 @@ function MonitorPagina() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             PU-opbouw over de tijd
           </h2>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={puChartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="tijd" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <ReferenceArea
-                  y1={run.doel_pu_min}
-                  y2={run.doel_pu_max}
-                  fill="#c9b84c"
-                  fillOpacity={0.15}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="pu"
-                  name="Cumulatieve PU"
-                  stroke="#c9b84c"
-                  dot={false}
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {puChartData.length === 0 ? (
+            <EmptyState
+              message="Nog geen PU-opbouw om te tonen — die verschijnt zodra er metingen binnenkomen."
+              icon={<Thermometer className="h-6 w-6" />}
+            />
+          ) : (
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={puChartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="tijd" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <ReferenceArea
+                    y1={run.doel_pu_min}
+                    y2={run.doel_pu_max}
+                    fill="#c9b84c"
+                    fillOpacity={0.15}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="pu"
+                    name="Cumulatieve PU"
+                    stroke="#c9b84c"
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </section>
 
         {/* Live drukschatting */}
@@ -394,12 +453,18 @@ function MonitorPagina() {
                 Dopspecificatie {sluiting.naam}: {sluiting.max_druk_bar} bar
               </p>
             ) : (
-              <p className="mt-1 text-sm text-amber-700">
+              <p className="mt-1 text-sm text-warning">
                 Geen dopspecificatie bekend — geen oordeel mogelijk.
               </p>
             )}
             {drukOordeelNu && drukOordeelNu.oordeel !== "veilig" && (
-              <p className="mt-2 rounded-lg bg-red-50 p-2 text-sm font-semibold text-red-800">
+              <p
+                className={`mt-2 rounded-lg p-2 text-sm font-semibold ${
+                  drukOordeelNu.oordeel === "onveilig"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-warning/10 text-warning"
+                }`}
+              >
                 {drukOordeelNu.oordeel === "onveilig" ? "🛑" : "⚠️"} {drukOordeelNu.toelichting}
               </p>
             )}
@@ -453,7 +518,7 @@ function MonitorPagina() {
                   {puResultaat.puAfkoel.toFixed(1)})
                 </p>
                 {!puResultaat.betrouwbaar && (
-                  <p className="text-sm font-semibold text-amber-700">
+                  <p className="text-sm font-semibold text-warning">
                     Let op: {puResultaat.gaten.length} meetgat(en) tijdens deze run.
                   </p>
                 )}
@@ -487,11 +552,10 @@ function MonitorPagina() {
         )}
 
         {run.status === "afgerond" && (
-          <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-sm">
-            <p className="font-semibold">
+          <div className="rounded-2xl border border-success/40 bg-success/10 p-4 text-sm">
+            <p className="flex flex-wrap items-center gap-2 font-semibold">
               Afgerond: {run.totale_pu?.toFixed(1)} PU
-              {run.veiligheidsoordeel &&
-                ` · ${PASTEURISATIE_OORDELEN.find((o) => o.value === run.veiligheidsoordeel)?.label}`}
+              {oordeelBadge(run.veiligheidsoordeel)}
             </p>
             <Link
               to="/pasteurisatie/run/$runId/certificaat"

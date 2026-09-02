@@ -303,7 +303,7 @@ async function seed() {
         doel_pu_max: 150,
         veiligheidsoordeel: cfg.aard === "marginaal" ? "marginaal" : "veilig",
         oordeel_geaccepteerd_door: cfg.aard === "marginaal" ? "Thomas (seed)" : undefined,
-        sensor_positie: "midden-onder (seed)",
+        sensor_positie: "referentiefles",
         uitgevoerd_door: `Seedscript ${SEED_MERK}`,
       },
     });
@@ -368,7 +368,7 @@ async function seed() {
       doel_pu_min: 100,
       doel_pu_max: 150,
       veiligheidsoordeel: "veilig",
-      sensor_positie: "midden-onder (seed)",
+      sensor_positie: "referentiefles",
       uitgevoerd_door: `Seedscript ${SEED_MERK}`,
     },
   });

@@ -1240,3 +1240,28 @@ kerncijfers kloppen (1 actieve run, 4 runs laatste 30 dagen, 80% binnen
 doelbereik van 10, 1 marginaal-oordeel), staafdiagram toont 10 balken
 correct gekleurd (groen/oranje), status- en oordeelbadges tonen de juiste
 kleur per run.
+
+## Blok C — live monitor `/pasteurisatie/run/$runId`
+
+Status-/oordeelbadges (nieuwe `StatusBadge`) direct onder de kop i.p.v.
+tekst in de subtitel. Hardcoded Tailwind-kleuren (`text-green-600`,
+`bg-amber-50`, `bg-red-50`, `border-green-300`, …) vervangen door de
+bestaande design-tokens (`text-success`/`text-warning`/`bg-destructive/10`
+etc.) — geen nieuwe kleuren, wel consistent met de rest van de app. Beide
+grafieken (temperatuur, PU-opbouw) tonen nu een `EmptyState` met uitleg
+in plaats van een lege grafiek zodra er nog geen metingen zijn.
+
+**Bug gevonden via die nieuwe empty-state (en gefixt)**: de Blok A-
+seeddata zette `sensor_positie: "midden-onder (seed)"` op elke run, maar
+`postMetingen()` postte alle metingen onder het label `"referentiefles"`
+(de default van die functie). De live monitor filtert metingen op exact
+`run.sensor_positie` om de referentiefles te vinden — door de mismatch
+zag elke geseede run nul metingen en dus 0 PU op dit scherm, ook al
+klopte `totale_pu` op de run zelf (die komt van het afronden-endpoint,
+niet van deze client-side herberekening). Dit was dus een datalaag-bug in
+het seedscript uit Blok A, geen bug in de live monitor zelf — maar zonder
+de "geen lege grafiek"-regel uit deze fase was hij niet opgevallen.
+Gefixt door `sensor_positie` in het seedscript op `"referentiefles"` te
+zetten (gelijk aan de sensorLabel die `postMetingen()` gebruikt);
+seeddata opnieuw opgebouwd en geverifieerd: de actieve run toont nu een
+gevulde temperatuur- en PU-curve.
