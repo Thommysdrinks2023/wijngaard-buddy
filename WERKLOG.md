@@ -1298,3 +1298,19 @@ geen apart batchoverzichtscherm.
 
 Geverifieerd in de browser op 375px: de drie stappen zijn duidelijk
 gescheiden, alle invoervelden en de zoekknop zijn ≥44px hoog.
+
+## Blok F — certificaat visuele polish
+
+Scherm: oordeelbadge + PU inline boven de genereerknop, `EmptyState` met
+vervolgstap i.p.v. kale tekst bij "nog geen certificaat", design-tokens
+i.p.v. hardcoded amber-kleuren, historie-items op ≥44px hoogte.
+
+PDF (`pasteurisatie-certificaat.ts`, puur opmaak — geen rekenwaarde
+gewijzigd): een dunne kleurbalk in de huisstijlkleur bovenaan, en het
+veiligheidsoordeel nu als eigen, kleurgecodeerde regel (groen/oranje/rood)
+in de PU-sectie i.p.v. alleen impliciet uit de rest van het certificaat
+af te leiden.
+
+Geverifieerd in de browser: certificaat gegenereerd voor lot SEED-01,
+PDF opent, versiehistorie toont de nieuwe versie; testcertificaat nadien
+opgeruimd.

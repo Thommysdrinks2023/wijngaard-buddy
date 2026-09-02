@@ -73,6 +73,10 @@ export function genereerPuCertificaat(ctx: CertificaatContext): Blob {
   const marge = 18;
   let y = marge;
 
+  doc.setFillColor(74, 140, 92); // --primary
+  doc.rect(0, 0, 210, 4, "F");
+  y += 3;
+
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text("Pasteurisatiecertificaat", marge, y);
@@ -127,6 +131,29 @@ export function genereerPuCertificaat(ctx: CertificaatContext): Blob {
     ctx.run.piektemperatuur_c != null ? `${ctx.run.piektemperatuur_c} °C` : "—",
   );
   regel("Formule:", `PU/min = 10^((T-60)/7), versie ${PASTEURISATIE_FORMULE_VERSIE}`);
+
+  if (ctx.run.veiligheidsoordeel) {
+    const oordeelKleur: Record<string, [number, number, number]> = {
+      veilig: [74, 140, 92],
+      marginaal: [230, 168, 23],
+      onveilig: [214, 68, 68],
+    };
+    const oordeelTekst: Record<string, string> = {
+      veilig: "Veilig",
+      marginaal: "Marginaal",
+      onveilig: "Onveilig",
+    };
+    const [r, g, b] = oordeelKleur[ctx.run.veiligheidsoordeel] ?? [0, 0, 0];
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(r, g, b);
+    doc.text(
+      `Drukveiligheidsoordeel: ${oordeelTekst[ctx.run.veiligheidsoordeel] ?? ctx.run.veiligheidsoordeel}`,
+      marge,
+      y,
+    );
+    doc.setTextColor(0);
+    y += 6;
+  }
 
   y += 4;
   doc.setFont("helvetica", "italic");

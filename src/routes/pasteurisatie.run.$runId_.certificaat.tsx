@@ -19,7 +19,9 @@ import { genereerPuCertificaat } from "@/lib/pasteurisatie-certificaat";
 import { eigenaarLabel } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { StatusBadge } from "@/components/status-badge";
 import { Loader2, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/pasteurisatie/run/$runId_/certificaat")({
@@ -112,10 +114,43 @@ function CertificaatPagina() {
       />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
         {!magGenereren && (
-          <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm">
             Deze run is nog niet afgerond — er kan pas een certificaat gegenereerd worden na
             afronden.
           </p>
+        )}
+
+        {runQ.data?.veiligheidsoordeel && (
+          <div className="flex items-center gap-2">
+            <StatusBadge
+              label={
+                runQ.data.veiligheidsoordeel === "veilig"
+                  ? "Veilig"
+                  : runQ.data.veiligheidsoordeel === "marginaal"
+                    ? "Marginaal"
+                    : "Onveilig"
+              }
+              emoji={
+                runQ.data.veiligheidsoordeel === "veilig"
+                  ? "✅"
+                  : runQ.data.veiligheidsoordeel === "marginaal"
+                    ? "⚠️"
+                    : "🛑"
+              }
+              toon={
+                runQ.data.veiligheidsoordeel === "veilig"
+                  ? "success"
+                  : runQ.data.veiligheidsoordeel === "marginaal"
+                    ? "warning"
+                    : "destructive"
+              }
+            />
+            {runQ.data.totale_pu != null && (
+              <span className="text-sm font-semibold tabular-nums">
+                {runQ.data.totale_pu.toFixed(1)} PU
+              </span>
+            )}
+          </div>
         )}
 
         <button
@@ -147,15 +182,20 @@ function CertificaatPagina() {
             Eerder uitgegeven versies
           </h2>
           {(certificatenQ.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nog geen certificaat uitgegeven voor deze run.
-            </p>
+            <EmptyState
+              message={
+                magGenereren
+                  ? "Nog geen certificaat uitgegeven voor deze run — genereer de eerste versie hierboven."
+                  : "Nog geen certificaat uitgegeven — dat kan pas nadat de run is afgerond."
+              }
+              icon={<FileText className="h-6 w-6" />}
+            />
           ) : (
             <ul className="space-y-2">
               {(certificatenQ.data ?? []).map((c) => (
                 <li
                   key={c.id}
-                  className="flex items-center justify-between rounded-xl border border-border bg-card p-3 text-sm"
+                  className="flex min-h-11 items-center justify-between rounded-xl border border-border bg-card p-3 text-sm"
                 >
                   <span>
                     Versie {c.versienummer} — {c.uitgiftedatum} ({c.uitgegeven_door})
