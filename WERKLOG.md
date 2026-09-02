@@ -1216,3 +1216,27 @@ een wees-partij + wees-run (`SEED-01`, status "actief") achter, omdat
 run-starten en run-afronden twee aparte transacties zijn; handmatig
 opgeruimd vóór de volgende poging. Seed en `--cleanup` draaien nu beide
 schoon (geverifieerd: nul restanten na cleanup).
+
+## Blok B — dashboardoverzicht `/pasteurisatie`
+
+Kerncijfers-rij bovenaan (actieve runs, afgeronde runs laatste 30 dagen,
+percentage binnen doelbereik, aantal marginaal/onveilig-oordelen laatste 90
+dagen) + een mini-staafdiagram van de PU-uitkomst van de laatste 10
+afgeronde runs (kleur = veiligheidsoordeel), vóór de bestaande filterbare
+runlijst/logboekweergave. Rekenlogica en datalaag ongewijzigd — alleen
+`fetchPasteurisatieRuns()`-data client-side samengevat.
+
+Twee generieke componenten toegevoegd in `src/components/` (niet in de
+pasteurisatie-map, expliciet voor hergebruik door andere dashboards):
+`stat-tile.tsx` (kerncijfer-tegel, tonen neutraal/success/warning/
+destructive/info) en `status-badge.tsx` (statuspil met emoji). `empty-
+state.tsx` kreeg een optionele `action`-prop zodat een lege lijst een
+knop naar de volgende stap kan tonen (bv. "Eerste run starten") i.p.v.
+alleen een boodschap. De mini-trendgrafiek toont bij nul afgeronde runs
+een eigen `EmptyState` in plaats van een lege grafiek.
+
+Geverifieerd in de browser (mobielformaat 375px) tegen de Blok A-seeddata:
+kerncijfers kloppen (1 actieve run, 4 runs laatste 30 dagen, 80% binnen
+doelbereik van 10, 1 marginaal-oordeel), staafdiagram toont 10 balken
+correct gekleurd (groen/oranje), status- en oordeelbadges tonen de juiste
+kleur per run.
