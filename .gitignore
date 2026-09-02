@@ -8,6 +8,7 @@ pocketbase-accounts.txt
 
 # Testdata-boekhouding van seed-testdata-agent.mjs (lokaal, per omgeving)
 scripts/.seed-testdata-agent.json
+scripts/.seed-pasteurisatie.json
 
 # Lokale PocketBase server + database (nooit committen!)
 # pb_hooks/ blijft WEL getrackt: dat is handgeschreven servercode (kelder-

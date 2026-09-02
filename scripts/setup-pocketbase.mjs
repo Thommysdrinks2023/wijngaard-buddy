@@ -2952,15 +2952,17 @@ async function main() {
 
   {
     // Geseed conform wat bekend is (zie de opdracht/WERKLOG Fase 17). Kroonkurk
-    // en Stelvin Pressure hebben BEWUST geen max_druk_bar: dat is niet
-    // bekend en wordt niet geraden — zie VRAGEN VOOR THOMAS #3.
+    // Fase 18 — Thomas bevestigde 6 bar voor zowel de kroonkurk als
+    // Stelvin Pressure ("houdt dat maar even aan" — een werkwaarde, geen
+    // definitieve fabrieksspecificatie; zie WERKLOG.md Fase 18).
     const SEED_SLUITINGEN = [
       {
         naam: "Kroonkurk 26 mm",
         type: "kroonkurk",
+        max_druk_bar: 6,
         geschikt_voor_gecarboniseerd: true,
         notities:
-          "Bewezen formaat op 250 ml Alamos-flesjes (~10.000-12.000 flessen zonder systematische problemen). max_druk_bar onbekend — fabrieksspecificatie nog niet vastgelegd.",
+          "Bewezen formaat op 250 ml Alamos-flesjes (~10.000-12.000 flessen zonder systematische problemen). max_druk_bar: werkwaarde van Thomas (Fase 18), nog geen fabrieksdatasheet.",
       },
       {
         naam: "BVS schroefdop standaard",
@@ -2974,10 +2976,11 @@ async function main() {
       {
         naam: "Stelvin Pressure BVS 30x60",
         type: "schroefdop",
+        max_druk_bar: 6,
         geschikt_voor_gecarboniseerd: true,
         leverancier: "Amcor",
         notities:
-          "Aangewezen schroefsluiting voor toekomstig gecarboniseerd werk. max_druk_bar onbekend — fabrieksspecificatie nog niet vastgelegd.",
+          "Aangewezen schroefsluiting voor toekomstig gecarboniseerd werk. max_druk_bar: werkwaarde van Thomas (Fase 18), nog geen fabrieksdatasheet.",
       },
     ];
     const bestaande = await api("/api/collections/sluitingen/records?perPage=200");

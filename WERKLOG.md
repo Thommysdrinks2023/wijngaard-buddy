@@ -1169,3 +1169,50 @@ de fase.
    relatie met de nieuwe `sluitingen`-collectie — dat zou een gok vereisen
    welke bestaande tekstwaarde bij welk sluitingsrecord hoort. Wil je dat
    verband alsnog gelegd hebben, en zo ja: kun je de mapping aanleveren?
+
+# Fase 18 — Pasteurisatiesectie als dashboard
+
+UI/UX-herontwerp van de Fase 17-pasteurisatieschermen. Geen wijzigingen aan
+rekenkernen/datamodel/hooks, geen nieuwe dependencies, mobile-first (~375px),
+44×44px touch targets, nooit een lege grafiek zonder uitleg. Backup vóór
+start: `wijngaard_backup_20260902_093401.zip`.
+
+Twee openstaande Fase 17-vragen zijn door Thomas beantwoord:
+
+- **Vraag 3 (dopspecificaties)**: "6 bar voor beide, houdt dat maar even
+  aan" → `max_druk_bar = 6` gezet op zowel Kroonkurk 26 mm als Stelvin
+  Pressure BVS 30x60, in zowel `scripts/setup-pocketbase.mjs`
+  (`SEED_SLUITINGEN`) als de live database. Expliciet een werkwaarde, geen
+  definitieve fabrieksspecificatie.
+- **Vraag 5 (ijkpunt drukmodel)**: "10 bar houdt dat voor beide maar even
+  aan" — niet eenduidig te herleiden tot een concrete aanpassing aan
+  `rekenmodel_validaties` of de drukveiligheidsformules, en Fase 18 sluit
+  wijzigingen aan rekenkernen uit. Bewust niet verwerkt; blijft open voor een
+  volgende fase.
+
+## Blok A — realistische seed data
+
+`scripts/seed-pasteurisatie.mjs` (nieuw): 10 afgeronde runs + 1 actieve run,
+verspreid over 3-95 dagen geleden, met variatie in eigenaar (De Tappenmars,
+Thommy's Drinks, een nieuwe testklant-loonproductie), product (wijn/sap/
+overige gegiste drank), flestype/sluiting en PU-uitkomst (normaal/onder/
+boven doelbereik/marginaal drukoordeel/met meetgat). PU wordt niet zelf
+herberekend maar via het bestaande `/api/tappenmars/pasteurisatie-run-
+afronden`-endpoint met de PU-uitkomst van de echte `puOverCurve`-functie
+(gedupliceerd voor curve-ontwerp, zelfde patroon als elders in het project
+bij JSVM/Node-scripts die geen TS kunnen importeren). `--cleanup` ruimt
+sensor_metingen, kelderlogregels, pasteurisatie_runs en partijen op en
+verifieert nul restanten.
+
+**Bug gevonden en gefixt tijdens het eerste testrun**: `AARD_CURVE` in het
+seed-script specificeerde `houdTemp` niet, waardoor de temperatuur tijdens de
+houdfase `undefined` was en de PU-berekening `NaN` opleverde. Het
+afronden-endpoint gaf daardoor `"Totale_pu is verplicht"` terug (Pocket-
+Base's eigen generieke veldvalidatie op de `NaN → null`-serialisatie, niet
+mijn eigen foutmelding — de afwijkende hoofdletter was de eerste aanwijzing
+dat de fout niet uit mijn hook-code kwam). Gefixt door `houdTemp` gelijk te
+zetten aan `naarTemp` in elke curve-definitie. De eerste mislukte run liet
+een wees-partij + wees-run (`SEED-01`, status "actief") achter, omdat
+run-starten en run-afronden twee aparte transacties zijn; handmatig
+opgeruimd vóór de volgende poging. Seed en `--cleanup` draaien nu beide
+schoon (geverifieerd: nul restanten na cleanup).
