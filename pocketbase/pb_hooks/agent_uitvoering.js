@@ -728,6 +728,178 @@ const LEES_HANDLERS = {
       mutatiehistorie: mutaties.map(voorraadMutatieSamenvatting),
     };
   },
+
+  // ---------- Fase 17 Blok H — pasteurisatie & drukveiligheid ----------
+  zoek_pasteurisatie_runs(app, input) {
+    const delen = [];
+    const params = {};
+    if (input.status) {
+      delen.push("status = {:status}");
+      params.status = input.status;
+    }
+    if (input.partij) {
+      const partij = logica.vindPartij(app, input.partij);
+      if (!partij) return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
+      delen.push("partij = {:partij}");
+      params.partij = partij.id;
+    }
+    if (input.eigenaar) {
+      const gevonden = app.findRecordsByFilter(
+        "eigenaars",
+        "naam ~ {:e} || code = {:e}",
+        "naam",
+        1,
+        0,
+        { e: input.eigenaar },
+      );
+      if (gevonden.length === 0)
+        return { gevonden: false, notitie: `Geen eigenaar gevonden voor "${input.eigenaar}".` };
+      delen.push("eigenaar = {:eig}");
+      params.eig = gevonden[0].id;
+    }
+    const runs = app.findRecordsByFilter(
+      "pasteurisatie_runs",
+      delen.join(" && ") || "id != ''",
+      "-datum",
+      20,
+      0,
+      params,
+    );
+    return runs.map((r) => ({
+      lotnummer: r.getString("lotnummer"),
+      datum: r.getString("datum"),
+      status: r.getString("status"),
+      totale_pu: r.getFloat("totale_pu") || null,
+      veiligheidsoordeel: r.getString("veiligheidsoordeel") || null,
+    }));
+  },
+  pasteurisatie_run_detail(app, input) {
+    const partij = logica.vindPartij(app, input.lotnummer);
+    if (!partij) return { gevonden: false, notitie: `Geen partij gevonden voor lotnummer "${input.lotnummer}".` };
+    const runs = app.findRecordsByFilter("pasteurisatie_runs", "partij = {:p}", "-created", 5, 0, {
+      p: partij.id,
+    });
+    if (runs.length === 0)
+      return { gevonden: false, notitie: `Geen pasteurisatierun gevonden voor lotnummer "${input.lotnummer}".` };
+    const r = runs[0];
+    return {
+      gevonden: true,
+      lotnummer: r.getString("lotnummer"),
+      datum: r.getString("datum"),
+      status: r.getString("status"),
+      product_soort: r.getString("product_soort"),
+      doel_pu_min: r.getFloat("doel_pu_min"),
+      doel_pu_max: r.getFloat("doel_pu_max"),
+      totale_pu: r.getFloat("totale_pu") || null,
+      pu_opwarm: r.getFloat("pu_opwarm") || null,
+      pu_houd: r.getFloat("pu_houd") || null,
+      pu_afkoel: r.getFloat("pu_afkoel") || null,
+      piektemperatuur_c: r.getFloat("piektemperatuur_c") || null,
+      veiligheidsoordeel: r.getString("veiligheidsoordeel") || null,
+      sensor_positie: r.getString("sensor_positie"),
+    };
+  },
+  // Vereenvoudigde duplicatie van src/lib/pasteurisatie.ts — zie de
+  // toelichting bij PASTEURISATIE_TOOLS in agent_logica.js.
+  bereken_pu(app, input) {
+    const metingen = (input.metingen || []).slice().sort((a, b) => a.minuut - b.minuut);
+    if (metingen.length < 2) return { fout: "Minstens twee metingen nodig." };
+    let totaal = 0;
+    for (let i = 1; i < metingen.length; i++) {
+      const dt = metingen[i].minuut - metingen[i - 1].minuut;
+      if (dt <= 0) continue;
+      const r0 = Math.pow(10, (metingen[i - 1].temperatuur_c - 60) / 7);
+      const r1 = Math.pow(10, (metingen[i].temperatuur_c - 60) / 7);
+      totaal += ((r0 + r1) / 2) * dt;
+    }
+    return {
+      totale_pu: Math.round(totaal * 10) / 10,
+      formule: "PU/min = 10^((T-60)/7), trapeziumintegratie over de volledige curve",
+      kanttekening:
+        "Dit is een indicatieve berekening van de assistent, niet de officiële run-registratie in de app.",
+    };
+  },
+  // Vereenvoudigde duplicatie van src/lib/drukveiligheid.ts.
+  bereken_druk(app, input) {
+    const ATM_BAR = 1.01325;
+    const R = 8.314;
+    const M_CO2 = 44.01;
+    const dichtheidTabel = [
+      [0, 999.84], [10, 999.7], [20, 998.21], [25, 997.05], [30, 995.65],
+      [35, 994.03], [40, 992.21], [45, 990.22], [50, 988.03], [55, 985.69],
+      [60, 983.2], [70, 977.76], [80, 971.79],
+    ];
+    function dichtheid(t) {
+      if (t <= dichtheidTabel[0][0]) return dichtheidTabel[0][1];
+      if (t >= dichtheidTabel[dichtheidTabel.length - 1][0]) return dichtheidTabel[dichtheidTabel.length - 1][1];
+      for (let i = 1; i < dichtheidTabel.length; i++) {
+        if (t <= dichtheidTabel[i][0]) {
+          const [t0, d0] = dichtheidTabel[i - 1];
+          const [t1, d1] = dichtheidTabel[i];
+          return d0 + ((t - t0) / (t1 - t0)) * (d1 - d0);
+        }
+      }
+      return dichtheidTabel[dichtheidTabel.length - 1][1];
+    }
+    function waterdamp(t) {
+      const p = Math.pow(10, 8.07131 - 1730.63 / (233.426 + t));
+      return p * 0.00133322;
+    }
+    const S10 = 2.174;
+    const HENRY_B = 2400;
+    function oplosbaarheid(t) {
+      const tk = t + 273.15;
+      return S10 * Math.exp(HENRY_B * (1 / tk - 1 / 283.15));
+    }
+
+    const vulTemp = input.ref_temperatuur_c || 10;
+    let co2Gl = input.co2_gehalte_gl;
+    if (co2Gl == null && input.druk_bar_gauge != null) {
+      const pAbs = input.druk_bar_gauge + ATM_BAR - waterdamp(vulTemp);
+      co2Gl = oplosbaarheid(vulTemp) * pAbs;
+    }
+    if (co2Gl == null) return { fout: "Geef co2_gehalte_gl of druk_bar_gauge op." };
+
+    const expansie = dichtheid(vulTemp) / dichtheid(input.doeltemperatuur_c);
+    const vulvolumeBijDoelL = (input.vulvolume_ml * expansie) / 1000;
+    const kopruimteMl = input.flesinhoud_ml - input.vulvolume_ml * expansie;
+    const totaalCo2 = (co2Gl * input.vulvolume_ml) / 1000;
+    const damp = waterdamp(input.doeltemperatuur_c);
+
+    let drukBovengrens;
+    if (kopruimteMl <= 0) {
+      drukBovengrens = Infinity;
+    } else {
+      drukBovengrens = totaalCo2 / (oplosbaarheid(input.doeltemperatuur_c) * vulvolumeBijDoelL) + damp - ATM_BAR;
+    }
+
+    const resultaat = {
+      druk_gauge_bovengrens_bar: drukBovengrens === Infinity ? null : Math.round(drukBovengrens * 100) / 100,
+      kopruimte_ml_bij_doeltemperatuur: Math.round(kopruimteMl * 10) / 10,
+      kanttekening:
+        "Conservatieve bovengrens (indicatief) — verifieer altijd tegen de fabrieksspecificatie van de sluiting vóórdat je een run start.",
+    };
+    if (input.sluiting) {
+      const sluitingen = app.findRecordsByFilter("sluitingen", "naam ~ {:n}", "naam", 1, 0, {
+        n: input.sluiting,
+      });
+      if (sluitingen.length > 0) {
+        const maxDruk = sluitingen[0].getFloat("max_druk_bar");
+        resultaat.sluiting = sluitingen[0].getString("naam");
+        resultaat.max_druk_bar = maxDruk > 0 ? maxDruk : null;
+        if (maxDruk > 0 && drukBovengrens !== Infinity) {
+          const marge = maxDruk * 0.8;
+          resultaat.oordeel =
+            drukBovengrens >= maxDruk ? "onveilig" : drukBovengrens >= marge ? "marginaal" : "veilig";
+        } else if (!(maxDruk > 0)) {
+          resultaat.oordeel_niet_mogelijk = "Dopspecificatie van deze sluiting is niet bekend.";
+        }
+      } else {
+        resultaat.notitie_sluiting = `Geen sluiting gevonden voor "${input.sluiting}".`;
+      }
+    }
+    return resultaat;
+  },
 };
 
 function voerLeesToolUit(app, naam, input) {
@@ -1253,6 +1425,47 @@ const VOORSTEL_BOUWERS = {
       `${input.afnemer_of_reden ? `, ${input.afnemer_of_reden}` : ""}`;
     return { actie_type: "voorraad_mutatie", payload, samenvatting };
   },
+
+  // ---------- Fase 17 Blok H ----------
+  stel_pasteurisatie_run_voor(app, input) {
+    const partij = logica.vindPartij(app, input.lotnummer);
+    if (!partij)
+      return {
+        fout: `Geen partij gevonden voor lotnummer "${input.lotnummer}" — de assistent maakt geen nieuwe partij aan, dat kan alleen via de app zelf (Blok F).`,
+      };
+    const payload = {
+      lotnummer: input.lotnummer,
+      partij: partij.id,
+      eigenaar: partij.getString("eigenaar"),
+      product_soort: input.product_soort,
+      doeltemperatuur_c: input.doeltemperatuur_c,
+      doel_pu_min: input.doel_pu_min || 100,
+      doel_pu_max: input.doel_pu_max || 150,
+    };
+    const samenvatting = `Pasteurisatierun plannen: lot ${input.lotnummer}, doel ${payload.doel_pu_min}-${payload.doel_pu_max} PU bij ${input.doeltemperatuur_c} °C`;
+    return { actie_type: "pasteurisatie_run", payload, samenvatting };
+  },
+  stel_temperatuurmeting_voor(app, input) {
+    const partij = logica.vindPartij(app, input.lotnummer);
+    if (!partij) return { fout: `Geen partij gevonden voor lotnummer "${input.lotnummer}".` };
+    const runs = app.findRecordsByFilter(
+      "pasteurisatie_runs",
+      "partij = {:p} && status = 'actief'",
+      "-created",
+      1,
+      0,
+      { p: partij.id },
+    );
+    if (runs.length === 0)
+      return { fout: `Geen actieve pasteurisatierun gevonden voor lotnummer "${input.lotnummer}".` };
+    const payload = {
+      run_id: runs[0].id,
+      temperatuur_c: input.temperatuur_c,
+      sensor_label: runs[0].getString("sensor_positie") || "referentiefles",
+    };
+    const samenvatting = `Temperatuurmeting: lot ${input.lotnummer}, ${input.temperatuur_c} °C`;
+    return { actie_type: "pasteurisatie_meting", payload, samenvatting };
+  },
 };
 
 function bouwActieVoorstel(app, naam, input) {
@@ -1416,6 +1629,41 @@ function voerBevestigdeActieUit(txApp, actieType, payload, verantwoordelijke) {
       });
       if (resultaat.fout) return { fout: resultaat.fout };
       return { record_id: resultaat.regelId };
+    }
+    case "pasteurisatie_run": {
+      // Alleen PLANNEN (status "gepland"), geen echte start: de assistent
+      // kent geen dopspecificatie/kopruimte/vulvolume en kan dus geen
+      // veiligheidsoordeel geven. Het echte starten (met drukcontrole)
+      // gebeurt in de app zelf (Blok D/F) — dit voorstel bespaart Thomas
+      // alleen het overtypen van lotnummer/product/doeltemperatuur.
+      const col = txApp.findCollectionByNameOrId("pasteurisatie_runs");
+      const rec = new Record(col);
+      rec.set("lotnummer", payload.lotnummer);
+      rec.set("partij", payload.partij);
+      if (payload.eigenaar) rec.set("eigenaar", payload.eigenaar);
+      rec.set("product_soort", payload.product_soort);
+      rec.set("datum", logica.vandaagStr());
+      rec.set("doeltemperatuur_c", payload.doeltemperatuur_c);
+      rec.set("doel_pu_min", payload.doel_pu_min);
+      rec.set("doel_pu_max", payload.doel_pu_max);
+      rec.set("status", "gepland");
+      rec.set("uitgevoerd_door", verantwoordelijke);
+      txApp.save(rec);
+      return { record_id: rec.id };
+    }
+    case "pasteurisatie_meting": {
+      const col = txApp.findCollectionByNameOrId("sensor_metingen");
+      const rec = new Record(col);
+      rec.set("type", "temperatuur");
+      rec.set("waarde", payload.temperatuur_c);
+      rec.set("eenheid", "°C");
+      rec.set("bron_type", "pasteurisatie_run");
+      rec.set("bron_id", payload.run_id);
+      rec.set("sensor_label", payload.sensor_label || "referentiefles");
+      rec.set("gemeten_op", new Date().toISOString());
+      rec.set("temperatuur_c", payload.temperatuur_c);
+      txApp.save(rec);
+      return { record_id: rec.id };
     }
     default:
       return { fout: `Onbekend actietype: ${actieType}` };

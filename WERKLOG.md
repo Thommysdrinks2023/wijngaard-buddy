@@ -959,3 +959,213 @@ geen bevinding om te melden — Blok F kan hierop bouwen zonder migratie.
 
 Schema-drift 0 na de migratie, 219 tests groen (schema raakt de pure
 rekenkernen niet), eslint schoon. Verse backup vóór de migratie gemaakt.
+
+
+---
+
+## Blok D t/m I — planner, live monitor, logboekkoppeling, certificaat, agent, docs
+
+Vervolg op Blok 0/A/B/C. Deze zes blokken zijn in één doorlopende sessie
+gebouwd (niet per blok gecommit, in afwijking van de regel — de blokken delen
+te veel bestanden om achteraf zinvol te splitsen zonder kunstmatige knippen).
+
+### Blok D — Vooraf-planner (`/pasteurisatie/plannen`)
+
+Puur client-side op `drukveiligheid.ts`: flestype/sluiting/vulvolume/
+carbonatie (met live omrekening bar↔g/L) → verwachte druk (gekoppeld model +
+conservatieve bovengrens), veiligheidsoordeel, en bij marginaal/onveilig
+concrete adviezen (`maximaleCarbonatie()`, lager vulniveau, hogere
+dopspecificatie). Toont ook de naïeve houdtijd-schatting met de expliciete
+kanttekening dat opwarmen/afkoelen dit in de praktijk korter maken.
+
+### Blok E — Live monitor (`/pasteurisatie/run/:id`)
+
+Polling elke 10s (`refetchInterval`) op run + metingen. Temperatuurcurve en
+cumulatieve PU-curve (recharts, al in de stack). PU-teller met doelband,
+voorspelling via `voorspelPuVerloop()`. Live drukschatting op de laatst
+gemeten temperatuur van de referentiefles.
+
+**Meldingen liften mee op de bestaande signaallaag (Fase 10)** in plaats van
+een nieuwe signaalproducent: een drempeloverschrijding schrijft rechtstreeks
+een `sensor_alerts`-record met de Fase 14 §8.4-naamconventie
+(`pasteurisatie_run-<runId>-pu-ondergrens` etc.). De unieke index op
+`signaal_id` voorkomt dubbele meldingen — een tweede poging faalt stil. Vier
+typen: doel-PU ondergrens/bovengrens, drukmarge overschreden, sensoruitval
+(> 2 minuten geen meting — expliciet "kritiek", want een monitor die
+stilletjes stopt is gevaarlijker dan geen monitor).
+
+Handmatige temperatuurinvoer als terugvaloptie (eigen open endpoint, zie
+hieronder). Afronden berekent de definitieve PU over de VOLLEDIGE curve
+op de client (dezelfde geteste `puOverCurve()`) en stuurt het resultaat naar
+de server voor atomische vastlegging.
+
+### Blok F — Logboekkoppeling
+
+**Nieuwe hooks** `pocketbase/pb_hooks/pasteurisatie.pb.js` +
+`pasteurisatie_logica.js`: `POST /api/tappenmars/pasteurisatie-run-starten`
+(zoekt partij op lotnummer, atomisch met een kelderlog-openingsregel; vindt
+hij geen partij en is er geen `nieuwe_partij` meegegeven, dan 404 met
+`partij_niet_gevonden: true` — de UI biedt dan aan een partij aan te maken,
+nooit een losse run), `POST /api/tappenmars/pasteurisatie-run-afronden`
+(atomisch met de kelderlog-eindregel), en een open
+`POST /api/tappenmars/pasteurisatie-meting` (geen sensor-token — voor de
+live-monitor-UI/handmatige invoer; het bestaande token-beveiligde
+`/api/sensor/meting` blijft voor echte hardware).
+
+**Bewuste ontwerpkeuze, afwijkend van de letterlijke opdracht**: de opdracht
+specificeerde `oordeel_geaccepteerd_door`/`uitgevoerd_door` als relaties naar
+`users`. Bij het testen bleek dat onbruikbaar: de app heeft sinds 22 augustus
+2026 geen login meer (zie CLAUDE.md, "Inloggen verwijderd"), dus er is geen
+ingelogde gebruiker om naar te verwijzen. Omgezet naar tekstvelden, exact het
+patroon van `tankboek.verantwoordelijke`/`kelderlog.ingevoerd_door`. De
+collecties waren op dat moment leeg (alleen mijn eigen testrecord), dus de
+collecties zijn verwijderd en met de gecorrigeerde definitie opnieuw
+aangemaakt — geen echte data verloren.
+
+**"Alleen bottelen"-partij**: onderzocht in Blok C al — `partijen` heeft maar
+vier verplichte velden, dus geen schemawijziging nodig. `startRun()` maakt zo'n
+partij met `status: "klaar_voor_botteling"` als het lotnummer onbekend is.
+
+**Partijdetail** toont nu een eigen "Pasteurisatie"-sectie (zelfde plek/patroon
+als Botteling/Analyses), met PU/oordeel en een link naar het certificaat.
+**Hub-tegel** "Pasteurisatie" toont het aantal actieve runs (rode markering
+als er één loopt) of de laatste afgeronde PU/oordeel.
+
+### Blok G — Certificaat en historie
+
+**Geen bestaande PDF-generator in de codebase** (bevestigd in Blok 0) — dus
+`jspdf` toegevoegd (enige nieuwe dependency deze fase). De temperatuurcurve
+wordt met eigen vectorlijnen getekend (`src/lib/pasteurisatie-certificaat.ts`)
+i.p.v. een canvas-screenshot: geen extra afhankelijkheid, en de PDF blijft
+scherp op elk formaat.
+
+Het certificaat vermeldt expliciet op welke positie de referentiefles zat
+("PU is bepaald aan een referentiefles op positie X — dit getal geldt voor
+die positie, niet als gemiddelde") en de "nog niet gevalideerd"-markering.
+`pasteurisatie_certificaten` is een los, `updateRule: null`-record per
+uitgifte; opnieuw genereren maakt een nieuwe versie (getest: v1 → v2).
+
+`/pasteurisatie` (routeoverzicht) combineert het runoverzicht (filterbaar op
+eigenaar/status) met een tweede weergave "per klant/product" (gegroepeerd op
+eigenaar → product_soort) — Blok F's "wat hebben we voor deze klant gedaan"
+in één scherm. Pasteurisatieruns zijn toegevoegd aan het controle-pakket
+(`src/lib/controle-pakket.ts`, `pasteurisatieruns.csv`).
+
+### Blok H — Agent en signalen
+
+Nieuwe module `PASTEURISATIE_TOOLS` (6 tools: 4 lees, 2 schrijf-voorstellen).
+`bereken_pu`/`bereken_druk` DUPLICEREN bewust vereenvoudigde versies van de
+TS-formules — de JSVM-hookomgeving kan geen TypeScript-modules importeren
+(zelfde beperking als `SENSOR_TYPES` in `sensor.pb.js`, expliciet zo
+gedocumenteerd in de code). `stel_pasteurisatie_run_voor` plant een run
+(status "gepland", geen drukoordeel — dat vereist gegevens die de assistent
+niet heeft); het echte starten met veiligheidscontrole blijft in de app.
+
+Systeemprompt uitgebreid met het vocabulaire (PU, z-waarde, kopruimte,
+carbonatie, dopspecificatie, referentiefles) en Gedragsregel 11: reken voor,
+maar geef nooit alleen groen licht — altijd verwijzen naar de
+fabrieksspecificatie en de "nog niet gevalideerd"-status.
+
+**Live geverifieerd** (curl, echte Claude-aanroep): gevraagd om een
+drukberekening voor 250 ml/1,0 bar/48°C zonder vulvolume — de assistent vroeg
+door in plaats van te gokken. Met vulvolume: riep `bereken_druk` aan, kwam op
+**4,49 bar bovengrens** — exact dezelfde uitkomst als de geteste
+`drukveiligheid.ts` voor hetzelfde scenario — en weigerde terecht een
+veiligheidsoordeel omdat de kroonkurk-specificatie onbekend is, met de
+verplichte validatie-disclaimer.
+
+### Blok I — Documentatie en validatiestatus
+
+`docs/pasteurisatie-werkwijze.md` (nieuw): hoe een run op te zetten, waar de
+referentiesensor hoort (traagst opwarmende punt — bepaalt de minimum-PU van
+de hele batch), wat te doen bij sensoruitval. `docs/pasteurisatie-formules.md`
+was al in Blok B geschreven.
+
+Validatiestatus: collectie `rekenmodel_validaties` (Blok C) + beheerscherm
+`/instellingen/rekenmodel-validaties`. Twee sleutels geseed
+(`pasteurisatie_pu`, `drukveiligheid_co2`), beide `gevalideerd: false` tot
+Thomas een echte run heeft nagemeten.
+
+`CLAUDE.md` bijgewerkt met de fase-samenvatting, de architectuurkeuzes en een
+nieuwe, generieke bevinding (zie hieronder). `PROJECT-NOTEBOOK.md` bestaat
+niet in deze repo — zelfde fantoomverwijzing-patroon als eerder in dit
+project geconstateerd bij andere niet-bestaande documenten.
+
+## Bijvangst — generiek schema-gat (vierde keer)
+
+`ensureVelden()`-toegevoegde select-velden (bijv. `sensor_metingen.bron_type`,
+Fase 14) worden NIET meegenomen door `synchroniseerKeuzelijsten()` — die kijkt
+alleen naar de velden in de oorspronkelijke `ensureCollection()`-definitie.
+Ontdekt toen `+pasteurisatie_run` wél in de `SENSOR_BRON_TYPES`-constante
+stond maar niet in de live database landde (bevestigd met
+`check-schema-drift.mjs`). Dit is dezelfde architecturale valkuil-familie die
+CLAUDE.md al drie keer eerder documenteert (API-regels, keuzelijstwaarden in
+de hoofddefinitie, `required`-vlaggen) — nu een vierde variant. Gedicht met
+een nieuwe generieke helper `ensureKeuzelijstWaarden(collectie, veld,
+waarden)`, bewust alleen-toevoegen zoals de rest.
+
+Ook de volgorde waarin een nieuwe waarde in de brontaal-array staat, moet
+overeenkomen met hoe de synchronisatie hem toevoegt (altijd AAN HET EIND) —
+anders meldt de driftcontrole een verschil in volgorde die functioneel niets
+uitmaakt maar wel als "hoog" gevlagd wordt. Twee keer tegengekomen deze
+sessie (`sensor_alerts.bron_type`, `kelderlog.actie`), beide keren opgelost
+door de constante-volgorde aan te passen i.p.v. de driftcontrole te negeren.
+
+## Operationele observatie
+
+De Windows Taakplanner-taak "PocketBase Tappenmars" weigerde deze sessie
+meerdere keren te starten (`Last Result: -1073741510`/`0xC000013A`,
+"Control-C exit") ondanks de juiste instellingen
+(`DisallowStartIfOnBatteries: False`) en een schone `schtasks /End` ervoor.
+Rechtstreeks `deploy\start-pocketbase.bat` draaien (`Start-Process`) werkte
+wél. Aan het eind van de sessie werkte de Taakplanner-taak weer normaal na
+nog een `End`+`Start`-cyclus — geen structurele wijziging nodig geweest, maar
+het paste in dezelfde categorie bekende Taakplanner-eigenaardigheden als in
+CLAUDE.md staat. Vermeld voor het geval het patroon terugkeert.
+
+## Stand na de hele fase
+
+219 unittests groen (34 nieuw: 15 PU + 13 druk + regressie), tsc/eslint
+schoon, schema-drift 0, 6/6 rooktests groen. Volledig doorlopend getest met
+curl + browser: run starten op onbekend lotnummer → 404 met aanbod een partij
+aan te maken; met `nieuwe_partij` → partij + run atomisch aangemaakt;
+metingen posten (56 punten, realistische opwarm/houd/afkoelcurve) → exact
+dezelfde PU als de pure-functie-berekening (118,5 PU); afronden → kelderlog-
+eindregel met de juiste PU-verdeling; hub-tegel, partijdetail-sectie en
+runoverzicht tonen allemaal correct; certificaat-PDF gegenereerd en
+opgeslagen; agent-tool `bereken_druk` gaf exact dezelfde 4,49 bar als de
+geteste module. Alle testdata opgeruimd. Verse backups vóór en na de sessie.
+
+## VRAGEN VOOR THOMAS — volledig overzicht (Fase 17)
+
+Zoals gevraagd: dit is het volledige vragenblok, verzameld tot het einde van
+de fase.
+
+1. **Referentiesensor**: hoe wordt die fysiek in een fles gebracht — een
+   geprepareerde fles met doorvoer door de dop, of meet je het waterbad? Dit
+   bepaalt hoe de app de gemeten temperatuur moet interpreteren.
+2. **Positie in de lading**: op welke positie zit de traagst opwarmende fles?
+   Die bepaalt de minimum-PU van de hele batch, niet het gemiddelde.
+3. **Dopspecificaties**: wat zijn de exacte max. drukwaarden van de kroonkurk
+   26 mm en de Stelvin Pressure BVS 30x60? Nu allebei leeg (bewust niet
+   geraden) — zonder dat cijfer kan de app geen veiligheidsoordeel geven voor
+   het huidige, bewezen proces.
+4. **Vulvolume 250 ml-flesjes**: welk vulvolume wordt in de praktijk
+   aangehouden? Nodig om de planner/live monitor realistische standaardwaarden
+   te geven i.p.v. een schatting.
+5. **Ijkpunt drukmodel**: bevestigd door Thomas dat "2,2 bar/10°C → ~8 bar/48°C"
+   een eerdere berekening was, geen meting — dus is er een ECHTE gemeten
+   flesdruk beschikbaar (drukopnemer/manometer op een dichte fles) om het
+   model tegen te valideren, en zo ja: bij welke kopruimte?
+6. **Eerstvolgende run**: wanneer, zodat het PU/druk-model daaraan
+   gevalideerd kan worden (zie Instellingen → Validatiestatus rekenmodellen)?
+7. **Loonproductie — welke gegevens zijn bekend bij binnenkomst** (volume,
+   product, analysewaarden) als alleen gebotteld/gepasteuriseerd wordt? Nu
+   aangenomen: alleen naam/jaargang/eigenaar zijn vereist, de rest optioneel —
+   klopt dat met de praktijk?
+8. **Sap-batches**: krijgen die hetzelfde lotnummerformaat als wijnbatches, of
+   loopt daar een aparte nummering voor?
+9. **`flestypes.sluiting`** (vrije tekst, Fase 15) is NIET omgezet naar een
+   relatie met de nieuwe `sluitingen`-collectie — dat zou een gok vereisen
+   welke bestaande tekstwaarde bij welk sluitingsrecord hoort. Wil je dat
+   verband alsnog gelegd hebben, en zo ja: kun je de mapping aanleveren?

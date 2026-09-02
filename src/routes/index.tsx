@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { AppHeader } from "@/components/app-header";
 import { fetchRijen, isIngelogd } from "@/lib/data";
 import { fetchTanks, fetchVoorraadFlessen } from "@/lib/kelder-data";
+import { fetchPasteurisatieRuns } from "@/lib/pasteurisatie-data";
 import {
   getAutoStartModule,
   getLaatsteModule,
@@ -96,6 +97,13 @@ const TEGELS = [
     label: "Voorraad",
     omschrijving: "Van fles tot verkoop",
   },
+  {
+    key: "pasteurisatie",
+    to: "/pasteurisatie",
+    emoji: "🌡️",
+    label: "Pasteurisatie",
+    omschrijving: "PU-opbouw en drukveiligheid",
+  },
 ] as const;
 
 function ModuleHub() {
@@ -111,16 +119,32 @@ function ModuleHub() {
     queryFn: () => fetchVoorraadFlessen(),
     enabled: isIngelogd(),
   });
+  const pasteurisatieRunsQ = useQuery({
+    queryKey: ["pasteurisatie-runs", "hub"],
+    queryFn: () => fetchPasteurisatieRuns(),
+    enabled: isIngelogd(),
+  });
 
   const tanksInGebruik = (tanksQ.data ?? []).filter((t) => t.huidig_volume_l > 0);
   const volumeInKelder = Math.round(tanksInGebruik.reduce((acc, t) => acc + t.huidig_volume_l, 0));
   const flessenOpVoorraad = (voorraadQ.data ?? []).reduce((acc, v) => acc + v.aantal_huidig, 0);
+  // Fase 17 Blok F — een lopende run mag nooit onopgemerkt blijven: die
+  // moet vanaf de hub zichtbaar zijn, niet alleen in de pasteurisatiesectie.
+  const actieveRuns = (pasteurisatieRunsQ.data ?? []).filter((r) => r.status === "actief");
+  const laatstAfgerond = (pasteurisatieRunsQ.data ?? [])
+    .filter((r) => r.status === "afgerond")
+    .sort((a, b) => (b.eindtijd ?? "").localeCompare(a.eindtijd ?? ""))[0];
 
   const liveStat: Partial<Record<(typeof TEGELS)[number]["key"], string>> = {};
   if ((rijenQ.data ?? []).length > 0) liveStat.wijngaard = `${rijenQ.data!.length} rijen`;
   if (tanksInGebruik.length > 0)
     liveStat.kelder = `${tanksInGebruik.length} tank${tanksInGebruik.length === 1 ? "" : "s"} in gebruik · ${volumeInKelder} L`;
   if (flessenOpVoorraad > 0) liveStat.voorraad = `${flessenOpVoorraad} flessen op voorraad`;
+  if (actieveRuns.length > 0) {
+    liveStat.pasteurisatie = `🔴 ${actieveRuns.length} actieve run${actieveRuns.length === 1 ? "" : "s"}`;
+  } else if (laatstAfgerond) {
+    liveStat.pasteurisatie = `laatste: ${laatstAfgerond.totale_pu?.toFixed(0) ?? "?"} PU (${laatstAfgerond.veiligheidsoordeel ?? "?"})`;
+  }
 
   // Client-only: localStorage bestaat niet tijdens SSR, dus deze check kan
   // niet in beforeLoad (die draait ook server-side bij een verse paginalaad).
@@ -140,7 +164,11 @@ function ModuleHub() {
               key={tegel.key}
               to={tegel.to}
               onClick={() => setLaatsteModule(tegel.key)}
-              className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card p-6 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition active:scale-[0.98]"
+              className={`flex flex-col items-center justify-center gap-2 rounded-2xl border p-6 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition active:scale-[0.98] ${
+                tegel.key === "pasteurisatie" && actieveRuns.length > 0
+                  ? "border-red-300 bg-red-50"
+                  : "border-border bg-card"
+              }`}
             >
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-soft text-3xl">
                 {tegel.emoji}

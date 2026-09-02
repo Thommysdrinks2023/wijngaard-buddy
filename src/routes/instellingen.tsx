@@ -38,6 +38,7 @@ import {
   Wrench,
   PackagePlus,
   Users,
+  Thermometer,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -174,6 +175,35 @@ const MENU_GROEPEN = [
         to: "/kelder/accijns",
         label: "Accijns",
         omschrijving: "Indicatief overzicht per aangifteperiode",
+        icon: FileText,
+      },
+    ],
+  },
+  {
+    kop: "🌡️ Pasteurisatie",
+    items: [
+      {
+        to: "/pasteurisatie",
+        label: "Pasteurisatie",
+        omschrijving: "Runoverzicht en logboek per klant",
+        icon: Thermometer,
+      },
+      {
+        to: "/pasteurisatie/plannen",
+        label: "Vooraf plannen",
+        omschrijving: "PU en drukveiligheid vooraf doorrekenen",
+        icon: Thermometer,
+      },
+      {
+        to: "/instellingen/sluitingen",
+        label: "Sluitingen beheren",
+        omschrijving: "Dopspecificaties voor het veiligheidsoordeel",
+        icon: Package,
+      },
+      {
+        to: "/instellingen/rekenmodel-validaties",
+        label: "Validatiestatus rekenmodellen",
+        omschrijving: "Nog niet gevalideerd tegen een echte run",
         icon: FileText,
       },
     ],

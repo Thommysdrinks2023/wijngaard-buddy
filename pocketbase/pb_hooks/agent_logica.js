@@ -1008,6 +1008,129 @@ const OENOLOGIE_TOOLS = [
   },
 ];
 
+// Fase 17 Blok H — pasteurisatie & drukveiligheid.
+//
+// bereken_pu/bereken_druk DUPLICEREN bewust een vereenvoudigde versie van de
+// formules uit src/lib/pasteurisatie.ts / drukveiligheid.ts: de JSVM-hook-
+// omgeving kan geen TypeScript-modules importeren (zelfde beperking als
+// SENSOR_TYPES/SENSOR_BRON_TYPES in sensor.pb.js, zie de toelichting daar).
+// Bij een wijziging in die formules moet dit blok hier bijgewerkt worden.
+// Dit zijn adviserende antwoorden van de assistent, GEEN vervanging van de
+// officiële berekening in de app zelf (die blijft in Blok D/E/plannen.tsx).
+const PASTEURISATIE_TOOLS = [
+  {
+    lezen: true,
+    schema: {
+      name: "zoek_pasteurisatie_runs",
+      description: "Zoek pasteurisatieruns op eigenaar, partij/lotnummer of status.",
+      input_schema: {
+        type: "object",
+        properties: {
+          eigenaar: { type: "string", description: "Naam of code van de eigenaar, bv. 'Thommy's Drinks' of '07'." },
+          partij: { type: "string", description: "Naam of lotnummer van de partij" },
+          status: { type: "string", enum: ["gepland", "actief", "afgerond", "afgebroken"] },
+        },
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "pasteurisatie_run_detail",
+      description: "Volledige details van één pasteurisatierun: PU-verdeling, veiligheidsoordeel, flestype/sluiting.",
+      input_schema: {
+        type: "object",
+        properties: {
+          lotnummer: { type: "string", description: "Lotnummer van de partij waar de run bij hoort" },
+        },
+        required: ["lotnummer"],
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "bereken_pu",
+      description:
+        "Rekent PU (pasteurisatie-eenheden) door over een reeks temperatuurmetingen (trapeziumintegratie, volledige curve). Geeft een indicatie — geen vervanging van de live monitor in de app.",
+      input_schema: {
+        type: "object",
+        properties: {
+          metingen: {
+            type: "array",
+            description: "Reeks {minuut, temperatuur_c}, oplopend in tijd",
+            items: {
+              type: "object",
+              properties: {
+                minuut: { type: "number" },
+                temperatuur_c: { type: "number" },
+              },
+              required: ["minuut", "temperatuur_c"],
+            },
+          },
+        },
+        required: ["metingen"],
+      },
+    },
+  },
+  {
+    lezen: true,
+    schema: {
+      name: "bereken_druk",
+      description:
+        "Schat de druk in een gesloten fles bij een doeltemperatuur (CO2 + thermische uitzetting + waterdamp) en geeft een veiligheidsoordeel als de dopspecificatie bekend is. Adviseert altijd om dit te verifiëren tegen de echte fabrieksspecificatie.",
+      input_schema: {
+        type: "object",
+        properties: {
+          co2_gehalte_gl: { type: "number", description: "CO2-gehalte in g/L" },
+          druk_bar_gauge: { type: "number", description: "Alternatief voor co2_gehalte_gl: gemeten druk (bar gauge)" },
+          ref_temperatuur_c: { type: "number", description: "Temperatuur waarbij druk_bar_gauge is gemeten, standaard 10" },
+          flesinhoud_ml: { type: "number" },
+          vulvolume_ml: { type: "number" },
+          doeltemperatuur_c: { type: "number" },
+          sluiting: { type: "string", description: "Naam van de sluiting, voor de dopspecificatie" },
+        },
+        required: ["flesinhoud_ml", "vulvolume_ml", "doeltemperatuur_c"],
+      },
+    },
+  },
+  {
+    actie_type: "pasteurisatie_run",
+    schema: {
+      name: "stel_pasteurisatie_run_voor",
+      description:
+        "Stel het plannen van een pasteurisatierun voor (nog niet starten - dat gebeurt in de app zelf met een druk-veiligheidscontrole). Wordt NOOIT direct uitgevoerd.",
+      input_schema: {
+        type: "object",
+        properties: {
+          lotnummer: { type: "string" },
+          product_soort: { type: "string", enum: ["wijn", "sap", "overige_gegiste_drank"] },
+          doeltemperatuur_c: { type: "number" },
+          doel_pu_min: { type: "number" },
+          doel_pu_max: { type: "number" },
+        },
+        required: ["lotnummer", "product_soort", "doeltemperatuur_c"],
+      },
+    },
+  },
+  {
+    actie_type: "pasteurisatie_meting",
+    schema: {
+      name: "stel_temperatuurmeting_voor",
+      description:
+        "Stel een handmatige temperatuurmeting voor een actieve run voor. Wordt NOOIT direct uitgevoerd.",
+      input_schema: {
+        type: "object",
+        properties: {
+          lotnummer: { type: "string", description: "Lotnummer van de actieve run" },
+          temperatuur_c: { type: "number" },
+        },
+        required: ["lotnummer", "temperatuur_c"],
+      },
+    },
+  },
+];
+
 const TOOL_MODULES = {
   kelder: KELDER_TOOLS,
   oenologie: OENOLOGIE_TOOLS,
@@ -1015,6 +1138,7 @@ const TOOL_MODULES = {
   voorraad: VOORRAAD_TOOLS,
   verkoop: VERKOOP_TOOLS,
   materieel: MATERIEEL_TOOLS,
+  pasteurisatie: PASTEURISATIE_TOOLS,
   algemeen: ALGEMEEN_TOOLS,
 };
 

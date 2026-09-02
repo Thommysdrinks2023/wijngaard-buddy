@@ -206,6 +206,7 @@ const KELDERLOG_ACTIES = [
   "reiniging",
   "botteling",
   "overig",
+  "pasteurisatie",
 ];
 const KELDERLOG_EENHEDEN = ["g", "kg", "ml", "l", "g_hl", "mg_l"];
 const ANALYSE_METHODEN = ["eigen_meting", "extern_lab"];
@@ -307,6 +308,9 @@ const AGENT_ACTIE_TYPES = [
   "werkuren",
   "bodem",
   "proefnotitie",
+  // Fase 17 Blok H
+  "pasteurisatie_run",
+  "pasteurisatie_meting",
 ];
 const AGENT_ACTIE_STATUSSEN = ["voorgesteld", "bevestigd", "afgewezen", "uitgevoerd", "mislukt"];
 const INZICHT_TYPES = [
@@ -3057,13 +3061,11 @@ async function main() {
         maxSelect: 1,
         values: VEILIGHEIDSOORDELEN,
       },
-      {
-        name: "oordeel_geaccepteerd_door",
-        type: "relation",
-        collectionId: usersCol.id,
-        cascadeDelete: false,
-        maxSelect: 1,
-      },
+      // Fase 17 — tekstveld, niet een relatie naar users: de app kent geen
+      // login (zie CLAUDE.md, 'Inloggen verwijderd'), dus er is geen
+      // ingelogde gebruiker om naar te verwijzen. Zelfde patroon als
+      // tankboek.verantwoordelijke/kelderlog.ingevoerd_door.
+      { name: "oordeel_geaccepteerd_door", type: "text" },
       { name: "sensor_positie", type: "text" },
       { name: "totale_pu", type: "number" },
       { name: "pu_opwarm", type: "number" },
@@ -3078,13 +3080,7 @@ async function main() {
         values: RUN_STATUSSEN,
       },
       { name: "opmerkingen", type: "text" },
-      {
-        name: "uitgevoerd_door",
-        type: "relation",
-        collectionId: usersCol.id,
-        cascadeDelete: false,
-        maxSelect: 1,
-      },
+      { name: "uitgevoerd_door", type: "text" },
       { name: "vineyard_id", type: "text" },
       { name: "deleted", type: "bool" },
       ...autodateFields(),

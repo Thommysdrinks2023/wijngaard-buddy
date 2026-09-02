@@ -79,6 +79,26 @@ export async function fetchPartijById(id: string): Promise<Partij | null> {
   }
 }
 
+// Fase 17 Blok F — een run wordt gestart op lotnummer, niet op partij-id:
+// dit is de client-side "voorbeeld"-lookup vóór het starten (toont eigenaar/
+// product/laatste logboekregels ter bevestiging). De atomische start zelf
+// zoekt SERVER-side nogmaals op lotnummer (pasteurisatie_logica.js) — geen
+// race-conditie omdat de server de bron van waarheid is.
+export async function fetchPartijByLotnummer(lotnummer: string): Promise<Partij | null> {
+  const pb = getPb();
+  if (!pb) return null;
+  if (!(await ensureOnline()))
+    throw new Error("Geen verbinding met de server — kon niet op lotnummer zoeken.");
+  try {
+    const r = await pb
+      .collection("partijen")
+      .getFirstListItem(pb.filter("lotnummer = {:lot}", { lot: lotnummer }), { requestKey: null });
+    return partijFromPb(r);
+  } catch {
+    return null;
+  }
+}
+
 export interface PartijInput {
   naam: string;
   jaargang: number;

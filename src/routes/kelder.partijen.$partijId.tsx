@@ -43,7 +43,9 @@ import {
   type KelderlogEenheid,
   type PartijStatus,
   eigenaarLabel,
+  PASTEURISATIE_OORDELEN,
 } from "@/lib/types";
+import { fetchPasteurisatieRuns } from "@/lib/pasteurisatie-data";
 import { AppHeader } from "@/components/app-header";
 import { CalculatorsSectie } from "@/components/calculators-sectie";
 import { berekenVerwachting } from "@/lib/gisting-verwachting";
@@ -109,6 +111,10 @@ function PartijDetailPage() {
   const bottelrondesQ = useQuery({
     queryKey: ["bottelrondes", partijId],
     queryFn: () => fetchBottelrondes(partijId),
+  });
+  const pasteurisatieRunsQ = useQuery({
+    queryKey: ["pasteurisatie-runs", { partij: partijId }],
+    queryFn: () => fetchPasteurisatieRuns({ partij: partijId }),
   });
   const voorraadVanPartijQ = useQuery({
     queryKey: ["voorraad", "partij", partijId],
@@ -1039,6 +1045,56 @@ function PartijDetailPage() {
                         {inhoud}
                       </div>
                     )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/* Fase 17 Blok F punt 3 — pasteurisatieruns van deze batch, zelfde
+            plek/patroon als Botteling/Analyses hierboven. */}
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Pasteurisatie ({pasteurisatieRunsQ.data?.length ?? 0})
+          </h2>
+          {(pasteurisatieRunsQ.data ?? []).length === 0 ? (
+            <EmptyState message="Nog geen pasteurisatierun voor deze partij." />
+          ) : (
+            <ul className="space-y-1.5">
+              {(pasteurisatieRunsQ.data ?? []).map((r) => {
+                const oordeel = PASTEURISATIE_OORDELEN.find(
+                  (o) => o.value === r.veiligheidsoordeel,
+                );
+                return (
+                  <li key={r.id}>
+                    <Link
+                      to="/pasteurisatie/run/$runId"
+                      params={{ runId: r.id }}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2 active:scale-[0.99]"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">
+                          {r.datum} — {r.status}
+                          {r.totale_pu != null && ` · ${r.totale_pu.toFixed(0)} PU`}
+                        </p>
+                        {oordeel && (
+                          <p className="text-xs text-muted-foreground">
+                            {oordeel.emoji} {oordeel.label}
+                          </p>
+                        )}
+                      </div>
+                      {r.status === "afgerond" && (
+                        <Link
+                          to="/pasteurisatie/run/$runId/certificaat"
+                          params={{ runId: r.id }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
+                        >
+                          Certificaat
+                        </Link>
+                      )}
+                    </Link>
                   </li>
                 );
               })}

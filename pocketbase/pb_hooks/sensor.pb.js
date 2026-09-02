@@ -16,7 +16,7 @@ routerAdd("POST", "/api/sensor/meting", (e) => {
   // Bewust gedupliceerd (JSVM kan geen .mjs importeren) — bij een nieuw
   // sensortype hier EN daar bijwerken.
   const SENSOR_TYPES = ["temperatuur", "co2", "gewicht", "dichtheid", "overig"];
-  const SENSOR_BRON_TYPES = ["tank", "kelder", "overig"];
+  const SENSOR_BRON_TYPES = ["tank", "kelder", "overig", "pasteurisatie_run"];
   // Plausibiliteitsgrenzen per type — zelfde motivatie als meetwaarde.ts: een
   // sensor die een onmogelijke waarde stuurt (kapotte sonde, bit-flip) mag
   // niet stilzwijgend een vervuild datapunt in de gistingscurve zetten.

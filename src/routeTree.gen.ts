@@ -22,6 +22,7 @@ import { Route as RapportRouteImport } from './routes/rapport'
 import { Route as QrRouteImport } from './routes/qr'
 import { Route as PrullenbakRouteImport } from './routes/prullenbak'
 import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
+import { Route as PasteurisatieRouteImport } from './routes/pasteurisatie'
 import { Route as OogstRouteImport } from './routes/oogst'
 import { Route as MaterieelRouteImport } from './routes/materieel'
 import { Route as LabRouteImport } from './routes/lab'
@@ -36,17 +37,21 @@ import { Route as AssistentRouteImport } from './routes/assistent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VoorraadIndexRouteImport } from './routes/voorraad.index'
 import { Route as SteekproevenIndexRouteImport } from './routes/steekproeven.index'
+import { Route as PasteurisatieIndexRouteImport } from './routes/pasteurisatie.index'
 import { Route as KelderIndexRouteImport } from './routes/kelder.index'
 import { Route as VoorraadFlessenRouteImport } from './routes/voorraad_.flessen'
 import { Route as VoorraadVoorraadIdRouteImport } from './routes/voorraad.$voorraadId'
 import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.beheer'
 import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
+import { Route as PasteurisatiePlannenRouteImport } from './routes/pasteurisatie.plannen'
 import { Route as KelderTankboekRouteImport } from './routes/kelder.tankboek'
 import { Route as KelderQrRouteImport } from './routes/kelder.qr'
 import { Route as KelderOverhevelenRouteImport } from './routes/kelder.overhevelen'
 import { Route as KelderLogboekRouteImport } from './routes/kelder.logboek'
 import { Route as KelderJaaroverzichtRouteImport } from './routes/kelder.jaaroverzicht'
 import { Route as KelderAccijnsRouteImport } from './routes/kelder.accijns'
+import { Route as InstellingenSluitingenRouteImport } from './routes/instellingen_.sluitingen'
+import { Route as InstellingenRekenmodelValidatiesRouteImport } from './routes/instellingen_.rekenmodel-validaties'
 import { Route as InstellingenFlestypesRouteImport } from './routes/instellingen_.flestypes'
 import { Route as InstellingenEigenaarsRouteImport } from './routes/instellingen_.eigenaars'
 import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
@@ -58,10 +63,13 @@ import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten
 import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
 import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
 import { Route as RijRijIdFenologieRouteImport } from './routes/rij.$rijId.fenologie'
+import { Route as PasteurisatieRunNieuwRouteImport } from './routes/pasteurisatie.run.nieuw'
+import { Route as PasteurisatieRunRunIdRouteImport } from './routes/pasteurisatie.run.$runId'
 import { Route as KelderTanksTankIdRouteImport } from './routes/kelder.tanks.$tankId'
 import { Route as KelderPartijenNieuwRouteImport } from './routes/kelder.partijen.nieuw'
 import { Route as KelderPartijenPartijIdRouteImport } from './routes/kelder.partijen.$partijId'
 import { Route as FenologieFenIdBewerkenRouteImport } from './routes/fenologie.$fenId.bewerken'
+import { Route as PasteurisatieRunRunIdCertificaatRouteImport } from './routes/pasteurisatie.run.$runId_.certificaat'
 import { Route as KelderPartijenPartijIdBottelenRouteImport } from './routes/kelder.partijen.$partijId_.bottelen'
 
 const ZoekenRoute = ZoekenRouteImport.update({
@@ -127,6 +135,11 @@ const PrullenbakRoute = PrullenbakRouteImport.update({
 const PerceelkaartRoute = PerceelkaartRouteImport.update({
   id: '/perceelkaart',
   path: '/perceelkaart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasteurisatieRoute = PasteurisatieRouteImport.update({
+  id: '/pasteurisatie',
+  path: '/pasteurisatie',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OogstRoute = OogstRouteImport.update({
@@ -199,6 +212,11 @@ const SteekproevenIndexRoute = SteekproevenIndexRouteImport.update({
   path: '/steekproeven/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PasteurisatieIndexRoute = PasteurisatieIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PasteurisatieRoute,
+} as any)
 const KelderIndexRoute = KelderIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -223,6 +241,11 @@ const RijRijIdRoute = RijRijIdRouteImport.update({
   id: '/rij/$rijId',
   path: '/rij/$rijId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PasteurisatiePlannenRoute = PasteurisatiePlannenRouteImport.update({
+  id: '/plannen',
+  path: '/plannen',
+  getParentRoute: () => PasteurisatieRoute,
 } as any)
 const KelderTankboekRoute = KelderTankboekRouteImport.update({
   id: '/tankboek',
@@ -254,6 +277,17 @@ const KelderAccijnsRoute = KelderAccijnsRouteImport.update({
   path: '/accijns',
   getParentRoute: () => KelderRoute,
 } as any)
+const InstellingenSluitingenRoute = InstellingenSluitingenRouteImport.update({
+  id: '/instellingen_/sluitingen',
+  path: '/instellingen/sluitingen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstellingenRekenmodelValidatiesRoute =
+  InstellingenRekenmodelValidatiesRouteImport.update({
+    id: '/instellingen_/rekenmodel-validaties',
+    path: '/instellingen/rekenmodel-validaties',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const InstellingenFlestypesRoute = InstellingenFlestypesRouteImport.update({
   id: '/instellingen_/flestypes',
   path: '/instellingen/flestypes',
@@ -311,6 +345,16 @@ const RijRijIdFenologieRoute = RijRijIdFenologieRouteImport.update({
   path: '/fenologie',
   getParentRoute: () => RijRijIdRoute,
 } as any)
+const PasteurisatieRunNieuwRoute = PasteurisatieRunNieuwRouteImport.update({
+  id: '/run/nieuw',
+  path: '/run/nieuw',
+  getParentRoute: () => PasteurisatieRoute,
+} as any)
+const PasteurisatieRunRunIdRoute = PasteurisatieRunRunIdRouteImport.update({
+  id: '/run/$runId',
+  path: '/run/$runId',
+  getParentRoute: () => PasteurisatieRoute,
+} as any)
 const KelderTanksTankIdRoute = KelderTanksTankIdRouteImport.update({
   id: '/tanks/$tankId',
   path: '/tanks/$tankId',
@@ -331,6 +375,12 @@ const FenologieFenIdBewerkenRoute = FenologieFenIdBewerkenRouteImport.update({
   path: '/fenologie/$fenId/bewerken',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PasteurisatieRunRunIdCertificaatRoute =
+  PasteurisatieRunRunIdCertificaatRouteImport.update({
+    id: '/run/$runId_/certificaat',
+    path: '/run/$runId/certificaat',
+    getParentRoute: () => PasteurisatieRoute,
+  } as any)
 const KelderPartijenPartijIdBottelenRoute =
   KelderPartijenPartijIdBottelenRouteImport.update({
     id: '/partijen/$partijId_/bottelen',
@@ -351,6 +401,7 @@ export interface FileRoutesByFullPath {
   '/lab': typeof LabRoute
   '/materieel': typeof MaterieelRoute
   '/oogst': typeof OogstRoute
+  '/pasteurisatie': typeof PasteurisatieRouteWithChildren
   '/perceelkaart': typeof PerceelkaartRoute
   '/prullenbak': typeof PrullenbakRoute
   '/qr': typeof QrRoute
@@ -366,23 +417,29 @@ export interface FileRoutesByFullPath {
   '/zoeken': typeof ZoekenRoute
   '/instellingen/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen/flestypes': typeof InstellingenFlestypesRoute
+  '/instellingen/rekenmodel-validaties': typeof InstellingenRekenmodelValidatiesRoute
+  '/instellingen/sluitingen': typeof InstellingenSluitingenRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
   '/kelder/qr': typeof KelderQrRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
+  '/pasteurisatie/plannen': typeof PasteurisatiePlannenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/voorraad/$voorraadId': typeof VoorraadVoorraadIdRoute
   '/voorraad/flessen': typeof VoorraadFlessenRoute
   '/kelder/': typeof KelderIndexRoute
+  '/pasteurisatie/': typeof PasteurisatieIndexRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
   '/voorraad/': typeof VoorraadIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/kelder/partijen/$partijId': typeof KelderPartijenPartijIdRoute
   '/kelder/partijen/nieuw': typeof KelderPartijenNieuwRoute
   '/kelder/tanks/$tankId': typeof KelderTanksTankIdRoute
+  '/pasteurisatie/run/$runId': typeof PasteurisatieRunRunIdRoute
+  '/pasteurisatie/run/nieuw': typeof PasteurisatieRunNieuwRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -393,6 +450,7 @@ export interface FileRoutesByFullPath {
   '/kelder/tanks/': typeof KelderTanksIndexRoute
   '/rij/$rijId/': typeof RijRijIdIndexRoute
   '/kelder/partijen/$partijId/bottelen': typeof KelderPartijenPartijIdBottelenRoute
+  '/pasteurisatie/run/$runId/certificaat': typeof PasteurisatieRunRunIdCertificaatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -420,22 +478,28 @@ export interface FileRoutesByTo {
   '/zoeken': typeof ZoekenRoute
   '/instellingen/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen/flestypes': typeof InstellingenFlestypesRoute
+  '/instellingen/rekenmodel-validaties': typeof InstellingenRekenmodelValidatiesRoute
+  '/instellingen/sluitingen': typeof InstellingenSluitingenRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
   '/kelder/qr': typeof KelderQrRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
+  '/pasteurisatie/plannen': typeof PasteurisatiePlannenRoute
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/voorraad/$voorraadId': typeof VoorraadVoorraadIdRoute
   '/voorraad/flessen': typeof VoorraadFlessenRoute
   '/kelder': typeof KelderIndexRoute
+  '/pasteurisatie': typeof PasteurisatieIndexRoute
   '/steekproeven': typeof SteekproevenIndexRoute
   '/voorraad': typeof VoorraadIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/kelder/partijen/$partijId': typeof KelderPartijenPartijIdRoute
   '/kelder/partijen/nieuw': typeof KelderPartijenNieuwRoute
   '/kelder/tanks/$tankId': typeof KelderTanksTankIdRoute
+  '/pasteurisatie/run/$runId': typeof PasteurisatieRunRunIdRoute
+  '/pasteurisatie/run/nieuw': typeof PasteurisatieRunNieuwRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -446,6 +510,7 @@ export interface FileRoutesByTo {
   '/kelder/tanks': typeof KelderTanksIndexRoute
   '/rij/$rijId': typeof RijRijIdIndexRoute
   '/kelder/partijen/$partijId/bottelen': typeof KelderPartijenPartijIdBottelenRoute
+  '/pasteurisatie/run/$runId/certificaat': typeof PasteurisatieRunRunIdCertificaatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -461,6 +526,7 @@ export interface FileRoutesById {
   '/lab': typeof LabRoute
   '/materieel': typeof MaterieelRoute
   '/oogst': typeof OogstRoute
+  '/pasteurisatie': typeof PasteurisatieRouteWithChildren
   '/perceelkaart': typeof PerceelkaartRoute
   '/prullenbak': typeof PrullenbakRoute
   '/qr': typeof QrRoute
@@ -476,23 +542,29 @@ export interface FileRoutesById {
   '/zoeken': typeof ZoekenRoute
   '/instellingen_/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen_/flestypes': typeof InstellingenFlestypesRoute
+  '/instellingen_/rekenmodel-validaties': typeof InstellingenRekenmodelValidatiesRoute
+  '/instellingen_/sluitingen': typeof InstellingenSluitingenRoute
   '/kelder/accijns': typeof KelderAccijnsRoute
   '/kelder/jaaroverzicht': typeof KelderJaaroverzichtRoute
   '/kelder/logboek': typeof KelderLogboekRoute
   '/kelder/overhevelen': typeof KelderOverhevelenRoute
   '/kelder/qr': typeof KelderQrRoute
   '/kelder/tankboek': typeof KelderTankboekRoute
+  '/pasteurisatie/plannen': typeof PasteurisatiePlannenRoute
   '/rij/$rijId': typeof RijRijIdRouteWithChildren
   '/steekproeven/beheer': typeof SteekproevenBeheerRoute
   '/voorraad/$voorraadId': typeof VoorraadVoorraadIdRoute
   '/voorraad_/flessen': typeof VoorraadFlessenRoute
   '/kelder/': typeof KelderIndexRoute
+  '/pasteurisatie/': typeof PasteurisatieIndexRoute
   '/steekproeven/': typeof SteekproevenIndexRoute
   '/voorraad/': typeof VoorraadIndexRoute
   '/fenologie/$fenId/bewerken': typeof FenologieFenIdBewerkenRoute
   '/kelder/partijen/$partijId': typeof KelderPartijenPartijIdRoute
   '/kelder/partijen/nieuw': typeof KelderPartijenNieuwRoute
   '/kelder/tanks/$tankId': typeof KelderTanksTankIdRoute
+  '/pasteurisatie/run/$runId': typeof PasteurisatieRunRunIdRoute
+  '/pasteurisatie/run/nieuw': typeof PasteurisatieRunNieuwRoute
   '/rij/$rijId/fenologie': typeof RijRijIdFenologieRoute
   '/rij/$rijId/meting': typeof RijRijIdMetingRoute
   '/rij/$rijId/observatie': typeof RijRijIdObservatieRoute
@@ -503,6 +575,7 @@ export interface FileRoutesById {
   '/kelder/tanks/': typeof KelderTanksIndexRoute
   '/rij/$rijId/': typeof RijRijIdIndexRoute
   '/kelder/partijen/$partijId_/bottelen': typeof KelderPartijenPartijIdBottelenRoute
+  '/pasteurisatie/run/$runId_/certificaat': typeof PasteurisatieRunRunIdCertificaatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -519,6 +592,7 @@ export interface FileRouteTypes {
     | '/lab'
     | '/materieel'
     | '/oogst'
+    | '/pasteurisatie'
     | '/perceelkaart'
     | '/prullenbak'
     | '/qr'
@@ -534,23 +608,29 @@ export interface FileRouteTypes {
     | '/zoeken'
     | '/instellingen/eigenaars'
     | '/instellingen/flestypes'
+    | '/instellingen/rekenmodel-validaties'
+    | '/instellingen/sluitingen'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
     | '/kelder/overhevelen'
     | '/kelder/qr'
     | '/kelder/tankboek'
+    | '/pasteurisatie/plannen'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
     | '/voorraad/$voorraadId'
     | '/voorraad/flessen'
     | '/kelder/'
+    | '/pasteurisatie/'
     | '/steekproeven/'
     | '/voorraad/'
     | '/fenologie/$fenId/bewerken'
     | '/kelder/partijen/$partijId'
     | '/kelder/partijen/nieuw'
     | '/kelder/tanks/$tankId'
+    | '/pasteurisatie/run/$runId'
+    | '/pasteurisatie/run/nieuw'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -561,6 +641,7 @@ export interface FileRouteTypes {
     | '/kelder/tanks/'
     | '/rij/$rijId/'
     | '/kelder/partijen/$partijId/bottelen'
+    | '/pasteurisatie/run/$runId/certificaat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -588,22 +669,28 @@ export interface FileRouteTypes {
     | '/zoeken'
     | '/instellingen/eigenaars'
     | '/instellingen/flestypes'
+    | '/instellingen/rekenmodel-validaties'
+    | '/instellingen/sluitingen'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
     | '/kelder/overhevelen'
     | '/kelder/qr'
     | '/kelder/tankboek'
+    | '/pasteurisatie/plannen'
     | '/steekproeven/beheer'
     | '/voorraad/$voorraadId'
     | '/voorraad/flessen'
     | '/kelder'
+    | '/pasteurisatie'
     | '/steekproeven'
     | '/voorraad'
     | '/fenologie/$fenId/bewerken'
     | '/kelder/partijen/$partijId'
     | '/kelder/partijen/nieuw'
     | '/kelder/tanks/$tankId'
+    | '/pasteurisatie/run/$runId'
+    | '/pasteurisatie/run/nieuw'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -614,6 +701,7 @@ export interface FileRouteTypes {
     | '/kelder/tanks'
     | '/rij/$rijId'
     | '/kelder/partijen/$partijId/bottelen'
+    | '/pasteurisatie/run/$runId/certificaat'
   id:
     | '__root__'
     | '/'
@@ -628,6 +716,7 @@ export interface FileRouteTypes {
     | '/lab'
     | '/materieel'
     | '/oogst'
+    | '/pasteurisatie'
     | '/perceelkaart'
     | '/prullenbak'
     | '/qr'
@@ -643,23 +732,29 @@ export interface FileRouteTypes {
     | '/zoeken'
     | '/instellingen_/eigenaars'
     | '/instellingen_/flestypes'
+    | '/instellingen_/rekenmodel-validaties'
+    | '/instellingen_/sluitingen'
     | '/kelder/accijns'
     | '/kelder/jaaroverzicht'
     | '/kelder/logboek'
     | '/kelder/overhevelen'
     | '/kelder/qr'
     | '/kelder/tankboek'
+    | '/pasteurisatie/plannen'
     | '/rij/$rijId'
     | '/steekproeven/beheer'
     | '/voorraad/$voorraadId'
     | '/voorraad_/flessen'
     | '/kelder/'
+    | '/pasteurisatie/'
     | '/steekproeven/'
     | '/voorraad/'
     | '/fenologie/$fenId/bewerken'
     | '/kelder/partijen/$partijId'
     | '/kelder/partijen/nieuw'
     | '/kelder/tanks/$tankId'
+    | '/pasteurisatie/run/$runId'
+    | '/pasteurisatie/run/nieuw'
     | '/rij/$rijId/fenologie'
     | '/rij/$rijId/meting'
     | '/rij/$rijId/observatie'
@@ -670,6 +765,7 @@ export interface FileRouteTypes {
     | '/kelder/tanks/'
     | '/rij/$rijId/'
     | '/kelder/partijen/$partijId_/bottelen'
+    | '/pasteurisatie/run/$runId_/certificaat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -685,6 +781,7 @@ export interface RootRouteChildren {
   LabRoute: typeof LabRoute
   MaterieelRoute: typeof MaterieelRoute
   OogstRoute: typeof OogstRoute
+  PasteurisatieRoute: typeof PasteurisatieRouteWithChildren
   PerceelkaartRoute: typeof PerceelkaartRoute
   PrullenbakRoute: typeof PrullenbakRoute
   QrRoute: typeof QrRoute
@@ -700,6 +797,8 @@ export interface RootRouteChildren {
   ZoekenRoute: typeof ZoekenRoute
   InstellingenEigenaarsRoute: typeof InstellingenEigenaarsRoute
   InstellingenFlestypesRoute: typeof InstellingenFlestypesRoute
+  InstellingenRekenmodelValidatiesRoute: typeof InstellingenRekenmodelValidatiesRoute
+  InstellingenSluitingenRoute: typeof InstellingenSluitingenRoute
   RijRijIdRoute: typeof RijRijIdRouteWithChildren
   SteekproevenBeheerRoute: typeof SteekproevenBeheerRoute
   VoorraadFlessenRoute: typeof VoorraadFlessenRoute
@@ -802,6 +901,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PerceelkaartRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pasteurisatie': {
+      id: '/pasteurisatie'
+      path: '/pasteurisatie'
+      fullPath: '/pasteurisatie'
+      preLoaderRoute: typeof PasteurisatieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oogst': {
       id: '/oogst'
       path: '/oogst'
@@ -900,6 +1006,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SteekproevenIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pasteurisatie/': {
+      id: '/pasteurisatie/'
+      path: '/'
+      fullPath: '/pasteurisatie/'
+      preLoaderRoute: typeof PasteurisatieIndexRouteImport
+      parentRoute: typeof PasteurisatieRoute
+    }
     '/kelder/': {
       id: '/kelder/'
       path: '/'
@@ -934,6 +1047,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/rij/$rijId'
       preLoaderRoute: typeof RijRijIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/pasteurisatie/plannen': {
+      id: '/pasteurisatie/plannen'
+      path: '/plannen'
+      fullPath: '/pasteurisatie/plannen'
+      preLoaderRoute: typeof PasteurisatiePlannenRouteImport
+      parentRoute: typeof PasteurisatieRoute
     }
     '/kelder/tankboek': {
       id: '/kelder/tankboek'
@@ -976,6 +1096,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/kelder/accijns'
       preLoaderRoute: typeof KelderAccijnsRouteImport
       parentRoute: typeof KelderRoute
+    }
+    '/instellingen_/sluitingen': {
+      id: '/instellingen_/sluitingen'
+      path: '/instellingen/sluitingen'
+      fullPath: '/instellingen/sluitingen'
+      preLoaderRoute: typeof InstellingenSluitingenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/instellingen_/rekenmodel-validaties': {
+      id: '/instellingen_/rekenmodel-validaties'
+      path: '/instellingen/rekenmodel-validaties'
+      fullPath: '/instellingen/rekenmodel-validaties'
+      preLoaderRoute: typeof InstellingenRekenmodelValidatiesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/instellingen_/flestypes': {
       id: '/instellingen_/flestypes'
@@ -1054,6 +1188,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RijRijIdFenologieRouteImport
       parentRoute: typeof RijRijIdRoute
     }
+    '/pasteurisatie/run/nieuw': {
+      id: '/pasteurisatie/run/nieuw'
+      path: '/run/nieuw'
+      fullPath: '/pasteurisatie/run/nieuw'
+      preLoaderRoute: typeof PasteurisatieRunNieuwRouteImport
+      parentRoute: typeof PasteurisatieRoute
+    }
+    '/pasteurisatie/run/$runId': {
+      id: '/pasteurisatie/run/$runId'
+      path: '/run/$runId'
+      fullPath: '/pasteurisatie/run/$runId'
+      preLoaderRoute: typeof PasteurisatieRunRunIdRouteImport
+      parentRoute: typeof PasteurisatieRoute
+    }
     '/kelder/tanks/$tankId': {
       id: '/kelder/tanks/$tankId'
       path: '/tanks/$tankId'
@@ -1081,6 +1229,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/fenologie/$fenId/bewerken'
       preLoaderRoute: typeof FenologieFenIdBewerkenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/pasteurisatie/run/$runId_/certificaat': {
+      id: '/pasteurisatie/run/$runId_/certificaat'
+      path: '/run/$runId/certificaat'
+      fullPath: '/pasteurisatie/run/$runId/certificaat'
+      preLoaderRoute: typeof PasteurisatieRunRunIdCertificaatRouteImport
+      parentRoute: typeof PasteurisatieRoute
     }
     '/kelder/partijen/$partijId_/bottelen': {
       id: '/kelder/partijen/$partijId_/bottelen'
@@ -1126,6 +1281,26 @@ const KelderRouteChildren: KelderRouteChildren = {
 
 const KelderRouteWithChildren =
   KelderRoute._addFileChildren(KelderRouteChildren)
+
+interface PasteurisatieRouteChildren {
+  PasteurisatiePlannenRoute: typeof PasteurisatiePlannenRoute
+  PasteurisatieIndexRoute: typeof PasteurisatieIndexRoute
+  PasteurisatieRunRunIdRoute: typeof PasteurisatieRunRunIdRoute
+  PasteurisatieRunNieuwRoute: typeof PasteurisatieRunNieuwRoute
+  PasteurisatieRunRunIdCertificaatRoute: typeof PasteurisatieRunRunIdCertificaatRoute
+}
+
+const PasteurisatieRouteChildren: PasteurisatieRouteChildren = {
+  PasteurisatiePlannenRoute: PasteurisatiePlannenRoute,
+  PasteurisatieIndexRoute: PasteurisatieIndexRoute,
+  PasteurisatieRunRunIdRoute: PasteurisatieRunRunIdRoute,
+  PasteurisatieRunNieuwRoute: PasteurisatieRunNieuwRoute,
+  PasteurisatieRunRunIdCertificaatRoute: PasteurisatieRunRunIdCertificaatRoute,
+}
+
+const PasteurisatieRouteWithChildren = PasteurisatieRoute._addFileChildren(
+  PasteurisatieRouteChildren,
+)
 
 interface VoorraadRouteChildren {
   VoorraadVoorraadIdRoute: typeof VoorraadVoorraadIdRoute
@@ -1174,6 +1349,7 @@ const rootRouteChildren: RootRouteChildren = {
   LabRoute: LabRoute,
   MaterieelRoute: MaterieelRoute,
   OogstRoute: OogstRoute,
+  PasteurisatieRoute: PasteurisatieRouteWithChildren,
   PerceelkaartRoute: PerceelkaartRoute,
   PrullenbakRoute: PrullenbakRoute,
   QrRoute: QrRoute,
@@ -1189,6 +1365,8 @@ const rootRouteChildren: RootRouteChildren = {
   ZoekenRoute: ZoekenRoute,
   InstellingenEigenaarsRoute: InstellingenEigenaarsRoute,
   InstellingenFlestypesRoute: InstellingenFlestypesRoute,
+  InstellingenRekenmodelValidatiesRoute: InstellingenRekenmodelValidatiesRoute,
+  InstellingenSluitingenRoute: InstellingenSluitingenRoute,
   RijRijIdRoute: RijRijIdRouteWithChildren,
   SteekproevenBeheerRoute: SteekproevenBeheerRoute,
   VoorraadFlessenRoute: VoorraadFlessenRoute,

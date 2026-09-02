@@ -294,6 +294,7 @@ export type KelderlogActie =
   | "proeven"
   | "reiniging"
   | "botteling"
+  | "pasteurisatie"
   | "overig";
 
 export const KELDERLOG_ACTIES: { value: KelderlogActie; label: string; emoji: string }[] = [
@@ -311,6 +312,7 @@ export const KELDERLOG_ACTIES: { value: KelderlogActie; label: string; emoji: st
   { value: "proeven", label: "Proeven", emoji: "👅" },
   { value: "reiniging", label: "Reiniging", emoji: "🧽" },
   { value: "botteling", label: "Botteling", emoji: "🍾" },
+  { value: "pasteurisatie", label: "Pasteurisatie", emoji: "🌡️" },
   { value: "overig", label: "Overig", emoji: "📝" },
 ];
 
@@ -733,4 +735,118 @@ export interface Order {
   notities?: string;
   ingevoerd_door?: string;
   created: string;
+}
+
+// ============= Pasteurisatie (Fase 17) =============
+export type SluitingType = "kroonkurk" | "schroefdop" | "vinolok" | "kurk";
+export const SLUITING_TYPES: { value: SluitingType; label: string }[] = [
+  { value: "kroonkurk", label: "Kroonkurk" },
+  { value: "schroefdop", label: "Schroefdop" },
+  { value: "vinolok", label: "Vinolok" },
+  { value: "kurk", label: "Kurk" },
+];
+
+export interface Sluiting {
+  id: string;
+  naam: string;
+  type: SluitingType;
+  /**
+   * 0 betekent hier "onbekend", niet "geen druk aankan" — PocketBase geeft
+   * een leeg number-veld altijd als 0 terug (zelfde valkuil als elders in dit
+   * project). Gebruik `maxDrukBekend()` i.p.v. rechtstreeks op dit veld te
+   * vertrouwen.
+   */
+  max_druk_bar: number;
+  geschikt_voor_gecarboniseerd: boolean;
+  liner?: string;
+  leverancier?: string;
+  notities?: string;
+  actief: boolean;
+}
+
+export function maxDrukBekend(sluiting: Pick<Sluiting, "max_druk_bar">): boolean {
+  return sluiting.max_druk_bar > 0;
+}
+
+export type ProductSoort = "wijn" | "sap" | "overige_gegiste_drank";
+export const PRODUCT_SOORTEN: { value: ProductSoort; label: string }[] = [
+  { value: "wijn", label: "Wijn" },
+  { value: "sap", label: "Sap" },
+  { value: "overige_gegiste_drank", label: "Overige gegiste drank" },
+];
+
+export type PasteurisatieOordeel = "veilig" | "marginaal" | "onveilig";
+export const PASTEURISATIE_OORDELEN: {
+  value: PasteurisatieOordeel;
+  label: string;
+  emoji: string;
+}[] = [
+  { value: "veilig", label: "Veilig", emoji: "✅" },
+  { value: "marginaal", label: "Marginaal", emoji: "⚠️" },
+  { value: "onveilig", label: "Onveilig", emoji: "🛑" },
+];
+
+export type PasteurisatieRunStatus = "gepland" | "actief" | "afgerond" | "afgebroken";
+export const PASTEURISATIE_RUN_STATUSSEN: {
+  value: PasteurisatieRunStatus;
+  label: string;
+  emoji: string;
+}[] = [
+  { value: "gepland", label: "Gepland", emoji: "🗓️" },
+  { value: "actief", label: "Actief", emoji: "🔴" },
+  { value: "afgerond", label: "Afgerond", emoji: "✅" },
+  { value: "afgebroken", label: "Afgebroken", emoji: "🚫" },
+];
+
+export interface PasteurisatieRun {
+  id: string;
+  eigenaar?: string | null;
+  partij: string;
+  lotnummer?: string;
+  bottelronde?: string | null;
+  product_soort: ProductSoort;
+  datum: string;
+  starttijd?: string;
+  eindtijd?: string;
+  flestype?: string | null;
+  sluiting?: string | null;
+  aantal_flessen?: number | null;
+  vulvolume_ml?: number | null;
+  co2_gehalte_gl?: number | null;
+  doel_pu_min: number;
+  doel_pu_max: number;
+  doeltemperatuur_c?: number | null;
+  berekende_max_druk_bar?: number | null;
+  veiligheidsoordeel?: PasteurisatieOordeel | null;
+  oordeel_geaccepteerd_door?: string | null;
+  sensor_positie?: string;
+  totale_pu?: number | null;
+  pu_opwarm?: number | null;
+  pu_houd?: number | null;
+  pu_afkoel?: number | null;
+  piektemperatuur_c?: number | null;
+  status: PasteurisatieRunStatus;
+  opmerkingen?: string;
+  uitgevoerd_door?: string | null;
+  created: string;
+  updated?: string;
+}
+
+export interface PasteurisatieCertificaat {
+  id: string;
+  run: string;
+  uitgiftedatum: string;
+  uitgegeven_door?: string;
+  bestand?: string;
+  versienummer: number;
+  created: string;
+}
+
+export interface RekenmodelValidatie {
+  id: string;
+  model_sleutel: string;
+  gevalideerd: boolean;
+  gevalideerd_op?: string;
+  gevalideerd_door?: string;
+  toelichting?: string;
 }

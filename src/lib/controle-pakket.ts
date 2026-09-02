@@ -15,6 +15,7 @@ import {
 } from "./kelder-data";
 import { fetchPartijen } from "./partijen-data";
 import { fetchWerkuren } from "./extra-data";
+import { fetchPasteurisatieRuns } from "./pasteurisatie-data";
 import { getPb } from "./data";
 
 export interface PakketPeriode {
@@ -31,16 +32,25 @@ export async function maakControlePakket(
   // (Fase 9 Blok A) — anders zit die hele bibliotheek in de accijns-chunk.
   const { default: JSZip } = await import("jszip");
   const pb = getPb();
-  const [tankboek, kelderlog, voorraad, bottelrondes, partijen, tanks, werkuren] =
-    await Promise.all([
-      fetchTankboek({ vanaf: periode.van, tot: periode.tot }),
-      fetchKelderlog({ vanaf: periode.van, tot: periode.tot }),
-      fetchVoorraadFlessen(),
-      fetchBottelrondes(),
-      fetchPartijen(),
-      fetchTanks(),
-      fetchWerkuren(),
-    ]);
+  const [
+    tankboek,
+    kelderlog,
+    voorraad,
+    bottelrondes,
+    partijen,
+    tanks,
+    werkuren,
+    pasteurisatieRuns,
+  ] = await Promise.all([
+    fetchTankboek({ vanaf: periode.van, tot: periode.tot }),
+    fetchKelderlog({ vanaf: periode.van, tot: periode.tot }),
+    fetchVoorraadFlessen(),
+    fetchBottelrondes(),
+    fetchPartijen(),
+    fetchTanks(),
+    fetchWerkuren(),
+    fetchPasteurisatieRuns({ vanaf: periode.van, tot: periode.tot }),
+  ]);
   const mutaties = pb
     ? await pb.collection("voorraad_mutaties").getFullList({
         filter: pb.filter("datum >= {:van} && datum <= {:tot}", {
@@ -217,6 +227,37 @@ export async function maakControlePakket(
         w.ras ?? "",
         w.ingevoerd_door,
       ]),
+  );
+
+  // Fase 17 Blok G — pasteurisatieruns bij een NVWA-/klantcontrole precies
+  // wat je wilt kunnen tonen: PU-opbouw, veiligheidsoordeel en wie de run
+  // heeft uitgevoerd.
+  voeg(
+    "pasteurisatieruns.csv",
+    [
+      "Datum",
+      "Lotnummer",
+      "Partij",
+      "Product",
+      "Status",
+      "Totale PU",
+      "Doelbereik",
+      "Veiligheidsoordeel",
+      "Piektemperatuur",
+      "Uitgevoerd door",
+    ],
+    pasteurisatieRuns.map((r) => [
+      r.datum,
+      r.lotnummer ?? "",
+      partijNaam.get(r.partij) ?? "",
+      r.product_soort,
+      r.status,
+      r.totale_pu ?? "",
+      `${r.doel_pu_min}-${r.doel_pu_max}`,
+      r.veiligheidsoordeel ?? "",
+      r.piektemperatuur_c ?? "",
+      r.uitgevoerd_door ?? "",
+    ]),
   );
 
   // Voorblad met bedrijfsgegevens, periode en inhoudsopgave (HTML: opent en
