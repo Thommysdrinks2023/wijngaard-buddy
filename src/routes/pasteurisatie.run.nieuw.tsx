@@ -16,6 +16,7 @@ import { verwachteDruk, veiligheidsoordeel } from "@/lib/drukveiligheid";
 import { eigenaarLabel, maxDrukBekend, PRODUCT_SOORTEN, type ProductSoort } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { StatusBadge } from "@/components/status-badge";
 import { Loader2, Search } from "lucide-react";
 
 export const Route = createFileRoute("/pasteurisatie/run/nieuw")({
@@ -143,6 +144,9 @@ function RunStartenPagina() {
       <AppHeader back title="Run starten" subtitle="Op lotnummer" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
         <section className="rounded-2xl border border-border bg-card p-4">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            1. Partij
+          </h2>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Lotnummer</span>
             <div className="flex gap-2">
@@ -170,8 +174,9 @@ function RunStartenPagina() {
           )}
 
           {gezocht && !partijQ.isFetching && partijQ.data && (
-            <div className="mt-3 rounded-xl border border-green-300 bg-green-50 p-3 text-sm">
-              <p className="font-semibold">
+            <div className="mt-3 rounded-xl border border-success/40 bg-success/10 p-3 text-sm">
+              <p className="flex flex-wrap items-center gap-2 font-semibold">
+                <StatusBadge label="Partij gevonden" emoji="✅" toon="success" />
                 {partijQ.data.naam} ({partijQ.data.jaargang})
               </p>
               <p className="text-muted-foreground">
@@ -196,8 +201,11 @@ function RunStartenPagina() {
           )}
 
           {gezocht && !partijQ.isFetching && !partijQ.data && (
-            <div className="mt-3 space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
-              <p className="text-sm font-semibold text-amber-900">
+            <div className="mt-3 space-y-3 rounded-xl border border-warning/50 bg-warning/10 p-3">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                <StatusBadge label="Onbekend lotnummer" emoji="⚠️" toon="warning" />
+              </p>
+              <p className="text-sm">
                 Geen partij gevonden voor dit lotnummer. Maak een nieuwe "alleen bottelen"-partij
                 aan — geen losse run zonder koppeling.
               </p>
@@ -239,6 +247,9 @@ function RunStartenPagina() {
         </section>
 
         <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            2. Product &amp; verpakking
+          </h2>
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Product</span>
             <select
@@ -310,12 +321,15 @@ function RunStartenPagina() {
             </label>
           </div>
           {flessenTekort && (
-            <p className="text-xs text-amber-700">
+            <p className="text-xs text-warning">
               Let op: flessenvoorraad toont {flessenStand} stuks, minder dan de {aantalFlessen}{" "}
               nodig.
             </p>
           )}
 
+          <h2 className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            3. Proces
+          </h2>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Carbonatie (bar bij 10°C)</span>
@@ -384,19 +398,31 @@ function RunStartenPagina() {
           <section
             className={`rounded-2xl border p-4 ${
               oordeel.oordeel === "veilig"
-                ? "border-green-300 bg-green-50"
+                ? "border-success/40 bg-success/10"
                 : oordeel.oordeel === "marginaal"
-                  ? "border-amber-300 bg-amber-50"
-                  : "border-red-300 bg-red-50"
+                  ? "border-warning/50 bg-warning/10"
+                  : "border-destructive/40 bg-destructive/10"
             }`}
           >
-            <p className="text-sm font-bold uppercase">
-              {oordeel.oordeel === "veilig"
-                ? "✅ Veilig"
-                : oordeel.oordeel === "marginaal"
-                  ? "⚠️ Marginaal"
-                  : "🛑 Onveilig"}
-            </p>
+            <StatusBadge
+              label={
+                oordeel.oordeel === "veilig"
+                  ? "Veilig"
+                  : oordeel.oordeel === "marginaal"
+                    ? "Marginaal"
+                    : "Onveilig"
+              }
+              emoji={
+                oordeel.oordeel === "veilig" ? "✅" : oordeel.oordeel === "marginaal" ? "⚠️" : "🛑"
+              }
+              toon={
+                oordeel.oordeel === "veilig"
+                  ? "success"
+                  : oordeel.oordeel === "marginaal"
+                    ? "warning"
+                    : "destructive"
+              }
+            />
             <p className="mt-1 text-sm">{oordeel.toelichting}</p>
             {oordeel.oordeel !== "veilig" && (
               <label className="mt-3 flex items-start gap-2 text-sm">
@@ -415,7 +441,7 @@ function RunStartenPagina() {
           </section>
         )}
         {gekozenSluiting && !sluitingMaxBekend && (
-          <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm">
             Geen dopspecificatie bekend voor deze sluiting — er kan geen veiligheidsoordeel berekend
             worden.
           </p>

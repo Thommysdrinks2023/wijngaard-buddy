@@ -1284,3 +1284,17 @@ Geverifieerd in de browser: bij Kroonkurk 26 mm + 250 ml/225 ml vulling/
 48°C/1 bar-CO2 toont het scherm 4,49 bar conservatieve bovengrens, een
 groene "Veilig"-balk op 4,49/6 bar, en een dalende/stijgende gevoeligheids-
 curve met de 6 bar-referentielijn zichtbaar boven de curve.
+
+## Blok E — run starten `/pasteurisatie/run/nieuw`
+
+Formulier opgedeeld in drie genummerde stappen (1. Partij, 2. Product &
+verpakking, 3. Proces) voor een duidelijkere flow op een lang formulier op
+mobiel — geen wijziging aan de volgorde/logica, alleen visuele
+groepering. Partijgevonden/niet-gevonden, veiligheidsoordeel en
+dopspecificatie-waarschuwing omgezet naar `StatusBadge`/design-tokens,
+consistent met Blok B/C/D. "Batch overview" uit de fasebeschrijving is de
+runlijst op `/pasteurisatie` — die is al in Blok B herontworpen; er bestaat
+geen apart batchoverzichtscherm.
+
+Geverifieerd in de browser op 375px: de drie stappen zijn duidelijk
+gescheiden, alle invoervelden en de zoekknop zijn ≥44px hoog.
