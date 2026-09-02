@@ -5,6 +5,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   co2GehalteUitDruk,
   drukUitCo2Gehalte,
   maximaleCarbonatie,
@@ -14,8 +24,15 @@ import {
 import { puPerMinuut } from "@/lib/pasteurisatie";
 import { fetchFlestypes } from "@/lib/flessen-data";
 import { fetchSluitingen } from "@/lib/pasteurisatie-data";
-import { maxDrukBekend } from "@/lib/types";
+import { maxDrukBekend, type PasteurisatieOordeel } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
+import { StatusBadge } from "@/components/status-badge";
+
+const OORDEEL_TOON: Record<PasteurisatieOordeel, "success" | "warning" | "destructive"> = {
+  veilig: "success",
+  marginaal: "warning",
+  onveilig: "destructive",
+};
 
 export const Route = createFileRoute("/pasteurisatie/plannen")({
   component: PlannerPagina,
@@ -97,6 +114,31 @@ function PlannerPagina() {
     return Number(doelPuMin || 100) / rate;
   }, [doeltemperatuur, doelPuMin]);
 
+  // Gevoeligheidscurve — druk (conservatieve bovengrens) over een reeks
+  // doeltemperaturen bij verder gelijke instellingen, zodat je in één oogopslag
+  // ziet hoeveel marge de gekozen temperatuur heeft t.o.v. de dopspecificatie.
+  const gevoeligheidsdata = useMemo(() => {
+    if (!kanBerekenen) return [];
+    const punten: { temp: number; drukBovengrens: number }[] = [];
+    for (let t = 30; t <= 65; t += 5) {
+      const r = verwachteDruk({
+        co2GehalteGl,
+        flesinhoudMl,
+        vulvolumeMl: Number(vulvolumeMl),
+        doeltemperatuurC: t,
+        vulTemperatuurC: refTemp,
+      });
+      punten.push({
+        temp: t,
+        drukBovengrens:
+          r.drukGaugeBovengrensBar === Infinity
+            ? NaN
+            : Math.round(r.drukGaugeBovengrensBar * 100) / 100,
+      });
+    }
+    return punten;
+  }, [kanBerekenen, co2GehalteGl, flesinhoudMl, vulvolumeMl, refTemp]);
+
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
   return (
@@ -136,7 +178,7 @@ function PlannerPagina() {
               ))}
             </select>
             {gekozenSluiting && !sluitingMaxBekend && (
-              <p className="mt-1 text-xs text-amber-700">
+              <p className="mt-1 text-xs text-warning">
                 De dopspecificatie van deze sluiting is niet vastgelegd — er kan geen
                 veiligheidsoordeel worden gegeven totdat dat bekend is (zie VRAGEN VOOR THOMAS).
               </p>
@@ -282,28 +324,115 @@ function PlannerPagina() {
               <div
                 className={`rounded-xl border p-3 ${
                   oordeel.oordeel === "veilig"
-                    ? "border-green-300 bg-green-50"
+                    ? "border-success/40 bg-success/10"
                     : oordeel.oordeel === "marginaal"
-                      ? "border-amber-300 bg-amber-50"
-                      : "border-red-300 bg-red-50"
+                      ? "border-warning/50 bg-warning/10"
+                      : "border-destructive/40 bg-destructive/10"
                 }`}
               >
-                <p className="text-sm font-bold uppercase">
-                  {oordeel.oordeel === "veilig"
-                    ? "✅ Veilig"
-                    : oordeel.oordeel === "marginaal"
-                      ? "⚠️ Marginaal"
-                      : "🛑 Onveilig"}
-                </p>
-                <p className="mt-1 text-sm">{oordeel.toelichting}</p>
+                <StatusBadge
+                  label={
+                    oordeel.oordeel === "veilig"
+                      ? "Veilig"
+                      : oordeel.oordeel === "marginaal"
+                        ? "Marginaal"
+                        : "Onveilig"
+                  }
+                  emoji={
+                    oordeel.oordeel === "veilig"
+                      ? "✅"
+                      : oordeel.oordeel === "marginaal"
+                        ? "⚠️"
+                        : "🛑"
+                  }
+                  toon={OORDEEL_TOON[oordeel.oordeel]}
+                />
+                <p className="mt-2 text-sm">{oordeel.toelichting}</p>
+                {gekozenSluiting && sluitingMaxBekend && (
+                  <div className="mt-3">
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full rounded-full ${
+                          oordeel.oordeel === "veilig"
+                            ? "bg-success"
+                            : oordeel.oordeel === "marginaal"
+                              ? "bg-warning"
+                              : "bg-destructive"
+                        }`}
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            ((drukResultaat?.drukGaugeBovengrensBar ?? 0) /
+                              gekozenSluiting.max_druk_bar) *
+                              100,
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {drukResultaat?.drukGaugeBovengrensBar === Infinity
+                        ? "∞"
+                        : drukResultaat?.drukGaugeBovengrensBar.toFixed(2)}{" "}
+                      / {gekozenSluiting.max_druk_bar} bar (dopspecificatie {gekozenSluiting.naam})
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {!sluitingMaxBekend && gekozenSluiting && (
-              <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm">
                 Geen dopspecificatie bekend voor {gekozenSluiting.naam} — er kan geen oordeel
                 gegeven worden. Vul de specificatie aan bij Sluitingen (Instellingen) zodra bekend.
               </p>
+            )}
+
+            {gevoeligheidsdata.length > 0 && (
+              <div>
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Drukmarge bij verschillende doeltemperaturen
+                </h3>
+                <div className="h-40 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={gevoeligheidsdata}
+                      margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="temp" tick={{ fontSize: 10 }} unit="°C" />
+                      <YAxis tick={{ fontSize: 10 }} unit=" bar" width={56} />
+                      <Tooltip formatter={(v: number) => [`${v.toFixed(2)} bar`, "Bovengrens"]} />
+                      {gekozenSluiting && sluitingMaxBekend && (
+                        <ReferenceLine
+                          y={gekozenSluiting.max_druk_bar}
+                          stroke="#d64444"
+                          strokeDasharray="4 4"
+                          label={{
+                            value: "dopspecificatie",
+                            fontSize: 10,
+                            position: "insideTopLeft",
+                          }}
+                        />
+                      )}
+                      <ReferenceLine
+                        x={Number(doeltemperatuur)}
+                        stroke="#94a3b8"
+                        strokeDasharray="2 2"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="drukBovengrens"
+                        stroke="#4a8c5c"
+                        dot={{ r: 2 }}
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Bij overige instellingen ongewijzigd — alleen de doeltemperatuur varieert.
+                </p>
+              </div>
             )}
 
             {oordeel && oordeel.oordeel !== "veilig" && (

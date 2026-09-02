@@ -1265,3 +1265,22 @@ Gefixt door `sensor_positie` in het seedscript op `"referentiefles"` te
 zetten (gelijk aan de sensorLabel die `postMetingen()` gebruikt);
 seeddata opnieuw opgebouwd en geverifieerd: de actieve run toont nu een
 gevulde temperatuur- en PU-curve.
+
+## Blok D — planner `/pasteurisatie/plannen`
+
+De planner had al live feedback (client-side herberekening bij elke
+invoerwijziging); toegevoegd zijn de ontbrekende visualisaties: een
+drukmarge-balk (huidige conservatieve bovengrens t.o.v. de dopspecificatie,
+gekleurd op oordeel) en een gevoeligheidsgrafiek die de conservatieve
+bovengrens toont over een reeks doeltemperaturen (30-65°C) bij verder
+gelijke instellingen, met een referentielijn op de dopspecificatie en een
+stippellijn op de huidige doeltemperatuur — in één oogopslag zichtbaar
+hoeveel marge een temperatuurkeuze heeft. Oordeelblok en waarschuwingen
+omgezet naar dezelfde `StatusBadge`/design-tokens als Blok B/C. Rekenlogica
+(`drukveiligheid.ts`) ongewijzigd — de grafiek roept `verwachteDruk()` gewoon
+meermaals aan met een andere temperatuur.
+
+Geverifieerd in de browser: bij Kroonkurk 26 mm + 250 ml/225 ml vulling/
+48°C/1 bar-CO2 toont het scherm 4,49 bar conservatieve bovengrens, een
+groene "Veilig"-balk op 4,49/6 bar, en een dalende/stijgende gevoeligheids-
+curve met de 6 bar-referentielijn zichtbaar boven de curve.
