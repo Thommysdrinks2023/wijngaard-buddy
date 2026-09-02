@@ -1314,3 +1314,45 @@ af te leiden.
 Geverifieerd in de browser: certificaat gegenereerd voor lot SEED-01,
 PDF opent, versiehistorie toont de nieuwe versie; testcertificaat nadien
 opgeruimd.
+
+## Blok G — consistentie/toegankelijkheid, documentatie hergebruik
+
+Consistentiecontrole over alle vijf herontworpen schermen
+(`pasteurisatie.index`, `pasteurisatie.run.$runId`, `pasteurisatie.plannen`,
+`pasteurisatie.run.nieuw`, `pasteurisatie.run.$runId_.certificaat`):
+
+- Geen hardcoded Tailwind-kleuren (`text-green-*`, `bg-amber-*`, …) meer in
+  deze vijf bestanden — overal design-tokens (`success`/`warning`/
+  `destructive`) of `StatusBadge`. Bewust NIET aangepast: `instellingen_.
+  sluitingen.tsx` (nog twee `amber-*`-klassen) — dat scherm valt buiten de
+  pasteurisatiesectie zoals afgebakend voor deze fase.
+- Alle interactieve elementen (knoppen, invoervelden, selects, listitems)
+  op alle vijf schermen ≥44px hoog gecontroleerd — geen uitzonderingen
+  gevonden.
+- Geen grafiek toont zich meer leeg zonder uitleg: temperatuurcurve en
+  PU-curve op de live monitor, en de PU-trend op het dashboard, tonen alle
+  drie een `EmptyState` met vervolgstap bij nul datapunten.
+- Geen nieuwe dependencies, geen wijziging aan rekenkernen/datamodel/hooks
+  in de hele fase — alleen views, en de twee generieke componenten.
+
+**Herbruikbare componenten uit deze fase** (in `src/components/`, niet in
+een module-map, met opzet voor hergebruik door andere dashboards zoals
+kelder/voorraad/verkoop zodra die aan de beurt zijn):
+
+- `stat-tile.tsx` — kerncijfer-tegel voor dashboardoverzichten. Tonen:
+  neutraal/success/warning/destructive/info.
+- `status-badge.tsx` — statuspil met emoji, zelfde tonen als `StatTile`.
+  Gebruikt voor zowel run-status als veiligheidsoordeel — twee losse
+  `Record<..., toon>`-mappings per betekenis, één component.
+- `empty-state.tsx` — kreeg een optionele `action`-prop (ReactNode) zodat
+  een lege lijst/grafiek een knop naar de eerstvolgende stap kan tonen.
+  Achterwaarts compatibel: bestaande aanroepen zonder `action` werken
+  ongewijzigd.
+
+## Stand na Fase 18
+
+Alle 7 blokken (A t/m G) afgerond en per blok gecommit. Seed-script
+(Blok A) inclusief bugfix nu herbruikbaar voor toekomstige dashboard-
+ontwikkeling of demo's. Geen openstaande vragen specifiek voor deze fase
+— de twee eerder beantwoorde Fase 17-vragen (dopspecificatie 6 bar,
+ijkpunt niet bruikbaar) zijn verwerkt zoals hierboven beschreven.
