@@ -10,6 +10,7 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Container, Loader2, QrCode, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/tanks/")({
@@ -86,6 +87,7 @@ function TanksPage() {
     <>
       <AppHeader back title="Tanks" subtitle="Kelderinventaris" />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+        <OfflineWaarschuwing wat="de tanks" />
         <div className="flex items-center gap-2">
           <button
             type="button"

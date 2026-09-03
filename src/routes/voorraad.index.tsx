@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Wine } from "lucide-react";
 
 export const Route = createFileRoute("/voorraad/")({
@@ -48,6 +49,7 @@ function VoorraadOverzicht() {
     <>
       <AppHeader back title="Voorraad" subtitle="Van fles tot verkoop" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de voorraad" />
         {/* Fase 13 Blok F — dit scherm begon met een raster kale getallen,
             zonder kop in de pagina zelf en zonder terugknop. Je landde op
             "2 / 30" en moest raden waar je was. Nu dezelfde opzet als /kelder

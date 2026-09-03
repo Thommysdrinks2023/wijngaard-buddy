@@ -16,6 +16,7 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { ListSkeleton } from "@/components/list-skeleton";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { ArrowLeftRight, BookOpen, Container, NotebookPen, Plus, Wine } from "lucide-react";
 
 /** Onthoudt of de tanklijst op "alleen gevuld" staat (Fase 13 Blok F). */
@@ -109,6 +110,7 @@ function KelderDashboard() {
     <>
       <AppHeader title="Kelder" subtitle="Wijnmakerij" />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+        <OfflineWaarschuwing wat="de keldergegevens" />
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Kelder</h1>

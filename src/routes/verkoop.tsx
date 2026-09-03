@@ -24,6 +24,7 @@ import { KLANT_TYPES, ORDER_STATUSSEN, type KlantType, type OrderRegel } from "@
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2, Plus, Sheet, ShoppingCart, Trash2, Truck, UserPlus } from "lucide-react";
 
 // Eindsprint Blok L — verkoop licht. Bewust géén facturatie/btw: dat blijft
@@ -223,6 +224,7 @@ function VerkoopPage() {
     <>
       <AppHeader back title="Verkoop" subtitle="Klanten en orders" />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+        <OfflineWaarschuwing wat="klanten en orders" />
         {/* Kerncijfers */}
         <section
           className="rounded-xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"

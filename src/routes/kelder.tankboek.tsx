@@ -10,6 +10,7 @@ import { TANKBOEK_ACTIES, eigenaarLabel } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { BookOpen, Printer, Sheet } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/tankboek")({
@@ -66,6 +67,7 @@ function TankboekPage() {
     <>
       <AppHeader back title="Tankboek" subtitle="Register van keldermutaties" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4 print:max-w-none">
+        <OfflineWaarschuwing wat="het tankboek" />
         <div className="flex items-start justify-between gap-3 print:hidden">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Tankboek</h1>

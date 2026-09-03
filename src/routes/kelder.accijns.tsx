@@ -29,6 +29,7 @@ import { useSeizoen } from "@/lib/seizoen";
 import { YearSelector } from "@/components/year-selector";
 import { AppHeader } from "@/components/app-header";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { AlertTriangle, FolderArchive, Printer, Sheet, ShieldAlert } from "lucide-react";
 import { maakControlePakket } from "@/lib/controle-pakket";
 import type { RecordModel } from "pocketbase";
@@ -228,6 +229,7 @@ function AccijnsPage() {
     <>
       <AppHeader back title="Accijns" subtitle="Indicatief overzicht per aangifteperiode" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4 print:max-w-none">
+        <OfflineWaarschuwing wat="het accijnsoverzicht" />
         {(bottelrondesQ.isError || voorraadQ.isError || mutatiesQ.isError || tankboekQ.isError) && (
           <ErrorState
             error={bottelrondesQ.error || voorraadQ.error || mutatiesQ.error || tankboekQ.error}

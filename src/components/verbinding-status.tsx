@@ -47,7 +47,7 @@ export function VerbindingBadge() {
     return (
       <span
         className="flex h-8 items-center gap-1.5 rounded-full bg-white/15 px-2.5 text-[11px] font-semibold text-nav-foreground"
-        title="Geen verbinding met de server — invoer wordt lokaal bewaard en later gesynchroniseerd"
+        title="Geen verbinding met de server. Wijngaard-invoer (metingen, observaties, oogst) wordt lokaal bewaard en later gesynchroniseerd; kelder, voorraad en verkoop werken alleen online en tonen mogelijk onvolledige lijsten."
       >
         <WifiOff className="h-3.5 w-3.5" />
         Offline
