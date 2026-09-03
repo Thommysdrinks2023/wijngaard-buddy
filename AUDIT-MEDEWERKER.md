@@ -53,6 +53,16 @@ Belangrijkste vondst: de assistent CORRIGEERDE mijn eigen foutieve aanname. Ik t
 
 Beide voorstellen afgewezen (niet bevestigd, om geen testdata achter te laten); bevestigd dat afwijzen niets in `observaties`/`bodem_observaties` wegschrijft. Testgesprek en de bijbehorende berichten/acties nadien verwijderd. Geen bevinding — dit is het best doordachte onderdeel van de app dat deze sessie is tegengekomen.
 
+### Doorlopend — bewust fouten maken
+Vijf van de zes scenario's live getest, geen bevindingen:
+- **Verbinding wegnemen midden in een handeling, offline-first formulier** (Brix-meting): PocketBase uitgeschakeld, meting ingevuld en opgeslagen. De app viel automatisch terug op de lokale wachtrij ("2 records wachten op sync"), navigeerde gewoon door alsof het gelukt was, en toonde de kelder/pasteurisatie-tegels met hun neutrale vaste omschrijving (niet-misleidend) in plaats van een fout. Na het herstellen van de verbinding synchroniseerde de meting vanzelf naar de server, zonder enige actie — geverifieerd met de echte waarde in de database.
+- **Verbinding wegnemen midden in een handeling, online-only formulier** (overhevelen): met de server uitgeschakeld laadden de tank-keuzelijsten leeg (met de `OfflineWaarschuwing` erboven, zie Bevinding 1), en een poging tot opslaan werd client-side geblokkeerd met "Kies een gevulde brontank" — nooit een kansloze serveraanroep.
+- **F5 op een detailscherm** (`/kelder/tanks/$tankId`): herlaadt schoon, geen fout, geen stale state.
+- **Browser-terugknop halverwege een formulier**: teruggaan en weer vooruitgaan naar het metingformulier toont weer een volledig leeg formulier — geen lekkende halfingevulde staat die voor verwarring kan zorgen.
+- **Ongeldige waarde** (datum in de toekomst): geblokkeerd met een duidelijke melding ("Datum kan niet in de toekomst liggen"), niets opgeslagen.
+
+Niet apart getest: "twee keer snel op opslaan tikken" (al breed gecontroleerd via code-analyse, zie de dubbeltik-bevindingen hieronder) en "negatief volume"/"letters in een getalveld" (`type="number"`-velden weren letters al op browserniveau; negatieve-volume-validatie is in de code bevestigd, zie Rekenwerk-sectie).
+
 ### Doorlopend — dubbeltik/bevestiging bij onomkeerbare acties
 Mechanische controle over alle bestanden met een verwijder-/mutate-knop. Twee gaten gevonden en gerepareerd:
 - "Concept verwijderen" op `/verkoop` had geen bevestigingsdialoog en geen dubbeltik-bescherming, terwijl een identieke actie (verweesde klant verwijderen) in hetzelfde bestand beide al had.
@@ -112,7 +122,7 @@ Zoals beschreven onder "Terugzoeken" in sectie 2: de koppeling oogst→partij→
 Dit is de eerlijke lijst van wat de opdracht vroeg en wat deze sessie niet heeft gehaald:
 
 - **Dag 3 (plukdag), Dag 5 (bottelen) en Dag 7 (assistent) zijn live getest** (zie sectie 2) — geen bevindingen, alle drie werken goed doordacht. **Dag 6 (traceerbaarheidsketen fles→lot→partij→tank→rij) is voor het fles→...→partij-deel live bevestigd** (via de "HERKOMST"-sectie op de voorraaddetailpagina, zie de bottelen-test); het partij→rijen-deel bestaat niet in de UI (zie BESLISSING NODIG).
-- **De bewust-fouten-maken-lijst** (verbinding wegnemen midden in een handeling op een formulier, browser-terugknop halverwege, F5 op een detailscherm, half invullen en wegnavigeren) is niet stuk voor stuk uitgevoerd — alleen de dubbeltik- en offline-detectiepatronen zijn systematisch gecontroleerd.
+- **Vijf van de zes bewust-fouten-maken-scenario's zijn inmiddels live getest** (zie sectie 2) — geen bevindingen. Niet getest: "half invullen en wegnavigeren" (zonder beforeunload-waarschuwing verlaat je gewoon de pagina, zoals op elke website — geen data raakt corrupt, alleen het ongeopslagen concept gaat verloren, wat voor een formulier zonder toegezegde conceptopslag verwacht gedrag is).
 - **AI-gestuurde bevindingen uit een geautomatiseerde subagent-vloot** (opgestart, twee keer onderbroken door sessielimieten) hebben geen bruikbare, geverifieerde resultaten opgeleverd deze sessie — al het bovenstaande komt uit handmatig lezen, grep-sweeps en browsertests.
 
 ## 7. Aanbevelingen
@@ -122,7 +132,7 @@ Dit is de eerlijke lijst van wat de opdracht vroeg en wat deze sessie niet heeft
 - De "Herkomst"-sectie bouwen (sectie 4) zodra Thomas akkoord is — dit is de kernbelofte van het tankboek/lotnummersysteem en staat nu op "geen"; een klant die belt over een fles kan vandaag niet vanuit de app beantwoord worden. Geschat: 2-3 uur (query + weergave; de onderliggende koppeling bestaat al).
 
 **Tijdens het seizoen (belangrijk, niet dringend)**
-- De bewust-fouten-maken-lijst (F5, terugknop, dubbele verbindingswisseling) doorlopen op de belangrijkste formulieren (meting, oogst, overhevelen, bottelen). Geschat: 2-3 uur.
+- Geen openstaande punten meer in deze categorie voor deze sessie.
 
 **Later (opschonen, geen risico)**
 - Onderzoeken of er nog meer "authStore"-achtige dode restanten uit de inlog-periode in minder voor de hand liggende plekken zitten (deze sessie doorzocht `src/` en `pocketbase/pb_hooks/` uitputtend op de exacte patronen `.isValid` en `authStore.record`/`authStore.model`, maar een functioneel equivalent restant met een andere naam zou gemist kunnen zijn). Geschat: 1 uur, lage verwachte opbrengst na de grondige sweep van deze sessie.
