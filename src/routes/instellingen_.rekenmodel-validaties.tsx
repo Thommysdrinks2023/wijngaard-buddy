@@ -66,7 +66,7 @@ function ValidatiesBeheer() {
               </h2>
               <span
                 className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  v.gevalideerd ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"
+                  v.gevalideerd ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
                 }`}
               >
                 {v.gevalideerd ? "✅ Gevalideerd" : "⚠️ Nog niet gevalideerd"}

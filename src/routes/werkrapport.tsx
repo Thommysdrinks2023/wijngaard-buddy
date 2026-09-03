@@ -279,7 +279,7 @@ function WerkrapportPage() {
                     <span
                       className={`mt-1 block rounded-lg border px-2.5 py-1.5 text-xs ${
                         ctgbOverschrijding
-                          ? "border-red-300 bg-red-50 font-medium text-red-800"
+                          ? "border-destructive/40 bg-destructive/10 font-medium text-destructive"
                           : "border-border bg-background text-muted-foreground"
                       }`}
                     >

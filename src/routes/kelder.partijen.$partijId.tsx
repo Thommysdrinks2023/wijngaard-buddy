@@ -1179,7 +1179,7 @@ function PartijDetailPage() {
               <p
                 className={`-mt-2 text-xs ${
                   verwachting.status === "ok" && (verwachting.achterstandDagen ?? 0) > 2
-                    ? "rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 font-medium text-amber-900"
+                    ? "rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 font-medium text-warning"
                     : "text-muted-foreground"
                 }`}
               >

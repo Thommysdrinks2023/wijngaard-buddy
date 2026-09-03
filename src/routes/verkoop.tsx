@@ -85,7 +85,7 @@ function OpschoonLijst() {
                 if (confirm(`Klant "${k.naam}" definitief verwijderen?`))
                   verwijderM.mutate({ id: k.id, naam: k.naam });
               }}
-              className="flex h-11 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-medium text-red-700"
+              className="flex h-11 items-center gap-1 rounded-lg border border-destructive/30 bg-destructive/10 px-2 text-xs font-medium text-destructive"
             >
               <Trash2 className="h-3.5 w-3.5" /> Verwijderen
             </button>

@@ -75,7 +75,7 @@ function SluitingenBeheer() {
       <AppHeader back title="Sluitingen" subtitle="Dopspecificaties voor het veiligheidsoordeel" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
         <OfflineWaarschuwing wat="de sluitingen" />
-        <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <p className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm text-warning">
           Vul `max_druk_bar` alleen in als de fabrieksspecificatie echt bekend is — een geraden
           getal is gevaarlijker dan een zichtbaar "onbekend".
         </p>
@@ -175,7 +175,7 @@ function SluitingenBeheer() {
                       max {s.max_druk_bar} bar
                     </span>
                   ) : (
-                    <span className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                    <span className="shrink-0 rounded-full border border-warning/50 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
                       Max. druk onbekend
                     </span>
                   )}

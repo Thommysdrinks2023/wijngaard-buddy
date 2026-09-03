@@ -51,7 +51,7 @@ function BackupWidget() {
     <div
       className={`mt-3 rounded-xl border px-4 py-2.5 text-sm ${
         teOud
-          ? "border-red-300 bg-red-50 text-red-800"
+          ? "border-destructive/40 bg-destructive/10 text-destructive"
           : "border-border bg-card text-muted-foreground"
       }`}
     >
@@ -166,7 +166,7 @@ function ModuleHub() {
               onClick={() => setLaatsteModule(tegel.key)}
               className={`flex flex-col items-center justify-center gap-2 rounded-2xl border p-6 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition active:scale-[0.98] ${
                 tegel.key === "pasteurisatie" && actieveRuns.length > 0
-                  ? "border-red-300 bg-red-50"
+                  ? "border-destructive/40 bg-destructive/10"
                   : "border-border bg-card"
               }`}
             >

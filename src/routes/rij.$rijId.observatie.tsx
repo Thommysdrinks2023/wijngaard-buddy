@@ -143,7 +143,7 @@ function ObservatiePage() {
             placeholder="Wat zie je? (optioneel)"
           />
           {showSoftWarning && (
-            <p className="mt-1.5 text-sm text-amber-600 dark:text-amber-400">
+            <p className="mt-1.5 text-sm text-warning dark:text-warning">
               Wil je een korte omschrijving toevoegen?
             </p>
           )}

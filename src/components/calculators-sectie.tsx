@@ -38,7 +38,7 @@ const veld = "h-10 rounded-lg border border-input bg-background px-2 text-sm";
 function LimietWaarschuwing({ overschrijdt, wat }: { overschrijdt: boolean | null; wat: string }) {
   if (overschrijdt === false) return null;
   return (
-    <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
+    <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
       {overschrijdt === null
         ? `⚠️ De wettelijke limiet voor ${wat} (zone A) is nog niet geverifieerd in Instellingen → regelgeving. Controleer de officiële bron vóór je doseert.`
         : `⚠️ Dit voorstel OVERSCHRIJDT de geverifieerde limiet voor ${wat} (zone A). Niet uitvoeren zonder de regels te checken.`}

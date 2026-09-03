@@ -239,7 +239,7 @@ function OverhevelenPage() {
           </label>
 
           {hygieneWaarschuwing && (
-            <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <p className="rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
               🧽 {hygieneWaarschuwing} Vullen kan gewoon, maar log zo nodig eerst een reiniging via
               het tankdetail.
             </p>
@@ -285,8 +285,8 @@ function OverhevelenPage() {
           </label>
 
           {verschil > 0 && (
-            <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
-              <p className="text-sm font-medium text-amber-900">
+            <div className="space-y-2 rounded-xl border border-warning/50 bg-warning/10 p-3">
+              <p className="text-sm font-medium text-warning">
                 Verschil van {verschil} L — de app stelt een verliesboeking voor (niets wordt
                 stilzwijgend geboekt):
               </p>
@@ -298,15 +298,15 @@ function OverhevelenPage() {
                     onClick={() => setVerliesType(t)}
                     className={`h-9 rounded-lg border px-3 text-xs font-medium ${
                       verliesType === t
-                        ? "border-amber-600 bg-amber-600 text-white"
-                        : "border-amber-300 bg-white"
+                        ? "border-warning bg-warning text-white"
+                        : "border-warning/50 bg-white"
                     }`}
                   >
                     {t}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-amber-800">
+              <p className="text-xs text-warning">
                 Boekt: overheveling van {aangekomenN} L + verliesregel van {verschil} L (
                 {verliesType}) uit tank {bron?.code ?? "?"}. Telt mee in accijns- en jaaroverzicht.
               </p>

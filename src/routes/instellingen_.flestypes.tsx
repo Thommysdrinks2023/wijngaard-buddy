@@ -194,7 +194,7 @@ function FlestypesBeheer() {
                   className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium ${
                     t.actief
                       ? "border-border bg-muted/40"
-                      : "border-amber-300 bg-amber-50 text-amber-800"
+                      : "border-warning/50 bg-warning/10 text-warning"
                   }`}
                 >
                   {t.actief ? "Actief" : "Inactief"}

@@ -148,7 +148,7 @@ function FlessenvoorraadOverzicht() {
                         )}
                       </div>
                       {bijnaOp && (
-                        <span className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                        <span className="shrink-0 rounded-full border border-warning/50 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
                           Bijna op
                         </span>
                       )}

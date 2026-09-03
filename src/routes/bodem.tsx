@@ -149,7 +149,7 @@ function BodemPage() {
                 onClick={() => setGebrek(gebrek === g ? "" : g)}
                 className={`h-10 rounded-lg border px-2.5 text-xs font-medium ${
                   gebrek === g
-                    ? "border-amber-500 bg-amber-100 text-amber-900"
+                    ? "border-warning bg-warning/15 text-warning"
                     : "border-border bg-background"
                 }`}
               >
@@ -161,7 +161,7 @@ function BodemPage() {
               onClick={() => setVerslemping(!verslemping)}
               className={`h-10 rounded-lg border px-2.5 text-xs font-medium ${
                 verslemping
-                  ? "border-amber-500 bg-amber-100 text-amber-900"
+                  ? "border-warning bg-warning/15 text-warning"
                   : "border-border bg-background"
               }`}
             >

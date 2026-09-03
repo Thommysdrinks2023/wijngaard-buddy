@@ -125,9 +125,9 @@ export function VandaagWidget() {
           key={s.id}
           className={`rounded-xl border px-3 py-2 text-sm ${
             s.ernst === "kritiek"
-              ? "border-red-300 bg-red-50 text-red-900"
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
               : s.ernst === "waarschuwing"
-                ? "border-amber-300 bg-amber-50 text-amber-900"
+                ? "border-warning/50 bg-warning/10 text-warning"
                 : "border-border bg-card"
           }`}
         >

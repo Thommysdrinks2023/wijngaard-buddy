@@ -82,7 +82,7 @@ function EigenaarsBeheer() {
         {zonderCode.length > 0 && (
           <p
             role="status"
-            className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+            className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning"
           >
             {zonderCode.length === 1
               ? "Eén eigenaar heeft nog geen administratiecode."
@@ -183,7 +183,7 @@ function EigenaarsBeheer() {
                     </p>
                   </div>
                   {!e.code && (
-                    <span className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                    <span className="shrink-0 rounded-full border border-warning/50 bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
                       Code ontbreekt
                     </span>
                   )}

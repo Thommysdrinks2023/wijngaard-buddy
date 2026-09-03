@@ -365,7 +365,7 @@ function BottelenPage() {
               {flessenTekort && (
                 <p
                   role="status"
-                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                  className="rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning"
                 >
                   De flessenvoorraad toont <strong>{flessenStand}</strong> stuks, maar je hebt er{" "}
                   <strong>{flessenNodig}</strong> nodig. Dit blokkeert het bottelen niet — de
