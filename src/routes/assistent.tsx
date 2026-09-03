@@ -336,7 +336,7 @@ function BerichtWeergave({
               type="button"
               disabled={feedbackGegeven}
               onClick={() => onFeedback(bericht.id, waarde)}
-              className="flex h-8 items-center gap-1 rounded-full border border-border px-2.5 text-xs font-medium text-muted-foreground disabled:opacity-40"
+              className="flex h-11 items-center gap-1 rounded-full border border-border px-2.5 text-xs font-medium text-muted-foreground disabled:opacity-40"
             >
               <Icoon className="h-3.5 w-3.5" />
               {label}

@@ -318,14 +318,14 @@ function AccijnsPage() {
                   ],
                 )
               }
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium"
+              className="flex h-11 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium"
             >
               <Sheet className="h-3.5 w-3.5" /> Excel
             </button>
             <button
               type="button"
               onClick={() => window.print()}
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium"
+              className="flex h-11 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium"
             >
               <Printer className="h-3.5 w-3.5" /> Print
             </button>
@@ -334,7 +334,7 @@ function AccijnsPage() {
                 type="button"
                 disabled={pakketM.isPending}
                 onClick={() => pakketM.mutate()}
-                className="flex h-9 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                className="flex h-11 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
               >
                 <FolderArchive className="h-3.5 w-3.5" />
                 {pakketM.isPending ? "Bundelen…" : "Controle-pakket (ZIP)"}

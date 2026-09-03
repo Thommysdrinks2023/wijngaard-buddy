@@ -198,7 +198,7 @@ export function VandaagWidget() {
               type="button"
               disabled={taakM.isPending}
               onClick={() => taakM.mutate(s.taakVoorstel!)}
-              className="mt-2 flex h-9 items-center gap-1.5 rounded-lg border border-current/25 px-2.5 text-xs font-medium disabled:opacity-50"
+              className="mt-2 flex h-11 items-center gap-1.5 rounded-lg border border-current/25 px-2.5 text-xs font-medium disabled:opacity-50"
             >
               <ListPlus className="h-3.5 w-3.5" /> Maak hier een taak van
             </button>

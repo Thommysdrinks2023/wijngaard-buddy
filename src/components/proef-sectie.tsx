@@ -70,7 +70,7 @@ export function ProefSectie({ partijId }: { partijId: string }) {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium"
+          className="flex h-11 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium"
         >
           <Wine className="h-3.5 w-3.5" /> {open ? "Annuleren" : "+ Proeven"}
         </button>

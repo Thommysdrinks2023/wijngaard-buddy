@@ -85,7 +85,7 @@ function OpschoonLijst() {
                 if (confirm(`Klant "${k.naam}" definitief verwijderen?`))
                   verwijderM.mutate({ id: k.id, naam: k.naam });
               }}
-              className="flex h-8 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-medium text-red-700"
+              className="flex h-11 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 text-xs font-medium text-red-700"
             >
               <Trash2 className="h-3.5 w-3.5" /> Verwijderen
             </button>
@@ -475,14 +475,14 @@ function VerkoopPage() {
                             type="button"
                             onClick={() => leverM.mutate(o.id)}
                             disabled={leverM.isPending}
-                            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary text-xs font-semibold text-primary-foreground disabled:opacity-50"
                           >
                             <Truck className="h-3.5 w-3.5" /> Leveren
                           </button>
                           <button
                             type="button"
                             onClick={() => verwijderM.mutate(o.id)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-destructive"
+                            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border text-destructive"
                             aria-label="Concept verwijderen"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -494,7 +494,7 @@ function VerkoopPage() {
                           type="button"
                           onClick={() => betaaldM.mutate(o.id)}
                           disabled={betaaldM.isPending}
-                          className="h-9 flex-1 rounded-lg border border-primary text-xs font-semibold text-primary"
+                          className="h-11 flex-1 rounded-lg border border-primary text-xs font-semibold text-primary"
                         >
                           Markeer als betaald
                         </button>

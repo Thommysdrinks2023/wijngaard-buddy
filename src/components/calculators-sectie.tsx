@@ -91,7 +91,7 @@ export function CalculatorsSectie(props: Props) {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="ml-auto h-9 rounded-lg border border-border bg-background px-3 text-xs"
+          className="ml-auto h-11 rounded-lg border border-border bg-background px-3 text-xs"
         >
           Sluiten
         </button>

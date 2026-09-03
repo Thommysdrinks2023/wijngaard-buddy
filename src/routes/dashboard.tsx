@@ -453,7 +453,7 @@ function Dashboard() {
                     <Link
                       to="/rij/$rijId/meting"
                       params={{ rijId: rij.id }}
-                      className="h-9 shrink-0 rounded-lg bg-primary px-3 text-sm font-medium leading-9 text-primary-foreground"
+                      className="h-11 shrink-0 rounded-lg bg-primary px-3 text-sm font-medium leading-[2.75rem] text-primary-foreground"
                     >
                       Meten
                     </Link>
