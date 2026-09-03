@@ -1501,3 +1501,47 @@ bevestigd via de PocketBase-API en daarna weer opgeruimd (append-only
 collectie, maar met superuser-token te verwijderen). 219 unit tests
 groen, 6 Playwright-rooktests groen, schema-drift 0. Commit: `fase 19:
 jaarafsluiting en configsync werkten nooit meer sinds inloggen weg is`.
+
+## Live scenariotests Dag 3, 5, 6, 7 — geen bevindingen, wel bevestiging
+
+Na Bevinding 1 en 2 is de rest van de zeven-dagen-doorloop grotendeels live
+in de browser afgemaakt (met testdata die na elke test weer is opgeruimd en
+geverifieerd — nul restanten):
+
+- **Dag 3 (plukdag)**: spuitwachttijd-waarschuwing getest met een echte
+  bespuiting (Kumulus S, 7 dagen termijn) op rij 6 — verschijnt correct, met
+  een expliciete tweede bevestigingsstap bij toch doorzetten (zacht blok,
+  geregistreerd akkoord). Oogst→partij-koppeling getest: samenstelling en
+  startdichtheid komen volledig voorgevuld binnen op het nieuwe-partij-
+  formulier, met transparante kanttekeningen over de aannames. Niet-
+  gekoppelde oogstregels worden prominent getoond, niet stil verborgen.
+- **Dag 5 (bottelen)**: getest met een flestype zonder voorraad — de
+  tekortwaarschuwing verschijnt, blokkeert niet, en het controlescherm
+  toont vooraf expliciet dat de voorraadstand negatief wordt (niet stil).
+  Bottelverlies rekent correct. De voorraaddetailpagina toont een
+  "HERKOMST"-blok tot en met de partij.
+- **Dag 6 (terugzoeken)**: bevestigd dat fles→bottelronde→tank→partij
+  traceerbaar is (via de HERKOMST-sectie hierboven), maar dat de keten bij
+  "partij" stopt — zie Bevinding 3 hieronder.
+- **Dag 7 (assistent)**: live getest met een echt gesprek in spreektaal. De
+  assistent stelde eerst vakinhoudelijke vervolgvragen in plaats van te
+  gokken, en — belangrijkste vondst — corrigeerde een foutieve aanname van
+  mijzelf (ik noemde rij 12 "Muscaris"; de database zegt Souvignier Gris)
+  expliciet en zichtbaar in de bevestigingskaart zelf, in plaats van die
+  klakkeloos over te nemen.
+
+## Bevinding 3 — geen "herkomst"-weergave op de partijdetailpagina (BESLISSING NODIG, niet gebouwd)
+
+Het zoekscherm (`/zoeken`) claimde in zijn ondertitel "Door alle
+registraties" te zoeken, maar doorzoekt uitsluitend wijngaarddata — geen
+partijen, tanks, flessen of klanten. Gerepareerd: ondertitel en
+lege-resultaten-melding aangepast om dat expliciet te maken (commit
+`b80851c`).
+
+Grotere, NIET zelf gebouwde vondst: `oogst.partij` en `oogst.rij` leggen de
+koppeling partij↔rij al vast (via de bestaande Fase 13-functie), maar er is
+nergens een scherm dat deze koppeling in omgekeerde richting toont — "dit
+lot komt uit welke rijen". Een klant die belt over een specifieke fles kan
+dat nu niet vanuit de app beantwoorden. Dit is een nieuwe weergave, geen
+reparatie van iets dat eerder werkte, en dus niet zelf gebouwd (zie
+AUDIT-MEDEWERKER.md, sectie 4, voor het volledige advies).
