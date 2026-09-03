@@ -8,6 +8,7 @@ import { exporteerCsv } from "@/lib/csv-export";
 import { useSeizoen } from "@/lib/seizoen";
 import { YearSelector } from "@/components/year-selector";
 import { AppHeader } from "@/components/app-header";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Archive, Loader2, Printer, Sheet } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -138,6 +139,7 @@ function JaaroverzichtPage() {
     <>
       <AppHeader back title="Jaaroverzicht" subtitle="Kelder & wijngaard per jaargang" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4 print:max-w-none">
+        <OfflineWaarschuwing wat="het jaaroverzicht" />
         <div className="flex items-center justify-between gap-2 print:hidden">
           <YearSelector />
           <div className="flex gap-2">

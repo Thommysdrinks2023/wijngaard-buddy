@@ -19,6 +19,7 @@ import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { CalendarClock, Loader2, Plus, Tractor, Wrench } from "lucide-react";
 
 // Eindsprint Blok M — materieel & onderhoud. Bewust klein: een logboek per
@@ -110,6 +111,7 @@ function MaterieelPage() {
     <>
       <AppHeader back title="Materieel" subtitle="Machines en onderhoud" />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+        <OfflineWaarschuwing wat="het materieel" />
         {/* Widget: onderhoud binnenkort */}
         {binnenkort.length > 0 && (
           <section className="rounded-2xl border border-warning/50 bg-card p-3">

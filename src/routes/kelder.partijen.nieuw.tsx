@@ -27,6 +27,7 @@ import {
   eigenaarLabel,
 } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/partijen/nieuw")({
@@ -268,6 +269,7 @@ function NieuwePartijPage() {
     <>
       <AppHeader back title="Nieuwe partij" subtitle="Kelder" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de eigenaars en tanks" />
         {/* Fase 13 Blok E — herkomst van het voorstel. Alles hieronder is een
             AANNAME en staat er daarom bij: wie het niet ziet, kan het niet
             corrigeren. De velden eronder zijn gewoon te overschrijven. */}

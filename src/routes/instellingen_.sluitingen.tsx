@@ -8,6 +8,7 @@ import { getPb } from "@/lib/data";
 import { fetchSluitingen } from "@/lib/pasteurisatie-data";
 import { maxDrukBekend, SLUITING_TYPES, type SluitingType } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { EmptyState } from "@/components/empty-state";
 import { Loader2, Plus } from "lucide-react";
 
@@ -73,6 +74,7 @@ function SluitingenBeheer() {
     <>
       <AppHeader back title="Sluitingen" subtitle="Dopspecificaties voor het veiligheidsoordeel" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de sluitingen" />
         <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           Vul `max_druk_bar` alleen in als de fabrieksspecificatie echt bekend is — een geraden
           getal is gevaarlijker dan een zichtbaar "onbekend".

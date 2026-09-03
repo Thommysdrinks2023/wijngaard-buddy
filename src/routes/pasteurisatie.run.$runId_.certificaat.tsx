@@ -22,6 +22,7 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { StatusBadge } from "@/components/status-badge";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/pasteurisatie/run/$runId_/certificaat")({
@@ -113,6 +114,7 @@ function CertificaatPagina() {
         subtitle={runQ.data ? `Lot ${runQ.data.lotnummer}` : ""}
       />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de certificaatgegevens" />
         {!magGenereren && (
           <p className="rounded-xl border border-warning/50 bg-warning/10 p-3 text-sm">
             Deze run is nog niet afgerond — er kan pas een certificaat gegenereerd worden na

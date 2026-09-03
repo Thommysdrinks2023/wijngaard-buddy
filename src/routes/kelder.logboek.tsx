@@ -10,6 +10,7 @@ import { KELDERLOG_ACTIES, KELDERLOG_EENHEDEN } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { NotebookPen, Printer, Sheet } from "lucide-react";
 
 // Blok F — los, filterbaar overzicht van het kelderlogboek (ARCHITECTURE.md
@@ -64,6 +65,7 @@ function KelderlogPage() {
     <>
       <AppHeader back title="Logboek" subtitle="Kelderwerkzaamheden" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4 print:max-w-none">
+        <OfflineWaarschuwing wat="het kelderlog" />
         <div className="flex items-start justify-between gap-3 print:hidden">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Logboek</h1>

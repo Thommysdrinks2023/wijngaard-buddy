@@ -17,6 +17,7 @@ import { FLESSEN_MUTATIE_TYPES } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2, PackagePlus, Calculator } from "lucide-react";
 
 export const Route = createFileRoute("/voorraad_/flessen_/$flestypeId")({
@@ -117,6 +118,7 @@ function FlestypeDetail() {
         subtitle={`Huidige stand: ${stand} stuks`}
       />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de flessenvoorraad" />
         <div className="flex gap-2">
           <button
             onClick={() => setScherm("ontvangst")}

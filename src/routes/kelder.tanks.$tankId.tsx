@@ -18,6 +18,7 @@ import { TANK_STATUSSEN, TANKBOEK_ACTIES, type TankStatus } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { ArrowLeftRight, Loader2, Ruler, SprayCan } from "lucide-react";
 
 const REINIGING_METHODEN = ["heet water", "CIP", "stoom", "sodaoplossing", "handmatig"] as const;
@@ -167,6 +168,7 @@ function TankDetailPage() {
         }
       />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+        <OfflineWaarschuwing wat="de tankgegevens" />
         {/* Status + inhoud */}
         <section className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between gap-2">

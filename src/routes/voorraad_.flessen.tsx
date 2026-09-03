@@ -10,6 +10,7 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { PackagePlus } from "lucide-react";
 
 export const Route = createFileRoute("/voorraad_/flessen")({
@@ -65,6 +66,7 @@ function FlessenvoorraadOverzicht() {
     <>
       <AppHeader back title="Flessenvoorraad" subtitle="Lege flessen per type" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de flessenvoorraad" />
         {flestypesQ.isError && (
           <ErrorState error={flestypesQ.error} onRetry={() => flestypesQ.refetch()} />
         )}

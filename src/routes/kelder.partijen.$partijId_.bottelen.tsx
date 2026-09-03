@@ -25,6 +25,7 @@ import { foutenPerVeld, isGeldig, valideerBottelronde } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/kelder/partijen/$partijId_/bottelen")({
@@ -230,6 +231,7 @@ function BottelenPage() {
         subtitle={partij ? `${partij.naam} · ${partij.jaargang}` : ""}
       />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de bottelgegevens" />
         {stap === "formulier" && (
           <>
             <section className="space-y-4 rounded-2xl border border-border bg-card p-4">

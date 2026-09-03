@@ -35,6 +35,7 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { StatusBadge } from "@/components/status-badge";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2, Thermometer } from "lucide-react";
 
 const OORDEEL_TOON: Record<PasteurisatieOordeel, "success" | "warning" | "destructive"> = {
@@ -288,6 +289,7 @@ function MonitorPagina() {
         subtitle={run.status === "actief" ? "Live monitor" : "Overzicht"}
       />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de rungegevens" />
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge
             label={

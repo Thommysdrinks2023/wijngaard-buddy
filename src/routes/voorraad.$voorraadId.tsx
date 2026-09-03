@@ -25,6 +25,7 @@ import { VOORRAAD_MUTATIE_TYPES, VOORRAAD_STATUSSEN, type VoorraadMutatieType } 
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2, Plus, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/voorraad/$voorraadId")({
@@ -169,6 +170,7 @@ function VoorraadDetailPage() {
         subtitle={voorraad ? `${voorraad.jaargang ?? ""}` : ""}
       />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4 print:max-w-none">
+        <OfflineWaarschuwing wat="de voorraadgegevens" />
         <div className="flex justify-end print:hidden">
           <button
             type="button"

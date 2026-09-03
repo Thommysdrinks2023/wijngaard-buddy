@@ -14,6 +14,7 @@ import { type EigenaarSoort } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/instellingen_/eigenaars")({
@@ -73,6 +74,7 @@ function EigenaarsBeheer() {
     <>
       <AppHeader back title="Eigenaars" subtitle="Van wie is de partij, het vat, de botteling" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de eigenaars" />
         {eigenaarsQ.isError && (
           <ErrorState error={eigenaarsQ.error} onRetry={() => eigenaarsQ.refetch()} />
         )}

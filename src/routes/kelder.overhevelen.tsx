@@ -9,6 +9,7 @@ import { foutenPerVeld, isGeldig, valideerBoeking } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { ArrowDown, Loader2 } from "lucide-react";
 
 interface OverhevelenSearch {
@@ -174,6 +175,7 @@ function OverhevelenPage() {
     <>
       <AppHeader back title="Overhevelen" subtitle="Tank naar tank" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de tanks en partijen" />
         {(tanksQ.isError || partijenQ.isError) && (
           <ErrorState
             error={tanksQ.error || partijenQ.error}

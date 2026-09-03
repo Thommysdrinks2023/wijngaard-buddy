@@ -34,6 +34,7 @@ import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { type Ras, type Rij } from "@/lib/types";
 import { Grape, Loader2 } from "lucide-react";
 
@@ -261,6 +262,7 @@ function OogstPage() {
     <>
       <AppHeader back title="Oogst" subtitle="Registratie en opbrengst" />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+        <OfflineWaarschuwing wat="de oogstregistratie" />
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Oogst</h1>

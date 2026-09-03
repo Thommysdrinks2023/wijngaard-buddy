@@ -13,6 +13,7 @@ import {
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/instellingen_/flestypes")({
@@ -66,6 +67,7 @@ function FlestypesBeheer() {
     <>
       <AppHeader back title="Flestypes" subtitle="Vorm, inhoud, kleur en sluiting" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de flestypes" />
         {flestypesQ.isError && (
           <ErrorState error={flestypesQ.error} onRetry={() => flestypesQ.refetch()} />
         )}

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { fetchRekenmodelValidaties, zetRekenmodelValidatie } from "@/lib/pasteurisatie-data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/instellingen_/rekenmodel-validaties")({
@@ -52,6 +53,7 @@ function ValidatiesBeheer() {
         subtitle="Pasteurisatie & drukveiligheid"
       />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de validatiestatussen" />
         <p className="text-sm text-muted-foreground">
           Zet een model pas op "gevalideerd" nadat een echte run is nagemeten en de uitkomst is
           vergeleken met wat het model voorspelde.

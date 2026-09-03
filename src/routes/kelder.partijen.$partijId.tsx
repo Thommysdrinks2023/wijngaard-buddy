@@ -55,6 +55,7 @@ import { TemperatuurProgrammaSectie } from "@/components/temperatuurprogramma-se
 import { programmaAlsLijn } from "@/lib/temperatuurprogramma";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import {
   ArrowLeftRight,
   Beaker,
@@ -561,6 +562,7 @@ function PartijDetailPage() {
         subtitle={partij ? `${partij.jaargang} · ${eigenaarNaam}` : ""}
       />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+        <OfflineWaarschuwing wat="de partijgegevens" />
         {/* Statuspaneel */}
         <section
           className="rounded-xl border border-border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"

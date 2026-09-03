@@ -27,6 +27,7 @@ import { fetchSluitingen } from "@/lib/pasteurisatie-data";
 import { maxDrukBekend, type PasteurisatieOordeel } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { StatusBadge } from "@/components/status-badge";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 
 const OORDEEL_TOON: Record<PasteurisatieOordeel, "success" | "warning" | "destructive"> = {
   veilig: "success",
@@ -145,6 +146,7 @@ function PlannerPagina() {
     <>
       <AppHeader back title="Pasteurisatie plannen" subtitle="Drukveiligheid vooraf" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="het planningsscherm (flestypes en sluitingen)" />
         <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Flestype</span>

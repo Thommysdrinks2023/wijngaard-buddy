@@ -17,6 +17,7 @@ import { eigenaarLabel, maxDrukBekend, PRODUCT_SOORTEN, type ProductSoort } from
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { StatusBadge } from "@/components/status-badge";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { Loader2, Search } from "lucide-react";
 
 export const Route = createFileRoute("/pasteurisatie/run/nieuw")({
@@ -143,6 +144,7 @@ function RunStartenPagina() {
     <>
       <AppHeader back title="Run starten" subtitle="Op lotnummer" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
+        <OfflineWaarschuwing wat="de lijsten (flestypes, sluitingen, flessenvoorraad)" />
         <section className="rounded-2xl border border-border bg-card p-4">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             1. Partij
