@@ -1,0 +1,97 @@
+# Audit als nieuwe medewerker — De Tappenmars Buddy
+
+Fase 19, uitgevoerd 2026-09-02/03. Rol: nieuwe medewerker, eerste werkweek, geen voorkennis van de code — alleen een telefoon en een link.
+
+**Status van dit document: interim, niet de volledige zeven-dagen-doorloop.** Deze sessie heeft Blok 0 (voorbereiding) volledig gedaan en daarna een gerichte, diepgaande controle op een deelverzameling van de geplande scenario's — niet alle zeven dagen scenario-voor-scenario. Wat wél is gedaan, is grondig gedaan: elke bevinding hieronder is in de code aangewezen, in de browser gereproduceerd waar praktisch mogelijk, gerepareerd, getest (unit + Playwright) en gecommit. Sectie 6 zegt precies wat nog niet is gedaan.
+
+## 1. Oordeel in vijf regels
+
+Nee, nog niet zonder iemand ernaast — maar dichterbij dan aan het begin van deze sessie. Twee bevindingen waren in staat een nieuwe medewerker daadwerkelijk vast te laten lopen zonder dat hij begreep waarom: een compleet onbereikbare jaarafsluiting (foutmelding verwijst naar een login die niet bestaat) en kelderschermen die bij een wegvallende verbinding een geloofwaardige lege staat tonen in plaats van een storing — op het accijnsscherm zag dat eruit als een kloppende nul-aangifte. Beide zijn gerepareerd. Wat resteert is vooral: de rest van de zeven-dagen-doorloop nog niet gedaan, en één bewuste, niet-zelf-genomen beslissing over wie de tarievenbeheer-/controle-pakketknoppen op het accijnsscherm mag zien.
+
+## 2. Per scenario: wat goed ging, wat mis ging, wat gerepareerd is
+
+### Blok 0 — voorbereiding
+- `pb_data`-backup vóór start (`wijngaard_backup_20260902_224555.zip`), schema-drift-check schoon (0 verschillen), volledig seizoen geseed (`seed-seizoen.mjs`: 1142 records) + pasteurisatiedata (`seed-pasteurisatie.mjs`: 11 runs), productiebuild (`vite preview`) op 375px getest — niet de ontwikkelbuild.
+- Login/rollen uitgezocht (zie CLAUDE.md "Inloggen verwijderd"): de app kent sinds 22 augustus 2026 bewust geen accounts. Dat is zelf geen bevinding — het wordt er een zodra code zich gedraagt alsof rollen nog bestaan. Zie Bevinding 2 en de BESLISSING NODIG-sectie.
+
+### Kelder — connectiviteit (geen apart "dag", maar het eerste dat opviel)
+Met de server volledig uitgeschakeld toonden `/kelder/tanks`, `/kelder/partijen`, `/kelder/accijns` en 18 andere online-only schermen hun normale lege staat — "Nog geen tanks.", een volledig nul-accijnsoverzicht — zonder enige foutmelding, 30+ seconden lang reproduceerbaar. Zie Bevinding 1. Gerepareerd op alle 27 betrokken schermen, inclusief twee die in Fase 17/18 zelf gebouwd zijn (`/pasteurisatie/plannen`, `/pasteurisatie/run/nieuw`).
+
+### Kelder — jaarafsluiting
+"Sluit [jaar] definitief af" op `/kelder/jaaroverzicht` faalde bij elke poging met "Log in om een jaar af te sluiten" — in een app zonder loginscherm. Zie Bevinding 2. Gerepareerd en in de browser geverifieerd: de knop schrijft nu een echt archiefrecord weg.
+
+### Wijngaard — Brix-meting, Souvignier Gris
+Live in de browser getest: rij 6 (Souvignier Gris) → Brix 19,5 ingevoerd → opgeslagen → bevestigd via een rechtstreekse controle in de database (record met de juiste waarde, datum en naam stond er, daarna weer opgeruimd). Het ras dat eerder een blokkerende tikfout had (Fase 11/12) werkt nu correct, ook in deze sessie geverifieerd tot in de database. Geen verkeerd gespelde rasnamen meer gevonden in broncode, scripts of `pb_hooks/` (wel — terecht — in `pb_migrations/`, dat is bewuste geschiedenis en niet aangeraakt).
+
+### Kelder — overhevelen
+Code gelezen, niet los in de browser getest deze sessie (wel indirect: het scherm toont nu de offline-waarschuwing correct). Bevindingen: de weigering bij "meer overhevelen dan er in de tank zit" is een goed leesbare Nederlandse melding met een concreet vervolgstap ("systeem toont X L... boek eerst een correctie"). Geen aanpassing nodig.
+
+### Assistent
+Code gelezen (niet live met een echte Anthropic-aanroep getest — dat kost een betaalde API-call per poging en is deze sessie bewust vermeden). Bevestigingskaarten tonen een door de server opgebouwde, leesbare samenvatting met echte namen/waarden (rijnummer, ras, volume, tanks) — geen kale ID's. Foutafhandeling bij een mislukte serveraanroep herstelt de getypte tekst en eventuele foto, zodat niets verloren gaat. Geen bevinding.
+
+### Doorlopend — dubbeltik/bevestiging bij onomkeerbare acties
+Mechanische controle over alle bestanden met een verwijder-/mutate-knop. Twee gaten gevonden en gerepareerd:
+- "Concept verwijderen" op `/verkoop` had geen bevestigingsdialoog en geen dubbeltik-bescherming, terwijl een identieke actie (verweesde klant verwijderen) in hetzelfde bestand beide al had.
+- "Definitief verwijderen" in de prullenbak (`/prullenbak`) — de plek die juist bedoeld is als vangnet tegen per-ongeluk-verwijderen — had zelf geen bevestiging voor zijn eigen onomkeerbare actie.
+
+### Toegankelijkheid — raakvlakken
+Structurele scan (niet alleen tekstpatroon-grep) over alle knoppen/links in `src/routes` en `src/components`. Acht interactieve elementen zaten onder 44×44px: een verwijderknop, drie actieknoppen op orders, een "Meten"-link op het dashboard, drie hulpknoppen (Excel/Print/Controle-pakket op accijns, Beheer op steekproeven, feedbackknoppen op de assistent, toggles in drie gedeelde componenten). Allemaal naar 44px gebracht — puur een maatwijziging, geen gedragswijziging.
+
+### Rekenwerk en validatie (steekproefsgewijs)
+- Lege analysevelden (pH/SO₂ leeglaten): al correct opgelost vóór deze sessie via een expliciet `gemeten_velden`-mechanisme dat "niet gemeten" onderscheidt van "gemeten als 0" — geverifieerd in zowel de invoer- als de weergavecode, geen bevinding.
+- Datum-in-de-toekomst: een gedeelde validatiehelper (`checkDatum`) wordt door bijna alle invoerformulieren aangeroepen (meting, observatie, fenologie, gezondheid, oogst, werkuur, boeking, analyse, kelderlog, bottelronde, voorraadmutatie) — brede, consistente dekking, geen bevinding.
+- Negatieve/ongeldige getallen: NaN- en `<0`-checks aanwezig in de gedeelde validatielaag voor de gecontroleerde velden (kg, uren, volume, aantal). Geen bevinding op de steekproef die is gedaan.
+- Terminologie: uitputtende grep op "producent", "Thomas Drinks" en spellingsvarianten van "Souvignier Gris" over `src/`, `scripts/`, `pocketbase/pb_hooks/`, `docs/` — niets gevonden buiten bewuste geschiedenis in `pb_migrations/` en documentatie die de oude fout juist uitlegt.
+
+## 3. Alle reparaties (chronologisch, met commit)
+
+| # | Wat was er mis | Wat is er veranderd | Commit |
+|---|---|---|---|
+| 1 | Offline gaf zich uit voor een lege staat op 7 kernschermen (tanks, partijen, accijns, kelderindex, tankboek, voorraad, verkoop) — geen foutmelding, wel 0-waarden | Nieuwe `OfflineWaarschuwing`-component (`role="alert"`), tooltip van de verbindingsbadge gecorrigeerd | `34112c2` |
+| 2 | Acht interactieve elementen onder 44×44px | Naar `h-11`/`w-11` gebracht, geen gedragswijziging | `f423376` |
+| 3 | Zelfde offline-probleem op 20 aanvullende schermen, waaronder `/pasteurisatie/plannen` en `/pasteurisatie/run/nieuw` (zelf gebouwd in Fase 17/18) en `/kelder/jaaroverzicht` | `OfflineWaarschuwing` ook daar ingebouwd | `ee0fe7d` |
+| 4 | "Concept verwijderen" op `/verkoop`: geen bevestiging, geen dubbeltik-bescherming | `confirm()` + `disabled` toegevoegd, gelijkgetrokken met de andere verwijderknop in hetzelfde bestand | `fd9491a` |
+| 5 | "Definitief verwijderen" in de prullenbak: geen bevestiging voor een onomkeerbare actie | `confirm()` toegevoegd | `1cc14a6` |
+| 6 | Jaarafsluiting (`/kelder/jaaroverzicht`) faalde altijd met een verwijzing naar een niet-bestaand loginscherm; wijngaardconfig synchroniseerde stil niet meer naar de server | Beide `authStore.isValid`-checks (dood sinds het verwijderen van inloggen) vervangen door een verbindingscheck | `b477b56` |
+
+Elke reparatie: typecheck schoon, lint schoon, 219 unit tests groen, 6 Playwright-rooktests groen, waar praktisch ook handmatig geverifieerd in de browser (met de server bewust uitgeschakeld voor de offline-bevindingen, met een echte databaseschrijving gecontroleerd voor de jaarafsluiting).
+
+## 4. BESLISSING NODIG
+
+**Tarievenbeheer en het controle-pakket (ZIP) op `/kelder/accijns` zijn voor niemand meer bereikbaar.**
+
+`kelder.accijns.tsx` verbergt beide functies achter `isBeheerder = (getPb()?.authStore.record?.["rol"]) === "beheerder"`. Sinds het verwijderen van inloggen is `authStore.record` nooit gevuld, dus `isBeheerder` is voor iedereen altijd `false` — inclusief Thomas zelf. Gevolg: de accijnstarieven kunnen via de interface niet meer bijgewerkt worden (het scherm blijft daardoor permanent op "tarief nog niet geverifieerd" staan, ook als de tarieven feitelijk kloppen), en het controle-pakket voor een Douane-/NVWA-controle kan niet meer gegenereerd worden.
+
+Belangrijk voor de afweging: dit is **geen** actief beveiligd gat. Server-side staat dit al voor iedereen open (`archief`-achtige collecties gebruiken hetzelfde `AUTH_RULE = OPEN_RULE`-patroon; `kelder_logica.js`'s `rolVan()` geeft bij ontbrekende auth al `"beheerder"` terug voor de kelderendpoints). De check op `/kelder/accijns` is dus een geïsoleerd, client-side-only restant dat een functie verbergt die de server al toestaat.
+
+**Mijn advies**: verwijder de `isBeheerder`-check op dit scherm net zoals elders na het verwijderen van rollen is gebeurd — dat verandert geen serverrechten, alleen zichtbaarheid van twee knoppen die anders nooit meer werken. Ik heb dit niet zelf gedaan omdat het randgeval "wie mag tarieven wijzigen" wél een echte bedrijfsregel-vraag is, ook al is het technische risico van het antwoord klein.
+
+## 5. Wat een medewerker niet zelf zou snappen (insiderkennis die nodig was)
+
+- Dat `authStore.isValid`/`authStore.record` überhaupt nog ergens in de code voorkomt terwijl er nergens een inlogscherm is — dat vergt kennis van de geschiedenis (CLAUDE.md "Inloggen verwijderd") om te beseffen dat dit dode restanten zijn, niet een verborgen inlogpad. Een medewerker zou bij de jaarafsluiting-fout hoogstwaarschijnlijk denken dat hij iets fout doet, niet dat de app kapot is.
+- Dat een geloofwaardige "0" op het accijnsscherm iets heel anders kan betekenen dan een echte nul-aangifte — zonder de `OfflineWaarschuwing` was dit onderscheid nergens te zien.
+- Dat `pb_migrations/*.js` bewust de oude spelfout "Souveginier Gris" bevat en dat dat geen bug is — dat staat alleen in CLAUDE.md, niet in de UI.
+
+## 6. Wat nog niet is opgelost, en waarom
+
+Dit is de eerlijke lijst van wat de opdracht vroeg en wat deze sessie niet heeft gehaald:
+
+- **De volledige zeven-dagen-doorloop scenario-voor-scenario** (Dag 3 plukdag met partij-koppeling live getest, Dag 5 bottelen live getest, Dag 6 traceerbaarheidsketen fles→lot→partij→tank→rij live getest, Dag 7 assistent met echte spreektaal-berichten) is niet allemaal live in de browser doorlopen — wel is de onderliggende code voor deze paden gelezen en op de bekende risicopatronen gecontroleerd (zie sectie 2), maar "zou ik dit vinden zonder dat iemand het aanwijst" is alleen echt te beantwoorden door het fysiek te doen, en dat is voor deze scenario's nog niet gebeurd.
+- **De bewust-fouten-maken-lijst** (verbinding wegnemen midden in een handeling op een formulier, browser-terugknop halverwege, F5 op een detailscherm, half invullen en wegnavigeren) is niet stuk voor stuk uitgevoerd — alleen de dubbeltik- en offline-detectiepatronen zijn systematisch gecontroleerd.
+- **De 81 kandidaten uit de geautomatiseerde toegankelijkheidsscan** (icoon-only-knoppen zonder zichtbare tekst) zijn niet één voor één met de hand nagelopen; een steekproef liet een hoog percentage valse positieven zien (tekst die door de scanner niet herkend werd, niet echt ontbrekende labels), dus verder handmatig doorlopen is nodig vóór dit een betrouwbare lijst is.
+- **De 22 resterende plekken met hardcoded Tailwind-kleuren buiten de pasteurisatiesectie** (bijv. `text-green-600` i.p.v. het `text-success`-token) zijn geïnventariseerd maar niet gerepareerd — dit is een consistentie-kwestie, geen gevonden bug (kleur werd overal gecombineerd met tekst/icoon, dus geen "kleur als enige drager"-overtreding).
+- **AI-gestuurde bevindingen uit een geautomatiseerde subagent-vloot** (opgestart, twee keer onderbroken door sessielimieten) hebben geen bruikbare, geverifieerde resultaten opgeleverd deze sessie — al het bovenstaande komt uit handmatig lezen, grep-sweeps en browsertests.
+
+## 7. Aanbevelingen
+
+**Vóór het seizoen (kritiek, klein)**
+- Beslissing nemen over de `isBeheerder`-check op `/kelder/accijns` (sectie 4) — 15 minuten werk zodra de beslissing er is.
+- De resterende zeven-dagen-scenario's alsnog live doorlopen, met name Dag 6 (traceerbaarheid) — dat is de kernbelofte van het tankboek/lotnummersysteem en nog niet end-to-end in de browser bevestigd. Geschat: 3-4 uur voor een grondige doorloop met reparaties.
+
+**Tijdens het seizoen (belangrijk, niet dringend)**
+- De 81 toegankelijkheidskandidaten met de hand doorlopen en de echte gevallen repareren. Geschat: 2 uur (grotendeels validatie, weinig reparatie verwacht).
+- De bewust-fouten-maken-lijst (F5, terugknop, dubbele verbindingswisseling) doorlopen op de belangrijkste formulieren (meting, oogst, overhevelen, bottelen). Geschat: 2-3 uur.
+
+**Later (opschonen, geen risico)**
+- De 22 resterende hardcoded-kleur-plekken naar design-tokens, voor consistentie met de rest van de app. Geschat: 1 uur.
+- Onderzoeken of er nog meer "authStore"-achtige dode restanten uit de inlog-periode in minder voor de hand liggende plekken zitten (deze sessie doorzocht `src/` en `pocketbase/pb_hooks/` uitputtend op de exacte patronen `.isValid` en `authStore.record`/`authStore.model`, maar een functioneel equivalent restant met een andere naam zou gemist kunnen zijn). Geschat: 1 uur, lage verwachte opbrengst na de grondige sweep van deze sessie.
