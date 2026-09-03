@@ -1402,6 +1402,17 @@ een lege staat`.
 
 ## BESLISSING NODIG — gesignaleerd tijdens dezelfde controle, niet aangeraakt
 
+**Toegevoegde context (na verder uitzoeken)**: server-side is dit GEEN
+beveiligingsgat om voorzichtig mee om te gaan. `kelder_logica.js`
+(`rolVan()`) geeft bij ontbrekende auth altijd `"beheerder"` terug —
+bewust zo gehouden sinds het verwijderen van inloggen, juist om de
+kelder-/voorraadendpoints bruikbaar te houden. De server staat deze twee
+acties dus al voor iedereen toe; alleen de CLIENT-SIDE check op
+`kelder.accijns.tsx` (die `authStore.record`, dat nooit gevuld wordt,
+uitleest) verbergt de knoppen nog. Ontgrendelen verandert dus geen
+serverrechten, alleen zichtbaarheid — het risico van deze beslissing is
+kleiner dan de eerste inschatting.
+
 Op `/kelder/accijns` zitten het tarievenbeheer en de "Controle-pakket
 (ZIP)"-knop achter `isBeheerder = eigenRol === "beheerder"`
 (`kelder.accijns.tsx:184-185`), waarbij `eigenRol` wordt gelezen uit
@@ -1442,3 +1453,51 @@ van een misleidend getal; geverifieerd in de code (`fetchRijen`,
 Alle 20 aanvullende schermen gefixt in dezelfde commit-cluster; opnieuw
 handmatig getest met de server uitgeschakeld (partijdetail en
 overhevel-formulier), 219 unit tests + 6 Playwright-rooktests groen.
+
+## Bevinding 2 — jaarafsluiting en configsync volledig kapot sinds 22 augustus (HOOG, direct gerepareerd)
+
+**Wat ik deed**: op `/kelder/jaaroverzicht` de knop "Sluit [jaar] definitief
+af" getest (Dag 4/afrondende controle van de kelder-jaarcyclus).
+
+**Wat er gebeurde**: de actie faalde altijd met de foutmelding "Log in om
+een jaar af te sluiten (archief vereist een account)." — een melding die
+in een app zonder enig loginscherm nergens op slaat. De code
+(`kelder.jaaroverzicht.tsx`) checkte `pb.authStore.isValid` vóór het
+schrijven naar de `archief`-collectie; sinds het verwijderen van inloggen
+(22 augustus 2026, zie CLAUDE.md) is `authStore.isValid` per definitie
+altijd `false` (niemand authenticeert meer ooit), dus deze check faalde
+onvoorwaardelijk. De jaarafsluiting was daarmee een volledig kapotte,
+onbereikbare functie — zonder dat er ooit een schermfout of console-error
+op wees, alleen deze ene misleidende toastmelding bij een druk op de knop.
+
+Bevestigd dat dit puur een client-side relikwie was: de server staat het
+al voor iedereen toe (`archief.createRule = AUTH_RULE`, en `AUTH_RULE =
+OPEN_RULE` sinds 22 augustus). De check beschermde dus niets — hij
+blokkeerde alleen een actie die de server al onvoorwaardelijk toestond.
+
+**Hetzelfde patroon, tweede vindplaats**: `wijngaard-config.ts`
+(`bewaarConfigOpServer`/`laadConfigVanServer`) gebruikte dezelfde
+`!pb.authStore.isValid` guard, maar dan als stille no-op (geen fout, geen
+melding) in plaats van een foutmelding. Gevolg: het wegschrijven/inladen
+van de wijngaardinstellingen (naam, locatie, oppervlakte) naar/van de
+server is sinds 22 augustus onopgemerkt uitgeschakeld — elk apparaat
+houdt sindsdien zijn eigen, nooit-gesynchroniseerde lokale configuratie
+aan. Ook hier: `vineyard_settings`-rules staan al helemaal open.
+
+**Wat ik eraan gedaan heb**: beide checks vervangen door een check op
+alleen `pb`/verbinding (zelfde patroon als de rest van de app inmiddels
+gebruikt na het verwijderen van inloggen). Uitputtend gezocht naar
+overige `.isValid`-checks in `src/` en `pocketbase/pb_hooks/` — geen
+andere gevonden. Drie voorkomens van `isIngelogd()` in `kelder-data.ts`/
+`partijen-data.ts` met vergelijkbare foutmeldingen bewust ONGEMOEID
+gelaten: `isIngelogd()` geeft sinds de refactor hardcoded `true` terug,
+dus die takken zijn onbereikbare dode code, geen actieve bug (in
+tegenstelling tot `authStore.isValid`, die wél degelijk `false`
+evalueert).
+
+**Geverifieerd**: jaarafsluiting in de browser uitgevoerd — slaagt nu en
+schrijft een echt archiefrecord (`archief`, `jaar: 2026`) naar de server;
+bevestigd via de PocketBase-API en daarna weer opgeruimd (append-only
+collectie, maar met superuser-token te verwijderen). 219 unit tests
+groen, 6 Playwright-rooktests groen, schema-drift 0. Commit: `fase 19:
+jaarafsluiting en configsync werkten nooit meer sinds inloggen weg is`.
