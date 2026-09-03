@@ -1356,3 +1356,89 @@ Alle 7 blokken (A t/m G) afgerond en per blok gecommit. Seed-script
 ontwikkeling of demo's. Geen openstaande vragen specifiek voor deze fase
 — de twee eerder beantwoorde Fase 17-vragen (dopspecificatie 6 bar,
 ijkpunt niet bruikbaar) zijn verwerkt zoals hierboven beschreven.
+
+# Fase 19 — Audit als nieuwe medewerker (vinden én repareren)
+
+Rol: nieuwe medewerker, eerste werkweek, geen voorkennis van de code.
+Voorbereiding: `pb_data`-backup (`wijngaard_backup_20260902_224555.zip`),
+schema-drift-check schoon (0 verschillen), volledig seizoen geseed
+(`seed-seizoen.mjs`: 1142 records) + pasteurisatiedata (`seed-pasteurisatie.mjs`:
+11 runs), productiebuild (`npm run build` + `vite preview`) op 375px.
+
+## Bevinding 1 — offline geeft zich uit voor een lege staat (HOOG, direct gerepareerd)
+
+**Wat ik deed**: PocketBase volledig uitgeschakeld (`Stop-ScheduledTask` +
+proces gekild) en vervolgens `/kelder/tanks`, `/kelder/partijen` en
+`/kelder/accijns` geopend/ververst in de productiebuild.
+
+**Wat er gebeurde**: alle drie schermen toonden hun normale lege staat
+("Nog geen tanks.", "Nog geen partijen dit seizoen.", een volledig
+nul-accijnsoverzicht: 0 L, 0 flessen, 0 breuk) — geen foutmelding, geen
+`role="alert"`, 30+ seconden lang reproduceerbaar. Het enige signaal was
+het kleine "Offline"-badge in de header, met een tooltip die bovendien
+beloofde dat invoer "lokaal bewaard en later gesynchroniseerd" wordt —
+onwaar voor deze online-only schermen (kelder/voorraad/verkoop hebben
+bewust geen sync-wachtrij).
+
+**Wat ik verwachtte**: een `ErrorState` (die staat in de code, `isError`
+wordt getoetst) — maar clientside routing/caching zorgde er blijkbaar
+voor dat de eerdere (online) queryresultaten of de lege-staat-tak
+zichtbaar bleven zonder dat de gebruiker het verschil kon zien. De precieze
+oorzaak in de query-laag is niet verder uitgezocht; in plaats daarvan is
+gekozen voor een fix die niet van die laag afhangt.
+
+**Wat ik eraan gedaan heb**: nieuwe gedeelde component
+`src/components/offline-waarschuwing.tsx` (`role="alert"`, gebaseerd op
+`useVerbinding()` — dus onafhankelijk van de status van een individuele
+query) ingebouwd op alle zeven online-only schermen: `/kelder/index`,
+`/kelder/tanks`, `/kelder/partijen`, `/kelder/accijns`,
+`/kelder/tankboek`, `/voorraad`, `/verkoop`. Tooltip van de
+verbindingsbadge (`verbinding-status.tsx`) gecorrigeerd zodat hij het
+online-only-gedrag van die schermen niet meer verkeerd belooft. Getest:
+219 unit tests groen, 6 Playwright-rooktests groen, en opnieuw handmatig
+met de server uitgeschakeld — de waarschuwing verschijnt nu op alle
+zeven schermen. Commit: `fase 19: offline geeft zich niet meer uit voor
+een lege staat`.
+
+## BESLISSING NODIG — gesignaleerd tijdens dezelfde controle, niet aangeraakt
+
+Op `/kelder/accijns` zitten het tarievenbeheer en de "Controle-pakket
+(ZIP)"-knop achter `isBeheerder = eigenRol === "beheerder"`
+(`kelder.accijns.tsx:184-185`), waarbij `eigenRol` wordt gelezen uit
+`getPb()?.authStore.record?.["rol"]`. Sinds het verwijderen van inloggen
+(22 augustus 2026, zie CLAUDE.md) bestaat er geen `authStore.record` meer
+— `eigenRol` is dus voor IEDEREEN altijd `""`, nooit `"beheerder"`. Twee
+functies zijn daardoor voor niemand meer bereikbaar via de interface:
+tarieven/drempels bijwerken (waardoor het accijnsscherm permanent op
+"tarief nog niet geverifieerd" blijft staan, ook als de tarieven wél
+kloppen) en het controle-pakket voor een Douane-/NVWA-controle
+genereren. Dit raakt aan wie wat mag — niet zelf gerepareerd. Advies: de
+`isBeheerder`-check hier verwijderen (net als elders na het verwijderen
+van rollen), zodat deze twee functies weer voor iedereen werken, tenzij
+Thomas ze bewust ontoegankelijk wil houden tot rollen terugkomen.
+
+## Bevinding 1 (vervolg) — offline-waarschuwing uitgebreid naar 20 aanvullende schermen
+
+Systematische controle (alle routes die `kelder-data.ts`, `partijen-data.ts`,
+`pasteurisatie-data.ts`, `flessen-data.ts` of `materieel-data.ts` importeren)
+liet zien dat het probleem uit Bevinding 1 niet beperkt was tot de zeven
+eerder gefixte schermen. Twee vondsten die extra aandacht verdienen:
+
+- `/pasteurisatie/plannen` en `/pasteurisatie/run/nieuw` (zelf in Fase 17/18
+  gebouwd) toonden bij een onbereikbare server lege "Kies flestype…"/"Kies
+  sluiting…"-keuzelijsten zonder enige uitleg — precies hetzelfde patroon,
+  in code die ik zelf recent geschreven had.
+- `/kelder/jaaroverzicht` (de jaarafsluiting) had hetzelfde risico als het
+  accijnsscherm: een leeg overzicht dat eruitziet als een correcte
+  afsluiting.
+
+Bewust NIET aangepast: `index.tsx` (hub), `zoeken.tsx` en de rij-schermen
+(`snel.tsx`, `rij.$rijId.*`, `scan.tsx`, `steekproeven.*`) — die zijn
+offline-first met een localStorage-fallback (zie `data.ts`/`extra-data.ts`)
+en degraderen al correct naar een neutrale vaste omschrijving in plaats
+van een misleidend getal; geverifieerd in de code (`fetchRijen`,
+`maakEntity().fetchAll()`) vóórdat ik ze oversloeg.
+
+Alle 20 aanvullende schermen gefixt in dezelfde commit-cluster; opnieuw
+handmatig getest met de server uitgeschakeld (partijdetail en
+overhevel-formulier), 219 unit tests + 6 Playwright-rooktests groen.

@@ -481,8 +481,12 @@ function VerkoopPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => verwijderM.mutate(o.id)}
-                            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border text-destructive"
+                            onClick={() => {
+                              if (confirm("Concept-order definitief verwijderen?"))
+                                verwijderM.mutate(o.id);
+                            }}
+                            disabled={verwijderM.isPending}
+                            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border text-destructive disabled:opacity-50"
                             aria-label="Concept verwijderen"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
