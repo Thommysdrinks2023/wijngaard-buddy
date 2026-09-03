@@ -61,13 +61,13 @@ export function setWijngaardConfig(wijziging: Partial<WijngaardConfig>) {
   const nieuw = { ...huidig, ...wijziging };
   writeLs(LS_CONFIG, nieuw);
   window.dispatchEvent(new CustomEvent(CONFIG_GEWIJZIGD_EVENT));
-  // best-effort naar PocketBase (collectie vineyard_settings) wanneer ingelogd
+  // best-effort naar PocketBase (collectie vineyard_settings) wanneer online
   void bewaarConfigOpServer(getWijngaardConfig());
 }
 
 async function bewaarConfigOpServer(config: WijngaardConfig) {
   const pb = getPb();
-  if (!pb || !pb.authStore.isValid || !(await ensureOnline())) return;
+  if (!pb || !(await ensureOnline())) return;
   try {
     const bestaand = await pb
       .collection("vineyard_settings")
@@ -90,7 +90,7 @@ async function bewaarConfigOpServer(config: WijngaardConfig) {
 // Haalt de configuratie van de server en cachet lokaal (indien aanwezig).
 export async function laadConfigVanServer(): Promise<void> {
   const pb = getPb();
-  if (!pb || !pb.authStore.isValid || !(await ensureOnline())) return;
+  if (!pb || !(await ensureOnline())) return;
   try {
     const r = await pb.collection("vineyard_settings").getFirstListItem("");
     const server: Partial<WijngaardConfig> = {

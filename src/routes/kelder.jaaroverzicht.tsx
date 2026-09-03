@@ -50,8 +50,7 @@ function JaaroverzichtPage() {
   const afsluitM = useMutation({
     mutationFn: async () => {
       const pb = getPb();
-      if (!pb || !pb.authStore.isValid)
-        throw new Error("Log in om een jaar af te sluiten (archief vereist een account).");
+      if (!pb) throw new Error("Geen verbinding met de server — kon het jaar niet afsluiten.");
       return pb.collection("archief").create({
         jaar,
         type: "jaaroverzicht",
