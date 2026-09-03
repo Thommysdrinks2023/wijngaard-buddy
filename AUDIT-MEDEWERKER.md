@@ -81,6 +81,7 @@ Een eerdere, ruwere scan naar icoon-only-knoppen zonder toegankelijke naam gaf 8
 | 6 | Jaarafsluiting (`/kelder/jaaroverzicht`) faalde altijd met een verwijzing naar een niet-bestaand loginscherm; wijngaardconfig synchroniseerde stil niet meer naar de server | Beide `authStore.isValid`-checks (dood sinds het verwijderen van inloggen) vervangen door een verbindingscheck | `b477b56` |
 | 7 | `/zoeken` claimde "door alle registraties" te zoeken, maar dekt alleen wijngaarddata — geen signaal dat kelder/verkoop niet doorzocht wordt | Ondertitel gecorrigeerd, scope-hint bij zoektips en lege-resultaten-melding | `b80851c` |
 | 8 | "+"-knop (temperatuurstap toevoegen) had geen `aria-label` en stond op 40px | `aria-label` toegevoegd, naar 44px | `42bec47` |
+| 9 | 15 plekken met hardcoded Tailwind-kleuren (text-amber-*, bg-red-50, border-green-300, ...) buiten de pasteurisatiesectie | Vervangen door design-tokens (text-warning, bg-destructive/10, border-success/40, ...) | `91a7ae8` |
 
 Elke reparatie: typecheck schoon, lint schoon, 219 unit tests groen, 6 Playwright-rooktests groen, waar praktisch ook handmatig geverifieerd in de browser (met de server bewust uitgeschakeld voor de offline-bevindingen, met een echte databaseschrijving gecontroleerd voor de jaarafsluiting).
 
@@ -112,7 +113,6 @@ Dit is de eerlijke lijst van wat de opdracht vroeg en wat deze sessie niet heeft
 
 - **Dag 3 (plukdag), Dag 5 (bottelen) en Dag 7 (assistent) zijn live getest** (zie sectie 2) — geen bevindingen, alle drie werken goed doordacht. **Dag 6 (traceerbaarheidsketen fles→lot→partij→tank→rij) is voor het fles→...→partij-deel live bevestigd** (via de "HERKOMST"-sectie op de voorraaddetailpagina, zie de bottelen-test); het partij→rijen-deel bestaat niet in de UI (zie BESLISSING NODIG).
 - **De bewust-fouten-maken-lijst** (verbinding wegnemen midden in een handeling op een formulier, browser-terugknop halverwege, F5 op een detailscherm, half invullen en wegnavigeren) is niet stuk voor stuk uitgevoerd — alleen de dubbeltik- en offline-detectiepatronen zijn systematisch gecontroleerd.
-- **De 22 resterende plekken met hardcoded Tailwind-kleuren buiten de pasteurisatiesectie** (bijv. `text-green-600` i.p.v. het `text-success`-token) zijn geïnventariseerd maar niet gerepareerd — dit is een consistentie-kwestie, geen gevonden bug (kleur werd overal gecombineerd met tekst/icoon, dus geen "kleur als enige drager"-overtreding).
 - **AI-gestuurde bevindingen uit een geautomatiseerde subagent-vloot** (opgestart, twee keer onderbroken door sessielimieten) hebben geen bruikbare, geverifieerde resultaten opgeleverd deze sessie — al het bovenstaande komt uit handmatig lezen, grep-sweeps en browsertests.
 
 ## 7. Aanbevelingen
@@ -125,5 +125,4 @@ Dit is de eerlijke lijst van wat de opdracht vroeg en wat deze sessie niet heeft
 - De bewust-fouten-maken-lijst (F5, terugknop, dubbele verbindingswisseling) doorlopen op de belangrijkste formulieren (meting, oogst, overhevelen, bottelen). Geschat: 2-3 uur.
 
 **Later (opschonen, geen risico)**
-- De 22 resterende hardcoded-kleur-plekken naar design-tokens, voor consistentie met de rest van de app. Geschat: 1 uur.
 - Onderzoeken of er nog meer "authStore"-achtige dode restanten uit de inlog-periode in minder voor de hand liggende plekken zitten (deze sessie doorzocht `src/` en `pocketbase/pb_hooks/` uitputtend op de exacte patronen `.isValid` en `authStore.record`/`authStore.model`, maar een functioneel equivalent restant met een andere naam zou gemist kunnen zijn). Geschat: 1 uur, lage verwachte opbrengst na de grondige sweep van deze sessie.
