@@ -61,6 +61,8 @@ Mechanische controle over alle bestanden met een verwijder-/mutate-knop. Twee ga
 ### Toegankelijkheid — raakvlakken
 Structurele scan (niet alleen tekstpatroon-grep) over alle knoppen/links in `src/routes` en `src/components`. Acht interactieve elementen zaten onder 44×44px: een verwijderknop, drie actieknoppen op orders, een "Meten"-link op het dashboard, drie hulpknoppen (Excel/Print/Controle-pakket op accijns, Beheer op steekproeven, feedbackknoppen op de assistent, toggles in drie gedeelde componenten). Allemaal naar 44px gebracht — puur een maatwijziging, geen gedragswijziging.
 
+Een eerdere, ruwere scan naar icoon-only-knoppen zonder toegankelijke naam gaf 81 kandidaten; een precisere scan (die JSX-tekstexpressies zoals `{status ? "A" : "B"}` correct als tekst herkent in plaats van als "geen tekst") bracht dat terug tot 1 echte: de "+"-knop om een temperatuurstap toe te voegen (`temperatuurprogramma-sectie.tsx`) had geen `aria-label` én stond op 40px. Beide gefixt — `aria-label="Stap toevoegen"`, naar 44px. De overige 80 kandidaten waren vals-positief.
+
 ### Rekenwerk en validatie (steekproefsgewijs)
 - Lege analysevelden (pH/SO₂ leeglaten): al correct opgelost vóór deze sessie via een expliciet `gemeten_velden`-mechanisme dat "niet gemeten" onderscheidt van "gemeten als 0" — geverifieerd in zowel de invoer- als de weergavecode, geen bevinding.
 - Datum-in-de-toekomst: een gedeelde validatiehelper (`checkDatum`) wordt door bijna alle invoerformulieren aangeroepen (meting, observatie, fenologie, gezondheid, oogst, werkuur, boeking, analyse, kelderlog, bottelronde, voorraadmutatie) — brede, consistente dekking, geen bevinding.
@@ -78,6 +80,7 @@ Structurele scan (niet alleen tekstpatroon-grep) over alle knoppen/links in `src
 | 5 | "Definitief verwijderen" in de prullenbak: geen bevestiging voor een onomkeerbare actie | `confirm()` toegevoegd | `1cc14a6` |
 | 6 | Jaarafsluiting (`/kelder/jaaroverzicht`) faalde altijd met een verwijzing naar een niet-bestaand loginscherm; wijngaardconfig synchroniseerde stil niet meer naar de server | Beide `authStore.isValid`-checks (dood sinds het verwijderen van inloggen) vervangen door een verbindingscheck | `b477b56` |
 | 7 | `/zoeken` claimde "door alle registraties" te zoeken, maar dekt alleen wijngaarddata — geen signaal dat kelder/verkoop niet doorzocht wordt | Ondertitel gecorrigeerd, scope-hint bij zoektips en lege-resultaten-melding | `b80851c` |
+| 8 | "+"-knop (temperatuurstap toevoegen) had geen `aria-label` en stond op 40px | `aria-label` toegevoegd, naar 44px | `42bec47` |
 
 Elke reparatie: typecheck schoon, lint schoon, 219 unit tests groen, 6 Playwright-rooktests groen, waar praktisch ook handmatig geverifieerd in de browser (met de server bewust uitgeschakeld voor de offline-bevindingen, met een echte databaseschrijving gecontroleerd voor de jaarafsluiting).
 
@@ -109,7 +112,6 @@ Dit is de eerlijke lijst van wat de opdracht vroeg en wat deze sessie niet heeft
 
 - **Dag 3 (plukdag), Dag 5 (bottelen) en Dag 7 (assistent) zijn live getest** (zie sectie 2) — geen bevindingen, alle drie werken goed doordacht. **Dag 6 (traceerbaarheidsketen fles→lot→partij→tank→rij) is voor het fles→...→partij-deel live bevestigd** (via de "HERKOMST"-sectie op de voorraaddetailpagina, zie de bottelen-test); het partij→rijen-deel bestaat niet in de UI (zie BESLISSING NODIG).
 - **De bewust-fouten-maken-lijst** (verbinding wegnemen midden in een handeling op een formulier, browser-terugknop halverwege, F5 op een detailscherm, half invullen en wegnavigeren) is niet stuk voor stuk uitgevoerd — alleen de dubbeltik- en offline-detectiepatronen zijn systematisch gecontroleerd.
-- **De 81 kandidaten uit de geautomatiseerde toegankelijkheidsscan** (icoon-only-knoppen zonder zichtbare tekst) zijn niet één voor één met de hand nagelopen; een steekproef liet een hoog percentage valse positieven zien (tekst die door de scanner niet herkend werd, niet echt ontbrekende labels), dus verder handmatig doorlopen is nodig vóór dit een betrouwbare lijst is.
 - **De 22 resterende plekken met hardcoded Tailwind-kleuren buiten de pasteurisatiesectie** (bijv. `text-green-600` i.p.v. het `text-success`-token) zijn geïnventariseerd maar niet gerepareerd — dit is een consistentie-kwestie, geen gevonden bug (kleur werd overal gecombineerd met tekst/icoon, dus geen "kleur als enige drager"-overtreding).
 - **AI-gestuurde bevindingen uit een geautomatiseerde subagent-vloot** (opgestart, twee keer onderbroken door sessielimieten) hebben geen bruikbare, geverifieerde resultaten opgeleverd deze sessie — al het bovenstaande komt uit handmatig lezen, grep-sweeps en browsertests.
 
@@ -120,7 +122,6 @@ Dit is de eerlijke lijst van wat de opdracht vroeg en wat deze sessie niet heeft
 - De "Herkomst"-sectie bouwen (sectie 4) zodra Thomas akkoord is — dit is de kernbelofte van het tankboek/lotnummersysteem en staat nu op "geen"; een klant die belt over een fles kan vandaag niet vanuit de app beantwoord worden. Geschat: 2-3 uur (query + weergave; de onderliggende koppeling bestaat al).
 
 **Tijdens het seizoen (belangrijk, niet dringend)**
-- De 81 toegankelijkheidskandidaten met de hand doorlopen en de echte gevallen repareren. Geschat: 2 uur (grotendeels validatie, weinig reparatie verwacht).
 - De bewust-fouten-maken-lijst (F5, terugknop, dubbele verbindingswisseling) doorlopen op de belangrijkste formulieren (meting, oogst, overhevelen, bottelen). Geschat: 2-3 uur.
 
 **Later (opschonen, geen risico)**
