@@ -6,7 +6,7 @@ Fase 19, uitgevoerd 2026-09-02/03. Rol: nieuwe medewerker, eerste werkweek, geen
 
 ## 1. Oordeel in vijf regels
 
-Nee, nog niet zonder iemand ernaast — maar dichterbij dan aan het begin van deze sessie. Twee bevindingen waren in staat een nieuwe medewerker daadwerkelijk vast te laten lopen zonder dat hij begreep waarom: een compleet onbereikbare jaarafsluiting (foutmelding verwijst naar een login die niet bestaat) en kelderschermen die bij een wegvallende verbinding een geloofwaardige lege staat tonen in plaats van een storing — op het accijnsscherm zag dat eruit als een kloppende nul-aangifte. Beide zijn gerepareerd. Wat resteert is vooral: de rest van de zeven-dagen-doorloop nog niet gedaan, en één bewuste, niet-zelf-genomen beslissing over wie de tarievenbeheer-/controle-pakketknoppen op het accijnsscherm mag zien.
+Nee, nog niet zonder iemand ernaast — maar dichterbij dan aan het begin van deze sessie. Twee bevindingen waren in staat een nieuwe medewerker daadwerkelijk vast te laten lopen zonder dat hij begreep waarom: een compleet onbereikbare jaarafsluiting (foutmelding verwijst naar een login die niet bestaat) en kelderschermen die bij een wegvallende verbinding een geloofwaardige lege staat tonen in plaats van een storing — op het accijnsscherm zag dat eruit als een kloppende nul-aangifte. Beide zijn gerepareerd, samen met vijf kleinere gaten (bevestiging bij onomkeerbare acties, te kleine raakvlakken, misleidende zoekscope). Wat resteert is vooral: de rest van de zeven-dagen-doorloop nog niet gedaan, en twee bewuste, niet-zelf-genomen beslissingen (wie de tarievenbeheer-/controle-pakketknoppen op het accijnsscherm mag zien; of/hoe een "welke rijen zitten in dit lot"-weergave gebouwd wordt).
 
 ## 2. Per scenario: wat goed ging, wat mis ging, wat gerepareerd is
 
@@ -22,6 +22,11 @@ Met de server volledig uitgeschakeld toonden `/kelder/tanks`, `/kelder/partijen`
 
 ### Wijngaard — Brix-meting, Souvignier Gris
 Live in de browser getest: rij 6 (Souvignier Gris) → Brix 19,5 ingevoerd → opgeslagen → bevestigd via een rechtstreekse controle in de database (record met de juiste waarde, datum en naam stond er, daarna weer opgeruimd). Het ras dat eerder een blokkerende tikfout had (Fase 11/12) werkt nu correct, ook in deze sessie geverifieerd tot in de database. Geen verkeerd gespelde rasnamen meer gevonden in broncode, scripts of `pb_hooks/` (wel — terecht — in `pb_migrations/`, dat is bewuste geschiedenis en niet aangeraakt).
+
+### Terugzoeken (Dag 6-kernvraag)
+Het globale zoekscherm (`/zoeken`) claimde in zijn ondertitel "Door alle registraties" te zoeken, maar doorzoekt uitsluitend wijngaarddata (rijen, metingen, observaties, fenologie, oogst, gezondheid, werkuren) — geen partijen, tanks, flessen of klanten. Een medewerker die hier een lotnummer of klantnaam intypt na een telefoontje krijgt niets terug, zonder enig signaal dat hij in de verkeerde module zoekt. Gerepareerd: ondertitel gecorrigeerd, scope-hint toegevoegd bij de zoektips en in de lege-resultaten-melding (verwijst naar Kelder/Voorraad).
+
+Grotere, NIET zelf aangepakte vondst hierbij: de partijdetailpagina (`/kelder/partijen/$partijId`) toont nergens uit welke rijen een partij afkomstig is, ook al bestaat die koppeling wel in de data (`oogst.partij` verwijst naar de partij, `oogst.rij` naar de bronrij — vastgelegd via de bestaande "koppel oogst aan partij"-functie uit Fase 13). Er is dus geen scherm dat "lot X → welke rijen" in één oogopslag beantwoordt; dat moet nu via directe databasetoegang. Dit is geen bugfix maar het toevoegen van een nieuwe weergave (een "Herkomst"-sectie die `oogst` filtert op `partij`) — daarom niet zelf gebouwd, zie sectie 4/7.
 
 ### Kelder — overhevelen
 Code gelezen, niet los in de browser getest deze sessie (wel indirect: het scherm toont nu de offline-waarschuwing correct). Bevindingen: de weigering bij "meer overhevelen dan er in de tank zit" is een goed leesbare Nederlandse melding met een concreet vervolgstap ("systeem toont X L... boek eerst een correctie"). Geen aanpassing nodig.
@@ -53,6 +58,7 @@ Structurele scan (niet alleen tekstpatroon-grep) over alle knoppen/links in `src
 | 4 | "Concept verwijderen" op `/verkoop`: geen bevestiging, geen dubbeltik-bescherming | `confirm()` + `disabled` toegevoegd, gelijkgetrokken met de andere verwijderknop in hetzelfde bestand | `fd9491a` |
 | 5 | "Definitief verwijderen" in de prullenbak: geen bevestiging voor een onomkeerbare actie | `confirm()` toegevoegd | `1cc14a6` |
 | 6 | Jaarafsluiting (`/kelder/jaaroverzicht`) faalde altijd met een verwijzing naar een niet-bestaand loginscherm; wijngaardconfig synchroniseerde stil niet meer naar de server | Beide `authStore.isValid`-checks (dood sinds het verwijderen van inloggen) vervangen door een verbindingscheck | `b477b56` |
+| 7 | `/zoeken` claimde "door alle registraties" te zoeken, maar dekt alleen wijngaarddata — geen signaal dat kelder/verkoop niet doorzocht wordt | Ondertitel gecorrigeerd, scope-hint bij zoektips en lege-resultaten-melding | `b80851c` |
 
 Elke reparatie: typecheck schoon, lint schoon, 219 unit tests groen, 6 Playwright-rooktests groen, waar praktisch ook handmatig geverifieerd in de browser (met de server bewust uitgeschakeld voor de offline-bevindingen, met een echte databaseschrijving gecontroleerd voor de jaarafsluiting).
 
@@ -65,6 +71,12 @@ Elke reparatie: typecheck schoon, lint schoon, 219 unit tests groen, 6 Playwrigh
 Belangrijk voor de afweging: dit is **geen** actief beveiligd gat. Server-side staat dit al voor iedereen open (`archief`-achtige collecties gebruiken hetzelfde `AUTH_RULE = OPEN_RULE`-patroon; `kelder_logica.js`'s `rolVan()` geeft bij ontbrekende auth al `"beheerder"` terug voor de kelderendpoints). De check op `/kelder/accijns` is dus een geïsoleerd, client-side-only restant dat een functie verbergt die de server al toestaat.
 
 **Mijn advies**: verwijder de `isBeheerder`-check op dit scherm net zoals elders na het verwijderen van rollen is gebeurd — dat verandert geen serverrechten, alleen zichtbaarheid van twee knoppen die anders nooit meer werken. Ik heb dit niet zelf gedaan omdat het randgeval "wie mag tarieven wijzigen" wél een echte bedrijfsregel-vraag is, ook al is het technische risico van het antwoord klein.
+
+**Geen "herkomst"-weergave op de partijdetailpagina — lot terugvoeren naar rijen kan niet vanuit de interface.**
+
+Zoals beschreven onder "Terugzoeken" in sectie 2: de koppeling oogst→partij→rij bestaat in de data (elke `oogst`-regel heeft zowel een `rij`- als een `partij`-veld, en de bestaande "koppel oogst aan partij"-functie legt dat verband al vast bij het aanmaken van een partij uit een pluk). Er is alleen nergens een scherm dat deze koppeling in omgekeerde richting toont: "dit lot komt uit welke rijen". Bij een klantvraag over een specifieke fles is dat nu niet vanuit de app te beantwoorden.
+
+**Mijn advies**: een kleine "Herkomst"-sectie op `/kelder/partijen/$partijId` die `oogst` filtert op `partij = deze partij` en de gevonden rijen/rassen/data toont (vergelijkbaar met hoe de partijdetailpagina al andere gerelateerde gegevens toont). Dit is bewust niet zelf gebouwd: het is een nieuwe weergave, geen reparatie van iets dat eerder wél werkte — en de opdracht voor deze fase sluit nieuwe functionaliteit expliciet uit.
 
 ## 5. Wat een medewerker niet zelf zou snappen (insiderkennis die nodig was)
 
@@ -86,7 +98,8 @@ Dit is de eerlijke lijst van wat de opdracht vroeg en wat deze sessie niet heeft
 
 **Vóór het seizoen (kritiek, klein)**
 - Beslissing nemen over de `isBeheerder`-check op `/kelder/accijns` (sectie 4) — 15 minuten werk zodra de beslissing er is.
-- De resterende zeven-dagen-scenario's alsnog live doorlopen, met name Dag 6 (traceerbaarheid) — dat is de kernbelofte van het tankboek/lotnummersysteem en nog niet end-to-end in de browser bevestigd. Geschat: 3-4 uur voor een grondige doorloop met reparaties.
+- De "Herkomst"-sectie bouwen (sectie 4) zodra Thomas akkoord is — dit is de kernbelofte van het tankboek/lotnummersysteem en staat nu op "geen"; een klant die belt over een fles kan vandaag niet vanuit de app beantwoord worden. Geschat: 2-3 uur (query + weergave; de onderliggende koppeling bestaat al).
+- De resterende zeven-dagen-scenario's alsnog live doorlopen (Dag 3 partijkoppeling, Dag 5 bottelen, Dag 7 assistent met echte berichten). Geschat: 3-4 uur voor een grondige doorloop met reparaties.
 
 **Tijdens het seizoen (belangrijk, niet dringend)**
 - De 81 toegankelijkheidskandidaten met de hand doorlopen en de echte gevallen repareren. Geschat: 2 uur (grotendeels validatie, weinig reparatie verwacht).
