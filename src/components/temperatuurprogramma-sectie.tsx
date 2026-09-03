@@ -162,7 +162,8 @@ export function TemperatuurProgrammaSectie({
           type="button"
           onClick={voegToe}
           disabled={opslaanM.isPending}
-          className="flex h-10 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
+          aria-label="Stap toevoegen"
+          className="flex h-11 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
         >
           <Plus className="h-4 w-4" />
         </button>
