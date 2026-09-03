@@ -102,6 +102,12 @@ function PrullenbakPage() {
                   type="button"
                   aria-label="Definitief verwijderen"
                   onClick={() => {
+                    if (
+                      !confirm(
+                        `"${item.omschrijving}" definitief verwijderen? Dit kan niet meer ongedaan gemaakt worden.`,
+                      )
+                    )
+                      return;
                     verwijderUitPrullenbak(item.id);
                     ververs();
                     toast.success("Definitief verwijderd");
