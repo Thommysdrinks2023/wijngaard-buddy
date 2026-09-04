@@ -249,7 +249,7 @@ hardware aangeschaft of gekoppeld** — alles getest met curl en verzonnen data.
 - De temperatuur-op-gistingscurve-integratie bestond al (Fase 7), gebouwd op
   het oude vaste schema — moest meemigreren naar het generieke model.
 - `SENSOR_TOKEN` stond al in `.env`; het endpoint was niet uitgeschakeld.
-- `signaal_status` is alleen snooze/dismiss-*status*, geen signaalinhoud.
+- `signaal_status` is alleen snooze/dismiss-_status_, geen signaalinhoud.
   Voor een "handmatig testalert" is dus een aparte collectie nodig
   (`sensor_alerts`) — zelfde patroon als `inzichten`.
 - De Vandaag-widget was al volledig generiek; Blok D punt 2 uit de opdracht
@@ -387,6 +387,7 @@ en verdient een eigen sessie met eigen verificatie, in plaats van alles in
 hele keten breekt.
 
 ## Bevinding vooraf — kelder/voorraad/signalen-endpoints waren stuk zonder
+
 ## login (regressie van gisteren, vóór dit blok gefixt)
 
 De "inloggen weer verwijderd"-commit van gisteren (`6010a8e`) claimde dat
@@ -414,17 +415,17 @@ Geseed uit `Flessen_admin.xlsx` (negen tabbladen, saldo per type berekend uit
 inkoop−gebruikt op 23-08-2026 — puur ter info in de commentaarregel van het
 setup-script, NIET overgenomen als beginvoorraad):
 
-| Flestype | Saldo in Excel |
-| --- | --- |
-| wit vinolok 0,75 | 3306 |
-| groen vinolok 0,75 | 1248 |
-| wit schroef 0,75 | 12378 |
-| groen schroef 0,75 | 7724 |
-| groen kurk 0,75 | 0 |
-| wit kurk 0,75 | 0 |
-| wit mat schroef 0,75 | 904 |
-| wit 375 | 1458 |
-| groen 375 | 3570 |
+| Flestype             | Saldo in Excel |
+| -------------------- | -------------- |
+| wit vinolok 0,75     | 3306           |
+| groen vinolok 0,75   | 1248           |
+| wit schroef 0,75     | 12378          |
+| groen schroef 0,75   | 7724           |
+| groen kurk 0,75      | 0              |
+| wit kurk 0,75        | 0              |
+| wit mat schroef 0,75 | 904            |
+| wit 375              | 1458           |
+| groen 375            | 3570           |
 
 **VRAAG VOOR THOMAS**: de sluiting van de twee 375ml-flestypes staat niet in
 de Excel — die twee zijn leeg geseed. Welke sluiting hebben de 375ml-flessen?
@@ -532,12 +533,12 @@ kan de app niet weten.
 Het kernscenario uit de testchecklist, met curl tegen de echte server:
 1.500 L uit de tank, 1.980 flessen van 750 ml gevuld, 4 breuk.
 
-| Verwacht | Gemeten |
-| --- | --- |
-| tankboek afgeboekt | 1500 L, notitie "bottelverlies 15 L", tank daarna 0 L en leeg |
-| flessenvoorraad −1.984 | 3000 naar 1016, twee losse regels (−1980 verbruik, −4 breuk) |
-| bottelverlies 15 L (1%) | `bottelverlies_l: 15`, `gebotteld_l: 1485` |
-| accijnsvolume 1.485 L | `accijnsplichtig_volume_l: 1485` |
+| Verwacht                | Gemeten                                                       |
+| ----------------------- | ------------------------------------------------------------- |
+| tankboek afgeboekt      | 1500 L, notitie "bottelverlies 15 L", tank daarna 0 L en leeg |
+| flessenvoorraad −1.984  | 3000 naar 1016, twee losse regels (−1980 verbruik, −4 breuk)  |
+| bottelverlies 15 L (1%) | `bottelverlies_l: 15`, `gebotteld_l: 1485`                    |
+| accijnsvolume 1.485 L   | `accijnsplichtig_volume_l: 1485`                              |
 
 Verder: ontoereikende voorraad → geboekt mét waarschuwing, niet geblokkeerd;
 botteling met een onbestaand flestype → **volledig teruggerold**, de tank hield
@@ -589,8 +590,6 @@ De twee bestaande "genegeerd"-registraties zijn ongemoeid gelaten.
 
 ---
 
-
-
 ---
 
 # Sessie 28 augustus 2026 — Fase 16: eigenaar in plaats van producent, en Thommy's Drinks
@@ -605,11 +604,11 @@ ontbrekend gegeven (de tweecijferige administratiecode per eigenaar).
 `producer_type` komen uit `DECISIONS-FASE4.md`, waar juist staat dat ze in
 Fase 4 al zijn vertaald naar de Nederlandse conventie. De werkelijke situatie:
 
-| Opdracht | Werkelijkheid |
-| --- | --- |
-| `producer_id` | veld heet `producent` (relatie), op 4 collecties |
-| `producer_type` | bestaat niet — wel `eigenaars.soort` en `partijen.opdracht_type` |
-| collectie `producenten` | klopte |
+| Opdracht                | Werkelijkheid                                                    |
+| ----------------------- | ---------------------------------------------------------------- |
+| `producer_id`           | veld heet `producent` (relatie), op 4 collecties                 |
+| `producer_type`         | bestaat niet — wel `eigenaars.soort` en `partijen.opdracht_type` |
+| collectie `producenten` | klopte                                                           |
 
 Gevonden: 25 bronbestanden met "producent" in de bedrijfsbetekenis (de zwaarste:
 `kelder-data.ts` 24×, `setup-pocketbase.mjs` 23×, `kelder.partijen.nieuw.tsx`
@@ -694,7 +693,7 @@ laatste via een PATCH op het **bestaande** record: een nieuw record aanmaken zou
 de partijen die eraan hangen hun eigenaar hebben laten verliezen.
 
 De regel in `agent_systeemprompt.md` bevatte beide fouten en is herschreven tot
-een instructie die de agent ook uitlegt *waarom* het eigenaar heet — inclusief de
+een instructie die de agent ook uitlegt _waarom_ het eigenaar heet — inclusief de
 expliciete opdracht die klanten "eigenaar" te noemen en nooit "producent".
 
 Historische documenten (`AUDIT-VELDGEREEDHEID.md`, de vier `ONTWERP-*.md`,
@@ -742,7 +741,6 @@ PowerShell-timeout), maar het is het noteren waard mocht het vaker gebeuren.
    in gebruik is — bewust niet zelf besloten.
 3. **375ml-flestypes** (staat nog open uit Fase 15): welke sluiting hebben die?
    Dat staat niet in `Flessen_admin.xlsx`.
-
 
 ---
 
@@ -850,7 +848,6 @@ backup nodig geweest.
 9. Welke kopruimte (ml, of vulhoogte) hoorde bij die meting? Nodig om het
    massabalansmodel te kalibreren op hetzelfde ijkpunt.
 
-
 ---
 
 ## Blok B — Rekenkern druk (`src/lib/drukveiligheid.ts`), na Thomas' correctie
@@ -910,7 +907,6 @@ tests totaal groen, tsc/eslint schoon.
 aannames in gewone taal, inclusief expliciet wat wél en niet als ijkpunt is
 gebruikt.
 
-
 ---
 
 ## Blok C — Datamodel
@@ -959,7 +955,6 @@ geen bevinding om te melden — Blok F kan hierop bouwen zonder migratie.
 
 Schema-drift 0 na de migratie, 219 tests groen (schema raakt de pure
 rekenkernen niet), eslint schoon. Verse backup vóór de migratie gemaakt.
-
 
 ---
 
@@ -1324,7 +1319,7 @@ Consistentiecontrole over alle vijf herontworpen schermen
 - Geen hardcoded Tailwind-kleuren (`text-green-*`, `bg-amber-*`, …) meer in
   deze vijf bestanden — overal design-tokens (`success`/`warning`/
   `destructive`) of `StatusBadge`. Bewust NIET aangepast: `instellingen_.
-  sluitingen.tsx` (nog twee `amber-*`-klassen) — dat scherm valt buiten de
+sluitingen.tsx` (nog twee `amber-*`-klassen) — dat scherm valt buiten de
   pasteurisatiesectie zoals afgebakend voor deze fase.
 - Alle interactieve elementen (knoppen, invoervelden, selects, listitems)
   op alle vijf schermen ≥44px hoog gecontroleerd — geen uitzonderingen
@@ -1545,3 +1540,60 @@ lot komt uit welke rijen". Een klant die belt over een specifieke fles kan
 dat nu niet vanuit de app beantwoorden. Dit is een nieuwe weergave, geen
 reparatie van iets dat eerder werkte, en dus niet zelf gebouwd (zie
 AUDIT-MEDEWERKER.md, sectie 4, voor het volledige advies).
+
+# Fase 20 — EU-etiket/QR-output
+
+Aanleiding: `docs/marktverkenning.md` (vergelijking met Kelderbazen.nl en de
+bredere markt) noemde dit als hoogste-ROI quick win in "Fase 1" van de
+aanbevelingen — een compliance-feature die geen concurrent in de vergelijking
+aanbood.
+
+**Wat het is**: sinds Verordening (EU) 2021/2117 (wijzigt Vo. (EU)
+1308/2013 art. 119, van kracht 8 december 2023) mag de volledige
+voedingswaardetabel en de ingrediëntenlijst van wijn "off-label" getoond
+worden via een QR-code, zolang alleen de energiewaarde (kcal/kJ) fysiek op
+het etiket blijft staan. De QR-code zelf mag geen reclame bevatten, niet
+tracken, en moet in het verplichte gezichtsveld van het fysieke etiket
+staan met de woorden "ingrediënten"/"voedingswaarde" ernaast.
+
+**Wat is gebouwd**:
+
+- Twee nieuwe velden op de bestaande collectie `voedingswaarde_berekeningen`
+  (géén nieuwe collectie — dit is een uitbreiding van een al bestaande
+  berekening, geen nieuw concept): `ingredienten_tekst`, `allergenen`.
+  Toegevoegd via `ensureVelden()` (niet via de `ensureCollection()`-definitie
+  zelf — die collectie bestaat al live, en `ensureCollection()` corrigeert
+  bestaande collecties nooit, zie de eerdere gevallen van dit patroon
+  hierboven in dit document). Schema-drift-check bevestigde 0 verschillen
+  na toepassen.
+- Formulier op `/kelder/partijen/$partijId` uitgebreid met een
+  Ingrediënten-veld (textarea) en een Allergenen-veld, meegenomen in de
+  bestaande voedingswaarde-berekeningsmutatie.
+- Bij elk berekeningsresultaat: een QR-code (via het al aanwezige `qrcode`-
+  pakket, hetzelfde patroon als de tank-QR's op `/kelder/qr`) die naar
+  `/etiket/$berekeningId` wijst. Ontbreken ingrediënten of allergenen, dan
+  toont het blok een waarschuwing in plaats van een QR — een onvolledig
+  e-etiket mag niet scanbaar gemaakt worden.
+- Nieuwe publieke, chrome-loze pagina `src/routes/etiket.$berekeningId.tsx`:
+  toont naam/jaargang/lotnummer, de volledige voedingswaardetabel en
+  (indien aanwezig) ingrediënten/allergenen, met een sluitende
+  disclaimer-tekst dat alcoholpercentage/oorsprong/overige verplichte
+  gegevens op het fysieke etiket staan. Koolhydraten/suikers worden hier
+  herberekend uit de opgeslagen ruwe g/L-invoer via dezelfde geteste
+  `berekenVoedingswaarde()`-functie als het fysieke etiket — geen los
+  schemaveld, geen risico op drift tussen twee implementaties van dezelfde
+  som (geverifieerd: beide kanten geven exact 1,0 g / 0,2 g voor dezelfde
+  testinvoer).
+- `__root.tsx`: pad-uitzondering (`pathname.startsWith("/etiket")`) die op
+  deze ene route geen app-chrome rendert (geen bottom-nav, installatie-
+  banner, onboarding, sync-indicator) — de verordening eist een zuiver
+  informatieve pagina, geen navigatie naar een besloten bedrijfsapp. Beide
+  bestaande `useEffect`-hooks in `RootComponent` blijven onvoorwaardelijk
+  lopen (Rules of Hooks); alleen de JSX-return is conditioneel.
+
+**Getest**: 219 unit tests groen, 6 Playwright-rooktests groen (belangrijk
+omdat `__root.tsx`, dat elke route raakt, is aangepast). Handmatig een
+volledige testberekening ingevoerd en bevestigd via serverquery + browser
+(tekst-extractie én screenshot) dat `/etiket/$id` chrome-loos rendert met
+correcte, met de in-app-weergave overeenstemmende waarden. Testrecord na
+verificatie verwijderd uit de live database.

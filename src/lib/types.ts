@@ -378,6 +378,10 @@ export interface VoedingswaardeBerekening {
   kcal_totaal?: number | null;
   kj_totaal?: number | null;
   etiket_tekst?: string;
+  /** Fase 20 — mag off-label via QR-code (Vo. (EU) 2021/2117, art. 119). */
+  ingredienten_tekst?: string;
+  /** Fase 20 — bijv. "Bevat sulfieten"; hoort in de praktijk ook fysiek op het etiket. */
+  allergenen?: string;
   ingevoerd_door?: string;
   created: string;
 }

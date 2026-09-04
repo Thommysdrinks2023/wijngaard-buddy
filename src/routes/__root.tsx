@@ -4,6 +4,7 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Scripts,
+  useLocation,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -95,8 +96,20 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { pathname } = useLocation();
+  // Fase 20 — het publieke e-label (/etiket/$id, gescand via een QR-code op
+  // een fysiek wijnetiket) mag geen app-chrome tonen: geen bottom-nav (dat
+  // is navigatie naar een besloten bedrijfsapp), geen installatiebanner
+  // (reclame), geen onboarding-modal, geen sync-indicator. De verordening
+  // eist expliciet dat deze pagina puur informatief is — zie
+  // src/routes/etiket.$berekeningId.tsx.
+  const kaal = pathname.startsWith("/etiket");
 
-  // "Ongedaan maken" en prullenbak-herstel verversen alle queries
+  // "Ongedaan maken" en prullenbak-herstel verversen alle queries. Hooks
+  // moeten onvoorwaardelijk lopen (Rules of Hooks) — de kale-paginacheck zit
+  // daarom pas in de JSX hieronder, niet in een vroege return. Op de kale
+  // e-labelpagina is dit alles onschadelijk maar overbodig werk; dat is
+  // acceptabel voor een publieke pagina die toch al minimaal is.
   useEffect(() => {
     const ververs = () => queryClient.invalidateQueries();
     window.addEventListener("wg.data.changed", ververs);
@@ -119,6 +132,15 @@ function RootComponent() {
       });
     }
   }, []);
+
+  if (kaal) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background pb-20">

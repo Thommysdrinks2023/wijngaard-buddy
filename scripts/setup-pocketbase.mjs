@@ -1556,6 +1556,12 @@ async function main() {
       { name: "kcal_totaal", type: "number" },
       { name: "kj_totaal", type: "number" },
       { name: "etiket_tekst", type: "text" },
+      // Fase 20 — EU-etiket/QR: ingrediënten en allergenen mogen off-label via
+      // QR-code (Vo. (EU) 2021/2117, van kracht 8 dec. 2023); alleen de
+      // energiewaarde moet altijd fysiek op het etiket. Zie
+      // WERKLOG.md Fase 20 voor de volledige regelgevingsonderbouwing.
+      { name: "ingredienten_tekst", type: "text" },
+      { name: "allergenen", type: "text" },
       { name: "ingevoerd_door", type: "text" },
       ...autodateFields(),
     ],
@@ -1565,6 +1571,14 @@ async function main() {
     updateRule: AUTH_RULE,
     deleteRule: AUTH_RULE,
   });
+  // Fase 20 — bovenstaande velden toegevoegd aan een collectie die al leefde
+  // in productie; ensureCollection() is create-only, dus zonder deze
+  // ensureVelden()-aanroep landen ze nooit op de draaiende database (zelfde
+  // architecturale gat als eerder drie keer gevonden, zie CLAUDE.md).
+  await ensureVelden("voedingswaarde_berekeningen", [
+    { name: "ingredienten_tekst", type: "text" },
+    { name: "allergenen", type: "text" },
+  ]);
 
   // 3a-9. Fase 4 — Botteling & Voorraad. Zie DECISIONS-FASE4.md voor de
   // afwijkingen t.o.v. de letterlijke opdracht (Nederlandse veldnamen,

@@ -512,6 +512,8 @@ function voedingswaardeFromPb(r: RecordModel): VoedingswaardeBerekening {
     kcal_totaal: r["kcal_totaal"] ?? null,
     kj_totaal: r["kj_totaal"] ?? null,
     etiket_tekst: r["etiket_tekst"] ?? "",
+    ingredienten_tekst: r["ingredienten_tekst"] ?? "",
+    allergenen: r["allergenen"] ?? "",
     ingevoerd_door: r["ingevoerd_door"] ?? "",
     created: r["created"],
   };
@@ -529,6 +531,21 @@ export async function fetchVoedingswaardeBerekeningen(
   });
 }
 
+// Fase 20 — voor het publieke e-labelscherm (/etiket/$berekeningId): één
+// berekening rechtstreeks op id opzoeken, geen partijId nodig/bekend.
+export async function fetchVoedingswaardeBerekeningById(
+  id: string,
+): Promise<VoedingswaardeBerekening | null> {
+  const pb = getPb();
+  if (!pb) return null;
+  if (!(await ensureOnline())) throw new Error("Geen verbinding met de server.");
+  try {
+    return voedingswaardeFromPb(await pb.collection("voedingswaarde_berekeningen").getOne(id));
+  } catch {
+    return null;
+  }
+}
+
 export interface VoedingswaardeInput {
   partij: string;
   berekening_datum: string;
@@ -539,6 +556,8 @@ export interface VoedingswaardeInput {
   kcal_totaal?: number | null;
   kj_totaal?: number | null;
   etiket_tekst?: string;
+  ingredienten_tekst?: string;
+  allergenen?: string;
   ingevoerd_door?: string;
 }
 

@@ -54,6 +54,7 @@ import { Route as InstellingenSluitingenRouteImport } from './routes/instellinge
 import { Route as InstellingenRekenmodelValidatiesRouteImport } from './routes/instellingen_.rekenmodel-validaties'
 import { Route as InstellingenFlestypesRouteImport } from './routes/instellingen_.flestypes'
 import { Route as InstellingenEigenaarsRouteImport } from './routes/instellingen_.eigenaars'
+import { Route as EtiketBerekeningIdRouteImport } from './routes/etiket.$berekeningId'
 import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
 import { Route as KelderTanksIndexRouteImport } from './routes/kelder.tanks.index'
 import { Route as KelderPartijenIndexRouteImport } from './routes/kelder.partijen.index'
@@ -298,6 +299,11 @@ const InstellingenEigenaarsRoute = InstellingenEigenaarsRouteImport.update({
   path: '/instellingen/eigenaars',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EtiketBerekeningIdRoute = EtiketBerekeningIdRouteImport.update({
+  id: '/etiket/$berekeningId',
+  path: '/etiket/$berekeningId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -415,6 +421,7 @@ export interface FileRoutesByFullPath {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/etiket/$berekeningId': typeof EtiketBerekeningIdRoute
   '/instellingen/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen/flestypes': typeof InstellingenFlestypesRoute
   '/instellingen/rekenmodel-validaties': typeof InstellingenRekenmodelValidatiesRoute
@@ -476,6 +483,7 @@ export interface FileRoutesByTo {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/etiket/$berekeningId': typeof EtiketBerekeningIdRoute
   '/instellingen/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen/flestypes': typeof InstellingenFlestypesRoute
   '/instellingen/rekenmodel-validaties': typeof InstellingenRekenmodelValidatiesRoute
@@ -540,6 +548,7 @@ export interface FileRoutesById {
   '/werkrapport': typeof WerkrapportRoute
   '/wijngaard': typeof WijngaardRoute
   '/zoeken': typeof ZoekenRoute
+  '/etiket/$berekeningId': typeof EtiketBerekeningIdRoute
   '/instellingen_/eigenaars': typeof InstellingenEigenaarsRoute
   '/instellingen_/flestypes': typeof InstellingenFlestypesRoute
   '/instellingen_/rekenmodel-validaties': typeof InstellingenRekenmodelValidatiesRoute
@@ -606,6 +615,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/etiket/$berekeningId'
     | '/instellingen/eigenaars'
     | '/instellingen/flestypes'
     | '/instellingen/rekenmodel-validaties'
@@ -667,6 +677,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/etiket/$berekeningId'
     | '/instellingen/eigenaars'
     | '/instellingen/flestypes'
     | '/instellingen/rekenmodel-validaties'
@@ -730,6 +741,7 @@ export interface FileRouteTypes {
     | '/werkrapport'
     | '/wijngaard'
     | '/zoeken'
+    | '/etiket/$berekeningId'
     | '/instellingen_/eigenaars'
     | '/instellingen_/flestypes'
     | '/instellingen_/rekenmodel-validaties'
@@ -795,6 +807,7 @@ export interface RootRouteChildren {
   WerkrapportRoute: typeof WerkrapportRoute
   WijngaardRoute: typeof WijngaardRoute
   ZoekenRoute: typeof ZoekenRoute
+  EtiketBerekeningIdRoute: typeof EtiketBerekeningIdRoute
   InstellingenEigenaarsRoute: typeof InstellingenEigenaarsRoute
   InstellingenFlestypesRoute: typeof InstellingenFlestypesRoute
   InstellingenRekenmodelValidatiesRoute: typeof InstellingenRekenmodelValidatiesRoute
@@ -1125,6 +1138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InstellingenEigenaarsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/etiket/$berekeningId': {
+      id: '/etiket/$berekeningId'
+      path: '/etiket/$berekeningId'
+      fullPath: '/etiket/$berekeningId'
+      preLoaderRoute: typeof EtiketBerekeningIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rij/$rijId/': {
       id: '/rij/$rijId/'
       path: '/'
@@ -1363,6 +1383,7 @@ const rootRouteChildren: RootRouteChildren = {
   WerkrapportRoute: WerkrapportRoute,
   WijngaardRoute: WijngaardRoute,
   ZoekenRoute: ZoekenRoute,
+  EtiketBerekeningIdRoute: EtiketBerekeningIdRoute,
   InstellingenEigenaarsRoute: InstellingenEigenaarsRoute,
   InstellingenFlestypesRoute: InstellingenFlestypesRoute,
   InstellingenRekenmodelValidatiesRoute: InstellingenRekenmodelValidatiesRoute,

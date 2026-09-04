@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import QRCode from "qrcode";
 import { differenceInDays, format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
@@ -42,6 +43,7 @@ import {
   type KelderlogActie,
   type KelderlogEenheid,
   type PartijStatus,
+  type VoedingswaardeBerekening,
   eigenaarLabel,
   PASTEURISATIE_OORDELEN,
 } from "@/lib/types";
@@ -57,12 +59,14 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import {
+  AlertTriangle,
   ArrowLeftRight,
   Beaker,
   Copy,
   FlaskConical,
   Loader2,
   NotebookPen,
+  QrCode,
   Wine,
 } from "lucide-react";
 import {
@@ -472,6 +476,8 @@ function PartijDetailPage() {
   const [vRestsuiker, setVRestsuiker] = useState("");
   const [vZuur, setVZuur] = useState("");
   const [vGlycerine, setVGlycerine] = useState(String(GLYCERINE_DEFAULT_GRAM_LITER));
+  const [vIngredienten, setVIngredienten] = useState("");
+  const [vAllergenen, setVAllergenen] = useState("");
   const [vFouten, setVFouten] = useState<Record<string, string>>({});
 
   const vulInVanuitAnalyse = () => {
@@ -500,6 +506,8 @@ function PartijDetailPage() {
         kcal_totaal: resultaat.kcal_totaal,
         kj_totaal: resultaat.kj_totaal,
         etiket_tekst: resultaat.etiket_tekst,
+        ingredienten_tekst: vIngredienten.trim() || undefined,
+        allergenen: vAllergenen.trim() || undefined,
         ingevoerd_door: invoerder,
       });
     },
@@ -1476,6 +1484,32 @@ function PartijDetailPage() {
               />
             </label>
           </div>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">
+              Ingrediënten <span className="font-normal text-muted-foreground">(mag via QR)</span>
+            </span>
+            <textarea
+              value={vIngredienten}
+              onChange={(e) => setVIngredienten(e.target.value)}
+              rows={2}
+              className={veldClass.replace("h-12", "min-h-12 py-2")}
+              placeholder="bijv. Druiven, sulfiet (E220) als antioxidant"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">
+              Allergenen{" "}
+              <span className="font-normal text-muted-foreground">
+                (hoort ook fysiek op het etiket)
+              </span>
+            </span>
+            <input
+              value={vAllergenen}
+              onChange={(e) => setVAllergenen(e.target.value)}
+              className={veldClass}
+              placeholder="bijv. Bevat sulfieten"
+            />
+          </label>
           <button
             type="button"
             onClick={bewaarVoedingswaarde}
@@ -1505,6 +1539,21 @@ function PartijDetailPage() {
                     </button>
                   </div>
                   <pre className="whitespace-pre-wrap font-sans text-sm">{v.etiket_tekst}</pre>
+                  {(v.ingredienten_tekst || v.allergenen) && (
+                    <div className="mt-2 space-y-1 border-t border-border pt-2 text-xs">
+                      {v.ingredienten_tekst && (
+                        <p>
+                          <span className="font-medium">Ingrediënten:</span> {v.ingredienten_tekst}
+                        </p>
+                      )}
+                      {v.allergenen && (
+                        <p>
+                          <span className="font-medium">Allergenen:</span> {v.allergenen}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <EtiketQrBlok berekening={v} />
                 </div>
               ))}
             </div>
@@ -1512,6 +1561,55 @@ function PartijDetailPage() {
         </section>
       </div>
     </>
+  );
+}
+
+// Fase 20 — QR naar het publieke e-labelscherm (/etiket/$id). Genereert
+// client-side een data-URL, zelfde patroon als kelder.qr.tsx voor tanks.
+// Alleen ingrediënten en voedingswaarde mogen off-label — de energiewaarde
+// staat al op het gekopieerde etiket_tekst hierboven; ontbreken
+// ingrediënten/allergenen, dan waarschuwt dit blok in plaats van een QR te
+// tonen die naar een half leeg etiket wijst.
+function EtiketQrBlok({ berekening }: { berekening: VoedingswaardeBerekening }) {
+  const [qr, setQr] = useState<string | null>(null);
+  const compleet = Boolean(berekening.ingredienten_tekst?.trim() && berekening.allergenen?.trim());
+
+  useEffect(() => {
+    if (!compleet || typeof window === "undefined") return;
+    let actueel = true;
+    const url = `${window.location.origin}/etiket/${berekening.id}`;
+    void QRCode.toDataURL(url, { width: 180, margin: 1 }).then((data) => {
+      if (actueel) setQr(data);
+    });
+    return () => {
+      actueel = false;
+    };
+  }, [berekening.id, compleet]);
+
+  if (!compleet) {
+    return (
+      <p className="mt-2 flex items-start gap-1.5 border-t border-border pt-2 text-xs text-warning">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        Vul ingrediënten én allergenen in voor een QR-code — anders wijst hij naar een onvolledig
+        e-label.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-3 border-t border-border pt-2">
+      {qr ? (
+        <img src={qr} alt="QR-code e-label" className="h-16 w-16 shrink-0" />
+      ) : (
+        <div className="h-16 w-16 shrink-0 animate-pulse rounded bg-muted" />
+      )}
+      <p className="text-xs text-muted-foreground">
+        <QrCode className="mb-0.5 mr-1 inline h-3.5 w-3.5" />
+        Zet deze QR-code op het etiket, in het gezichtsveld, met de woorden{" "}
+        <strong>&quot;ingrediënten&quot;</strong> en <strong>&quot;voedingswaarde&quot;</strong>{" "}
+        erbij.
+      </p>
+    </div>
   );
 }
 
