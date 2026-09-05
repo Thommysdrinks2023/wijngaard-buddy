@@ -1,15 +1,18 @@
-# Fase 20 — Wat-als-simulatielaag: architectuurontwerp
+# Fase 21 — Wat-als-simulatielaag: architectuurontwerp
 
-Status: **ontwerp, niets gebouwd.** Dit document is Fase 1 van de opdracht:
-nulmeting, weerwoord, en — afhankelijk van de uitkomst daarvan — een
-architectuurvoorstel. Geen code, geen schemawijzigingen.
+Status: **akkoord van Thomas op alle vier vragen, zie onderaan.** Dit
+document is Fase 1 van de opdracht: nulmeting, weerwoord, en een
+architectuurvoorstel. Geen code, geen schemawijzigingen — die volgen pas in
+de aparte bouwsessie voor het pasteurisatie-domein (zie
+`ONTWERP-SIMULATIE-2-PASTEURISATIE-PAD.md`).
 
-> Let op voor de lezer: dit document heet "Fase 20" omdat dat het
-> eerstvolgende vrije fasenummer is in `WERKLOG.md`. Er is inmiddels ook al
-> een ánder, al gebouwd stuk werk "Fase 20 — EU-etiket/QR-output" in dit
-> project (zie `WERKLOG.md`). Twee dingen kunnen niet allebei Fase 20 heten;
-> dit wordt hieronder in de VRAGEN VOOR THOMAS-sectie expliciet gemaakt in
-> plaats van stilzwijgend een nummer te kiezen.
+> Naamgeving: dit document heette bij het schrijven nog "Fase 20", het
+> eerstvolgende vrije nummer volgens deze sessie — maar dat nummer bleek
+> inmiddels al gebruikt voor het EU-etiket/QR-werk. Thomas heeft "Fase 21"
+> als het juiste nummer bevestigd, en gaf aan dat toekomstige documenten dit
+> zelf horen te controleren tegen `WERKLOG.md` in plaats van te gokken —
+> vandaar dat een volgende sessie het eerstvolgende vrije nummer zelf moet
+> vaststellen, niet aannemen.
 
 ---
 
@@ -469,27 +472,47 @@ van de eerste bouwstap.
 
 ---
 
-## VRAGEN VOOR THOMAS
+## Besluit van Thomas (5 september 2026)
 
-1. **Naamgeving/fasenummer**: dit ontwerp gebruikt "Fase 20" zoals de
-   opdracht aangeeft, maar dat nummer is al gebruikt voor het EU-etiket/QR-
-   werk dat deze week is afgerond (zie `WERKLOG.md`). Welk fasenummer wil je
-   voor de simulatielaag — het eerstvolgende vrije (21), of iets anders?
-2. Klopt het beeld dat "wat als deze partij bij 16°C i.p.v. 18°C doorgist"
-   en "wat als ik vijf dagen wacht met plukken" nu nog **niet** te
-   beantwoorden zijn met wélke architectuur dan ook, omdat de onderliggende
-   temperatuur- en rijpheidsmodellen nog niet bestaan? Zo ja: wil je dat als
-   apart, klein vervolgwerk laten inplannen (los van deze simulatiefase), of
-   blijft "wat als" voorlopig beperkt tot pasteurisatie, waar het al kan?
-3. Ben je het eens met het uitsluiten van kettingsimulaties (samengestelde
-   wat-als-vragen) in de eerste versie? Dit is een bewuste beperking van de
-   functionaliteit, geen technische noodzaak — als je dit toch vanaf het
-   begin wilt, verandert dat het ontwerp in 1c.
-4. Akkoord met de lichte aanpak (gedeeld contract + twee UI-componenten) in
-   plaats van een volwaardige, generieke simulatiemotor? Dit is de kern van
-   het weerwoord in 1b — als je toch de zwaardere aanpak wilt (bijvoorbeeld
-   omdat je al weet dat gisting en GDD snel na pasteurisatie volgen), hoor ik
-   dat liever nu dan na de eerste bouwstap.
+Alle vier vragen beantwoord, akkoord op het volledige ontwerp:
 
-**Wacht op akkoord voordat `ONTWERP-SIMULATIE-2-PASTEURISATIE-PAD.md`
-geschreven wordt.**
+1. **Fasenummer: 21.** Thomas bevestigt expliciet dat fasenummers die hij
+   zelf in een opdracht noemt een gok zijn (zijn documenten hebben geen
+   zicht op wat er tussentijds gebouwd is) — een volgende sessie moet het
+   eerstvolgende vrije nummer zelf tegen `WERKLOG.md` controleren, niet
+   aannemen wat in de opdracht staat.
+2. **Bevestigd als de belangrijkste vondst van dit document.** Thomas geeft
+   aan zelf te makkelijk over dit gat heen gestapt te zijn bij het schrijven
+   van de opdracht — de voorbeeldvragen ("16°C i.p.v. 18°C", "vijf dagen
+   wachten met plukken") veronderstelden modellen die niet bestaan. Besluit:
+   **"wat als" blijft voorlopig beperkt tot pasteurisatie.** De twee
+   ontbrekende domeinmodellen (temperatuur→gistingssnelheid,
+   weer/GDD→rijpheid) worden **niet nu gebouwd**, met twee expliciete
+   redenen van Thomas: (a) het temperatuur-gistingsmodel heeft echte data
+   uit een gedraaid seizoen nodig — bouwen op aannames zou dezelfde fout
+   herhalen als het losgelaten ijkpunt bij het drukmodel (Fase 17); (b) het
+   rijpheidsmodel hoort bij dezelfde ontwerpbeurt als de weer/ziektemodule
+   uit het marktonderzoek (ze delen dezelfde weerdata) en moet niet los
+   daarvan worden voorgesorteerd. Beide worden als **toekomstig werk met
+   randvoorwaarden** vastgelegd in Fase 2 hieronder, niet stilzwijgend
+   losgelaten.
+3. **Akkoord, en Thomas maakt dit sterker dan een tijdelijke beperking**:
+   geen kettingsimulaties is een **ontwerpstandpunt**, niet een fase-1-
+   compromis. Onzekerheden stapelen sneller dan mensen aanvoelen, en een
+   gecombineerd antwoord oogt net zo stellig als een enkelvoudig antwoord —
+   exact de schijnprecisie die niet onder een beslissing over springend
+   glas of een plukmoment mag liggen. Mocht dit ooit terugkomen, dan alleen
+   met zichtbaar bredere bandbreedtes, nooit als los toegevoegde nuance.
+4. **Akkoord met de lichte aanpak** (gedeeld contract + twee
+   UI-componenten, geen generieke motor) — mede omdat vraag 2 al vaststelt
+   dat er voorlopig maar één domein is om hem op te gebruiken; een
+   generieke motor bouwen voor één gebruiker en één werkend domein zou
+   precies de overengineering zijn waar het weerwoord tegen waarschuwt.
+
+**Twee expliciete opdrachten van Thomas voor Fase 2**: (1) leg het
+ontbrekende temperatuur-gistingsmodel en het rijpheidsmodel vast als
+toekomstig werk met randvoorwaarden (welke data eerst nodig is), zodat ze
+niet uit beeld raken; (2) herhaal de openstaande drukvalidatie-waarschuwing
+uit Fase 17 nadrukkelijk — dat blijft de zwakke plek in het enige domein dat
+nu wél gebouwd wordt. Beide zijn verwerkt in
+`ONTWERP-SIMULATIE-2-PASTEURISATIE-PAD.md`.
