@@ -1597,3 +1597,166 @@ volledige testberekening ingevoerd en bevestigd via serverquery + browser
 (tekst-extractie én screenshot) dat `/etiket/$id` chrome-loos rendert met
 correcte, met de in-app-weergave overeenstemmende waarden. Testrecord na
 verificatie verwijderd uit de live database.
+
+# Audit 5 september 2026 — authenticatie en rollen: uitzoekwerk, geen herontwerp
+
+Aanleiding: Fase 16 bouwde een rollenmodel (beheerder/medewerker/alleen_lezen)
+met server-side afgedwongen rechten. Fase 17/19 constateerden losse
+gevolgschade (tekstvelden i.p.v. `users`-relaties, een kapotte jaarafsluiting)
+zonder de staat van het rollenmodel zelf systematisch vast te stellen. Deze
+sessie doet dat: reconstructie van wat er gebeurd is, live vaststellen wat er
+nog werkt, de rest van het dode-`authStore`-patroon opsporen en repareren, en
+een besluit voorleggen aan Thomas — niet zelf nemen.
+
+Vooraf: `pb_data`-backup afgedwongen (`wijngaard_backup_20260905_203942.zip`,
+bevestigd via `backup-log.txt`).
+
+## Stap 1 — reconstructie: bewuste beslissing, niet een ongeluk
+
+Git-geschiedenis rond 22 augustus is eenduidig. Drie momenten, steeds
+symmetrisch uitgevoerd:
+
+- **26 juli 2026** (`28435a9` e.a.): inloggen volledig verwijderd, besluit
+  Thomas — geen accounts nodig zolang PocketBase alleen op `127.0.0.1`
+  luistert.
+- **21 augustus 2026** (`26526b3`): hersteld, mét jaarsessieduur, vooruitlopend
+  op de Pi-migratie — bewust vóór de migratie geregeld i.p.v. op de dag zelf.
+- **22/23 augustus 2026** (`6010a8e`, commitdatum 23 augustus): **weer
+  verwijderd**. Uit de commitboodschap: Thomas sloot zichzelf buiten op de dag
+  dat hij de app wilde gebruiken. Letterlijk citaat, al opgenomen in
+  `CLAUDE.md`: _"Weet ik, maar daar houden we dan wel rekening mee. Haal dat
+  inlog scherm er maar gewoon af."_ De commit vermeldt expliciet dat eerst een
+  snellere fix is overwogen (bestaande accounts gebruiken) en de consequentie
+  is herhaald vóór uitvoering — dit is geen impulsieve of stilzwijgende
+  wijziging geweest.
+
+Conclusie stap 1: **bewuste, herhaalde, goed gedocumenteerde beslissing**, geen
+onbedoeld neveneffect van iets anders. Er is dus niets "te herstellen" aan de
+beslissing zelf — wel aan de code die is blijven uitgaan van de oude situatie
+(zie stap 3).
+
+## Stap 2 — huidige staat, live getest (geen aannames)
+
+**Server-side rollenlaag (Fase 16)**: bestaat nog als code, maar is voor
+authenticatie-doeleinden een dode letter. `rolVan(auth)` in
+`kelder_logica.js:400-404` geeft bij afwezige auth (dus altijd, want er is
+geen login) `"beheerder"` terug — dit is een bewuste keuze uit de
+22-augustus-commit, niet een gemiste plek. Concreet, live getest:
+
+- `POST /api/tappenmars/tanks-herbereken` (beheerder-only actie,
+  `eisBeheerder()` in `kelder.pb.js:185`) — anoniem aangeroepen zonder enige
+  auth-header: **HTTP 200, `{"ok":true,"tanks_bijgewerkt":48}`**. De
+  herberekening draaide echt.
+- `GET /api/tappenmars/gebruikers` (het enige endpoint dat nog wél
+  `$apis.requireAuth()` als middleware heeft, naast `eisBeheerder()`) —
+  anoniem aangeroepen: **HTTP 401**, correct geweigerd.
+
+Antwoord op de kernvraag ("kan een willekeurige gebruiker nu alles wat een
+beheerder kan"): **ja, voor elke actie die alleen via `eisBeheerder()`/
+`eisSchrijfrecht()` is afgeschermd** (dat is elke kelder-, voorraad-, signalen-
+en tags-actie). **Nee, voor gebruikersbeheer** — dat blijft achter een echte
+`requireAuth()`, en is daardoor voor iedereen (inclusief Thomas, zonder
+inlogscherm) feitelijk onbereikbaar via de app, niet onveilig opengezet. Dat
+is exact wat `CLAUDE.md` claimt ("`gebruikers.pb.js` behoudt zijn
+`requireAuth()`"), nu bevestigd met een echte request in plaats van het
+lezen van code.
+
+Praktisch betekent dit: **er bestaat op dit moment geen enkel onderscheid
+tussen gebruikers.** Iedereen die de server kan bereiken (nu: alleen
+`127.0.0.1`/lokaal netwerk) is functioneel beheerder voor alle kelder-,
+voorraad-, verkoop- en materieelacties. Het rollenmodel uit Fase 16 is met
+andere woorden niet "kapot" in de zin van een bug — het is met opzet
+buitenspel gezet toen inloggen verdween, en niemand heeft dat sindsdien
+teruggedraaid.
+
+## Stap 3 — rest van het dode-authStore-patroon: gevonden en gerepareerd
+
+Uitputtende `grep` op `authStore` in `src/` (Fase 19 deed dit al voor
+`.isValid` en `authStore.record`/`.model` specifiek; deze sessie herhaalt het
+breed op alleen `authStore` om niets te missen). Drie treffers, alle drie al
+bekend uit Fase 19, geen nieuwe:
+
+1. **`kelder.jaaroverzicht.tsx` / `wijngaard-config.ts`** — `authStore.isValid`
+   — **al gerepareerd in Fase 19** (commit `b477b56`). Geverifieerd: deze
+   patronen komen niet meer voor in de huidige broncode.
+2. **`kelder.accijns.tsx:185-186`** — `eigenRol`/`isBeheerder` uit
+   `authStore.record?.rol`. Fase 19 vond dit al en beschreef het exacte
+   mechanisme (`authStore.record` wordt nooit gevuld, dus deze check is voor
+   IEDEREEN permanent `false`), maar liet de reparatie toen bewust liggen als
+   een rechten-beslissing voor Thomas. Stap 2 hierboven laat zien dat die
+   beslissing feitelijk al genomen is: de server behandelt iedereen al als
+   beheerder voor precies deze twee acties (tarievenbeheer, controle-pakket).
+   De UI-check beschermde dus niets meer — hij verborg alleen twee knoppen
+   voor iedereen, inclusief Thomas zelf, zonder dat een rolwissel dat ooit kon
+   herstellen (er is niemand die kan "inloggen als beheerder"). **Gerepareerd**:
+   de check verwijderd, dezelfde aanpak als bij de jaarafsluiting-fix
+   (Fase 19) — knoppen tonen nu voor iedereen, consistent met wat de server al
+   toestond. Zie ook Stap 4: dit specifieke geval verdient een expliciete
+   melding aan Thomas, ook al is de technische reparatie hetzelfde patroon.
+3. **`agent-data.ts:26-40`** (`huidigeGebruikerId()`/`huidigeNaam()`) — lezen
+   ook `authStore.record`, maar hebben allebei een veilige val-terug (lege
+   string, respectievelijk de lokaal ingestelde invoerder-naam of
+   `"onbekend"`) en schrijven naar gewone tekstvelden (`gebruiker`,
+   `gegeven_door` — geen verplichte velden, geen relaties naar `users`,
+   geverifieerd in `scripts/setup-pocketbase.mjs`). Dit is hetzelfde patroon
+   als de `isIngelogd()`-restanten die Fase 19 bewust liet liggen: dode code
+   met een onschadelijke, altijd-geldige terugvaloptie, geen actieve bug
+   (in tegenstelling tot een check die iets laat FALEN of iets ONBEDOELD laat
+   SLAGEN). **Niet aangepast** — zelfde afweging als Fase 19, nu expliciet
+   herbevestigd in plaats van stilzwijgend overgenomen.
+
+Geen andere `authStore`/`isValid`/rol-achtige treffers gevonden in `src/`,
+`pocketbase/pb_hooks/` of `e2e/` (los van een false positive: `bericht.rol`
+in `assistent.tsx` is de rol van een chatbericht — "user"/"assistant" — geen
+gebruikersrol).
+
+**Getest na de reparatie**: `npx tsc --noEmit` schoon, `eslint` schoon op het
+gewijzigde bestand, 219 unit tests groen, 6 Playwright-rooktests groen
+(productiebuild, telefoonformaat).
+
+## Stap 4 — besluit voor Thomas (niet zelf uitgevoerd)
+
+De vraag is niet meer "is er een bug", maar "wil je dat er weer onderscheid
+tussen gebruikers bestaat, en zo ja, hoe". Drie opties, met wat deze sessie
+concreet heeft vastgesteld:
+
+- **A. Alles blijft zoals nu (geen rollen, geen login).** Kost niets — is al
+  de feitelijke staat, nu ook consistent gemaakt in de UI (stap 3, punt 2).
+  Nadeel: geen enkel onderscheid meer tussen wie tarieven mag wijzigen, een
+  correctieboeking mag doen, of het controle-pakket mag genereren — dat kan nu
+  letterlijk iedereen die het lokale netwerk bereikt. Zolang de server alleen
+  op `127.0.0.1` luistert is dat te overzien (zelfde grens die `CLAUDE.md` al
+  trekt voor de rest van de app); **wordt onhoudbaar zodra de Pi/
+  `pb.tappenmars.nl` live gaat**, want dan is dit niet meer "Thomas op zijn
+  eigen laptop" maar "iedereen op het lokale wifi-netwerk in de schuur, of
+  potentieel het internet".
+- **B. Login volledig terug**, inclusief het rollenmodel dat al in de code
+  bestaat (`rolVan`/`eisSchrijfrecht`/`eisBeheerder` zijn nooit verwijderd,
+  alleen buitenspel gezet — de vierde-keer-terugzet-stappen staan al
+  opgeschreven in `CLAUDE.md`). Voordeel: volledig terug naar het
+  Fase-16-ontwerp, geen half werk. Nadeel: exact het probleem van 22 augustus
+  kan zich herhalen — Thomas kan zichzelf opnieuw buitensluiten op een moment
+  dat hij de app nodig heeft, tenzij er een structurele oplossing komt voor
+  _dat_ probleem (bijv. een noodtoegang, een onthoud-dit-apparaat-voor-een-
+  jaar-sessie zoals 21 augustus al probeerde, of eenvoudigweg een PIN in
+  plaats van e-mail/wachtwoord).
+- **C. Iets ertussenin — alleen risicovolle acties beveiligen.** Bijvoorbeeld:
+  geen algemene login, maar wél een simpel gedeeld wachtwoord (geen account,
+  geen sessieverval-risico) vóór specifiek de acties die nu bewust
+  `eisBeheerder()` gebruiken (tarievenwijziging, correcties, gebruikersbeheer)
+  — zodat dagelijks gebruik (metingen, boekingen, kelderlog) nooit kan
+  vastlopen op een vergeten wachtwoord, maar de paar acties met echt gewicht
+  (geld, accijns, correcties op het onwijzigbare register) een drempel houden.
+  Vereist nieuw ontwerp (dit is precies het soort beslissing die niet zelf is
+  uitgevoerd) — geen bestaand patroon in de code om op terug te vallen.
+
+Deze sessie beveelt geen van de drie aan; dat is aan Thomas, niet aan mij om
+voor hem te kiezen.
+
+## Verificatie samenvatting
+
+`pb_data`-backup vooraf, live API-tests (200 op beheerder-only endpoint
+anoniem, 401 op gebruikersbeheer anoniem), 219 unit tests groen, 6
+Playwright-rooktests groen, `tsc`/`eslint` schoon. Eén bestand gewijzigd:
+`src/routes/kelder.accijns.tsx` (dode rol-check verwijderd). Geen
+schemawijziging, geen schema-drift-check nodig.

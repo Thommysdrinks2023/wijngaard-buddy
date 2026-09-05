@@ -181,9 +181,14 @@ function AccijnsPage() {
   const periodeLabel =
     soortPeriode === "maand" ? `${MAANDEN[maand - 1]} ${jaar}` : `Q${kwartaal} ${jaar}`;
 
-  // ---------- tarievenbeheer (alleen beheerder, UI + API-rule) ----------
-  const eigenRol = (getPb()?.authStore.record?.["rol"] as string) || "";
-  const isBeheerder = eigenRol === "beheerder";
+  // ---------- tarievenbeheer ----------
+  // Was ooit "alleen beheerder" (`eigenRol` uit `authStore.record.rol`), maar
+  // sinds het verwijderen van inloggen (22 augustus 2026, zie CLAUDE.md)
+  // wordt `authStore.record` nooit meer gevuld — deze check was daardoor voor
+  // IEDEREEN altijd false, terwijl de server (`rolVan()` in kelder_logica.js)
+  // een anonieme aanvrager al als beheerder behandelt. De check verborg dus
+  // alleen de knoppen, zonder iets serverside te beschermen. Verwijderd,
+  // zelfde aanpak als bij jaarafsluiting/configsync (Fase 19).
   const [bewerk, setBewerk] = useState<Record<string, { waarde: string; datum: string }>>({});
   // Fase 7 Blok E — dezelfde regels als de Excel-export, herbruikt voor het
   // controle-pakket (bundeling van alle registers over de periode).
@@ -329,17 +334,15 @@ function AccijnsPage() {
             >
               <Printer className="h-3.5 w-3.5" /> Print
             </button>
-            {isBeheerder && (
-              <button
-                type="button"
-                disabled={pakketM.isPending}
-                onClick={() => pakketM.mutate()}
-                className="flex h-11 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                <FolderArchive className="h-3.5 w-3.5" />
-                {pakketM.isPending ? "Bundelen…" : "Controle-pakket (ZIP)"}
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={pakketM.isPending}
+              onClick={() => pakketM.mutate()}
+              className="flex h-11 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              <FolderArchive className="h-3.5 w-3.5" />
+              {pakketM.isPending ? "Bundelen…" : "Controle-pakket (ZIP)"}
+            </button>
           </div>
         </section>
 
@@ -439,81 +442,75 @@ function AccijnsPage() {
           )}
         </section>
 
-        {/* Tarievenbeheer — alleen beheerder */}
-        {isBeheerder && (
-          <section className="space-y-2 rounded-2xl border border-border bg-card p-4 print:hidden">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Tarieven & drempels (beheerder)
-            </h2>
-            {(instellingenQ.data ?? [])
-              .filter(
-                (i) =>
-                  i.sleutel !== REGELGEVING_SLEUTELS.agentLimiet && i.sleutel !== "laatste_backup",
-              )
-              .map((i) => {
-                const b = bewerk[i.id] ?? {
-                  waarde: i.waarde != null ? String(i.waarde) : "",
-                  datum: i.laatst_gecontroleerd || format(new Date(), "yyyy-MM-dd"),
-                };
-                const geverifieerd = tariefGeverifieerd({
-                  waarde: i.waarde,
-                  laatst_gecontroleerd: i.laatst_gecontroleerd || null,
-                });
-                return (
-                  <div
-                    key={i.id}
-                    className="space-y-1 border-b border-border/60 pb-2 last:border-0"
-                  >
-                    <p className="text-sm font-medium">
-                      {i.sleutel}{" "}
-                      <span className="text-xs text-muted-foreground">({i.eenheid})</span>{" "}
-                      {geverifieerd ? "✅" : "⚠️ niet geverifieerd"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{i.bron}</p>
-                    <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        step="0.01"
-                        value={b.waarde}
-                        onChange={(e) =>
-                          setBewerk((s) => ({ ...s, [i.id]: { ...b, waarde: e.target.value } }))
-                        }
-                        className={veldClass}
-                        placeholder="waarde"
-                      />
-                      <input
-                        type="date"
-                        value={b.datum}
-                        onChange={(e) =>
-                          setBewerk((s) => ({ ...s, [i.id]: { ...b, datum: e.target.value } }))
-                        }
-                        className={veldClass}
-                        title="Laatst gecontroleerd bij de bron"
-                      />
-                      <button
-                        type="button"
-                        disabled={tariefM.isPending}
-                        onClick={() => {
-                          const waarde = Number(b.waarde);
-                          if (!waarde || waarde <= 0 || !b.datum)
-                            return void toast.error("Waarde én controle-datum zijn verplicht");
-                          tariefM.mutate({ id: i.id, waarde, datum: b.datum });
-                        }}
-                        className="h-10 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-                      >
-                        Opslaan
-                      </button>
-                    </div>
+        {/* Tarievenbeheer */}
+        <section className="space-y-2 rounded-2xl border border-border bg-card p-4 print:hidden">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Tarieven & drempels
+          </h2>
+          {(instellingenQ.data ?? [])
+            .filter(
+              (i) =>
+                i.sleutel !== REGELGEVING_SLEUTELS.agentLimiet && i.sleutel !== "laatste_backup",
+            )
+            .map((i) => {
+              const b = bewerk[i.id] ?? {
+                waarde: i.waarde != null ? String(i.waarde) : "",
+                datum: i.laatst_gecontroleerd || format(new Date(), "yyyy-MM-dd"),
+              };
+              const geverifieerd = tariefGeverifieerd({
+                waarde: i.waarde,
+                laatst_gecontroleerd: i.laatst_gecontroleerd || null,
+              });
+              return (
+                <div key={i.id} className="space-y-1 border-b border-border/60 pb-2 last:border-0">
+                  <p className="text-sm font-medium">
+                    {i.sleutel} <span className="text-xs text-muted-foreground">({i.eenheid})</span>{" "}
+                    {geverifieerd ? "✅" : "⚠️ niet geverifieerd"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{i.bron}</p>
+                  <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      value={b.waarde}
+                      onChange={(e) =>
+                        setBewerk((s) => ({ ...s, [i.id]: { ...b, waarde: e.target.value } }))
+                      }
+                      className={veldClass}
+                      placeholder="waarde"
+                    />
+                    <input
+                      type="date"
+                      value={b.datum}
+                      onChange={(e) =>
+                        setBewerk((s) => ({ ...s, [i.id]: { ...b, datum: e.target.value } }))
+                      }
+                      className={veldClass}
+                      title="Laatst gecontroleerd bij de bron"
+                    />
+                    <button
+                      type="button"
+                      disabled={tariefM.isPending}
+                      onClick={() => {
+                        const waarde = Number(b.waarde);
+                        if (!waarde || waarde <= 0 || !b.datum)
+                          return void toast.error("Waarde én controle-datum zijn verplicht");
+                        tariefM.mutate({ id: i.id, waarde, datum: b.datum });
+                      }}
+                      className="h-10 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      Opslaan
+                    </button>
                   </div>
-                );
-              })}
-            <p className="text-xs text-muted-foreground">
-              Vul waarden pas in ná verificatie bij de Douane; de controle-datum verschijnt bij elke
-              berekening.
-            </p>
-          </section>
-        )}
+                </div>
+              );
+            })}
+          <p className="text-xs text-muted-foreground">
+            Vul waarden pas in ná verificatie bij de Douane; de controle-datum verschijnt bij elke
+            berekening.
+          </p>
+        </section>
 
         <p className="text-xs text-muted-foreground">
           Dit overzicht is een hulpmiddel op basis van je eigen administratie (bottelrondes en
