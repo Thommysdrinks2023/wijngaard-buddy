@@ -1854,7 +1854,7 @@ gecontroleerd:
   simpelweg oversloeg. Nu een eerlijke weigering.
 - **PU-doel van nul of lager** leverde een tegenstrijdig scherm op: de
   kop zei "gehaald" terwijl "doel bereikt na" leeg bleef (de
-  drempeldetectie in kan bij een niet-positief doel nooit
+  drempeldetectie in `puOverCurve` kan bij een niet-positief doel nooit
   afgaan). Nu een eerlijke weigering.
 - **Gelijke begin- en houdtemperatuur** werd geweigerd, ook zonder
   opwarmfase — terwijl dat dan juist een geldig scenario is (de curve begint
