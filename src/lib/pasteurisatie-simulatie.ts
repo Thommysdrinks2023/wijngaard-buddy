@@ -82,13 +82,30 @@ export function simuleerRun(invoer: WatAlsRunInvoer): SimulatieResultaat<WatAlsR
     intervalSeconden = 20,
   } = invoer;
 
+  // Onzin-invoer afvangen. Dit is invoercontrole, geen fysisch model: een
+  // negatieve duur bestaat niet. Er wordt bewust GEEN bovengrens op de
+  // temperatuur gelegd — dat zou een nieuw, ongevalideerd haalbaarheidsmodel
+  // zijn (zie ONTWERP-SIMULATIE-2, risico 2); daarvoor dient de aannamelijst.
+  if (opwarmMinuten < 0 || houdMinuten < 0 || afkoelMinuten < 0) {
+    return simulatieOnvoldoendeData(
+      "Een fase kan geen negatieve duur hebben — controleer de ingevulde minuten.",
+    );
+  }
   const totaleDuurMinuten = opwarmMinuten + houdMinuten + afkoelMinuten;
   if (!(totaleDuurMinuten > 0)) {
     return simulatieOnvoldoendeData(
       "Vul minstens één fase-duur in (opwarmen, houden of afkoelen) — anders is er geen curve om door te rekenen.",
     );
   }
-  if (!(houdTemperatuurC > vanTemperatuurC)) {
+  if (!(doelPu > 0)) {
+    return simulatieOnvoldoendeData(
+      "Het PU-doel moet groter dan nul zijn om te kunnen bepalen of het gehaald wordt.",
+    );
+  }
+  // Alleen relevant als er daadwerkelijk een opwarmfase is: bij opwarmen = 0
+  // begint de curve meteen op de houdtemperatuur en doet de begintemperatuur
+  // niet mee.
+  if (opwarmMinuten > 0 && !(houdTemperatuurC > vanTemperatuurC)) {
     return simulatieOnvoldoendeData(
       "De doeltemperatuur moet hoger zijn dan de begintemperatuur — anders wordt er niet opgewarmd.",
     );

@@ -150,4 +150,27 @@ describe("simuleerRun — weigert eerlijk in plaats van te gokken", () => {
     expect(r.status).toBe("onvoldoende_data");
     expect(r.reden).toContain("hoger");
   });
+
+  it("staat wél gelijke begin- en houdtemperatuur toe als er niet opgewarmd wordt", () => {
+    // Zonder opwarmfase begint de curve meteen op de houdtemperatuur; de
+    // begintemperatuur doet dan niet mee en mag dus gelijk zijn.
+    const r = simuleerRun({
+      ...basis,
+      opwarmMinuten: 0,
+      vanTemperatuurC: 65,
+      houdTemperatuurC: 65,
+    });
+    expect(r.status).toBe("ok");
+  });
+
+  it("weigert een negatieve fase-duur", () => {
+    const r = simuleerRun({ ...basis, opwarmMinuten: -5 });
+    expect(r.status).toBe("onvoldoende_data");
+    expect(r.reden).toContain("negatieve");
+  });
+
+  it("weigert een PU-doel van nul of lager (anders is 'gehaald' betekenisloos)", () => {
+    expect(simuleerRun({ ...basis, doelPu: 0 }).status).toBe("onvoldoende_data");
+    expect(simuleerRun({ ...basis, doelPu: -10 }).status).toBe("onvoldoende_data");
+  });
 });

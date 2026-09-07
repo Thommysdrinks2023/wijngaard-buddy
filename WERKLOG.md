@@ -1844,6 +1844,29 @@ altijd niet tegen een echte gemeten flesdruk geijkt.**
   maar is de druk dan ruim onveilig (7,03 bar). Precies de afweging die je
   vóóraf wilt zien in plaats van tijdens de run.
 
+## Randgevallen na een eigen review-ronde
+
+Na de eerste werkende versie zelf nagelopen op onzin-invoer. Drie gaten
+gevonden en gedicht, alle drie met een test en live in de productiebuild
+gecontroleerd:
+
+- **Negatieve fase-duur** gaf stilzwijgend een curve waarin de opwarmfase
+  simpelweg oversloeg. Nu een eerlijke weigering.
+- **PU-doel van nul of lager** leverde een tegenstrijdig scherm op: de
+  kop zei "gehaald" terwijl "doel bereikt na" leeg bleef (de
+  drempeldetectie in kan bij een niet-positief doel nooit
+  afgaan). Nu een eerlijke weigering.
+- **Gelijke begin- en houdtemperatuur** werd geweigerd, ook zonder
+  opwarmfase — terwijl dat dan juist een geldig scenario is (de curve begint
+  meteen op de houdtemperatuur). Die controle geldt nu alleen nog als er
+  daadwerkelijk opgewarmd wordt.
+
+Bewust GEEN bovengrens op de temperatuur ingebouwd. Een negatieve duur
+bestaat niet — dat is invoercontrole. Maar "is 80 °C haalbaar met jouw
+apparatuur" is een fysische vraag, en daar een grens voor verzinnen zou
+precies het ongevalideerde haalbaarheidsmodel zijn waar het ontwerp voor
+waarschuwt. Dat blijft een zichtbare aanname bij elke uitkomst.
+
 ## Bewust NIET gedaan
 
 - Geen wat-als op gisting of rijping — die domeinmodellen bestaan niet, en een
