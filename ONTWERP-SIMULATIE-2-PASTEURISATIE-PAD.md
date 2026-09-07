@@ -1,6 +1,24 @@
 # Fase 21 — Wat-als-simulatielaag: implementatiepad pasteurisatie
 
-Status: **schets voor overdracht, geen code.** Vervolg op
+Status: **UITGEVOERD op 7 september 2026** — zie `WERKLOG.md`, "Fase 21 —
+Wat-als-simulatielaag, bouwstap 1: pasteurisatie". Dit document was de
+overdracht naar die bouwsessie en blijft staan als verantwoording van de
+gemaakte keuzes; het is geen openstaand werk meer.
+
+Twee afwijkingen van dit plan zijn tijdens het bouwen bewust gemaakt en in
+`WERKLOG.md` toegelicht: (1) het seed-script importeert `synthetiseerCurve()`
+NIET uit `src/lib/` — `scripts/*.mjs` draait als kale Node zonder
+TS-transpiler, en er een toevoegen voor een testdata-script is precies de
+overengineering waar Fase 1 voor waarschuwt; (2) de houdtemperatuur kreeg
+geen eigen invoerveld maar hergebruikt het bestaande doeltemperatuur-veld,
+om risico 3 hieronder (twee temperaturen op één scherm) bij de wortel aan te
+pakken in plaats van er alleen voor te waarschuwen.
+
+**De sectie "Toekomstig werk" onderaan is wél nog openstaand** en is de
+reden dat dit document niet gearchiveerd moet worden: daar staan de
+randvoorwaarden voor de twee ontbrekende domeinmodellen.
+
+Oorspronkelijke status: schets voor overdracht, geen code. Vervolg op
 `ONTWERP-SIMULATIE-1-ARCHITECTUUR.md` (akkoord van Thomas, 5 september
 2026). Dit document is geen volledig stappenplan — dat komt in de aparte
 bouwsessie — maar een korte, scherpe overdracht zodat die sessie niet de
