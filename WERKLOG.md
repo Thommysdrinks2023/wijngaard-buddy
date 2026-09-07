@@ -1760,3 +1760,101 @@ anoniem, 401 op gebruikersbeheer anoniem), 219 unit tests groen, 6
 Playwright-rooktests groen, `tsc`/`eslint` schoon. Eén bestand gewijzigd:
 `src/routes/kelder.accijns.tsx` (dode rol-check verwijderd). Geen
 schemawijziging, geen schema-drift-check nodig.
+
+# Fase 21 — Wat-als-simulatielaag, bouwstap 1: pasteurisatie
+
+Uitvoering van `ONTWERP-SIMULATIE-2-PASTEURISATIE-PAD.md` (akkoord Thomas,
+5 september 2026). Scope bewust beperkt tot het pasteurisatiedomein: dat is
+het enige domein met een bestaand forward-simulatiemodel (zie de nulmeting in
+`ONTWERP-SIMULATIE-1-ARCHITECTUUR.md`).
+
+Vooraf: `pb_data`-backup afgedwongen (`wijngaard_backup_20260907_215314.zip`).
+Deze fase raakt het schema niet — geen collectie, geen veld, geen endpoint
+gewijzigd; alles is client-side rekenwerk. Schema-drift na afloop: 0.
+
+## Wat er gebouwd is
+
+- **`synthetiseerCurve()`** in `src/lib/pasteurisatie.ts` — bouwt een
+  hypothetische opwarm/houd/afkoel-curve als `TemperatuurMeting[]`, zodat de
+  bestaande `puOverCurve()` er precies zo overheen kan als over echte
+  sensordata. Bewust deterministisch (géén ruis, in tegenstelling tot de
+  gelijkvormige testdata-generator in `seed-pasteurisatie.mjs`): een simulatie
+  waarvan de uitkomst per aanroep verschilt is niet navolgbaar.
+- **`src/lib/simulatie.ts`** — het gedeelde contract uit het ontwerp:
+  `SimulatieResultaat<T>` met status (`ok` / `onvoldoende_data` /
+  `model_ontbreekt`), optionele bandbreedte, aannames en een
+  `gevalideerd`-vlag, plus drie constructors. Geen rekenwerk, geen motor.
+- **`src/lib/pasteurisatie-simulatie.ts`** — `simuleerRun()`, die de
+  bestaande rekenkernen (`puOverCurve`, `verwachteDruk`,
+  `veiligheidsoordeel`) combineert tot één antwoord. Aparte pure module en
+  géén code in de route, zodat dit testbaar is zonder een scherm te renderen.
+- **`src/components/wat-als.tsx`** — `WatAlsBadge`, `SimulatieAannames` en
+  `OnvoldoendeDataMelding`.
+- **Nieuw paneel op `/pasteurisatie/plannen`**, achter één knop ("Simuleer
+  volledige curve"). Wie de knop niet indrukt merkt niets: geen bestaand veld,
+  geen bestaande berekening en geen bestaande lay-out is gewijzigd.
+
+## Ontwerpbeslissingen die tijdens het bouwen zijn gemaakt
+
+- **Afwijking van het ontwerpdocument**: dat stelde voor het seed-script
+  `synthetiseerCurve()` te laten importeren uit `src/lib/` om dubbele wiskunde
+  op te ruimen. Dat blijkt **niet haalbaar**: `scripts/*.mjs` draait als kale
+  Node zonder TS-transpiler, en geen enkel script importeert vandaag uit
+  `src/`. Een `tsx`/`ts-node`-afhankelijkheid toevoegen voor een
+  testdata-script is precies de overengineering waar Fase 1 voor waarschuwt.
+  De seed-generator (mét ruis en meetgaten, allebei testdata-specifiek) blijft
+  daarom zoals hij is; de lib-versie is de kanonieke voor de app.
+- **De houdtemperatuur is expres géén eigen veld** maar hergebruikt het
+  bestaande doeltemperatuur-veld. Twee losstaande temperaturen op één scherm
+  is precies hoe je een verkeerde conclusie trekt over welke temperatuur nu
+  "veilig" was (risico 3 uit het ontwerpdocument).
+- **Het drukoordeel wordt op de piektemperatuur gegeven**, niet op een
+  gemiddelde over de curve — het ongunstigste moment, in lijn met de
+  conservatieve keuze die het hele drukmodel al maakt. Vastgelegd in een test.
+- **De bandbreedte is geen verzonnen marge**: het is het al bestaande verschil
+  tussen het gekoppelde massabalansmodel en de conservatieve bovengrens.
+
+## De niet-gevalideerd-waarschuwing (risico 1 uit het ontwerp)
+
+Uitgevoerd zoals afgesproken: de `WatAlsBadge` toont bij elke doorrekening
+mét drukberekening de bestaande `DRUKVEILIGHEID_NIET_GEVALIDEERD`-tekst
+onder het kopje "Let op, dubbel onzeker" — de simulatiemarkering komt
+er NAAST, nooit in plaats daarvan. `simuleerRun()` zet `gevalideerd`
+onvoorwaardelijk op `false`, met een test die dat vastlegt zodat een latere
+sessie het niet stilzwijgend op `true` kan zetten. **Het drukmodel is nog
+altijd niet tegen een echte gemeten flesdruk geijkt.**
+
+## Getest
+
+- 245 unit tests groen (26 nieuw: 9 voor `synthetiseerCurve`, 17 voor
+  `simuleerRun`), waaronder monotonie (hogere temperatuur → altijd meer PU),
+  determinisme, het randgeval "kopruimte opgebruikt", en de controle dat
+  `simuleerRun()` exact hetzelfde uitrekent als `puOverCurve()` zelf — geen
+  tweede implementatie van dezelfde som.
+- 7 Playwright-rooktests groen, inclusief een **nieuwe test 7** die de harde
+  ontwerpeis bewaakt: een wat-als-uitkomst is altijd als simulatie
+  gemarkeerd. Bewust zonder flestype/sluiting, zodat de test niet afhangt van
+  wat er toevallig in de database staat (zelfde les als bij test 6).
+- `tsc`/`eslint` schoon, productiebuild groen, schema-drift 0.
+- Handmatig in de productiebuild doorgerekend. Sprekend resultaat, en meteen
+  waar deze functie voor bedoeld is: bij een 250 ml fles met 225 ml vulling en
+  4,35 g/L CO2 haalt 48 °C bij lange na het PU-doel niet (0,5 PU), haalt
+  62 °C het ook niet (44,4 PU) én is de druk al onveilig (6,53 bar tegen een
+  dopspecificatie van 6 bar), en haalt 65 °C het doel wél (117,9 PU na 33 min)
+  maar is de druk dan ruim onveilig (7,03 bar). Precies de afweging die je
+  vóóraf wilt zien in plaats van tijdens de run.
+
+## Bewust NIET gedaan
+
+- Geen wat-als op gisting of rijping — die domeinmodellen bestaan niet, en een
+  badge op een extrapolatie zonder temperatuur-invoer zou schijnzekerheid
+  wekken (risico 4 uit het ontwerp). De randvoorwaarden staan vastgelegd in
+  `ONTWERP-SIMULATIE-2-PASTEURISATIE-PAD.md`, sectie "Toekomstig werk".
+- Geen kettingsimulaties — ontwerpstandpunt van Thomas, geen tijdelijke
+  beperking.
+- Geen AI-uitleg bij de uitkomst. Het cijfer en de aannamelijst zijn voor één
+  doorrekening zelf de uitleg; AI wordt pas interessant bij samengestelde
+  vragen, en die zijn juist uitgesloten.
+- Geen fysieke haalbaarheidscontrole op de opwarmsnelheid — dat zou een nieuw,
+  ongevalideerd model toevoegen. In plaats daarvan staat het expliciet als
+  aanname bij elke uitkomst.

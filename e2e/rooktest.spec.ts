@@ -193,3 +193,28 @@ test("6 — geen enkel hoofdscherm toont een foutmelding", async ({ page }) => {
     );
   }
 });
+
+test("7 — een wat-als-simulatie is altijd als simulatie gemarkeerd", async ({ page }) => {
+  // Fase 21. Dit is geen "laadt de pagina"-test maar de bewaking van een harde
+  // ontwerpeis: een doorrekening mag nooit voor een meting kunnen doorgaan.
+  // Bewust zonder flestype/sluiting te kiezen — de PU-tak werkt zonder
+  // serverdata, dus deze test is niet afhankelijk van wat er toevallig in de
+  // database staat (zelfde les als bij test 6).
+  await page.goto("/pasteurisatie/plannen");
+
+  const knop = page.getByRole("button", { name: /simuleer volledige curve/i });
+  await expect(knop).toBeVisible({ timeout: 15_000 });
+  await knop.click();
+
+  // De markering zelf: zonder deze tekst is de simulatie niet te onderscheiden
+  // van een echte meting, en dat is precies wat niet mag.
+  await expect(page.getByText(/simulatie — geen meting/i)).toBeVisible();
+  await expect(page.getByText(/niets gemeten en niets opgeslagen/i)).toBeVisible();
+
+  // Er komt ook echt een uitkomst uit, geen leeg paneel.
+  await expect(page.getByText(/totale pu over de curve/i)).toBeVisible();
+  await expect(page.getByText(/waar deze doorrekening van uitgaat/i)).toBeVisible();
+
+  // Geen foutstatus op dit scherm (zelfde bewaking als test 6).
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});

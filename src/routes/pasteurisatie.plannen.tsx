@@ -22,12 +22,15 @@ import {
   verwachteDruk,
 } from "@/lib/drukveiligheid";
 import { puPerMinuut } from "@/lib/pasteurisatie";
+import { simuleerRun, WAT_ALS_NIET_GEVALIDEERD } from "@/lib/pasteurisatie-simulatie";
 import { fetchFlestypes } from "@/lib/flessen-data";
 import { fetchSluitingen } from "@/lib/pasteurisatie-data";
 import { maxDrukBekend, type PasteurisatieOordeel } from "@/lib/types";
+import { FlaskConical } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { StatusBadge } from "@/components/status-badge";
 import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
+import { OnvoldoendeDataMelding, SimulatieAannames, WatAlsBadge } from "@/components/wat-als";
 
 const OORDEEL_TOON: Record<PasteurisatieOordeel, "success" | "warning" | "destructive"> = {
   veilig: "success",
@@ -139,6 +142,81 @@ function PlannerPagina() {
     }
     return punten;
   }, [kanBerekenen, co2GehalteGl, flesinhoudMl, vulvolumeMl, refTemp]);
+
+  // ---------- Fase 21 — wat-als-simulatie over de volledige curve ----------
+  // Bewust een aparte, opvouwbare sectie: wie de knop niet indrukt merkt niets
+  // van deze toevoeging. De houdtemperatuur is expres GEEN eigen veld maar
+  // hergebruikt het doeltemperatuur-veld hierboven — twee losse temperaturen
+  // op één scherm is precies hoe je een verkeerde conclusie trekt over welke
+  // temperatuur nu "veilig" was.
+  const [simulatieOpen, setSimulatieOpen] = useState(false);
+  const [opwarmMin, setOpwarmMin] = useState("15");
+  const [houdMin, setHoudMin] = useState("20");
+  const [afkoelMin, setAfkoelMin] = useState("20");
+  const [vanTemp, setVanTemp] = useState("20");
+  const [eindTemp, setEindTemp] = useState("30");
+
+  const simulatie = useMemo(() => {
+    if (!simulatieOpen) return null;
+    return simuleerRun({
+      opwarmMinuten: Number(opwarmMin || 0),
+      houdMinuten: Number(houdMin || 0),
+      afkoelMinuten: Number(afkoelMin || 0),
+      vanTemperatuurC: Number(vanTemp || 0),
+      houdTemperatuurC: Number(doeltemperatuur || 0),
+      eindTemperatuurC: Number(eindTemp || 0),
+      doelPu: Number(doelPuMin || 100),
+      flesinhoudMl: flesinhoudMl || undefined,
+      vulvolumeMl: Number(vulvolumeMl) || undefined,
+      co2GehalteGl: co2GehalteGl || undefined,
+      vulTemperatuurC: refTemp,
+      sluitingMaxBar: gekozenSluiting && sluitingMaxBekend ? gekozenSluiting.max_druk_bar : null,
+    });
+  }, [
+    simulatieOpen,
+    opwarmMin,
+    houdMin,
+    afkoelMin,
+    vanTemp,
+    eindTemp,
+    doeltemperatuur,
+    doelPuMin,
+    flesinhoudMl,
+    vulvolumeMl,
+    co2GehalteGl,
+    refTemp,
+    gekozenSluiting,
+    sluitingMaxBekend,
+  ]);
+
+  // Grafiekdata: temperatuur tegen de tijd. Bij een fijn meetinterval levert
+  // de curve honderden punten op; die worden hier uitgedund tot ~60 zodat de
+  // lijn op telefoonformaat leesbaar blijft. Uitdunnen raakt alleen de
+  // wéérgave — de PU-uitkomst wordt over de volledige curve gerekend.
+  const simulatieChartData = useMemo(() => {
+    const curve = simulatie?.waarde?.curve;
+    if (!curve || curve.length === 0) return [];
+    const start = curve[0].tijdstip.getTime();
+    const totaalMin = (curve[curve.length - 1].tijdstip.getTime() - start) / 60000;
+    // Op hele minuten bemonsteren (en niet elk N-de punt) houdt de x-as
+    // leesbaar: anders krijg je tickwaarden als "12,7 min" die niets betekenen.
+    const stapMin = Math.max(1, Math.ceil(totaalMin / 60));
+    const punten: { minuut: number; temp: number }[] = [];
+    let volgende = 0;
+    for (const p of curve) {
+      const minuut = (p.tijdstip.getTime() - start) / 60000;
+      if (minuut + 1e-9 >= volgende) {
+        punten.push({ minuut: Math.round(volgende), temp: p.temperatuurC });
+        volgende += stapMin;
+      }
+    }
+    // Het eindpunt hoort er altijd bij, ook als het net tussen twee stappen valt.
+    const laatste = curve[curve.length - 1];
+    if (punten[punten.length - 1]?.minuut !== Math.round(totaalMin)) {
+      punten.push({ minuut: Math.round(totaalMin), temp: laatste.temperatuurC });
+    }
+    return punten;
+  }, [simulatie]);
 
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
@@ -479,6 +557,256 @@ function PlannerPagina() {
             </p>
           </section>
         )}
+
+        {/* Fase 21 — wat-als: volledige curve doorrekenen (opwarmen/houden/afkoelen) */}
+        <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Wat als je deze run zo zou draaien?
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Het drukoordeel hierboven kijkt naar één moment: de doeltemperatuur. Hieronder reken
+              je een <strong>volledige run</strong> door — opwarmen, houden en afkoelen bij elkaar —
+              en zie je hoeveel PU dat oplevert en of het doel gehaald wordt. Er wordt niets
+              opgeslagen.
+            </p>
+          </div>
+
+          {!simulatieOpen ? (
+            <button
+              type="button"
+              onClick={() => setSimulatieOpen(true)}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+            >
+              <FlaskConical className="h-4 w-4" /> Simuleer volledige curve
+            </button>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium">Opwarmen (min)</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={opwarmMin}
+                    onChange={(e) => setOpwarmMin(e.target.value)}
+                    className={veldClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium">Houden (min)</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={houdMin}
+                    onChange={(e) => setHoudMin(e.target.value)}
+                    className={veldClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium">Afkoelen (min)</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={afkoelMin}
+                    onChange={(e) => setAfkoelMin(e.target.value)}
+                    className={veldClass}
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium">Begintemperatuur (°C)</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={vanTemp}
+                    onChange={(e) => setVanTemp(e.target.value)}
+                    className={veldClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium">Eindtemperatuur (°C)</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={eindTemp}
+                    onChange={(e) => setEindTemp(e.target.value)}
+                    className={veldClass}
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Er wordt gehouden op de <strong>doeltemperatuur van {doeltemperatuur} °C</strong>{" "}
+                die je hierboven hebt ingevuld — pas die daar aan om een andere piek door te
+                rekenen.
+              </p>
+
+              {simulatie && simulatie.status !== "ok" && (
+                <OnvoldoendeDataMelding resultaat={simulatie} />
+              )}
+
+              {simulatie?.waarde && (
+                <div className="space-y-3">
+                  <WatAlsBadge
+                    wat="een pasteurisatierun die nog niet gedraaid is"
+                    nietGevalideerdTekst={
+                      simulatie.waarde.druk ? WAT_ALS_NIET_GEVALIDEERD : undefined
+                    }
+                  />
+
+                  <div className="h-44 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={simulatieChartData}
+                        margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="minuut" tick={{ fontSize: 10 }} unit=" min" />
+                        <YAxis tick={{ fontSize: 10 }} unit="°C" width={52} />
+                        <Tooltip
+                          formatter={(v: number) => [`${v.toFixed(1)} °C`, "Gesimuleerd"]}
+                          labelFormatter={(m: number) => `${m} min na start`}
+                        />
+                        {simulatie.waarde.minutenTotDoel != null && (
+                          <ReferenceLine
+                            x={Math.round(simulatie.waarde.minutenTotDoel)}
+                            stroke="#4a8c5c"
+                            strokeDasharray="4 4"
+                            label={{
+                              value: "PU-doel",
+                              fontSize: 10,
+                              position: "insideTopRight",
+                            }}
+                          />
+                        )}
+                        <Line
+                          type="monotone"
+                          dataKey="temp"
+                          stroke="#c9a227"
+                          strokeDasharray="6 3"
+                          dot={false}
+                          strokeWidth={2}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Gestippeld = gesimuleerde curve, geen sensormeting.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Totale PU over de curve</p>
+                      <p className="text-lg font-bold tabular-nums">
+                        {simulatie.waarde.pu.totalePu.toFixed(1)} PU
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        doel {doelPuMin} —{" "}
+                        {simulatie.waarde.pu.totalePu >= Number(doelPuMin || 100)
+                          ? "gehaald"
+                          : "NIET gehaald"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Doel bereikt na</p>
+                      <p className="text-lg font-bold tabular-nums">
+                        {simulatie.waarde.minutenTotDoel != null
+                          ? `${simulatie.waarde.minutenTotDoel.toFixed(0)} min`
+                          : "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        van {simulatie.waarde.totaleDuurMinuten} min totaal
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-lg bg-muted/60 p-2">
+                      <p className="text-muted-foreground">Opwarmen</p>
+                      <p className="font-semibold tabular-nums">
+                        {simulatie.waarde.pu.puOpwarm.toFixed(1)} PU
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted/60 p-2">
+                      <p className="text-muted-foreground">Houden</p>
+                      <p className="font-semibold tabular-nums">
+                        {simulatie.waarde.pu.puHoud.toFixed(1)} PU
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted/60 p-2">
+                      <p className="text-muted-foreground">Afkoelen</p>
+                      <p className="font-semibold tabular-nums">
+                        {simulatie.waarde.pu.puAfkoel.toFixed(1)} PU
+                      </p>
+                    </div>
+                  </div>
+
+                  {simulatie.waarde.oordeel && (
+                    <div
+                      className={`rounded-xl border p-3 ${
+                        simulatie.waarde.oordeel.oordeel === "veilig"
+                          ? "border-success/40 bg-success/10"
+                          : simulatie.waarde.oordeel.oordeel === "marginaal"
+                            ? "border-warning/50 bg-warning/10"
+                            : "border-destructive/40 bg-destructive/10"
+                      }`}
+                    >
+                      <StatusBadge
+                        label={
+                          simulatie.waarde.oordeel.oordeel === "veilig"
+                            ? "Veilig"
+                            : simulatie.waarde.oordeel.oordeel === "marginaal"
+                              ? "Marginaal"
+                              : "Onveilig"
+                        }
+                        emoji={
+                          simulatie.waarde.oordeel.oordeel === "veilig"
+                            ? "✅"
+                            : simulatie.waarde.oordeel.oordeel === "marginaal"
+                              ? "⚠️"
+                              : "🛑"
+                        }
+                        toon={OORDEEL_TOON[simulatie.waarde.oordeel.oordeel]}
+                      />
+                      <p className="mt-2 text-sm">{simulatie.waarde.oordeel.toelichting}</p>
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        Dit is dezelfde drukberekening als bovenaan het scherm — de piek van deze
+                        curve is immers dezelfde {doeltemperatuur} °C. Hier staat hij erbij zodat je
+                        PU en veiligheid in één oogopslag tegen elkaar kunt afwegen.
+                      </p>
+                    </div>
+                  )}
+
+                  {simulatie.bandbreedte && (
+                    <p className="text-xs text-muted-foreground">
+                      Bandbreedte {simulatie.bandbreedte.waarvan}:{" "}
+                      <strong className="tabular-nums">
+                        {simulatie.bandbreedte.ondergrens.toFixed(2)} –{" "}
+                        {simulatie.bandbreedte.bovengrens.toFixed(2)} bar
+                      </strong>{" "}
+                      (gekoppeld model tot conservatieve bovengrens; het oordeel gebruikt de
+                      bovengrens).
+                    </p>
+                  )}
+
+                  <SimulatieAannames
+                    aannames={simulatie.aannames}
+                    className="border-t border-border pt-3"
+                  />
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSimulatieOpen(false)}
+                className="h-11 w-full rounded-xl border border-border bg-card text-sm font-medium"
+              >
+                Sluit simulatie
+              </button>
+            </>
+          )}
+        </section>
 
         <Link
           to="/pasteurisatie"

@@ -198,6 +198,79 @@ export function puOverCurve(
   };
 }
 
+// ---------- Fase 21 — synthetische curve voor wat-als-simulaties ----------
+
+export interface CurveParams {
+  /** Beginmoment van de curve. Alleen de onderlinge afstanden doen ertoe voor de PU. */
+  startTijd: Date;
+  opwarmMinuten: number;
+  vanTemperatuurC: number;
+  houdMinuten: number;
+  /** Temperatuur aan het eind van de opwarmfase; wordt de hele houdfase vastgehouden. */
+  houdTemperatuurC: number;
+  afkoelMinuten: number;
+  eindTemperatuurC: number;
+  /** Meetinterval. Kleiner = nauwkeuriger trapeziumintegratie, meer punten. */
+  intervalSeconden?: number;
+}
+
+/**
+ * Bouwt een hypothetische opwarm/houd/afkoel-curve op als reeks
+ * TemperatuurMeting, zodat puOverCurve()/verwachteDruk() er precies zo
+ * overheen kunnen als over echte sensordata — dat is het hele punt van de
+ * wat-als-simulatie: dezelfde geteste rekenkern, andere invoer.
+ *
+ * Lineaire interpolatie per fase, bewust ZONDER ruis (in tegenstelling tot
+ * de gelijkvormige testdata-generator in scripts/seed-pasteurisatie.mjs):
+ * een simulatie moet deterministisch zijn — dezelfde invoer geeft altijd
+ * dezelfde uitvoer, anders is een uitkomst niet navolgbaar.
+ *
+ * Let op (zie ONTWERP-SIMULATIE-2, risico 2): dit model kent GEEN fysieke
+ * bovengrens aan de opwarmsnelheid. "5 minuten naar 65 °C" levert een keurige
+ * curve op die je apparatuur misschien niet kan halen. De aanroeper hoort dat
+ * als aanname te tonen, niet deze functie als validatie af te dwingen.
+ */
+export function synthetiseerCurve(params: CurveParams): TemperatuurMeting[] {
+  const {
+    startTijd,
+    opwarmMinuten,
+    vanTemperatuurC,
+    houdMinuten,
+    houdTemperatuurC,
+    afkoelMinuten,
+    eindTemperatuurC,
+    intervalSeconden = 20,
+  } = params;
+
+  const totaalMinuten = opwarmMinuten + houdMinuten + afkoelMinuten;
+  const stapMinuten = intervalSeconden / 60;
+  if (!(totaalMinuten > 0) || !(stapMinuten > 0)) return [];
+
+  const punten: TemperatuurMeting[] = [];
+  // Vaste stapgrootte met een epsilon zodat het laatste punt (exact op
+  // totaalMinuten) er door drijvende-komma-afronding niet af valt.
+  for (let m = 0; m <= totaalMinuten + 1e-9; m += stapMinuten) {
+    let temperatuurC: number;
+    if (opwarmMinuten > 0 && m <= opwarmMinuten) {
+      temperatuurC = vanTemperatuurC + (m / opwarmMinuten) * (houdTemperatuurC - vanTemperatuurC);
+    } else if (m <= opwarmMinuten + houdMinuten) {
+      temperatuurC = houdTemperatuurC;
+    } else if (afkoelMinuten > 0) {
+      const mAfkoel = m - opwarmMinuten - houdMinuten;
+      temperatuurC =
+        houdTemperatuurC -
+        Math.min(1, mAfkoel / afkoelMinuten) * (houdTemperatuurC - eindTemperatuurC);
+    } else {
+      temperatuurC = houdTemperatuurC;
+    }
+    punten.push({
+      tijdstip: new Date(startTijd.getTime() + m * 60000),
+      temperatuurC: Math.round(temperatuurC * 100) / 100,
+    });
+  }
+  return punten;
+}
+
 export type Voorspelling =
   | { mogelijk: false; reden: string }
   | { mogelijk: true; verwachtTijdstip: Date; resterendeMinuten: number };

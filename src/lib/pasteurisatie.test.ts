@@ -3,6 +3,7 @@ import {
   puPerMinuut,
   puOverCurve,
   voorspelPuVerloop,
+  synthetiseerCurve,
   type TemperatuurMeting,
 } from "./pasteurisatie";
 
@@ -140,5 +141,89 @@ describe("voorspelPuVerloop", () => {
     const v = voorspelPuVerloop(metingen, 100);
     expect(v.mogelijk).toBe(true);
     if (v.mogelijk) expect(v.resterendeMinuten).toBeGreaterThan(0);
+  });
+});
+
+describe("synthetiseerCurve (Fase 21 — wat-als)", () => {
+  const basis = {
+    startTijd: new Date(2026, 0, 1, 8, 0),
+    opwarmMinuten: 15,
+    vanTemperatuurC: 20,
+    houdMinuten: 20,
+    houdTemperatuurC: 65,
+    afkoelMinuten: 20,
+    eindTemperatuurC: 30,
+    intervalSeconden: 60,
+  };
+
+  it("begint op de vultemperatuur en eindigt op de eindtemperatuur", () => {
+    const c = synthetiseerCurve(basis);
+    expect(c[0].temperatuurC).toBeCloseTo(20, 6);
+    expect(c[c.length - 1].temperatuurC).toBeCloseTo(30, 6);
+  });
+
+  it("beslaat precies de opgetelde duur van de drie fases", () => {
+    const c = synthetiseerCurve(basis);
+    const duurMin = minutenSindsStart(c[c.length - 1].tijdstip, c[0].tijdstip);
+    expect(duurMin).toBeCloseTo(55, 6); // 15 + 20 + 20
+  });
+
+  it("houdt de houdtemperatuur exact vast gedurende de hele houdfase", () => {
+    const c = synthetiseerCurve(basis);
+    const inHoudfase = c.filter((p) => {
+      const m = minutenSindsStart(p.tijdstip, basis.startTijd);
+      return m > 15 && m <= 35;
+    });
+    expect(inHoudfase.length).toBeGreaterThan(0);
+    for (const p of inHoudfase) expect(p.temperatuurC).toBeCloseTo(65, 6);
+  });
+
+  it("is deterministisch — dezelfde invoer geeft exact dezelfde curve", () => {
+    const a = synthetiseerCurve(basis);
+    const b = synthetiseerCurve(basis);
+    expect(a.map((p) => p.temperatuurC)).toEqual(b.map((p) => p.temperatuurC));
+  });
+
+  it("levert een curve op die puOverCurve kan integreren tot een plausibele PU", () => {
+    const r = puOverCurve(synthetiseerCurve(basis), { doelPu: 100 });
+    // Houdfase alleen: 20 min bij 65 °C ≈ 20 × 5,18 ≈ 104 PU, plus de
+    // bijdrage van op- en afwarmen — dus ruim boven 100, ver onder 400.
+    expect(r.totalePu).toBeGreaterThan(100);
+    expect(r.totalePu).toBeLessThan(400);
+    expect(r.piektemperatuurC).toBeCloseTo(65, 6);
+    expect(r.betrouwbaar).toBe(true);
+    expect(r.doelBereiktOp).not.toBeNull();
+  });
+
+  it("verdeelt de PU over alle drie de fases (opwarmen telt mee, wordt niet weggelaten)", () => {
+    const r = puOverCurve(synthetiseerCurve(basis));
+    expect(r.puOpwarm).toBeGreaterThan(0);
+    expect(r.puHoud).toBeGreaterThan(0);
+    expect(r.puAfkoel).toBeGreaterThan(0);
+    expect(r.puOpwarm + r.puHoud + r.puAfkoel).toBeCloseTo(r.totalePu, 6);
+  });
+
+  it("werkt zonder opwarm- of afkoelfase (randgeval: alleen houden)", () => {
+    const c = synthetiseerCurve({
+      ...basis,
+      opwarmMinuten: 0,
+      afkoelMinuten: 0,
+      houdMinuten: 10,
+    });
+    expect(c.length).toBeGreaterThan(1);
+    for (const p of c) expect(p.temperatuurC).toBeCloseTo(65, 6);
+    expect(puOverCurve(c).totalePu).toBeCloseTo(10 * puPerMinuut(65), 4);
+  });
+
+  it("geeft een lege reeks bij een duur van nul (geen crash, geen verzonnen punt)", () => {
+    expect(
+      synthetiseerCurve({ ...basis, opwarmMinuten: 0, houdMinuten: 0, afkoelMinuten: 0 }),
+    ).toEqual([]);
+  });
+
+  it("een hogere houdtemperatuur levert altijd meer PU op (monotonie-controle)", () => {
+    const laag = puOverCurve(synthetiseerCurve({ ...basis, houdTemperatuurC: 60 })).totalePu;
+    const hoog = puOverCurve(synthetiseerCurve({ ...basis, houdTemperatuurC: 68 })).totalePu;
+    expect(hoog).toBeGreaterThan(laag);
   });
 });
