@@ -196,6 +196,8 @@ verbindingsbadge, het gebruikersbeheer) terughalen uit de git-geschiedenis —
 zoek de commit "inloggen hersteld" van 21 augustus 2026 als exact voorbeeld.
 **Doe dat vóórdat de server van `127.0.0.1` af gaat, niet erna.**
 
+**BESLISSING NOG OPEN (audit 5 september 2026, zie WERKLOG.md "Audit 5 september 2026 — authenticatie en rollen"):** de audit stelde vast dat er momenteel GEEN enkel onderscheid meer tussen gebruikers bestaat — iedereen die de server bereikt is functioneel beheerder voor alle kelder-/voorraad-/verkoop-/materieelacties (`rolVan()` geeft bij afwezige auth altijd `"beheerder"` terug, live geverifieerd: een beheerder-only endpoint anoniem aangeroepen gaf gewoon 200). Alleen gebruikersbeheer blijft echt dicht (`requireAuth()` in `gebruikers.pb.js`). Drie opties liggen klaar (zie WERKLOG.md voor de volledige afweging): (A) zo laten, (B) login+rollen volledig terug, (C) een tussenweg — geen algemene login, wel een drempel vóór alleen de zware acties (tarieven, correcties, gebruikersbeheer). Thomas heeft op 9 september 2026 expliciet gekozen dit **nog niet** te beslissen. **Harde eis: dit moet opgelost zijn vóórdat de server van `127.0.0.1` af gaat (Pi-migratie/`pb.tappenmars.nl`) — niet erna.** Een volgende sessie die aan de Pi-migratie begint moet dit punt eerst voorleggen, niet aannemen dat "zo laten" de keuze is.
+
 **Bewust ONGEWIJZIGD gebleven, en dat blijft zo, alle drie de keren:**
 
 - `tankboek` en `agent_acties` houden `create/update/delete = null`. Dat was
