@@ -2274,3 +2274,43 @@ Productiebuild: groen. Schema-drift-check: 0 verschillen (met de
 gedocumenteerde `users`-uitzondering, zie Blok C). Testdata opgeruimd
 (curl-testaccounts, tijdelijke limietwaarden teruggezet). Verse
 `pb_data`-backup vooraf (`wijngaard_backup_20260909_131143.zip`).
+
+# Kleine opvolging (9 september 2026, zelfde dag) — documentatiedrift en testdekking
+
+Zonder nieuwe opdracht, op eigen initiatief twee losse punten uit de eerdere
+gap-analyse van deze dag opgepakt (geen van beide raakt de auth/rollen-
+beslissing uit het Beveiligingsblok, dus geen Thomas-akkoord nodig):
+
+**Documentatiecorrectie**: CLAUDE.md beweerde bij `bodem_observaties` nog
+"invoer-UI nog niet" — stale. `src/routes/bodem.tsx` (230 regels) heeft een
+volwaardig formulier (pH, gebrek, verslemping, notitie) met een opslaan-
+mutatie, al gecontroleerd tijdens de gap-analyse. Gecorrigeerd.
+
+**Testdekking**: `/verkoop` en `/materieel` hadden geen enkele rooktest —
+een regressie in klant/order- of materieel-aanmaken zou onopgemerkt blijven.
+Twee nieuwe tests toegevoegd, zelfde bewezen patroon als test 2 (schrijven,
+op de server verifiëren, opruimen):
+
+- **Test 9** — nieuwe klant op `/verkoop` komt echt op de server aan.
+- **Test 10** — nieuwe machine op `/materieel` komt echt op de server aan.
+
+Beide collecties (`klanten`, `materieel`) hebben geen `ingevoerd_door`-veld
+(bewuste appkeuze, niet iets om te "repareren") — de gedeelde
+`ruimOp()`/`telOpServer()`-helpers uit `hulp.ts` filteren daar wél op, dus
+niet herbruikbaar. Twee kleine, lokale varianten toegevoegd
+(`telOpServerOpNaam`/`ruimOpOpNaam`) die op `naam` zoeken, met een
+tijdstempel in de testnaam zodat herhaald draaien nooit met een vorige run
+botst. Bewust geen order/leveren-kernflow toegevoegd (die vereist bestaande
+voorraad om een orderregel te kunnen kiezen — groter, stockafhankelijk
+testwerk) en geen onderhoudslog-flow — dit is bewust het kleinste stukje dat
+de grootste blinde vlek (helemaal geen dekking) wegneemt, geen volledige
+dekking van elke flow op deze twee schermen.
+
+Nog steeds niet gedekt, voor een volgende sessie: de order-aanmaken/leveren-
+keten op `/verkoop`, de onderhoudslog-flow op `/materieel`, en de
+pasteurisatie-kernflow (run aanmaken op lotnummer, certificaat) — alleen de
+wat-als-simulatie op `/pasteurisatie/plannen` heeft dekking (test 7/8).
+
+**Getest**: 248 unit tests groen (ongewijzigd), 10 rooktests groen (2
+nieuw), `tsc`/`eslint` schoon, testdata opgeruimd en met curl bevestigd leeg
+(`klanten`/`materieel` filter op `E2E Test` → 0 resultaten).

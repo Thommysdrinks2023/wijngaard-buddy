@@ -24,6 +24,50 @@ async function telOpServer(page: import("@playwright/test").Page, collectie: str
   }, collectie);
 }
 
+// klanten/materieel hebben geen ingevoerd_door-veld (bewuste keuze van de
+// app, zie verkoop-data.ts/materieel-data.ts) — daarom hier op naam zoeken/
+// opruimen in plaats van via de gedeelde ruimOp()/telOpServer(), die op
+// ingevoerd_door filteren.
+async function telOpServerOpNaam(
+  page: import("@playwright/test").Page,
+  collectie: string,
+  naam: string,
+) {
+  return page.evaluate(
+    async ([col, n]) => {
+      const filter = encodeURIComponent(`naam="${n}"`);
+      const r = await fetch(
+        `http://127.0.0.1:8090/api/collections/${col}/records?perPage=1&filter=${filter}`,
+      );
+      return ((await r.json()).totalItems as number) ?? 0;
+    },
+    [collectie, naam] as const,
+  );
+}
+
+async function ruimOpOpNaam(
+  page: import("@playwright/test").Page,
+  collectie: string,
+  naam: string,
+) {
+  await page.evaluate(
+    async ([col, n]) => {
+      const filter = encodeURIComponent(`naam="${n}"`);
+      const lijst = await (
+        await fetch(
+          `http://127.0.0.1:8090/api/collections/${col}/records?perPage=200&filter=${filter}`,
+        )
+      ).json();
+      for (const r of lijst.items ?? []) {
+        await fetch(`http://127.0.0.1:8090/api/collections/${col}/records/${r.id}`, {
+          method: "DELETE",
+        });
+      }
+    },
+    [collectie, naam] as const,
+  );
+}
+
 test.beforeEach(async ({ page }) => {
   await openApp(page);
 });
@@ -250,6 +294,45 @@ test("8 — twee wat-als-scenario's kunnen naast elkaar vergeleken worden", asyn
   await houdVeldB.fill("65");
   await expect(page.getByText("● Scenario A (48 °C) · ● Scenario B (65 °C)")).toBeVisible();
   await expect(page.getByText("117.9 PU")).toBeVisible();
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
+
+test("9 — een nieuwe klant op /verkoop komt echt op de server aan", async ({ page }) => {
+  // Voorheen geen enkele rooktest voor /verkoop — een regressie in deze
+  // kernflow (klant aanmaken, de basis voor elke order) zou daardoor
+  // onopgemerkt blijven. Naam met een tijdstempel zodat herhaald draaien
+  // nooit met een vorige testrun botst.
+  const naam = `E2E Testklant ${Date.now()}`;
+  await page.goto("/verkoop");
+
+  await page.getByRole("button", { name: /nieuwe klant/i }).click();
+  const naamVeld = page.getByLabel("Naam").first();
+  await naamVeld.fill(naam);
+  await page.getByRole("button", { name: /klant opslaan/i }).click();
+
+  await expect
+    .poll(() => telOpServerOpNaam(page, "klanten", naam), { timeout: 15_000 })
+    .toBeGreaterThan(0);
+  await ruimOpOpNaam(page, "klanten", naam);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
+
+test("10 — een nieuwe machine op /materieel komt echt op de server aan", async ({ page }) => {
+  // Voorheen geen enkele rooktest voor /materieel.
+  const naam = `E2E Testmachine ${Date.now()}`;
+  await page.goto("/materieel");
+
+  await page.getByRole("button", { name: /nieuwe machine/i }).click();
+  const naamVeld = page.getByLabel("Naam").first();
+  await naamVeld.fill(naam);
+  await page.getByRole("button", { name: /machine opslaan/i }).click();
+
+  await expect
+    .poll(() => telOpServerOpNaam(page, "materieel", naam), { timeout: 15_000 })
+    .toBeGreaterThan(0);
+  await ruimOpOpNaam(page, "materieel", naam);
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
