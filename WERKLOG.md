@@ -2362,3 +2362,44 @@ deze sessie). Testrun/kelderlogregel na de fix met curl bevestigd leeg voor
 lot 260101. PocketBase bleek bij sessiestart niet te draaien (geen actief
 `pocketbase`-proces, taak stond op "Ready" i.p.v. "Running") — herstart via
 `Start-ScheduledTask`, gezondheidscheck bevestigd vóór verder werk.
+
+# Testdekking afgerond (9 september 2026, zelfde sessie) — verkoop + materieel
+
+De twee resterende gaten uit de lijst "nog steeds niet gedekt" opgepakt:
+order-aanmaken op `/verkoop` en de onderhoudslog-flow op `/materieel`.
+
+**Test 12 — order (concept) op `/verkoop`**: bewust GEEN levering getest.
+`POST /api/tappenmars/order-leveren` muteert echte voorraad atomisch en
+onomkeerbaar (zie `leverOrder()`/`ARCHITECTURE.md`) — er is geen testcyclus
+om dat terug te draaien, en deze test moet nooit per ongeluk productiedata
+(de "Sg 2025"-voorraadstand, hier 840 flessen) aanraken. Een concept-order
+zelf raakt de voorraad niet (`createOrder()` is een gewone `.create()`),
+dus dat is het stuk dat getest wordt. Live bevestigd na de testrun dat de
+voorraadstand van "Sg 2025" ongewijzigd op 840 bleef.
+
+**Onderweg gevonden**: de eerste testpoging voor order-aanmaken slaagde qua
+klik-flow, maar de opgeslagen order kwam op de server terecht met
+`ingevoerd_door: "invoerder1@tappenmars.nl"` i.p.v. het testinvoerder-label
+— het "Ingevoerd door"-veld op het orderformulier (`invoerder`, via
+`useInvoerder()`) was niet expliciet ingevuld en viel terug op een eerder
+opgeslagen/standaard account. Dat liet een order + twee klanten achter die
+`telOpServer()`/`ruimOp()` (die op `ingevoerd_door="e2e-rooktest"`
+filteren) niet kon vinden — met de hand opgeruimd, daarna het veld expliciet
+gevuld in de test. Geen appbug: dit is precies waarom deze tests bestaan —
+een test die een verplicht/impliciet veld mist, laat rommel achter die
+alleen met de hand terug te vinden is.
+
+**Test 13 — onderhoudsregel op `/materieel`**: rechttoe-rechtaan, slaagde in
+één keer (machine aanmaken → onderhoud loggen op die machine → opruimen).
+
+**Alle testdekking-gaten uit de gap-analyse van vandaag zijn nu gedicht.**
+Nog steeds niet gedekt, bewust: het afronden van een pasteurisatierun
+(PU-eindberekening + certificaat) en het daadwerkelijk leveren van een
+order — beide zijn onomkeerbare productiemutaties waarvoor een aparte,
+zorgvuldiger opzet nodig is (bijv. een expliciete "maak eerst een
+wegwerp-voorraadpartij aan"-stap) dan wat in deze sessie paste.
+
+**Getest**: 248 unit tests groen (ongewijzigd), 13 rooktests groen (2
+nieuw), `tsc`/`eslint` schoon. Alle testresten met curl bevestigd leeg
+(`orders`/`klanten`/`onderhoudslog`/`materieel`), voorraadstand ongewijzigd
+bevestigd.

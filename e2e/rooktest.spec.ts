@@ -435,3 +435,65 @@ test("11 — een pasteurisatierun starten op lotnummer komt echt op de server aa
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
+
+test("12 — een order (concept) op /verkoop komt echt op de server aan", async ({ page }) => {
+  // Bewust GEEN levering: /api/tappenmars/order-leveren muteert echte
+  // voorraad atomisch en onomkeerbaar — geen testcyclus om dat terug te
+  // draaien. Een concept-order zelf raakt de voorraad niet aan (zie
+  // createOrder() in verkoop-data.ts: gewone .create(), geen mutatie), dus
+  // dat is het stuk dat hier getest wordt.
+  const klantnaam = `E2E Testklant Order ${Date.now()}`;
+  await page.goto("/verkoop");
+
+  await page.getByRole("button", { name: /nieuwe klant/i }).click();
+  await page.getByLabel("Naam").first().fill(klantnaam);
+  await page.getByRole("button", { name: /klant opslaan/i }).click();
+  await expect
+    .poll(() => telOpServerOpNaam(page, "klanten", klantnaam), { timeout: 15_000 })
+    .toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: /nieuwe order/i }).click();
+  await page.getByLabel("Klant").selectOption({ label: klantnaam });
+  // "Sg 2025" (840 op voorraad in de seed) — ruim genoeg dat de exacte stand
+  // niet uitmaakt en de optie niet uit de lijst valt tijdens de test.
+  await page.locator("select").filter({ hasText: "Kies wijn…" }).selectOption("e2mqw1jt7uqcrb4");
+  await page.getByPlaceholder("aantal").fill("2");
+  await page.getByLabel("Ingevoerd door").first().fill(TESTINVOERDER);
+  await page.getByRole("button", { name: /order opslaan als concept/i }).click();
+
+  await expect.poll(() => telOpServer(page, "orders"), { timeout: 15_000 }).toBeGreaterThan(0);
+
+  // Opruimen: eerst de order (open deleteRule, zelfde ingevoerd_door-patroon
+  // als de rest van dit bestand), dan de klant.
+  await ruimOp(page, "orders", TESTINVOERDER);
+  await ruimOpOpNaam(page, "klanten", klantnaam);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
+
+test("13 — een onderhoudsregel op /materieel komt echt op de server aan", async ({ page }) => {
+  const machinenaam = `E2E Testmachine Onderhoud ${Date.now()}`;
+  await page.goto("/materieel");
+
+  await page.getByRole("button", { name: /nieuwe machine/i }).click();
+  await page.getByLabel("Naam").first().fill(machinenaam);
+  await page.getByRole("button", { name: /machine opslaan/i }).click();
+  await expect
+    .poll(() => telOpServerOpNaam(page, "materieel", machinenaam), { timeout: 15_000 })
+    .toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: /onderhoud loggen/i }).click();
+  await page.getByLabel("Machine").selectOption({ label: machinenaam });
+  await page.getByLabel("Omschrijving").fill("e2e-rooktest: oliepeil gecontroleerd");
+  await page.getByLabel("Ingevoerd door").fill(TESTINVOERDER);
+  await page.getByRole("button", { name: /onderhoudsregel opslaan/i }).click();
+
+  await expect
+    .poll(() => telOpServer(page, "onderhoudslog"), { timeout: 15_000 })
+    .toBeGreaterThan(0);
+
+  await ruimOp(page, "onderhoudslog", TESTINVOERDER);
+  await ruimOpOpNaam(page, "materieel", machinenaam);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
