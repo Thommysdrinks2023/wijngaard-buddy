@@ -114,6 +114,17 @@ function TankDetailPage() {
       toast.error("Vul je naam in als verantwoordelijke");
       return;
     }
+    // Beveiligingsblok (9 sep. 2026) — correctieboekingen op het onwijzigbare
+    // tankboek kunnen alleen met een nieuwe regel gecorrigeerd worden, nooit
+    // teruggedraaid. Zonder authenticatie is deze drempel de enige rem tegen
+    // een verkeerde klik (zie WERKLOG.md "Beveiligingsblok", Blok C) — geen
+    // vervanging van authenticatie.
+    if (
+      !confirm(
+        `Correctie boeken: ${verschil > 0 ? "+" : ""}${verschil} L op het tankboek. Dit is een blijvende registerregel, niet terug te draaien behalve met een nieuwe correctie. Doorgaan?`,
+      )
+    )
+      return;
     peilingM.mutate();
   };
 

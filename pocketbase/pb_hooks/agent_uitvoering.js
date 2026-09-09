@@ -739,7 +739,8 @@ const LEES_HANDLERS = {
     }
     if (input.partij) {
       const partij = logica.vindPartij(app, input.partij);
-      if (!partij) return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
+      if (!partij)
+        return { gevonden: false, notitie: `Geen partij gevonden voor "${input.partij}".` };
       delen.push("partij = {:partij}");
       params.partij = partij.id;
     }
@@ -775,12 +776,19 @@ const LEES_HANDLERS = {
   },
   pasteurisatie_run_detail(app, input) {
     const partij = logica.vindPartij(app, input.lotnummer);
-    if (!partij) return { gevonden: false, notitie: `Geen partij gevonden voor lotnummer "${input.lotnummer}".` };
+    if (!partij)
+      return {
+        gevonden: false,
+        notitie: `Geen partij gevonden voor lotnummer "${input.lotnummer}".`,
+      };
     const runs = app.findRecordsByFilter("pasteurisatie_runs", "partij = {:p}", "-created", 5, 0, {
       p: partij.id,
     });
     if (runs.length === 0)
-      return { gevonden: false, notitie: `Geen pasteurisatierun gevonden voor lotnummer "${input.lotnummer}".` };
+      return {
+        gevonden: false,
+        notitie: `Geen pasteurisatierun gevonden voor lotnummer "${input.lotnummer}".`,
+      };
     const r = runs[0];
     return {
       gevonden: true,
@@ -825,13 +833,24 @@ const LEES_HANDLERS = {
     const R = 8.314;
     const M_CO2 = 44.01;
     const dichtheidTabel = [
-      [0, 999.84], [10, 999.7], [20, 998.21], [25, 997.05], [30, 995.65],
-      [35, 994.03], [40, 992.21], [45, 990.22], [50, 988.03], [55, 985.69],
-      [60, 983.2], [70, 977.76], [80, 971.79],
+      [0, 999.84],
+      [10, 999.7],
+      [20, 998.21],
+      [25, 997.05],
+      [30, 995.65],
+      [35, 994.03],
+      [40, 992.21],
+      [45, 990.22],
+      [50, 988.03],
+      [55, 985.69],
+      [60, 983.2],
+      [70, 977.76],
+      [80, 971.79],
     ];
     function dichtheid(t) {
       if (t <= dichtheidTabel[0][0]) return dichtheidTabel[0][1];
-      if (t >= dichtheidTabel[dichtheidTabel.length - 1][0]) return dichtheidTabel[dichtheidTabel.length - 1][1];
+      if (t >= dichtheidTabel[dichtheidTabel.length - 1][0])
+        return dichtheidTabel[dichtheidTabel.length - 1][1];
       for (let i = 1; i < dichtheidTabel.length; i++) {
         if (t <= dichtheidTabel[i][0]) {
           const [t0, d0] = dichtheidTabel[i - 1];
@@ -870,11 +889,13 @@ const LEES_HANDLERS = {
     if (kopruimteMl <= 0) {
       drukBovengrens = Infinity;
     } else {
-      drukBovengrens = totaalCo2 / (oplosbaarheid(input.doeltemperatuur_c) * vulvolumeBijDoelL) + damp - ATM_BAR;
+      drukBovengrens =
+        totaalCo2 / (oplosbaarheid(input.doeltemperatuur_c) * vulvolumeBijDoelL) + damp - ATM_BAR;
     }
 
     const resultaat = {
-      druk_gauge_bovengrens_bar: drukBovengrens === Infinity ? null : Math.round(drukBovengrens * 100) / 100,
+      druk_gauge_bovengrens_bar:
+        drukBovengrens === Infinity ? null : Math.round(drukBovengrens * 100) / 100,
       kopruimte_ml_bij_doeltemperatuur: Math.round(kopruimteMl * 10) / 10,
       kanttekening:
         "Conservatieve bovengrens (indicatief) — verifieer altijd tegen de fabrieksspecificatie van de sluiting vóórdat je een run start.",
@@ -890,7 +911,11 @@ const LEES_HANDLERS = {
         if (maxDruk > 0 && drukBovengrens !== Infinity) {
           const marge = maxDruk * 0.8;
           resultaat.oordeel =
-            drukBovengrens >= maxDruk ? "onveilig" : drukBovengrens >= marge ? "marginaal" : "veilig";
+            drukBovengrens >= maxDruk
+              ? "onveilig"
+              : drukBovengrens >= marge
+                ? "marginaal"
+                : "veilig";
         } else if (!(maxDruk > 0)) {
           resultaat.oordeel_niet_mogelijk = "Dopspecificatie van deze sluiting is niet bekend.";
         }
@@ -1080,8 +1105,7 @@ const VOORSTEL_BOUWERS = {
     if (input.snoeigewicht != null) delen.push(`${input.snoeigewicht} g snoeigewicht`);
     if (input.dode_planten != null) delen.push(`${input.dode_planten} dode planten`);
     if (pct !== null) delen.push(`${pct}% korte scheuten`);
-    const samenvatting =
-      `Gezondheid: rij ${input.rijnummer} (${rij.getString("ras")}) - ${delen.join(", ")}`;
+    const samenvatting = `Gezondheid: rij ${input.rijnummer} (${rij.getString("ras")}) - ${delen.join(", ")}`;
     return { actie_type: "gezondheid", payload, samenvatting };
   },
   stel_werkuren_voor(app, input) {
@@ -1194,8 +1218,7 @@ const VOORSTEL_BOUWERS = {
     if (input.geur) delen.push(`geur: ${input.geur}`);
     if (input.smaak) delen.push(`smaak: ${input.smaak}`);
     if (score !== null) delen.push(`${score}/10`);
-    const samenvatting =
-      `Proefnotitie: ${partij.getString("naam")}${delen.length ? " - " + delen.join(", ") : ""}`;
+    const samenvatting = `Proefnotitie: ${partij.getString("naam")}${delen.length ? " - " + delen.join(", ") : ""}`;
     return { actie_type: "proefnotitie", payload, samenvatting };
   },
   // Fase 13 Blok G — zie de toelichting bij de tooldefinities in
@@ -1457,7 +1480,9 @@ const VOORSTEL_BOUWERS = {
       { p: partij.id },
     );
     if (runs.length === 0)
-      return { fout: `Geen actieve pasteurisatierun gevonden voor lotnummer "${input.lotnummer}".` };
+      return {
+        fout: `Geen actieve pasteurisatierun gevonden voor lotnummer "${input.lotnummer}".`,
+      };
     const payload = {
       run_id: runs[0].id,
       temperatuur_c: input.temperatuur_c,
@@ -1723,36 +1748,52 @@ function leesbareFout(err) {
   return new BadRequestError("AI-agent fout: " + (err && err.message ? err.message : String(err)));
 }
 
-// ============= Rate limit (Eindsprint Blok C / mega-prompt-v2 Blok C) =============
+// ============= Rate limit (Eindsprint Blok C, uitgebreid Beveiligingsblok 9 sep. 2026) =============
 // Elke aanroep van de drie agent-endpoints kost een betaalde Claude-aanroep
 // (ook bevestig/afwijzen: die draaien verwerkBeurt() opnieuw). Dit is het
-// enige bekende financiële risico van de app (CLAUDE.md/STATUS-RAPPORT) en
-// moest af vóór de server ooit publiek wordt. Telling per IP in het gedeelde
-// Go-side app-store (overleeft de JSVM-VM-pool, reset bij PocketBase-herstart
-// — acceptabel voor een kostenrem). De limiet is instelbaar via een
-// regelgeving_instellingen-record met sleutel "agent_berichten_per_uur_per_ip";
-// zonder record geldt RATE_LIMIT_STANDAARD. De check telt élke poging mee
-// (ook ongeldige requests), zodat probing niet gratis is.
-const RATE_LIMIT_STANDAARD = 30; // berichten per uur per IP
-const RATE_LIMIT_VENSTER_MS = 60 * 60 * 1000;
+// enige bekende financiële risico van de app en moest af vóór de server ooit
+// publiek wordt. Telling per IP in het gedeelde Go-side app-store (overleeft
+// de JSVM-VM-pool, reset bij PocketBase-herstart — acceptabel voor een
+// kostenrem). Beide plafonds zijn instelbaar via app_instellingen-records
+// (sleutels "agent_berichten_per_uur_per_ip" en "agent_berichten_per_dag_per_ip");
+// zonder record gelden de STANDAARD-constanten hieronder. De check telt élke
+// poging mee (ook ongeldige requests), zodat probing niet gratis is.
+//
+// Alleen per IP, NIET per gebruiker: er is geen authenticatie, dus een
+// "gebruiker" is niets meer dan een zelf ingevulde naam in de request-body —
+// die is triviaal te spoofen en biedt dus geen echte tweede laag. Per-IP is
+// de enige laag die hier eerlijk iets afdwingt (zie WERKLOG.md
+// "Beveiligingsblok", Blok B).
+//
+// Twee onafhankelijke vensters op DEZELFDE tijdstempel-reeks: een korte,
+// snel bereikte uurlimiet (bescherming tegen een plotselinge stoot verzoeken)
+// en een los daarvan gecontroleerd dagplafond (bescherming tegen een trage,
+// aanhoudende stroom die net onder de uurlimiet blijft maar urenlang
+// doorloopt — dat zou de uurlimiet alleen nooit tegenhouden).
+const RATE_LIMIT_STANDAARD_UUR = 30; // berichten per uur per IP
+const RATE_LIMIT_STANDAARD_DAG = 150; // berichten per dag per IP
+const RATE_LIMIT_VENSTER_UUR_MS = 60 * 60 * 1000;
+const RATE_LIMIT_VENSTER_DAG_MS = 24 * 60 * 60 * 1000;
 
-function rateLimietPerUur(app) {
+function appInstellingWaarde(app, sleutel, standaard) {
   try {
-    const rec = app.findFirstRecordByFilter(
-      "regelgeving_instellingen",
-      "sleutel = 'agent_berichten_per_uur_per_ip'",
-    );
+    const rec = app.findFirstRecordByFilter("app_instellingen", `sleutel = '${sleutel}'`);
     const waarde = rec.getFloat("waarde");
     if (waarde > 0) return Math.floor(waarde);
   } catch (e) {
     /* geen instelling -> standaard */
   }
-  return RATE_LIMIT_STANDAARD;
+  return standaard;
 }
 
 // Retourneert null als de aanroep mag, anders een nette Nederlandse melding.
+// Logt elke weigering via de ingebouwde PocketBase-logger (zichtbaar in
+// Instellingen → Logs in de admin-UI, doorzoekbaar op ip/tijdstip/reden) —
+// zodat zichtbaar is of de limiet ooit echt geraakt wordt, zonder daar een
+// aparte collectie voor te hoeven bijhouden.
 function controleerRateLimit(app, ip) {
-  const sleutel = "agent_ratelimit_" + (ip || "onbekend");
+  const ipLabel = ip || "onbekend";
+  const sleutel = "agent_ratelimit_" + ipLabel;
   const nu = Date.now();
   const store = app.store();
   let stempels = [];
@@ -1762,18 +1803,65 @@ function controleerRateLimit(app, ip) {
   } catch (e) {
     /* leeg store-slot */
   }
-  stempels = stempels.filter((t) => nu - t < RATE_LIMIT_VENSTER_MS);
-  const limiet = rateLimietPerUur(app);
-  if (stempels.length >= limiet) {
-    const minutenTotVrij = Math.ceil((RATE_LIMIT_VENSTER_MS - (nu - stempels[0])) / 60000);
+  // Eén array, twee vensters: bewaar alleen wat nog binnen het langste
+  // (dag-)venster valt, en tel per check apart voor het uur- en dagvenster.
+  stempels = stempels.filter((t) => nu - t < RATE_LIMIT_VENSTER_DAG_MS);
+
+  const limietUur = appInstellingWaarde(
+    app,
+    "agent_berichten_per_uur_per_ip",
+    RATE_LIMIT_STANDAARD_UUR,
+  );
+  const stempelsUur = stempels.filter((t) => nu - t < RATE_LIMIT_VENSTER_UUR_MS);
+  if (stempelsUur.length >= limietUur) {
+    const minutenTotVrij = Math.ceil((RATE_LIMIT_VENSTER_UUR_MS - (nu - stempelsUur[0])) / 60000);
+    $app
+      .logger()
+      .warn(
+        "agent-ratelimit: uurlimiet bereikt, verzoek geweigerd",
+        "ip",
+        ipLabel,
+        "limiet_per_uur",
+        limietUur,
+        "aantal_laatste_uur",
+        stempelsUur.length,
+      );
     return (
       "Je hebt de limiet van " +
-      limiet +
+      limietUur +
       " assistent-berichten per uur bereikt. Probeer het over ongeveer " +
       minutenTotVrij +
       " minuten opnieuw."
     );
   }
+
+  const limietDag = appInstellingWaarde(
+    app,
+    "agent_berichten_per_dag_per_ip",
+    RATE_LIMIT_STANDAARD_DAG,
+  );
+  if (stempels.length >= limietDag) {
+    const urenTotVrij = Math.ceil((RATE_LIMIT_VENSTER_DAG_MS - (nu - stempels[0])) / 3600000);
+    $app
+      .logger()
+      .warn(
+        "agent-ratelimit: dagplafond bereikt, verzoek geweigerd",
+        "ip",
+        ipLabel,
+        "limiet_per_dag",
+        limietDag,
+        "aantal_laatste_24u",
+        stempels.length,
+      );
+    return (
+      "Je hebt het dagplafond van " +
+      limietDag +
+      " assistent-berichten bereikt. Probeer het over ongeveer " +
+      urenTotVrij +
+      " uur opnieuw."
+    );
+  }
+
   stempels.push(nu);
   store.set(sleutel, stempels);
   return null;

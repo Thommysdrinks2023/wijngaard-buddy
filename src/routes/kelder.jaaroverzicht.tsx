@@ -282,7 +282,18 @@ function JaaroverzichtPage() {
               />
               <button
                 type="button"
-                onClick={() => afsluitM.mutate()}
+                onClick={() => {
+                  // Beveiligingsblok (9 sep. 2026) — geen authenticatie, dus
+                  // deze drempel is de enige rem tegen een verkeerde klik op
+                  // een onomkeerbare actie (zie WERKLOG.md "Beveiligingsblok",
+                  // Blok C). Geen vervanging van authenticatie.
+                  if (
+                    confirm(
+                      `${jaar} definitief afsluiten? Dit legt het overzicht vast in het archief en kan niet ongedaan gemaakt worden.`,
+                    )
+                  )
+                    afsluitM.mutate();
+                }}
                 disabled={afsluitM.isPending}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
               >

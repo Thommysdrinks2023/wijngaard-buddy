@@ -519,6 +519,28 @@ async function stelAuthDuurIn(collectionNaam, seconden) {
 }
 
 /**
+ * Beveiligingsblok (9 sep. 2026) — dwingt create/update-API-regels af op de
+ * ingebouwde users-collectie. Alleen de sleutels die je meegeeft worden
+ * vergeleken/gewijzigd (idempotent, net als stelAuthDuurIn hierboven); regels
+ * die je niet meegeeft blijven ongemoeid.
+ */
+async function stelUsersApiRegelsIn(regels) {
+  if (droog) return;
+  const col = await api("/api/collections/users");
+  const wijzigingen = {};
+  for (const [sleutel, gewenst] of Object.entries(regels)) {
+    if (col[sleutel] !== gewenst) wijzigingen[sleutel] = gewenst;
+  }
+  if (Object.keys(wijzigingen).length === 0) return;
+  await api("/api/collections/users", { method: "PATCH", body: wijzigingen });
+  for (const [sleutel, gewenst] of Object.entries(wijzigingen)) {
+    console.log(
+      `  ↻ users.${sleutel}: ${JSON.stringify(col[sleutel])} -> ${JSON.stringify(gewenst)}`,
+    );
+  }
+}
+
+/**
  * Fase 14 Blok A — migreert bestaande sensor_metingen (oud schema: tank,
  * temperatuur_c, gemeten_op) naar het generieke model (type, waarde,
  * eenheid, bron_type, bron_id). Idempotent: een record dat al bron_type
@@ -2737,13 +2759,17 @@ async function main() {
   // Blok K — regelgeving-seeds: sleutels aanmaken ZONDER bedragen. De echte
   // tarieven vult Thomas in na verificatie bij de Douane; de app rekent pas
   // als waarde > 0 én laatst_gecontroleerd ingevuld is (zie accijns-UI).
+  //
+  // Beveiligingsblok (9 september 2026): "agent_berichten_per_uur_per_ip"
+  // stond hier sinds de Eindsprint, maar hoort qua categorie niet in deze
+  // collectie — regelgeving_instellingen is voor wettelijk geverifieerde
+  // tarieven/drempels (accijns, AGP), niet voor een operationele kostenrem.
+  // Verplaatst naar APP_INSTELLINGEN_SEEDS hieronder, samen met het nieuwe
+  // dagplafond. Dit is een pure toevoeging (create-if-missing, geen
+  // verwijderlogica in de loop hieronder) — het oude record in
+  // regelgeving_instellingen is na deze migratie handmatig opgeruimd, zie
+  // WERKLOG.md "Beveiligingsblok".
   const REGELGEVING_SEEDS = [
-    {
-      sleutel: "agent_berichten_per_uur_per_ip",
-      waarde: 30,
-      eenheid: "berichten/uur",
-      bron: "Eindsprint Blok C — kostenrem AI-agent",
-    },
     {
       sleutel: "accijns_stille_wijn_per_hl",
       eenheid: "EUR/hl",
@@ -2877,6 +2903,20 @@ async function main() {
       waarde: 12,
       eenheid: "flessen",
       notitie: "Globale voorraad-bijna-op-drempel voor wijnen zonder eigen drempel_aantal.",
+    },
+    {
+      sleutel: "agent_berichten_per_uur_per_ip",
+      waarde: 30,
+      eenheid: "berichten/uur",
+      notitie:
+        "Kostenrem AI-agent, per IP-adres (geen auth = geen betrouwbare gebruikersidentiteit — zie WERKLOG.md 'Beveiligingsblok'). Verplaatst uit regelgeving_instellingen (9 september 2026): dit is een operationele drempel, geen wettelijk tarief.",
+    },
+    {
+      sleutel: "agent_berichten_per_dag_per_ip",
+      waarde: 150,
+      eenheid: "berichten/dag",
+      notitie:
+        "Tweede kostenrem naast het uurplafond: een aanhoudende trage stroom verzoeken (net onder de uurlimiet, urenlang volgehouden) zou anders de hele dag door kunnen blijven lopen. 150/dag = ruim boven realistisch normaal gebruik (Thomas + een paar medewerkers, verspreid over de dag), ruim onder het theoretische maximum van 24×30=720 als alleen het uurplafond zou gelden.",
     },
     {
       sleutel: "signaal_max_zichtbaar",
@@ -3333,6 +3373,26 @@ async function main() {
   // bezoek (zie ververstIndienNodig() in data.ts) zodat de sessie binnen dat
   // jaar nooit hoeft te verlopen door simpele inactiviteit.
   await stelAuthDuurIn("users", 365 * 24 * 3600);
+
+  // 5b. Beveiligingsblok (9 sep. 2026) — users.createRule/updateRule sluiten.
+  //
+  // gebruikers.pb.js beweerde dit al ("de standaard users-rules blijven
+  // dicht") maar dat klopte niet met de werkelijke collectie: createRule
+  // stond op "" (open — iedereen kon zichzelf registreren) en updateRule op
+  // "id = @request.auth.id" (elke ingelogde gebruiker mag zijn EIGEN record
+  // bewerken, dus ook zijn eigen `rol`-veld). Samen een volledige
+  // privilege-escalatie: zelf-registreren → eigen rol op "beheerder" zetten
+  // → de "beveiligde" /api/tappenmars/gebruikers-routes gebruiken, ondanks
+  // hun requireAuth()+eisBeheerder(). Live curl-bevestigd, zie WERKLOG.md
+  // "Beveiligingsblok" Blok B.
+  //
+  // Er bestaat geen enkele legitieme frontend-aanroep die hierop leunt (geen
+  // /login, geen registratiescherm, geen "wijzig mijn account"-UI — geverifieerd
+  // met een grep op src/). Nieuwe accounts lopen via dit setup-script
+  // (superuser-API); rolwijzigingen uitsluitend via gebruiker-rol hierboven
+  // (die schrijft met e.app.save(), dat gaat buiten de API-rules om — deze
+  // sluiting raakt dat pad dus niet).
+  await stelUsersApiRegelsIn({ createRule: null, updateRule: null });
 
   // 6. gebruikers
   console.log("Gebruikers aanmaken...");

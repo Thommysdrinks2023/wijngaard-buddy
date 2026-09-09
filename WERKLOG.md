@@ -1929,3 +1929,348 @@ raken). `tsc`/`eslint` schoon, build groen. Geen schemawijziging.
 - Geen fysieke haalbaarheidscontrole op de opwarmsnelheid — dat zou een nieuw,
   ongevalideerd model toevoegen. In plaats daarvan staat het expliciet als
   aanname bij elke uitkomst.
+
+# Beveiligingsblok — authenticatie, rollen & rate-limiting (9 september 2026)
+
+Aanleiding: de twee enige openstaande punten met een harde deadline (vóór de
+Pi-migratie/`pb.tappenmars.nl`) — authenticatie/rollen functioneel
+uitgeschakeld, en geen rem op het agent-endpoint. Vooraf: `pb_data`-backup
+(`wijngaard_backup_20260909_131143.zip`). Volgorde: eerst de rem (Blok A,
+geen beslissing nodig), dan de feitelijke situatie vaststellen (Blok B), dan
+minimaal herstel (Blok C), dan een beslissingsvoorstel voor Thomas (Blok D).
+
+**Referentie `mega-prompt-v2.md` bestaat niet in de repo** — zelfde
+fantoomdocument-patroon als eerder geconstateerd bij `PROJECT-NOTEBOOK.md`.
+Waarschijnlijk een sessie-eigen instructiebestand dat nooit gecommit is. Ik
+heb de al bestaande, in dit project vastgelegde conventies gevolgd (curl-
+bewijs bij elke claim, idempotente schema-scripts, Nederlandse UI-teksten,
+geen halve maatregelen) in plaats van te gokken naar wat de 13 regels zouden
+zijn.
+
+## Blok A — Rate-limiting op het agent-endpoint
+
+**Belangrijke vondst vóór er iets gebouwd werd**: rate-limiting bestond al.
+Gebouwd en curl-getest in de Eindsprint (zie `WERKLOG.md`, "Blok C (v2)"
+hierboven — commit-cluster rond `b79fd15`), met `controleerRateLimit()` in
+`agent_uitvoering.js`, afgedwongen in alle drie de `/api/agent/*`-endpoints
+(ook `/bevestig` en `/afwijzen` — bevestigd: die draaien `verwerkBeurt()`
+opnieuw, kosten dus ook een Claude-aanroep). Foto-analyse en tool-uitvoering
+lopen allemaal BINNEN diezelfde `verwerkBeurt()`-aanroep (bevestigd:
+`analyseer_foto` is een tool die Claude zelf aanroept tijdens die ene
+request), dus die zijn al gedekt — geen apart endpoint dat gemist kon worden.
+
+**Dit betekent dat CLAUDE.md's herhaalde bewering "geen rate-limiting"
+stale was, niet waar.** Gecorrigeerd op twee plekken in CLAUDE.md.
+
+Wat er dus nog wél ontbrak t.o.v. de DoD van deze opdracht:
+
+1. **Dagplafond** — bestond niet, alleen een uurvenster. Toegevoegd:
+   `agent_berichten_per_dag_per_ip`, standaard 150/dag. Onderbouwing van dat
+   getal: ruim boven realistisch normaal gebruik (Thomas + een paar
+   medewerkers, verspreid over de dag), ruim onder het theoretische maximum
+   van 24×30=720 als alleen het uurplafond zou gelden — beschermt tegen een
+   trage, aanhoudende stroom die net onder de uurlimiet blijft maar urenlang
+   doorloopt.
+2. **Server-side logging van weigeringen** — bestond niet. Toegevoegd via de
+   ingebouwde PocketBase-logger (`$app.logger().warn(...)`, zelfde patroon
+   als `tank_consistentie.pb.js` al gebruikte) — zichtbaar in de admin-UI
+   onder Logs, doorzoekbaar op ip/tijdstip/aantal, geen nieuwe collectie
+   nodig.
+3. **Verplaatst naar `app_instellingen`** (zoals de opdracht vroeg) — het
+   bestaande uurplafond stond in `regelgeving_instellingen`, wat niet klopt
+   met dit project se eigen categorie-onderscheid (regelgeving = wettelijk
+   geverifieerde tarieven; app_instellingen = operationele drempels/
+   plafonds — zie Fase 10 Blok 1). Beide sleutels staan nu in
+   `app_instellingen`; het oude record in `regelgeving_instellingen` is na
+   de migratie verwijderd (idempotente seed-loop maakt/verwijdert niets
+   automatisch, dus dit is een eenmalige, expliciete opruimactie geweest).
+4. **"Per gebruiker indien bekend"** — bewust NIET gebouwd. Er is geen
+   authenticatie, dus een "gebruiker" is niets meer dan een zelf ingevulde
+   naam in de request-body (`verantwoordelijke`) — triviaal te spoofen, dus
+   een tweede limiet daarop zou schijnveiligheid zijn, geen echte laag. Per
+   IP is de enige laag die hier eerlijk iets afdwingt. Expliciet benoemd in
+   plaats van stilzwijgend overgeslagen.
+
+**Testbewijs (curl, PocketBase herstart om de hook-wijziging te laden —
+hooks herladen niet op Windows)**:
+
+- Uurplafond tijdelijk op 3 gezet → poging 1-3 gewone 400 (validatiefout op
+  een niet-bestaand `bericht_id`, dus GEEN betaalde Anthropic-aanroep) →
+  poging 4-5 **HTTP 429**: `"Je hebt de limiet van 3 assistent-berichten
+per uur bereikt. Probeer het over ongeveer 60 minuten opnieuw."`
+- Log bevestigd: 2 `agent-ratelimit: uurlimiet bereikt`-regels met
+  `{"aantal_laatste_uur":3,"ip":"127.0.0.1","limiet_per_uur":3}`.
+- Uurplafond terug op 30, dagplafond tijdelijk op 5 gezet → de al opgebouwde
+  5 tijdstempels (uit de uurtest) waren genoeg om meteen te zien: 6e poging
+  → **HTTP 429**: `"Je hebt het dagplafond van 5 assistent-berichten
+bereikt. Probeer het over ongeveer 24 uur opnieuw."`, terwijl het
+  (inmiddels weer 30) uurplafond niet in de weg zat — bewijst dat de twee
+  vensters onafhankelijk werken.
+- Log bevestigd: `agent-ratelimit: dagplafond bereikt` met
+  `{"aantal_laatste_24u":5,"ip":"127.0.0.1","limiet_per_dag":5}`.
+- Beide plafonds terug naar standaard (30/150) → normaal verkeer stroomt
+  weer door (gewone 400, geen 429).
+
+**DoD gehaald**: curl-bewijs uurlimiet ✅, curl-bewijs dagplafond ✅,
+instellingen aanpasbaar zonder codewijziging (via `app_instellingen`,
+al bestaand patroon) ✅, normale gebruikers merken niets (limieten ruim
+boven realistisch gebruik) ✅.
+
+## Blok B — Feitelijke situatie vaststellen
+
+**1. Wat is er in augustus gewijzigd?** Bevestiging van de eerdere audit
+(5 september 2026, zie hierboven): commit `6010a8e` "inloggen weer
+verwijderd — Thomas kon niet bij zijn eigen app" (23 augustus, derde keer in
+de geschiedenis) was een **bewuste, expliciet gemotiveerde beslissing**, geen
+neveneffect. Niets nieuws gevonden t.o.v. de eerdere audit — dat onderzoek
+stond al scherp.
+
+**2. API-regels per collectie — volledig overzicht (curl, alle 51
+domeincollecties, systeemcollecties als `_mfas` uitgesloten)**:
+
+Op één na hebben ALLE collecties lege string-regels (`""` = `OPEN_RULE`,
+voor iedereen toegestaan, ook anoniem) of `null` (niemand, zelfs geen
+ingelogde gebruiker — uitsluitend superuser/hook-context: `tankboek`,
+`agent_acties`, `bottelrondes`, `voorraad_flessen`, `voorraad_mutaties`,
+`sensor_metingen`, `flessen_mutaties`, `pasteurisatie_runs`, en de
+update/delete van `archief`/`pasteurisatie_certificaten`/`flestypes`/
+`accijns_categorieen`/`sluitingen`/`rekenmodel_validaties` — dit is
+bewust zo, zie "Bewust ONGEWIJZIGD gebleven" in CLAUDE.md, en bewaakt
+onwijzigbaarheid, geen inlogvereiste).
+
+**De enige uitzondering was `users`** — en dat leverde de belangrijkste
+vondst van dit hele blok op (zie hieronder).
+
+**3. Bestaat het `users`-schema met `rol` nog, staan er accounts in?** Ja:
+4 accounts (`invoerder1/2/3@tappenmars.nl`, `fase7test@tappenmars.nl`), alle
+vier `rol: "beheerder"`. Ongewijzigd t.o.v. de vorige audit.
+
+**4. Welke schrijfacties zijn volledig onbeschermd? — curl-getest, niet
+code gelezen:**
+
+- `POST /api/collections/partijen/records` (representatief voor de vele
+  open-domeincollecties): anoniem → 400 (validatiefout, niet 401/403) —
+  bewijst dat het schrijfpad open staat, alleen de invoer ontbrak.
+- `POST /api/tappenmars/tanks-herbereken` (beheerder-only server-endpoint):
+  anoniem → **200**, `{"ok":true,"tanks_bijgewerkt":48}` — bevestigt de
+  eerdere audit-vondst opnieuw (server behandelt afwezige auth als
+  beheerder).
+- `POST /api/collections/tankboek/records` en `.../agent_acties/records`
+  (direct, niet via het server-endpoint): anoniem → 403 — onwijzigbaarheid
+  houdt stand.
+- **Nieuwe, ernstigere vondst — volledige privilege-escalatie op
+  `users`**: `users.createRule` stond op `""` (open) en `updateRule` op
+  `"id = @request.auth.id"`. Curl-keten, stap voor stap bevestigd:
+  1. Anoniem `POST /api/collections/users/records` met een willekeurig
+     e-mailadres/wachtwoord → **HTTP 200**, nieuw account aangemaakt
+     (`rol` leeg).
+  2. Inloggen als dat account → geldig auth-token.
+  3. Met dat token `PATCH` het eigen record: `{"rol":"beheerder"}` →
+     **HTTP 200**, geaccepteerd (want `id = @request.auth.id` staat een
+     gebruiker toe zijn EIGEN record te wijzigen, zonder veldbeperking).
+  4. Met dat token `GET /api/tappenmars/gebruikers` (het enige endpoint dat
+     nog wél `$apis.requireAuth()` had) → **200**, volledige e-maillijst
+     van alle accounts, ondanks de requireAuth()+eisBeheerder()-bescherming.
+
+  Dit maakte de bewering in CLAUDE.md ("gebruikersbeheer mag nooit
+  wereldwijd open staan") feitelijk onwaar — de code had de bescherming,
+  maar de collectie eronder liet hem triviaal omzeilen. `gebruikers.pb.js`'s
+  eigen kopcommentaar beweerde zelfs expliciet "de standaard users-rules
+  blijven dicht" — dat klopte dus ook niet met de werkelijke schema-staat.
+  Gerepareerd in Blok C.
+
+**5. Resterende dode auth-checks (Fase-19-patroon)**: opnieuw breed gegrept
+op `authStore`/`.isValid` in `src/` en `pocketbase/pb_hooks/`. Geen nieuwe
+gevonden t.o.v. de audit van 5 september — de eerdere fix
+(`kelder.accijns.tsx`) staat nog overeind, en `agent-data.ts`'s twee
+onschadelijke leesplekken (met veilige terugval) zijn nog steeds de enige
+resterende voorkomens, bewust ongemoeid zoals eerder beargumenteerd. Geen
+regressie, dus geen reparatiewerk hier — dit is de eerste keer dat deze
+zoekopdracht LEEG is t.o.v. eerdere vondsten.
+
+## Blok C — Minimaal herstel
+
+**1. Dode auth-checks**: niets gevonden om te repareren (zie Blok B.5).
+
+**2. Bevestigingsdrempel op de gevaarlijkste schrijfacties.** Vóór deze
+sessie hadden "definitief verwijderen"-acties (klant, concept-order,
+fenologiemoment) al consequent een `confirm()`/twee-staps-bevestiging — dat
+patroon bestond al project-breed (zie `prullenbak.tsx` als origineel
+voorbeeld). Drie acties misten hem nog volledig, ondanks hun gewicht:
+
+- **Jaarafsluiting** (`/kelder/jaaroverzicht`, "Sluit [jaar] definitief
+  af") — vuurde direct op klik. Nu: `confirm()` met de exacte consequentie
+  ("legt het overzicht vast in het archief en kan niet ongedaan gemaakt
+  worden").
+- **Correctieboekingen op het tankboek** (`/kelder/tanks/$tankId`, de
+  peiling-correctieflow — enige frontend-ingang voor `actie: "correctie"`
+  op het tankboek) — vuurde direct op klik na de validatiecontrole. Nu:
+  `confirm()` met het exacte volume en de reden waarom dit niet terug te
+  draaien is.
+- **Tarievenbeheer** (`/kelder/accijns`, "Opslaan" per tarief) — vuurde
+  direct op klik. Nu: `confirm()` die benoemt dat dit de accijnsberekening
+  voor iedereen verandert.
+
+Alle drie volgen het al bestaande `confirm()`-patroon van dit project
+(geen nieuwe UI-component, geen nieuwe afhankelijkheid) — expliciet
+gekozen omdat dit een drempel tegen een verkeerde klik is, geen vervanging
+van authenticatie; een curl-aanroep gaat er straal langsheen, en dat is
+precies de reden waarom dit bij Blok D thuishoort, niet hier.
+
+**3. Privilege-escalatie op `users` gerepareerd — dit is GEEN halve
+authenticatie, maar het herstellen van een reeds bestaande, al besloten
+bescherming.** `gebruikers.pb.js`'s eigen commentaar claimde al drie
+inlog-cycli lang dat "de standaard users-rules dicht blijven" — de
+schrijfregels kwamen daar simpelweg nooit mee overeen. Gerepareerd via een
+nieuwe idempotente helper `stelUsersApiRegelsIn()` in `setup-pocketbase.mjs`
+(zelfde patroon als het bestaande `stelAuthDuurIn()`): `users.createRule`
+en `users.updateRule` staan nu op `null` (uitsluitend superuser/hook-
+context — exact zoals `tankboek`/`agent_acties` al werken).
+
+Vóór het toepassen gecontroleerd dat niets hierop leunt: `grep` op
+`collection("users")` in `src/` gaf nul treffers — er bestaat geen
+zelfregistratie- of accountbewerkingsscherm in de app. Na het toepassen
+opnieuw met curl bevestigd:
+
+- Anonieme zelfregistratie → **403** `"Only superusers can perform this
+action."` (was 200).
+- Een bestaand, ingelogd `medewerker`-account dat zijn eigen `rol` naar
+  `"beheerder"` probeert te zetten → **403** (was 200).
+- De LEGITIEME rolwijzigingsroute (`POST /api/tappenmars/gebruiker-rol`,
+  die via `e.app.save()` om de API-regels heen schrijft, niet via de
+  publieke collectie-API) werkt **ongewijzigd**: ingelogd als
+  `invoerder1@tappenmars.nl` (bestaande beheerder) een testaccount naar
+  `alleen_lezen` gezet → 200, gelukt.
+
+Testdata opgeruimd (twee tijdelijke curl-testaccounts verwijderd; de vier
+originele accounts ongewijzigd). Schema-drift-check: 0 verschillen — met de
+kanttekening dat de `users`-collectie zelf buiten de dekking van dat
+script valt (bekend, gedocumenteerd gat, zie CLAUDE.md); het curl-bewijs
+hierboven is daarom de daadwerkelijke verificatie, niet de drift-check.
+
+**Niet gedaan, bewust**: geen enkele vorm van login teruggezet. Dit was een
+reparatie van een bestaande, al besloten regel (accountbeheer mag nooit
+wereldwijd open staan), geen nieuw beleid — dus geen beslissing van Thomas
+nodig geweest.
+
+## Blok D — Beslissingsvoorstel voor Thomas
+
+De situatie na Blok A/B/C: de kostenrem op de assistent is compleet (uur +
+dag), de escalatie-route naar gebruikersbeheer is dicht, en de vier
+gevaarlijkste directe schrijfacties hebben nu een klik-drempel. **Wat
+overblijft is het kernprobleem: er is geen enkel onderscheid meer tussen
+wie wat mag doen op alle kelder-, voorraad-, verkoop- en
+materieelfunctionaliteit — dat is code, geen UI, en geen enkele UI-drempel
+verandert daar iets aan.** Drie opties:
+
+### A — Geen login, alleen netwerkbeperking
+
+PocketBase blijft alleen bereikbaar op het lokale netwerk (de Pi in de
+schuur, niet publiek/`pb.tappenmars.nl`); van buitenaf alleen via VPN.
+
+- **Wat het oplost**: het toegangsprobleem verdwijnt door de blootstelling
+  te beperken in plaats van de app te beveiligen — wie het wifi-netwerk
+  niet op kan, komt nergens.
+- **Wat het niet oplost**: iedereen die WEL op het lokale netwerk zit
+  (bezoekers met wifi-toegang, een toekomstige medewerker, een VPN-lek) is
+  nog steeds functioneel beheerder voor alles. Geen onderscheid tussen
+  "Thomas" en "iemand die toevallig het wifi-wachtwoord heeft".
+- **Praktisch voor veldgebruik**: geen enkele verandering — geen
+  inlogscherm, geen sessiebeheer, exact de huidige werkwijze.
+- **Geschatte inspanning**: klein (een paar uur) — VPN instellen op de
+  Pi/router, geen appwijziging nodig.
+
+### B — Login terug voor schrijfacties, lezen blijft vrij
+
+Sluit aan bij de eerder vastgelegde koerswijziging (zie het rolmodel-
+gedachtegoed uit Fase 16/Eindsprint): lezen blijft open voor iedereen,
+schrijven vereist een ingelogde gebruiker (niet per se een specifieke rol
+— gewoon "wel of geen account").
+
+- **Wat het oplost**: willekeurige bezoekers kunnen niet meer boeken/
+  wijzigen/verwijderen. Wie schrijft, is een bekend account.
+- **Wat het niet oplost**: geen fijnmazig onderscheid tussen medewerker en
+  beheerder — een ingelogde medewerker kan nog steeds tarieven wijzigen of
+  het jaar afsluiten.
+- **Wat moet hersteld worden**: `AUTH_RULE` terug naar
+  `"@request.auth.id != ''"` op alle createRule/updateRule/deleteRule van
+  de open collecties (het patroon staat al klaar, zie de "Terugzetten
+  (vierde keer)"-sectie in CLAUDE.md); `requireAuth()` terug op de vier
+  hook-bestanden (`kelder.pb.js`, `voorraad.pb.js`, `signalen.pb.js`,
+  `tags.pb.js`); `rolVan()` terug naar `if (!auth) return ""`;
+  `/login`-route, `auth-guard.ts`, de guards, de uitlogknop, de
+  cookie-sync/sessieverversing terughalen uit de git-geschiedenis (commit
+  "inloggen hersteld", 21 augustus 2026, is het exacte voorbeeld). **Cruciaal
+  probleem van vorige keer, moet dit keer expliciet worden opgelost**: Thomas
+  sloot zichzelf buiten op de dag dat hij de app nodig had — dat mag niet
+  opnieuw gebeuren. Een jaar-sessieduur (al ingesteld sinds 21 augustus,
+  staat nog steeds op de `users`-collectie) helpt, maar een noodtoegang
+  (bijv. een vast, apart bewaard herstelaccount, of een simpel lokaal
+  admin-wachtwoord dat nooit via de normale sessie kan verlopen) zou het
+  onderliggende probleem structureel oplossen in plaats van te hopen dat
+  een jaar lang genoeg is.
+- **Geschatte inspanning**: middel (een dagdeel) — grotendeels
+  terughalen van bestaande, al eerder geschreven en geteste code, plus het
+  noodtoegang-vraagstuk.
+
+### C — Volledig rollenmodel terug (Fase 16), inclusief gebruikersbeheer
+
+Beheerder/medewerker/alleen_lezen volledig afgedwongen, `rolVan()`/
+`eisSchrijfrecht()`/`eisBeheerder()` weer functioneel (de code bestaat
+nog, is nooit verwijderd — alleen "beheerder"-default bij afwezige auth
+maakte hem tandeloos), gebruikersbeheer-UI in `/instellingen` terug.
+
+- **Wat het oplost**: alles wat optie B oplost, plus een echt onderscheid
+  tussen wat een medewerker en een beheerder mag — bijvoorbeeld: een
+  medewerker kan boeken maar geen tarieven wijzigen of het jaar afsluiten.
+- **Wat het niet oplost**: complexiteit die op deze schaal (één bedrijf,
+  Thomas + een paar medewerkers) meer onderhoud vraagt — rolwijzigingen,
+  wachtwoordherstel voor meerdere mensen, een grotere kans dat iemand
+  vastloopt op een rechtenprobleem tijdens druk seizoenswerk.
+- **Wat moet hersteld worden**: alles uit optie B, plus de
+  gebruikersbeheer-UI in `/instellingen` (verwijderd op 22 augustus, staat
+  in de git-geschiedenis) en een bewuste rol-toewijzing per account (nu
+  staan alle vier accounts op "beheerder" — die keuze moet opnieuw gemaakt
+  worden, niet automatisch overgenomen).
+- **Geschatte inspanning**: middel-groot (één tot twee dagdelen) — optie B
+  plus UI-werk plus een bewuste rol-doorloop van de bestaande accounts.
+
+### Eén ding dat sowieso ontbreekt, ongeacht de gekozen optie
+
+Zonder authenticatie is `uitgevoerd_door`/`verantwoordelijke` bij een
+pasteurisatierun of een geaccepteerd drukoordeel een **ingetypte naam, geen
+geverifieerde gebruiker** — iedereen kan daar "Thomas" of een andere naam
+intikken. Voor intern gebruik (huidige situatie) is dat prima. Voor een
+loonproductieklant of een aansprakelijkheidsvraag over een pasteurisatie-
+run is een ingetypte naam een zwakke bewijslast. Dit lost geen van de drie
+opties vanzelf op tenzij het invoerveld ook daadwerkelijk gekoppeld wordt
+aan het ingelogde account (bij B/C) in plaats van vrije tekst te blijven,
+en zelfs dan alleen zo sterk als de onderliggende authenticatie zelf.
+
+**Eigen inschatting, gezien de aanstaande servermigratie en de kans op
+meewerkende medewerkers**: optie B (login voor schrijven, lezen vrij) lijkt
+het beste evenwicht — het dicht het toegangsprobleem zonder de
+rolcomplexiteit van C op te tuigen vóórdat er een concrete reden is die te
+onderhouden (bijv. een medewerker die daadwerkelijk fouten maakt met
+tarieven). Optie A alleen is onvoldoende zodra er meer dan Thomas op het
+netwerk zit. **Dit is een inschatting, geen beslissing — Thomas kiest.**
+
+## VRAGEN VOOR THOMAS
+
+1. Welke van de drie opties (A/B/C) in Blok D wil je, en op welke termijn
+   t.o.v. de Pi-migratie?
+2. Bij optie B of C: hoe wil je het "Thomas sloot zichzelf buiten"-risico
+   van 22 augustus voorkomen — een noodtoegang, een langere sessieduur dan
+   het huidige jaar, iets anders?
+3. Het `uitgevoerd_door`/`verantwoordelijke`-veld blijft een ingetypte naam
+   totdat authenticatie terugkomt EN dat veld gekoppeld wordt aan het
+   ingelogde account. Wil je dat als onderdeel van B/C meenemen, of is dat
+   voor nu geen prioriteit?
+
+## Afronding
+
+`npm test`: 248/248 groen. Playwright: 8/8 groen. `tsc`/`eslint`: schoon.
+Productiebuild: groen. Schema-drift-check: 0 verschillen (met de
+gedocumenteerde `users`-uitzondering, zie Blok C). Testdata opgeruimd
+(curl-testaccounts, tijdelijke limietwaarden teruggezet). Verse
+`pb_data`-backup vooraf (`wijngaard_backup_20260909_131143.zip`).

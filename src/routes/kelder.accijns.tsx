@@ -496,6 +496,16 @@ function AccijnsPage() {
                         const waarde = Number(b.waarde);
                         if (!waarde || waarde <= 0 || !b.datum)
                           return void toast.error("Waarde én controle-datum zijn verplicht");
+                        // Beveiligingsblok (9 sep. 2026) — tarieven sturen de
+                        // accijnsberekening voor iedereen; zonder authenticatie
+                        // is deze drempel de enige rem tegen een verkeerde klik
+                        // (zie WERKLOG.md "Beveiligingsblok", Blok C).
+                        if (
+                          !confirm(
+                            `Tarief "${i.sleutel}" wijzigen naar ${waarde} ${i.eenheid}? Dit verandert de accijnsberekening voor iedereen.`,
+                          )
+                        )
+                          return;
                         tariefM.mutate({ id: i.id, waarde, datum: b.datum });
                       }}
                       className="h-10 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"

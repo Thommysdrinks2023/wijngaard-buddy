@@ -206,16 +206,32 @@ zoek de commit "inloggen hersteld" van 21 augustus 2026 als exact voorbeeld.
   accijnsregister bewaakt.
 - `pocketbase/pb_hooks/gebruikers.pb.js` behoudt zijn `$apis.requireAuth()` —
   accountbeheer mag nooit wereldwijd open staan, los van of er verder wordt
-  ingelogd.
+  ingelogd. **Correctie (Beveiligingsblok, 9 september 2026)**: dit klopte in
+  de code maar niet in de praktijk — `users.createRule` stond op `""` (open)
+  en `updateRule` stond op `"id = @request.auth.id"`, dus iedereen kon
+  zichzelf registreren en vervolgens zijn eigen `rol`-veld op `"beheerder"`
+  zetten, wat `requireAuth()` + `eisBeheerder()` volledig omzeilde. Live
+  curl-bevestigd en gerepareerd: `users.createRule`/`updateRule` staan nu
+  op `null` (alleen superuser/hook-context, via `stelUsersApiRegelsIn()` in
+  `setup-pocketbase.mjs`) — precies wat deze regel altijd al beweerde. Zie
+  WERKLOG.md "Beveiligingsblok" voor het volledige testbewijs.
 - De `users`-collectie en bestaande accounts zijn nooit verwijderd geweest
   (de wachtwoorden staan, ongewijzigd, in `pocketbase-accounts.txt`).
 
 **Wat dit sowieso niet oplost, en waar bij de Pi-migratie naar gekeken moet
-worden:** het agent-endpoint (`POST /api/agent/bericht`) heeft nog steeds geen
-`requireAuth()` en geen rate-limiting — zie het punt "AI-agent-endpoint zonder
-rate-limit" verderop in dit bestand. Dat is bewust zo gelaten zolang de server
-alleen op `127.0.0.1` luistert, maar moet vóór de Pi/`pb.tappenmars.nl` alsnog
-worden opgelost.
+worden:** het agent-endpoint (`POST /api/agent/bericht`, en `/bevestig`/
+`/afwijzen`) heeft nog steeds geen `requireAuth()`. **Correctie (9 september 2026)**: eerdere versies van dit document beweerden hier ook "geen
+rate-limiting" — dat was stale. Rate-limiting bestaat wél, al sinds de
+Eindsprint (`controleerRateLimit()` in `agent_uitvoering.js`), en is in het
+Beveiligingsblok (9 sep. 2026) uitgebreid met een dagplafond naast het
+uurplafond, beide instelbaar via `app_instellingen`
+(`agent_berichten_per_uur_per_ip`/`_per_dag_per_ip`, standaard 30/uur en
+150/dag) en curl-getest. Zie WERKLOG.md "Beveiligingsblok" voor het
+testbewijs. Zonder `requireAuth()` blijft het endpoint desondanks bereikbaar
+voor iedereen die de server bereikt — de kostenrem beperkt het financiële
+risico, maar lost geen toegangsprobleem op. Dat moet vóór de Pi/
+`pb.tappenmars.nl` alsnog opgelost worden, samen met het bredere
+auth/rollen-besluit (zie hierboven, "BESLISSING NOG OPEN").
 
 ## Codeerconventies
 
@@ -263,7 +279,7 @@ worden opgelost.
 - **Netlify**: nog niet live. Deployment-configuratie bestaat (`wrangler.jsonc`), maar de site wordt nog lokaal gebruikt.
 - **VPS (Hetzner)**: PocketBase draait niet op de VPS — wachtwoord reset nodig via Hetzner-console. Plan: `pb.tappenmars.nl` voor HTTPS-productie, SSL via Cloud86.
 - **Raspberry Pi migratie**: gepland als productie-backend (lokaal in de schuur), nog niet uitgevoerd.
-- **/assistent route (Fase 3, AI-agent) gebouwd en actief**: chatscherm met bevestigingskaarten per actietype, gesprekkenlijst, fotoknop, bronnenregel, feedback-knoppen. Werkt bewust **zonder inloggen** (zoals de rest van de app) — `agent_gesprekken`, `agent_berichten` en `advies_feedback` hebben een open API-rule (`OPEN_RULE = ""`, geen `AUTH_RULE`); `agent_acties` mag iedereen lezen maar niemand rechtstreeks schrijven (`createRule`/`updateRule`/`deleteRule` = `null`, uitsluitend de hook-context mag dat). **Let op — dit betekent ook dat `POST /api/agent/bericht` geen `requireAuth()` heeft en geen rate-limiting kent**: elke request die de server bereikt triggert een betaalde Anthropic-aanroep. Zolang PocketBase alleen op `127.0.0.1`/het lokale netwerk luistert is dat geen probleem; **voordat dit endpoint ooit van buiten het lokale netwerk bereikbaar wordt (Pi, VPS, `pb.tappenmars.nl`), moet hier eerst rate-limiting/quota bij** — zie het punt "AI-agent-endpoint zonder rate-limit" onder Pi-aandachtspunten. Backend: `pocketbase/pb_hooks/agent.pb.js` + `agent_logica.js` + `agent_uitvoering.js` (endpoints `/api/agent/bericht`, `/api/agent/actie/:id/bevestig`, `/afwijzen`, alle drie hardcoded op `http://127.0.0.1:8090` — moet aangepast bij een Pi/VPS-migratie); systeemprompt in `agent_systeemprompt.md`. Server-only sleutel `ANTHROPIC_API_KEY` in `.env` (ingevuld en actief sinds 3 juli 2026). De oude client-side implementatie (`src/lib/assistent.ts`, met de frontend-var `VITE_ANTHROPIC_API_KEY`) is verwijderd — zie DECISIONS-FASE3.md, sectie "Opschoning client-side assistent-implementatie". Model `claude-sonnet-5`. Schrijfacties gaan altijd via een `agent_acties`-voorstel, nooit direct — de bevestigde actie hergebruikt de bestaande Fase 2-endpoints/logica (`kelder_logica.js`).
+- **/assistent route (Fase 3, AI-agent) gebouwd en actief**: chatscherm met bevestigingskaarten per actietype, gesprekkenlijst, fotoknop, bronnenregel, feedback-knoppen. Werkt bewust **zonder inloggen** (zoals de rest van de app) — `agent_gesprekken`, `agent_berichten` en `advies_feedback` hebben een open API-rule (`OPEN_RULE = ""`, geen `AUTH_RULE`); `agent_acties` mag iedereen lezen maar niemand rechtstreeks schrijven (`createRule`/`updateRule`/`deleteRule` = `null`, uitsluitend de hook-context mag dat). **Let op — dit betekent ook dat `POST /api/agent/bericht` geen `requireAuth()` heeft**: elke request die de server bereikt triggert een betaalde Anthropic-aanroep. Er ZIT wél een kostenrem op (uur- en dagplafond per IP, zie "Inloggen verwijderd" hierboven voor het testbewijs) — die voorkomt onbeperkte kosten, maar lost het toegangsprobleem niet op. Zolang PocketBase alleen op `127.0.0.1`/het lokale netwerk luistert is dat te overzien; **voordat dit endpoint ooit van buiten het lokale netwerk bereikbaar wordt (Pi, VPS, `pb.tappenmars.nl`), moet hier alsnog authenticatie bij** — samen met het bredere auth/rollen-besluit. Backend: `pocketbase/pb_hooks/agent.pb.js` + `agent_logica.js` + `agent_uitvoering.js` (endpoints `/api/agent/bericht`, `/api/agent/actie/:id/bevestig`, `/afwijzen`, alle drie hardcoded op `http://127.0.0.1:8090` — moet aangepast bij een Pi/VPS-migratie); systeemprompt in `agent_systeemprompt.md`. Server-only sleutel `ANTHROPIC_API_KEY` in `.env` (ingevuld en actief sinds 3 juli 2026). De oude client-side implementatie (`src/lib/assistent.ts`, met de frontend-var `VITE_ANTHROPIC_API_KEY`) is verwijderd — zie DECISIONS-FASE3.md, sectie "Opschoning client-side assistent-implementatie". Model `claude-sonnet-5`. Schrijfacties gaan altijd via een `agent_acties`-voorstel, nooit direct — de bevestigde actie hergebruikt de bestaande Fase 2-endpoints/logica (`kelder_logica.js`).
 - **Wekelijkse inzichten-berekening** (`scripts/bereken-inzichten.mjs`): berekent 5 simpele patronen (brix-verloop, gistingssnelheid/stagnatie, uitval-clusters, GDD-afwijking, fenologie-vergelijking t.o.v. eerdere seizoenen) en schrijft ze naar de `inzichten`-collectie; de agent citeert ze via `zoek_inzichten`. Draait **handmatig, wekelijks** op deze Windows-devmachine (`node scripts/bereken-inzichten.mjs <email> <wachtwoord> [pocketbase-url]`, url optioneel als `VITE_POCKETBASE_URL` in `.env` staat) — pas als de Raspberry Pi productiebackend live is, wordt dit een cron/systemd-timer. Testdata: `scripts/seed-testdata-agent.mjs <email> <wachtwoord> [url] [--cleanup]`.
 - **PocketBase JS-SDK auto-cancellation-valkuil** (ontdekt bij Fase 3, geldt app-breed): de client annuleert standaard een eerdere aanroep naar dezelfde URL zodra een tweede binnenkomt. Elke pagina die zowel `AppHeader` (met `VerbindingBadge`/`useVerbinding()`) rendert als zelf data ophaalt via `ensureOnline()`, draait twee onafhankelijke `pingPb()`-lussen die elkaars `pb.health.check()`-aanroep kunnen annuleren — de verliezer rapporteert dan "offline" terwijl de server bereikbaar is. Fix zit al in `pingPb()` (`src/lib/data.ts`): `pb.health.check({ requestKey: null })`. Kom je alsnog een pagina tegen die willekeurig "offline" lijkt te flakkeren vlak na laden: dit is de eerste verdachte.
 - **Appnaam is geparametriseerd én definitief**: de naam is **"De Tappenmars Buddy"** (door Thomas gekozen op 16 juli 2026). Alle zichtbare React-plekken (titelbalk, hub, onboarding, installeer-banner, rapportvoetnoot) lezen uit `src/config/app.ts` (`APP_NAAM`/`APP_NAAM_KORT`/`BEDRIJFSNAAM`). Een naamswissel = die constanten wijzigen **plus twee niet-TS-plekken** die geen TypeScript kunnen importeren: `public/manifest.webmanifest` (PWA-naam op het startscherm) en de introductiezin in `pocketbase/pb_hooks/agent_systeemprompt.md`. Nergens anders de naam hardcoden.
