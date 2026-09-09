@@ -5,9 +5,36 @@
 // gevuld is — niet of er een bevestigingsmelding op het scherm stond.
 
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import { openApp, ruimOp, vulReactVeld } from "./hulp";
 
 const TESTINVOERDER = "e2e-rooktest";
+
+// Sommige collecties (tankboek, agent_acties, pasteurisatie_runs, …) hebben
+// bewust deleteRule=null — schrijven kan alleen via de gecontroleerde
+// server-endpoints of superuser-API, nooit rechtstreeks door een gewone
+// aanvrager. Opruimen na een test die zo'n collectie raakt kan dus niet met
+// de gedeelde ruimOp()/telOpServer() (die zonder auth-header werken, met
+// opzet — zie hulp.ts). credentials.txt is dezelfde, al door Thomas
+// geautoriseerde beheerderscredential als scripts/setup-pocketbase.mjs
+// gebruikt (zie CLAUDE.md, "Superuser-credentials").
+async function verwijderAlsSuperuser(collectie: string, id: string) {
+  const [email, wachtwoord] = readFileSync(
+    new URL("../pocketbase/backup-credentials.txt", import.meta.url),
+    "utf8",
+  )
+    .trim()
+    .split(/\r?\n/);
+  const auth = await fetch("http://127.0.0.1:8090/api/collections/_superusers/auth-with-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identity: email, password: wachtwoord }),
+  }).then((r) => r.json());
+  await fetch(`http://127.0.0.1:8090/api/collections/${collectie}/records/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: auth.token },
+  });
+}
 
 async function telOpServer(page: import("@playwright/test").Page, collectie: string) {
   return page.evaluate(async (col) => {
@@ -333,6 +360,78 @@ test("10 — een nieuwe machine op /materieel komt echt op de server aan", async
     .poll(() => telOpServerOpNaam(page, "materieel", naam), { timeout: 15_000 })
     .toBeGreaterThan(0);
   await ruimOpOpNaam(page, "materieel", naam);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
+
+test("11 — een pasteurisatierun starten op lotnummer komt echt op de server aan", async ({
+  page,
+}) => {
+  // Voorheen alleen indirecte dekking via de wat-als-simulatie (test 7/8) —
+  // de echte kernflow (run starten op een bestaand lotnummer, atomisch met
+  // een kelderlog-openingsregel) had geen enkele test. Gebruikt het
+  // bestaande, geseede lotnummer "260101" (Johanniter, klaar_voor_botteling)
+  // i.p.v. een nieuwe partij aan te maken — dat houdt de test klein en de
+  // opruiming exact (alleen de run zelf en de kelderlogregel, geen partij).
+  await page.goto("/pasteurisatie/run/nieuw");
+
+  await page.getByPlaceholder("bijv. L26-JOH-01").fill("260101");
+  await page.getByRole("button", { name: /zoeken/i }).click();
+  await expect(page.getByText(/partij gevonden/i)).toBeVisible({ timeout: 15_000 });
+
+  // Zelfde flestype/sluiting-combinatie als in de wat-als-tests (test 7/8):
+  // bij 48 °C, 225 ml vulling en 1,0 bar carbonatie bij 10 °C bekend "veilig"
+  // — dus geen akkoord-ondanks-oordeel-vinkje nodig voor deze test.
+  // Bewuste keuze voor de vaste seed-id's van "transparant kroonkurk 250 ml"
+  // en "Kroonkurk 26 mm" (zelfde combinatie als de wat-als-tests, 7/8) — een
+  // label-match is broos zodra er tussentijds een flestype bij komt met een
+  // vergelijkbare naam. Op labelnaam i.p.v. positie: "Product" staat vóór
+  // "Flestype" op dit scherm, anders dan op de planner.
+  await page.getByLabel("Flestype").selectOption("eh4t5hp7az0182b");
+  await page.getByLabel("Sluiting").selectOption("wq11z854nle558t");
+
+  await page.getByLabel("Aantal flessen").fill("12");
+  await page.getByLabel("Vulvolume (ml)").fill("225");
+  await page.getByLabel("Naam (invoerder)").fill(TESTINVOERDER);
+
+  const startKnop = page.getByRole("button", { name: /run starten/i });
+  await expect(startKnop).toBeEnabled({ timeout: 15_000 });
+  await startKnop.click();
+
+  // (?!nieuw) is nodig: we starten al op /pasteurisatie/run/nieuw, wat
+  // zonder die uitsluiting zelf al aan het patroon voldoet — waitForURL zou
+  // dan meteen terugkeren zonder op de echte navigatie te wachten, en
+  // page.url() zou daarna nog steeds "nieuw" als id opleveren.
+  await page.waitForURL(/\/pasteurisatie\/run\/(?!nieuw)[^/]+$/, { timeout: 15_000 });
+  const runId = page.url().split("/").pop()!;
+
+  // Echt op de server: de run-monitor haalt zijn data op via genau dit id,
+  // dus een geslaagde navigatie bewijst het al impliciet — hier expliciet
+  // bevestigd, zelfde discipline als de rest van dit bestand.
+  await expect
+    .poll(
+      async () => {
+        const r = await page.evaluate(
+          (id) =>
+            fetch(`http://127.0.0.1:8090/api/collections/pasteurisatie_runs/records/${id}`).then(
+              (res) => res.status,
+            ),
+          runId,
+        );
+        return r;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(200);
+
+  // Opruimen: precies deze ene run (op id, geen filter — dit lotnummer is
+  // een echte, herbruikte productiepartij) plus de bijbehorende
+  // kelderlog-openingsregel (via ingevoerd_door, zelfde patroon als elders).
+  // pasteurisatie_runs heeft deleteRule=null, dus dit MOET met de
+  // superuser-credential — een gewone DELETE zou hier stil (403, niet
+  // gecontroleerd) mislukken.
+  await verwijderAlsSuperuser("pasteurisatie_runs", runId);
+  await ruimOp(page, "kelderlog", TESTINVOERDER);
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });

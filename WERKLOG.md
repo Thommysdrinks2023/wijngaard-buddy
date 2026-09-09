@@ -2314,3 +2314,51 @@ wat-als-simulatie op `/pasteurisatie/plannen` heeft dekking (test 7/8).
 **Getest**: 248 unit tests groen (ongewijzigd), 10 rooktests groen (2
 nieuw), `tsc`/`eslint` schoon, testdata opgeruimd en met curl bevestigd leeg
 (`klanten`/`materieel` filter op `E2E Test` → 0 resultaten).
+
+# Vervolg testdekking (9 september 2026, nieuwe sessie) — pasteurisatie-kernflow
+
+**Test 11** — een pasteurisatierun starten op een bestaand lotnummer komt
+echt op de server aan. Dit was het laatste, belangrijkste gat uit de vorige
+sessie: de kernflow van het veiligheidskritische pasteurisatiedomein had
+geen dekking, alleen de wat-als-simulatie (test 7/8).
+
+**Opzet**: gebruikt het bestaande, geseede lotnummer `260101` (Johanniter,
+`klaar_voor_botteling`) i.p.v. een nieuwe partij aan te maken — dat houdt de
+opruiming exact (alleen de run en de kelderlogregel, geen extra partij) en
+de test klein. Zelfde flestype/sluiting-combinatie als de wat-als-tests
+(250 ml transparant kroonkurk + kroonkurk-sluiting, bij 48 °C bekend
+"veilig") zodat het akkoord-ondanks-oordeel-vinkje niet nodig is.
+
+**Twee bugs onderweg gevonden en gerepareerd, allebei in de test zelf, niet
+in de app**:
+
+1. **`waitForURL`-valstrik**: de test start al op `/pasteurisatie/run/nieuw`,
+   en het eerste patroon (`/\/pasteurisatie\/run\/[^/]+$/`) matchte die URL
+   zelf al (`nieuw` voldoet aan `[^/]+`). `waitForURL` keerde daardoor
+   meteen terug zonder op de echte navigatie te wachten, en `page.url()`
+   leverde nog steeds `nieuw` als "run-id" op — de daaropvolgende
+   servercontrole gaf dus terecht 404. Gefixed met een negative lookahead:
+   `/\/pasteurisatie\/run\/(?!nieuw)[^/]+$/`.
+2. **Stille opruimfout**: `pasteurisatie_runs` heeft (terecht)
+   `deleteRule: null` — net als `tankboek`/`agent_acties`, alleen via
+   servercode of superuser-API te wijzigen. Een gewone `DELETE` zonder
+   auth-header faalde daardoor stil met 403 (niet gecontroleerd in de test),
+   en liet een testrun achter in de database — twee keer met de hand
+   opgeruimd tijdens het debuggen. Opgelost met een nieuwe lokale helper
+   `verwijderAlsSuperuser()` die dezelfde, door Thomas al geautoriseerde
+   `pocketbase/backup-credentials.txt` gebruikt (zelfde credential als
+   `scripts/setup-pocketbase.mjs`) om in te loggen en pas dán te
+   verwijderen. Bewust ALLEEN voor deze ene opruimstap, niet toegevoegd aan
+   de gedeelde `ruimOp()`-helper — die blijft bewust zonder auth-header voor
+   de collecties waar dat hoort (zie hulp.ts).
+
+**Nog steeds niet gedekt**: de order-aanmaken/leveren-keten op `/verkoop`
+(vereist bestaande voorraad), de onderhoudslog-flow op `/materieel`, het
+afronden van een pasteurisatierun (PU-eindberekening + certificaat).
+
+**Getest**: 248 unit tests groen (ongewijzigd), 11 rooktests groen (1
+nieuw), `tsc` schoon, `eslint` schoon, schema-drift 0 (geen schemawijziging
+deze sessie). Testrun/kelderlogregel na de fix met curl bevestigd leeg voor
+lot 260101. PocketBase bleek bij sessiestart niet te draaien (geen actief
+`pocketbase`-proces, taak stond op "Ready" i.p.v. "Running") — herstart via
+`Start-ScheduledTask`, gezondheidscheck bevestigd vóór verder werk.
