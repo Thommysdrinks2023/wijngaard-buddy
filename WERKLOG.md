@@ -1867,6 +1867,54 @@ apparatuur" is een fysische vraag, en daar een grens voor verzinnen zou
 precies het ongevalideerde haalbaarheidsmodel zijn waar het ontwerp voor
 waarschuwt. Dat blijft een zichtbare aanname bij elke uitkomst.
 
+## Uitbreiding — twee scenario's naast elkaar vergelijken (9 september 2026)
+
+Thomas koos expliciet voor deze kleinere uitbreiding boven het alternatief
+(simuleren vanaf een lopende run op /pasteurisatie/run/$runId) — dat laatste
+raakt een scherm dat bouwstap 1 bewust met rust liet, dit blijft binnen de
+planner die al bestaat.
+
+**Wat er gebouwd is**: op de planner, ná een eerste simulatie (scenario A),
+verschijnt een knop "+ Vergelijk met een tweede scenario". Scenario B krijgt
+een VOLLEDIG eigen, onafhankelijke set velden (opwarm/houd/afkoel-duur,
+begin-/houd-/eindtemperatuur) — start als kopie van scenario A zodat er
+meteen een zinnig vergelijkingspunt is, maar is daarna losgekoppeld. Fysieke
+grootheden die niet per scenario verschillen (flesinhoud, sluiting,
+carbonatie, doel-PU) blijven gedeeld: dat zijn eigenschappen van de fles, geen
+keuze in hoe je pasteuriseert.
+
+**Bewuste koerswijziging t.o.v. bouwstap 1**: daar was de expliciete keuze om
+GEEN los houdtemperatuur-veld te bouwen ("twee temperaturen op één scherm is
+precies hoe je een verkeerde conclusie trekt"). Voor deze vergelijkingssectie
+geldt het omgekeerde: twee temperaturen naast elkaar tonen is hier het HELE
+PUNT. Het risico van verwarring is opgelost met naamgeving in plaats van met
+vermijden — beide kolommen zijn overal expliciet "Scenario A"/"Scenario B"
+gelabeld, ook in de grafieklegenda en de tooltip.
+
+**Grafiek**: één gecombineerde grafiek (niet twee losse) met beide curves op
+dezelfde minuten-as, goud voor A en teal voor B. Herbruikt de bestaande
+bemonsteringslogica van bouwstap 1, nu uitgetrokken naar een gedeelde pure
+functie `bemonsterCurve()` zodat er geen tweede implementatie van dezelfde
+uitdunning ontstaat. Een curve die korter duurt dan de andere stopt gewoon
+op zijn eigen einde (recharts `connectNulls={false}`) i.p.v. een misleidende
+vlakke lijn door te trekken.
+
+**Samenvatting**: twee kaarten naast elkaar (PU-totaal, of het doel gehaald
+is, veiligheidsoordeel), plus — alleen als BEIDE scenario's het doel halen —
+één regel die het verschil in minuten benoemt. Bewust geen verschil-tekst
+als een van beide het doel niet haalt: "B is 6 minuten eerder" is zinloos als
+A nooit aankomt.
+
+**Getest**: 248 unit tests blijven groen (geen nieuwe pure rekenlogica — dit
+is UI die de bestaande `simuleerRun()` twee keer aanroept), nieuwe
+rooktest 8 bewaakt dat scenario B écht onafhankelijk herberekend wordt (een
+bekende, sterk afwijkende uitkomst — 117,9 PU bij 65°C — moet verschijnen na
+het aanpassen van alleen B's temperatuur). Live in de productiebuild
+gecontroleerd: startpunt (kopie van A), onafhankelijke aanpassing, de
+gecombineerde grafiek (twee lijnen, juiste kleuren via de DOM gecontroleerd),
+de verschil-regel, en "verbergen" (scenario B sluiten zonder scenario A te
+raken). `tsc`/`eslint` schoon, build groen. Geen schemawijziging.
+
 ## Bewust NIET gedaan
 
 - Geen wat-als op gisting of rijping — die domeinmodellen bestaan niet, en een

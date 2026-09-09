@@ -218,3 +218,38 @@ test("7 — een wat-als-simulatie is altijd als simulatie gemarkeerd", async ({ 
   // Geen foutstatus op dit scherm (zelfde bewaking als test 6).
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
+
+test("8 — twee wat-als-scenario's kunnen naast elkaar vergeleken worden", async ({ page }) => {
+  // Fase 21 (uitbreiding). Bewaakt dat scenario B écht onafhankelijk is van
+  // scenario A (dezelfde fout als bij één simulatie zou hier zijn: twee
+  // uitkomsten die stiekem hetzelfde getal tonen omdat B nooit echt apart
+  // wordt doorgerekend).
+  await page.goto("/pasteurisatie/plannen");
+
+  await page.getByRole("button", { name: /simuleer volledige curve/i }).click();
+  await expect(page.getByText(/totale pu over de curve/i)).toBeVisible();
+
+  const vergelijkKnop = page.getByRole("button", { name: /vergelijk met een tweede scenario/i });
+  await expect(vergelijkKnop).toBeVisible();
+  await vergelijkKnop.click();
+
+  // "Scenario B" staat zowel als kop als in de vergelijkingskaart — de kop
+  // is uniek genoeg om op te wachten zonder in een strict-mode-conflict te
+  // lopen.
+  await expect(page.getByRole("heading", { name: "Scenario B" })).toBeVisible();
+
+  // Startpunt: B is een kopie van A (zelfde 48 °C), dus beide kaarten tonen
+  // dezelfde PU-uitkomst.
+  await expect(page.getByText("● Scenario A (48 °C) ·")).toBeVisible();
+
+  // Scenario B's houdtemperatuur aanpassen naar een bekende, sterk afwijkende
+  // waarde — de uitkomst moet dan écht opnieuw berekend zijn (117,9 PU bij
+  // 65 °C met de standaard 15/20/20-curve), niet stiekem hetzelfde getal als
+  // scenario A blijven tonen.
+  const houdVeldB = page.getByLabel("Houd (°C)");
+  await houdVeldB.fill("65");
+  await expect(page.getByText("● Scenario A (48 °C) · ● Scenario B (65 °C)")).toBeVisible();
+  await expect(page.getByText("117.9 PU")).toBeVisible();
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
