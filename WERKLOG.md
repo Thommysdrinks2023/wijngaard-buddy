@@ -2506,3 +2506,37 @@ van een leeg getalveld maakt. 15/15 rooktests en 248 unit-tests groen.
 **Kanttekening bij antwoord 3 van Thomas:** hij meet temperatuur nu niet
 standaard. Dit veld levert dus pas data op als het meten gewoonte wordt — het is
 een mogelijkheid, geen meetreeks om nu al op te leunen.
+
+---
+
+## 2026-09-10 — Foto bij kelderlog + "laatst gemeten" op het dashboard (voorstel 5 en de staart van 2)
+
+**Foto-upload bij een kelderlogregel.** Kleiner dan het leek: het `foto`-veld
+bestond al in het schema en werd al uitgelezen door `kelderlogFromPb()` —
+alleen de invoerkant ontbrak. `KelderlogInput` heeft nu een `fotoFile`, en
+`createKelderlog()` zet die apart in de payload; de PocketBase-SDK maakt daar
+vanzelf een FormData van. In het logboekpaneel op het partijdetail staat een
+fotoknop die door `comprimeerFoto()` gaat — dat is meteen de verplichte
+EXIF-strip (Fase 7, `docs/privacy.md`), niet iets om hier lokaal opnieuw te
+regelen. De logboeklijst toont een thumbnail die naar de volledige foto linkt.
+
+**Correctie tijdens de bouw:** de thumbnail kreeg eerst `loading="lazy"`. Bij
+het narekenen bleek de afbeelding dan niet te laden zolang de pagina niet
+zichtbaar gerenderd wordt — en met maximaal tien logregels levert lazy loading
+niets op. Verwijderd; daarna geverifieerd dat de thumbnail echt laadt
+(`naturalWidth` 400, niet 0).
+
+**"Laatst gemeten" op het kelderdashboard** (de kleine toevoeging bij voorstel
+2). Bij partijen met status gisting of opvoeding staat nu hoeveel dagen geleden
+er voor het laatst een analyse is gedaan, in de waarschuwingskleur boven de
+zeven dagen. Live berekend uit de analyses die er toch al zijn — **bewust geen
+cron**: die is er niet (`bereken-inzichten.mjs` draait wekelijks en handmatig
+tot de Pi er staat), en dit is ook geen signaal maar een aflezing. Het stelt
+zelf geen norm voor "te lang"; het toont wat er staat.
+
+**Getest.** Foto handmatig geüpload via de echte UI (canvas-JPEG in het
+file-input geduwd): server gaf `foto: "kelderlog_test_….jpg"` terug en de
+thumbnail laadde. Testrecord daarna verwijderd, 0 resterend. Rooktest 16
+bewaakt het pad met een echte JPEG-buffer — een lege buffer zou op de
+canvas-compressie stukslaan en dus niets bewijzen. 16/16 rooktests, 248
+unit-tests groen.

@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { APP_NAAM } from "@/config/app";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { fetchTanks } from "@/lib/kelder-data";
+import { differenceInCalendarDays, parseISO } from "date-fns";
+import { fetchAnalyses, fetchTanks } from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { fetchEigenaars } from "@/lib/kelder-data";
 import {
@@ -44,6 +45,7 @@ function KelderDashboard() {
   const tanksQ = useQuery({ queryKey: ["tanks"], queryFn: fetchTanks });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
   const eigenaarsQ = useQuery({ queryKey: ["eigenaars"], queryFn: fetchEigenaars });
+  const analysesQ = useQuery({ queryKey: ["analyses", "alle"], queryFn: () => fetchAnalyses() });
   const [eigenaarFilter, setEigenaarFilter] = useState("");
 
   // Fase 13 Blok F — standaard alleen de gevulde tanks.
@@ -85,6 +87,29 @@ function KelderDashboard() {
       ),
     [partijenQ.data, eigenaarFilter],
   );
+
+  // Hoeveel dagen geleden is een partij voor het laatst gemeten? Live berekend
+  // uit de analyses die er toch al zijn — bewust geen dagelijkse cron, want die
+  // is er niet (bereken-inzichten.mjs draait wekelijks en handmatig tot de Pi
+  // er staat). Dit is een aflezing, geen signaal: het bepaalt zelf geen drempel
+  // voor "te lang", het toont alleen wat er staat.
+  const dagenSindsMeting = useMemo(() => {
+    const laatste = new Map<string, string>();
+    for (const a of analysesQ.data ?? []) {
+      const huidig = laatste.get(a.partij);
+      if (!huidig || a.datum > huidig) laatste.set(a.partij, a.datum);
+    }
+    const vandaag = new Date();
+    const m = new Map<string, number>();
+    for (const [partij, datum] of laatste) {
+      try {
+        m.set(partij, differenceInCalendarDays(vandaag, parseISO(datum)));
+      } catch {
+        // onleesbare datum: liever niets tonen dan een verzonnen getal
+      }
+    }
+    return m;
+  }, [analysesQ.data]);
 
   const tanksInGebruik = useMemo(
     () => (tanksQ.data ?? []).filter((t) => t.huidig_volume_l > 0),
@@ -265,6 +290,19 @@ function KelderDashboard() {
                             : "Nog niet op tank"}
                           {p.lotnummer ? ` · lot ${p.lotnummer}` : ""}
                         </p>
+                        {(p.status === "gisting" || p.status === "opvoeding") && (
+                          <p
+                            className={`truncate text-xs ${
+                              (dagenSindsMeting.get(p.id) ?? 99) > 7
+                                ? "font-medium text-warning"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {dagenSindsMeting.has(p.id)
+                              ? `Laatst gemeten: ${dagenSindsMeting.get(p.id)} dagen geleden`
+                              : "Nog niet gemeten"}
+                          </p>
+                        )}
                       </div>
                       <span className="shrink-0 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium">
                         {info?.emoji} {info?.label ?? p.status}

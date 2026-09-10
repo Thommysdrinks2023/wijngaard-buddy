@@ -491,12 +491,22 @@ export interface KelderlogInput {
    * sluit deze taak vanzelf? Formaat "<soort>:<veld>", bijv "analyse:so2_vrij".
    */
   taak_sluit_bij?: string;
+  /**
+   * Optionele foto bij deze logregel. Het `foto`-veld bestaat al in het schema
+   * en werd al uitgelezen (kelderlogFromPb) — alleen de invoerkant ontbrak.
+   * De PocketBase-SDK maakt van een payload met een File vanzelf een FormData,
+   * dus het bestand kan gewoon in hetzelfde create-object mee.
+   */
+  fotoFile?: File | null;
 }
 
 export async function createKelderlog(input: KelderlogInput): Promise<KelderlogRegel> {
   const pb = await pbOfFout();
   logAudit("aangemaakt", "kelderlog", `${input.actie} · ${input.datum}`);
-  const r = await pb.collection("kelderlog").create({ ...input });
+  const { fotoFile, ...velden } = input;
+  const payload: Record<string, unknown> = { ...velden };
+  if (fotoFile) payload.foto = fotoFile;
+  const r = await pb.collection("kelderlog").create(payload);
   return kelderlogFromPb(r);
 }
 

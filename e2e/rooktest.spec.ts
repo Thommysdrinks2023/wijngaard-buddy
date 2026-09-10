@@ -595,3 +595,58 @@ test("15 — een analyse vanaf de tank komt echt op de server aan", async ({ pag
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
+
+// Voorstel 5 uit het keldermanager-onderzoek. Het `foto`-veld op kelderlog
+// bestond al in het schema en werd al uitgelezen; alleen de upload-UI ontbrak.
+// Deze test controleert het deel dat stil kan falen: dat er daadwerkelijk een
+// bestand aan het record hangt. Een groene toast bewijst dat niet — de
+// PocketBase-SDK moet de payload als FormData versturen, en doet dat alleen
+// als er echt een File in zit.
+test("16 — een foto bij een kelderlogregel komt echt op de server aan", async ({ page }) => {
+  const notitie = `e2e-rooktest foto ${Date.now()}`;
+  const haalRecord = () =>
+    page.evaluate(async (n) => {
+      const filter = encodeURIComponent(`notitie="${n}"`);
+      const r = await fetch(
+        `http://127.0.0.1:8090/api/collections/kelderlog/records?perPage=1&filter=${filter}`,
+      );
+      return (await r.json()).items?.[0] ?? null;
+    }, notitie);
+
+  const partijId = await page.evaluate(async () => {
+    const r = await fetch("http://127.0.0.1:8090/api/collections/partijen/records?perPage=1");
+    return ((await r.json()).items?.[0]?.id as string) ?? "";
+  });
+  expect(partijId, "er moet een partij op de server staan").not.toBe("");
+
+  await page.goto(`/kelder/partijen/${partijId}`);
+  await page.getByRole("button", { name: "Logboek", exact: true }).click();
+
+  // Een echte JPEG, geen lege buffer: comprimeerFoto() tekent hem op een canvas
+  // (dat is meteen de EXIF-strip) en zou op onleesbare bytes stukslaan.
+  // De input zit verborgen in een label, dus hier rechtstreeks aangesproken.
+  await page.locator('section input[type="file"]').setInputFiles({
+    name: "rooktest.jpg",
+    mimeType: "image/jpeg",
+    buffer: Buffer.from(
+      "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==",
+      "base64",
+    ),
+  });
+  await expect(page.getByText("rooktest.jpg")).toBeVisible({ timeout: 10_000 });
+
+  await page.getByLabel("Notitie").fill(notitie);
+  await page.getByRole("button", { name: /logregel opslaan/i }).click();
+
+  await expect.poll(haalRecord, { timeout: 20_000 }).not.toBeNull();
+  const record = await haalRecord();
+  expect(record.foto, "er moet een bestandsnaam aan het record hangen").toBeTruthy();
+
+  await page.evaluate(async (id) => {
+    await fetch(`http://127.0.0.1:8090/api/collections/kelderlog/records/${id}`, {
+      method: "DELETE",
+    });
+  }, record.id);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});

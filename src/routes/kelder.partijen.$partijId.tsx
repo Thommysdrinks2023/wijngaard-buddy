@@ -52,6 +52,7 @@ import { AppHeader } from "@/components/app-header";
 import { CalculatorsSectie } from "@/components/calculators-sectie";
 import { berekenVerwachting } from "@/lib/gisting-verwachting";
 import { fetchRijen, getPb } from "@/lib/data";
+import { comprimeerFoto } from "@/lib/foto-compressie";
 import { fetchOogstVanPartij } from "@/lib/extra-data";
 import { ProefSectie } from "@/components/proef-sectie";
 import { TemperatuurProgrammaSectie } from "@/components/temperatuurprogramma-sectie";
@@ -63,6 +64,7 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   Beaker,
+  Camera,
   Copy,
   FlaskConical,
   Loader2,
@@ -487,6 +489,7 @@ function PartijDetailPage() {
 
   // ---------- kelderlog-invoer ----------
   const [toonLog, setToonLog] = useState(false);
+  const [lFoto, setLFoto] = useState<File | null>(null);
   const [lDatum, setLDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [lActie, setLActie] = useState<KelderlogActie>("roeren");
   const [lMiddel, setLMiddel] = useState("");
@@ -506,6 +509,7 @@ function PartijDetailPage() {
         eenheid: lHoeveelheid ? lEenheid : null,
         notitie: lNotitie,
         ingevoerd_door: invoerder,
+        fotoFile: lFoto,
       }),
     onSuccess: () => {
       toast.success("Logregel opgeslagen ✓");
@@ -513,6 +517,7 @@ function PartijDetailPage() {
       setLMiddel("");
       setLHoeveelheid("");
       setLNotitie("");
+      setLFoto(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1060,6 +1065,33 @@ function PartijDetailPage() {
                 placeholder="Optioneel…"
               />
             </label>
+            <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-input bg-card text-sm font-medium">
+              <Camera className="h-5 w-5" />
+              {lFoto ? lFoto.name : "Foto toevoegen (optioneel)"}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={async (e) => {
+                  const gekozen = e.target.files?.[0] ?? null;
+                  if (!gekozen) {
+                    setLFoto(null);
+                    return;
+                  }
+                  // comprimeerFoto strip ook de EXIF-gegevens; dat is
+                  // projectbreed verplicht (Fase 7, docs/privacy.md) en niet
+                  // iets om hier lokaal opnieuw te regelen.
+                  const res = await comprimeerFoto(gekozen);
+                  setLFoto(res.file);
+                  if (res.gecomprimeerdKb < res.origineelKb) {
+                    toast.success(
+                      `Foto verkleind: ${res.origineelKb} kB → ${res.gecomprimeerdKb} kB`,
+                    );
+                  }
+                }}
+                className="hidden"
+              />
+            </label>
             <button
               type="button"
               onClick={bewaarLog}
@@ -1512,6 +1544,21 @@ function PartijDetailPage() {
                         {r.notitie ? ` · ${r.notitie}` : ""}
                       </p>
                     </div>
+                    {r.foto && (
+                      <a
+                        href={r.foto}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0"
+                        title="Foto bij deze logregel"
+                      >
+                        <img
+                          src={r.foto}
+                          alt=""
+                          className="h-11 w-11 rounded-lg border border-border object-cover"
+                        />
+                      </a>
+                    )}
                   </li>
                 );
               })}
