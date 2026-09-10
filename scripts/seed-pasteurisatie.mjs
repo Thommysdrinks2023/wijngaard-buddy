@@ -62,7 +62,9 @@ async function api(path, opts = {}) {
   const text = await res.text();
   const json = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    const err = new Error(`${opts.method || "GET"} ${path} -> ${res.status}: ${text.slice(0, 400)}`);
+    const err = new Error(
+      `${opts.method || "GET"} ${path} -> ${res.status}: ${text.slice(0, 400)}`,
+    );
     err.status = res.status;
     throw err;
   }
@@ -100,7 +102,8 @@ function puOverCurve(punten) {
     afkoel = 0;
   let piek = -Infinity,
     piekIdx = 0;
-  for (let i = 0; i < punten.length; i++) if (punten[i].t > piek) (piek = punten[i].t), (piekIdx = i);
+  for (let i = 0; i < punten.length; i++)
+    if (punten[i].t > piek) ((piek = punten[i].t), (piekIdx = i));
   let houdStart = piekIdx;
   while (houdStart > 0 && piek - punten[houdStart - 1].t <= 0.5) houdStart--;
   let houdEind = piekIdx;
@@ -244,24 +247,156 @@ async function seed() {
 
   // ---------- Runconfiguraties: variatie in eigenaar/product/uitkomst ----------
   const runs = [
-    { dagen: 95, eigenaar: tappenmars, product: "wijn", flestype: flestype750, sluiting: bvsdop, doeltemp: 48, aard: "normaal", flessen: 480 },
-    { dagen: 82, eigenaar: thommys, product: "overige_gegiste_drank", flestype: alamos250, sluiting: kroonkurk, doeltemp: 48, aard: "normaal", flessen: 1200 },
-    { dagen: 70, eigenaar: thommys, product: "sap", flestype: alamos250, sluiting: kroonkurk, doeltemp: 46, aard: "onder", flessen: 900 },
-    { dagen: 58, eigenaar: loonklant, product: "overige_gegiste_drank", flestype: alamos250, sluiting: stelvin, doeltemp: 48, aard: "normaal", flessen: 720 },
-    { dagen: 47, eigenaar: thommys, product: "overige_gegiste_drank", flestype: alamos250, sluiting: kroonkurk, doeltemp: 50, aard: "boven", flessen: 1000 },
-    { dagen: 36, eigenaar: tappenmars, product: "wijn", flestype: flestype750, sluiting: bvsdop, doeltemp: 48, aard: "meetgat", flessen: 500 },
-    { dagen: 25, eigenaar: thommys, product: "sap", flestype: alamos250, sluiting: kroonkurk, doeltemp: 48, aard: "normaal", flessen: 1100 },
-    { dagen: 17, eigenaar: loonklant, product: "overige_gegiste_drank", flestype: alamos250, sluiting: bvsdop, doeltemp: 48, aard: "marginaal", flessen: 850 },
-    { dagen: 9, eigenaar: thommys, product: "overige_gegiste_drank", flestype: alamos250, sluiting: kroonkurk, doeltemp: 48, aard: "normaal", flessen: 1150 },
-    { dagen: 3, eigenaar: tappenmars, product: "wijn", flestype: flestype750, sluiting: stelvin, doeltemp: 48, aard: "normaal", flessen: 460 },
+    {
+      dagen: 95,
+      eigenaar: tappenmars,
+      product: "wijn",
+      flestype: flestype750,
+      sluiting: bvsdop,
+      doeltemp: 48,
+      aard: "normaal",
+      flessen: 480,
+    },
+    {
+      dagen: 82,
+      eigenaar: thommys,
+      product: "overige_gegiste_drank",
+      flestype: alamos250,
+      sluiting: kroonkurk,
+      doeltemp: 48,
+      aard: "normaal",
+      flessen: 1200,
+    },
+    {
+      dagen: 70,
+      eigenaar: thommys,
+      product: "sap",
+      flestype: alamos250,
+      sluiting: kroonkurk,
+      doeltemp: 46,
+      aard: "onder",
+      flessen: 900,
+    },
+    {
+      dagen: 58,
+      eigenaar: loonklant,
+      product: "overige_gegiste_drank",
+      flestype: alamos250,
+      sluiting: stelvin,
+      doeltemp: 48,
+      aard: "normaal",
+      flessen: 720,
+    },
+    {
+      dagen: 47,
+      eigenaar: thommys,
+      product: "overige_gegiste_drank",
+      flestype: alamos250,
+      sluiting: kroonkurk,
+      doeltemp: 50,
+      aard: "boven",
+      flessen: 1000,
+    },
+    {
+      dagen: 36,
+      eigenaar: tappenmars,
+      product: "wijn",
+      flestype: flestype750,
+      sluiting: bvsdop,
+      doeltemp: 48,
+      aard: "meetgat",
+      flessen: 500,
+    },
+    {
+      dagen: 25,
+      eigenaar: thommys,
+      product: "sap",
+      flestype: alamos250,
+      sluiting: kroonkurk,
+      doeltemp: 48,
+      aard: "normaal",
+      flessen: 1100,
+    },
+    {
+      dagen: 17,
+      eigenaar: loonklant,
+      product: "overige_gegiste_drank",
+      flestype: alamos250,
+      sluiting: bvsdop,
+      doeltemp: 48,
+      aard: "marginaal",
+      flessen: 850,
+    },
+    {
+      dagen: 9,
+      eigenaar: thommys,
+      product: "overige_gegiste_drank",
+      flestype: alamos250,
+      sluiting: kroonkurk,
+      doeltemp: 48,
+      aard: "normaal",
+      flessen: 1150,
+    },
+    {
+      dagen: 3,
+      eigenaar: tappenmars,
+      product: "wijn",
+      flestype: flestype750,
+      sluiting: stelvin,
+      doeltemp: 48,
+      aard: "normaal",
+      flessen: 460,
+    },
   ];
 
   const AARD_CURVE = {
-    normaal: { opwarmMin: 15, houdMin: 20, afkoelMin: 20, vanTemp: 20, naarTemp: 65, houdTemp: 65, eindTemp: 30 },
-    onder: { opwarmMin: 14, houdMin: 18, afkoelMin: 18, vanTemp: 20, naarTemp: 64, houdTemp: 64, eindTemp: 30 },
-    boven: { opwarmMin: 15, houdMin: 23, afkoelMin: 20, vanTemp: 20, naarTemp: 66, houdTemp: 66, eindTemp: 30 },
-    meetgat: { opwarmMin: 15, houdMin: 20, afkoelMin: 20, vanTemp: 20, naarTemp: 65, houdTemp: 65, eindTemp: 30, gatVanaf: 22, gatMinuten: 6 },
-    marginaal: { opwarmMin: 15, houdMin: 20, afkoelMin: 20, vanTemp: 20, naarTemp: 65, houdTemp: 65, eindTemp: 30 },
+    normaal: {
+      opwarmMin: 15,
+      houdMin: 20,
+      afkoelMin: 20,
+      vanTemp: 20,
+      naarTemp: 65,
+      houdTemp: 65,
+      eindTemp: 30,
+    },
+    onder: {
+      opwarmMin: 14,
+      houdMin: 18,
+      afkoelMin: 18,
+      vanTemp: 20,
+      naarTemp: 64,
+      houdTemp: 64,
+      eindTemp: 30,
+    },
+    boven: {
+      opwarmMin: 15,
+      houdMin: 23,
+      afkoelMin: 20,
+      vanTemp: 20,
+      naarTemp: 66,
+      houdTemp: 66,
+      eindTemp: 30,
+    },
+    meetgat: {
+      opwarmMin: 15,
+      houdMin: 20,
+      afkoelMin: 20,
+      vanTemp: 20,
+      naarTemp: 65,
+      houdTemp: 65,
+      eindTemp: 30,
+      gatVanaf: 22,
+      gatMinuten: 6,
+    },
+    marginaal: {
+      opwarmMin: 15,
+      houdMin: 20,
+      afkoelMin: 20,
+      vanTemp: 20,
+      naarTemp: 65,
+      houdTemp: 65,
+      eindTemp: 30,
+    },
   };
 
   let volgnr = 1;
@@ -375,7 +510,9 @@ async function seed() {
   staat.partijen.push(startActief.partij_id);
   staat.runs.push(startActief.run_id);
   await postMetingen(startActief.run_id, actiefPunten);
-  console.log(`  + actieve run ${lotActief}: ${actiefPunten.length} metingen tot nu, status blijft actief`);
+  console.log(
+    `  + actieve run ${lotActief}: ${actiefPunten.length} metingen tot nu, status blijft actief`,
+  );
 
   writeFileSync(STATE_BESTAND, JSON.stringify(staat, null, 2));
   console.log(`\n${runs.length + 1} runs aangemaakt (${runs.length} afgerond, 1 actief).`);

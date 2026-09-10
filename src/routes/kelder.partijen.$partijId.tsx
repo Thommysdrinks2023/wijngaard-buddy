@@ -51,7 +51,8 @@ import { fetchPasteurisatieRuns } from "@/lib/pasteurisatie-data";
 import { AppHeader } from "@/components/app-header";
 import { CalculatorsSectie } from "@/components/calculators-sectie";
 import { berekenVerwachting } from "@/lib/gisting-verwachting";
-import { getPb } from "@/lib/data";
+import { fetchRijen, getPb } from "@/lib/data";
+import { fetchOogstVanPartij } from "@/lib/extra-data";
 import { ProefSectie } from "@/components/proef-sectie";
 import { TemperatuurProgrammaSectie } from "@/components/temperatuurprogramma-sectie";
 import { programmaAlsLijn } from "@/lib/temperatuurprogramma";
@@ -109,6 +110,11 @@ function PartijDetailPage() {
     queryKey: ["kelderlog", partijId],
     queryFn: () => fetchKelderlog(partijId),
   });
+  const oogstQ = useQuery({
+    queryKey: ["oogst", "partij", partijId],
+    queryFn: () => fetchOogstVanPartij(partijId),
+  });
+  const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const voedingswaardeQ = useQuery({
     queryKey: ["voedingswaarde", partijId],
     queryFn: () => fetchVoedingswaardeBerekeningen(partijId),
@@ -136,6 +142,52 @@ function PartijDetailPage() {
     const e = eigenaarsQ.data?.find((p) => p.id === partij?.eigenaar);
     return e ? eigenaarLabel(e) : "";
   }, [eigenaarsQ.data, partij]);
+  // Herkomst per rij: oogstregels van deze partij opgeteld. Regels zonder rij
+  // (handmatig ingevoerde oogst) worden bewust apart getoond in plaats van
+  // weggelaten — anders klopt het totaalgewicht niet met wat er is geoogst.
+  const herkomst = useMemo(() => {
+    const rijNummer = new Map((rijenQ.data ?? []).map((r) => [r.id, r.rijnummer]));
+    const groepen = new Map<
+      string,
+      {
+        sleutel: string;
+        rijId: string | null;
+        label: string;
+        ras: string;
+        kg: number;
+        datums: Set<string>;
+      }
+    >();
+    for (const o of oogstQ.data ?? []) {
+      const sleutel = o.rij ?? "zonder-rij";
+      const nummer = o.rij ? rijNummer.get(o.rij) : undefined;
+      const bestaand = groepen.get(sleutel);
+      if (bestaand) {
+        bestaand.kg += o.kg;
+        bestaand.datums.add(o.datum);
+        continue;
+      }
+      groepen.set(sleutel, {
+        sleutel,
+        rijId: nummer !== undefined ? o.rij! : null,
+        label: nummer !== undefined ? `Rij ${nummer}` : o.rij ? "Onbekende rij" : "Zonder rij",
+        ras: o.ras,
+        kg: o.kg,
+        datums: new Set([o.datum]),
+      });
+    }
+    const perRij = [...groepen.values()]
+      .map((g) => ({
+        ...g,
+        datums: [...g.datums]
+          .sort()
+          .map((d) => format(parseISO(d), "d MMM", { locale: nl }))
+          .join(", "),
+      }))
+      .sort((a, b) => b.kg - a.kg);
+    return { perRij, totaalKg: perRij.reduce((som, r) => som + r.kg, 0) };
+  }, [oogstQ.data, rijenQ.data]);
+
   const tanksVanPartij = useMemo(
     () => (tanksQ.data ?? []).filter((t) => t.huidige_partij === partijId),
     [tanksQ.data, partijId],
@@ -780,6 +832,41 @@ function PartijDetailPage() {
               </p>
             </section>
           )}
+
+        {/* Herkomst — welke rijen zitten er in dit lot. De koppeling oogst.partij
+            bestaat sinds Fase 13; hier wordt hij voor het eerst teruggelezen. */}
+        {(oogstQ.data?.length ?? 0) > 0 && (
+          <section className="rounded-2xl border border-border bg-card p-3">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Herkomst
+            </h2>
+            <ul className="divide-y divide-border">
+              {herkomst.perRij.map((r) => (
+                <li key={r.sleutel} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {r.rijId ? (
+                        <Link to="/rij/$rijId" params={{ rijId: r.rijId }} className="underline">
+                          {r.label}
+                        </Link>
+                      ) : (
+                        r.label
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {r.ras} · {r.datums}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm tabular-nums">{r.kg.toFixed(1)} kg</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {herkomst.perRij.length} herkomst{herkomst.perRij.length === 1 ? "" : "en"} ·{" "}
+              {herkomst.totaalKg.toFixed(1)} kg geoogst
+            </p>
+          </section>
+        )}
 
         {/* Analyse-invoer */}
         {toonAnalyse && (

@@ -80,7 +80,7 @@ function maakEntity<T extends { id: string; datum: string }>(cfg: EntityConfig<T
     return lokaal;
   }
 
-  return { fetchAll, create };
+  return { fetchAll, create, fromPb: cfg.fromPb };
 }
 
 // ============= Gezondheid (vine health) =============
@@ -164,6 +164,37 @@ const oogstEntity = maakEntity<OogstRecord>({
 
 export const fetchOogst = oogstEntity.fetchAll;
 export const createOogstRecord = oogstEntity.create;
+
+/**
+ * Oogstregels die aan één partij gekoppeld zijn — de herkomst van een lot.
+ *
+ * De koppeling `oogst.partij` bestaat sinds Fase 13, maar werd nergens
+ * teruggelezen: "uit welke rijen komt dit lot" was daardoor onbeantwoordbaar
+ * terwijl de data er gewoon stond (AUDIT-MEDEWERKER.md §4).
+ *
+ * Filtert op de server wanneer die bereikbaar is, en valt anders terug op de
+ * lokale oogstcache — die vult zich al bij elk bezoek aan de wijngaardmodule.
+ */
+export async function fetchOogstVanPartij(partijId: string): Promise<OogstRecord[]> {
+  const uitCache = () =>
+    readLs<OogstRecord[]>("wg.oogst.v1", [])
+      .filter((o) => o.partij === partijId)
+      .sort((a, b) => (a.datum < b.datum ? 1 : -1));
+
+  const pb = getPb();
+  if (pb && (await ensureOnline())) {
+    try {
+      const records = await pb.collection("oogst").getFullList({
+        filter: pb.filter("partij = {:partij}", { partij: partijId }),
+        sort: "datum,created",
+      });
+      return records.map((r) => oogstEntity.fromPb(r));
+    } catch {
+      return uitCache();
+    }
+  }
+  return uitCache();
+}
 
 /**
  * Fase 13 Blok E — koppelt oogstregels aan een partij.

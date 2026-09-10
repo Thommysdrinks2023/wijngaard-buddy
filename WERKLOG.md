@@ -2403,3 +2403,55 @@ wegwerp-voorraadpartij aan"-stap) dan wat in deze sessie paste.
 nieuw), `tsc`/`eslint` schoon. Alle testresten met curl bevestigd leeg
 (`orders`/`klanten`/`onderhoudslog`/`materieel`), voorraadstand ongewijzigd
 bevestigd.
+
+---
+
+## 2026-09-10 — Herkomst van een partij zichtbaar (voorstel 1 uit het keldermanager-onderzoek)
+
+Eerste bouwstap uit `docs/onderzoek-keldermanager.md`. Bewust dit voorstel als
+eerste: het wacht op geen enkel antwoord van Thomas, raakt het schema niet en
+vraagt geen nieuwe invoer — het ontsluit alleen data die er al lag.
+
+**Het probleem.** De relatie `oogst.partij` bestaat sinds Fase 13 (Blok E,
+`koppelOogstAanPartij()`), maar werd nergens teruggelezen. "Uit welke rijen komt
+lot X" was daardoor onbeantwoordbaar terwijl het antwoord in de database stond —
+precies de constatering uit `AUDIT-MEDEWERKER.md` §4. Een koppeling die alleen
+geschreven en nooit gelezen wordt is functioneel dood gewicht.
+
+**Wat er is gebouwd:**
+
+- `fetchOogstVanPartij()` in `src/lib/extra-data.ts` — filtert op de server als
+  die bereikbaar is, valt anders terug op de lokale oogstcache (`wg.oogst.v1`),
+  die zich al vult bij elk bezoek aan de wijngaardmodule. `maakEntity()`
+  exporteert daarvoor nu ook zijn `fromPb`, zodat er geen tweede mapping van
+  hetzelfde record ontstaat.
+- Sectie "Herkomst" op `kelder.partijen.$partijId.tsx`: per rij het opgetelde
+  gewicht, het ras, de plukdata en een link naar de rijpagina, met het totaal
+  eronder. Oogstregels zonder rij worden apart getoond als "Zonder rij" in
+  plaats van weggelaten — anders klopt het totaalgewicht niet met wat er
+  daadwerkelijk is geoogst, en dat is erger dan een onvolledig label.
+- Agenttool `zoek_oogst` geeft `rijnummer` en `partij` terug in plaats van ze te
+  strippen, en accepteert nu ook `rijnummer` en `lotnummer` als filter. Daarmee
+  kan de assistent de herkomstvraag rechtstreeks beantwoorden.
+
+**Getest, niet aangenomen.** Er stond nog geen enkele oogstregel aan een partij
+gekoppeld, dus met tijdelijke testdata (twee regels op lot L26-F7-01, daarna
+verwijderd — geverifieerd dat er 0 gekoppelde regels resteren) is het hele pad
+nagelopen: de agent koos zelf `zoek_oogst` met het lotnummer, kreeg rijnummer 1
+terug en antwoordde "200 kg, allemaal rij 1"; de herkomstsectie toonde hetzelfde
+en de rijlink kwam op de juiste rijpagina uit.
+
+Rooktest 14 bewaakt dit blijvend: hij koppelt zelf een oogstregel aan een
+partij en controleert dat de sectie hem ook echt TOONT. Een sectie die stil leeg
+blijft is exact het faalpatroon dat hier drie fases lang onopgemerkt bleef, dus
+"de query bestaat" is als bewijs onvoldoende. 248 unit-tests groen.
+
+**Meegenomen opruiming:** `scripts/seed-pasteurisatie.mjs` had 18
+prettier/eslint-fouten uit een eerdere sessie (nooit geformatteerd vóór commit).
+`npm run lint` gaf daardoor rood op een bestand dat niets met dit werk te maken
+had; nu 0 errors.
+
+**Nog steeds open, ongewijzigd:** stap 0 uit het onderzoek — in kaart brengen
+welke handelingen Thomas op papier zet en waar dezelfde gegevens twee keer
+ingevoerd worden. Dat vraagt zijn input, geen code-analyse, en blijft de
+belangrijkste openstaande vraag vóór de volgende bouwkeuze.

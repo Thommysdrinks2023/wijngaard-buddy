@@ -151,23 +151,57 @@ const LEES_HANDLERS = {
     }));
   },
   zoek_oogst(app, input) {
+    const logica = require(`${__hooks}/agent_logica.js`);
     const delen = [];
     if (input.ras) delen.push(`ras = {:ras}`);
     if (input.jaar) delen.push(`seizoen = {:jaar}`);
+    if (input.rijnummer) delen.push(`rij.rijnummer = {:rijnummer}`);
+    // Herkomstvraag ("uit welke rijen komt lot X"): eerst de partij opzoeken,
+    // dan filteren op de koppeling die sinds Fase 13 bestaat maar tot nu toe
+    // nergens werd teruggelezen.
+    let partijNaam = "";
+    let partijId = "";
+    if (input.lotnummer) {
+      const partij = logica.vindPartij(app, input.lotnummer);
+      if (!partij) {
+        return { notitie: `Geen partij gevonden voor lotnummer "${input.lotnummer}".` };
+      }
+      partijNaam = partij.getString("lotnummer") || partij.getString("naam");
+      partijId = partij.id;
+      delen.push(`partij = {:partij}`);
+    }
     const oogst = app.findRecordsByFilter(
       "oogst",
       delen.join(" && ") || "id != ''",
       "datum",
       50,
       0,
-      { ras: input.ras, jaar: input.jaar },
+      {
+        ras: input.ras,
+        jaar: input.jaar,
+        rijnummer: input.rijnummer,
+        partij: partijId,
+      },
     );
-    return oogst.map((o) => ({
-      datum: o.getString("datum"),
-      ras: o.getString("ras"),
-      kg: o.getFloat("kg"),
-      seizoen: o.getFloat("seizoen"),
-    }));
+    return oogst.map((o) => {
+      const rijId = o.getString("rij");
+      let rijnummer = null;
+      if (rijId) {
+        try {
+          rijnummer = app.findRecordById("rijen", rijId).getFloat("rijnummer");
+        } catch (e) {
+          rijnummer = null;
+        }
+      }
+      return {
+        datum: o.getString("datum"),
+        ras: o.getString("ras"),
+        kg: o.getFloat("kg"),
+        seizoen: o.getFloat("seizoen"),
+        rijnummer: rijnummer,
+        partij: partijNaam || null,
+      };
+    });
   },
   zoek_fenologie(app, input) {
     const delen = [];

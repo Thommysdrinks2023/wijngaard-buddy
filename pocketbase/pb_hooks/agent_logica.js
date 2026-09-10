@@ -148,7 +148,7 @@ const KELDER_TOOLS = [
           eigenaar: {
             type: "string",
             description:
-              "Naam of tweecijferige code van de eigenaar, bijv. \"Thommy's Drinks\" of \"07\".",
+              'Naam of tweecijferige code van de eigenaar, bijv. "Thommy\'s Drinks" of "07".',
           },
           status: {
             type: "string",
@@ -390,10 +390,16 @@ const WIJNGAARD_TOOLS = [
     lezen: true,
     schema: {
       name: "zoek_oogst",
-      description: "Oogstrecords op ras en/of jaar.",
+      description:
+        "Oogstrecords op ras, jaar, rijnummer en/of lotnummer. Met lotnummer beantwoordt dit de herkomstvraag: uit welke rijen en hoeveel kg is dit lot opgebouwd.",
       input_schema: {
         type: "object",
-        properties: { ras: { type: "string" }, jaar: { type: "integer" } },
+        properties: {
+          ras: { type: "string" },
+          jaar: { type: "integer" },
+          rijnummer: { type: "integer" },
+          lotnummer: { type: "string", description: "Lotnummer of naam van de partij" },
+        },
       },
     },
   },
@@ -552,7 +558,10 @@ const WIJNGAARD_TOOLS = [
           rijnummer: { type: "integer", description: "Weglaten = hele wijngaard" },
           datum: { type: "string", description: "yyyy-MM-dd; laat weg voor vandaag" },
           middel: { type: "string", description: "Alleen bij Spuiten" },
-          wachttijd_dagen: { type: "integer", description: "Veiligheidstermijn, alleen bij Spuiten" },
+          wachttijd_dagen: {
+            type: "integer",
+            description: "Veiligheidstermijn, alleen bij Spuiten",
+          },
           notitie: { type: "string" },
         },
         required: ["taak", "uren"],
@@ -1026,7 +1035,10 @@ const PASTEURISATIE_TOOLS = [
       input_schema: {
         type: "object",
         properties: {
-          eigenaar: { type: "string", description: "Naam of code van de eigenaar, bv. 'Thommy's Drinks' of '07'." },
+          eigenaar: {
+            type: "string",
+            description: "Naam of code van de eigenaar, bv. 'Thommy's Drinks' of '07'.",
+          },
           partij: { type: "string", description: "Naam of lotnummer van de partij" },
           status: { type: "string", enum: ["gepland", "actief", "afgerond", "afgebroken"] },
         },
@@ -1037,11 +1049,15 @@ const PASTEURISATIE_TOOLS = [
     lezen: true,
     schema: {
       name: "pasteurisatie_run_detail",
-      description: "Volledige details van één pasteurisatierun: PU-verdeling, veiligheidsoordeel, flestype/sluiting.",
+      description:
+        "Volledige details van één pasteurisatierun: PU-verdeling, veiligheidsoordeel, flestype/sluiting.",
       input_schema: {
         type: "object",
         properties: {
-          lotnummer: { type: "string", description: "Lotnummer van de partij waar de run bij hoort" },
+          lotnummer: {
+            type: "string",
+            description: "Lotnummer van de partij waar de run bij hoort",
+          },
         },
         required: ["lotnummer"],
       },
@@ -1083,12 +1099,21 @@ const PASTEURISATIE_TOOLS = [
         type: "object",
         properties: {
           co2_gehalte_gl: { type: "number", description: "CO2-gehalte in g/L" },
-          druk_bar_gauge: { type: "number", description: "Alternatief voor co2_gehalte_gl: gemeten druk (bar gauge)" },
-          ref_temperatuur_c: { type: "number", description: "Temperatuur waarbij druk_bar_gauge is gemeten, standaard 10" },
+          druk_bar_gauge: {
+            type: "number",
+            description: "Alternatief voor co2_gehalte_gl: gemeten druk (bar gauge)",
+          },
+          ref_temperatuur_c: {
+            type: "number",
+            description: "Temperatuur waarbij druk_bar_gauge is gemeten, standaard 10",
+          },
           flesinhoud_ml: { type: "number" },
           vulvolume_ml: { type: "number" },
           doeltemperatuur_c: { type: "number" },
-          sluiting: { type: "string", description: "Naam van de sluiting, voor de dopspecificatie" },
+          sluiting: {
+            type: "string",
+            description: "Naam van de sluiting, voor de dopspecificatie",
+          },
         },
         required: ["flesinhoud_ml", "vulvolume_ml", "doeltemperatuur_c"],
       },

@@ -497,3 +497,51 @@ test("13 — een onderhoudsregel op /materieel komt echt op de server aan", asyn
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
+
+// De koppeling oogst.partij bestaat sinds Fase 13 maar werd tot september 2026
+// nergens teruggelezen — "uit welke rijen komt dit lot" was onbeantwoordbaar
+// terwijl de data er stond. Deze test bewaakt dat de herkomstsectie de
+// gekoppelde oogst ook echt TOONT; een sectie die stil leeg blijft is precies
+// het faalpatroon dat hier drie jaar onopgemerkt bleef.
+test("14 — de herkomst van een partij toont de gekoppelde oogstrijen", async ({ page }) => {
+  await page.goto("/kelder");
+
+  const gemaakt = await page.evaluate(async (invoerder) => {
+    const haal = async (col: string) =>
+      (await (await fetch(`http://127.0.0.1:8090/api/collections/${col}/records?perPage=1`)).json())
+        .items?.[0];
+    const partij = await haal("partijen");
+    const rij = await haal("rijen");
+    if (!partij || !rij) return null;
+    const oogst = await (
+      await fetch("http://127.0.0.1:8090/api/collections/oogst/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rij: rij.id,
+          ras: rij.ras,
+          datum: "2026-09-15",
+          seizoen: 2026,
+          kg: 137.5,
+          partij: partij.id,
+          ingevoerd_door: invoerder,
+        }),
+      })
+    ).json();
+    return { partijId: partij.id, rijnummer: rij.rijnummer, oogstId: oogst.id };
+  }, TESTINVOERDER);
+
+  expect(gemaakt, "er moet minstens één partij en één rij op de server staan").not.toBeNull();
+
+  await page.goto(`/kelder/partijen/${gemaakt!.partijId}`);
+  const herkomst = page.locator("section", {
+    has: page.getByRole("heading", { name: "Herkomst" }),
+  });
+  await expect(herkomst).toBeVisible({ timeout: 15_000 });
+  await expect(herkomst.getByRole("link", { name: `Rij ${gemaakt!.rijnummer}` })).toBeVisible();
+  await expect(herkomst).toContainText("137.5 kg");
+
+  await ruimOp(page, "oogst", TESTINVOERDER);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
