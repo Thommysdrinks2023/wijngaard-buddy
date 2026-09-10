@@ -6,6 +6,7 @@ import { nl } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   boekTankboek,
+  createAnalyse,
   createKelderlog,
   fetchKelderlog,
   fetchTankboek,
@@ -13,13 +14,15 @@ import {
   updateTank,
 } from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
+import { valideerAnalyse } from "@/lib/validatie";
+import { vanBrix, vanOechsle } from "@/lib/dichtheid";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { TANK_STATUSSEN, TANKBOEK_ACTIES, type TankStatus } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
-import { ArrowLeftRight, Loader2, Ruler, SprayCan } from "lucide-react";
+import { ArrowLeftRight, FlaskConical, Loader2, Ruler, SprayCan } from "lucide-react";
 
 const REINIGING_METHODEN = ["heet water", "CIP", "stoom", "sodaoplossing", "handmatig"] as const;
 
@@ -151,6 +154,76 @@ function TankDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // ---------- analyse (september 2026): de meest voorkomende kelderhandeling
+  // kostte 6+ stappen via de partijpagina van 1600+ regels. Hier hetzelfde
+  // meetmoment in één paneel, met dezelfde createAnalyse() als het partijdetail
+  // — bewust geen tweede opslagimplementatie, want twee wegen naar dezelfde
+  // collectie is precies hoe kelderlog/partij_toevoegingen uit elkaar liepen.
+  const [toonAnalyse, setToonAnalyse] = useState(false);
+  const [aDatum, setADatum] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [aOechsle, setAOechsle] = useState("");
+  const [aBrix, setABrix] = useState("");
+  const [aPh, setAPh] = useState("");
+  const [aTemp, setATemp] = useState("");
+
+  const getal = (waarde: string) => {
+    const n = Number(waarde);
+    return waarde.trim() === "" || Number.isNaN(n) ? null : n;
+  };
+  const aDichtheid = useMemo(() => {
+    const oe = getal(aOechsle);
+    if (oe != null) return vanOechsle(oe);
+    const brix = getal(aBrix);
+    return brix != null ? vanBrix(brix) : null;
+  }, [aOechsle, aBrix]);
+
+  const analyseM = useMutation({
+    mutationFn: () =>
+      createAnalyse({
+        datum: aDatum,
+        partij: tank?.huidige_partij ?? "",
+        tank: tankId,
+        dichtheid_oechsle: aDichtheid?.oechsle ?? null,
+        dichtheid_brix: aDichtheid?.brix ?? null,
+        dichtheid_sg: aDichtheid?.sg ?? null,
+        ph: getal(aPh),
+        temperatuur_c: getal(aTemp),
+        methode: "eigen_meting",
+        ingevoerd_door: invoerder,
+      }),
+    onSuccess: () => {
+      toast.success("Analyse opgeslagen ✓");
+      qc.invalidateQueries({ queryKey: ["analyses"] });
+      setToonAnalyse(false);
+      setAOechsle("");
+      setABrix("");
+      setAPh("");
+      setATemp("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bewaarAnalyse = () => {
+    if (analyseM.isPending) return;
+    const fouten = valideerAnalyse({
+      partij: tank?.huidige_partij ?? "",
+      datum: aDatum,
+      ph: getal(aPh),
+      temperatuur_c: getal(aTemp),
+      dichtheid_oechsle: aDichtheid?.oechsle ?? null,
+      ingevoerd_door: invoerder,
+    });
+    if (fouten.length > 0) {
+      toast.error(fouten[0].bericht);
+      return;
+    }
+    if (!aDichtheid && getal(aPh) == null && getal(aTemp) == null) {
+      toast.error("Vul minstens één meetwaarde in.");
+      return;
+    }
+    analyseM.mutate();
+  };
+
   const info = TANK_STATUSSEN.find((s) => s.value === tank?.status);
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
@@ -235,6 +308,20 @@ function TankDetailPage() {
                   Peiling
                 </button>
               )}
+              {tank?.huidige_partij && (
+                <button
+                  type="button"
+                  onClick={() => setToonAnalyse((v) => !v)}
+                  className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold ${
+                    toonAnalyse
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  <FlaskConical className="h-4 w-4" />
+                  Analyse
+                </button>
+              )}
               <Link
                 to="/kelder/overhevelen"
                 search={{ van: tankId }}
@@ -263,6 +350,92 @@ function TankDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Analyse: het meetmoment vanaf de tank zelf, zonder omweg via het
+            partijdetail. Alleen zinvol met een gekoppelde partij — een analyse
+            zonder partij is niet terug te vinden waar je hem zoekt. */}
+        {toonAnalyse && tank?.huidige_partij && (
+          <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Analyse — {partijNaam.get(tank.huidige_partij) ?? "…"}
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Datum</span>
+                <input
+                  type="date"
+                  value={aDatum}
+                  onChange={(e) => setADatum(e.target.value)}
+                  className={veldClass}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">°Oechsle</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={aOechsle}
+                  onChange={(e) => {
+                    setAOechsle(e.target.value);
+                    if (e.target.value) setABrix("");
+                  }}
+                  className={veldClass}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">Brix</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={aBrix}
+                  onChange={(e) => {
+                    setABrix(e.target.value);
+                    if (e.target.value) setAOechsle("");
+                  }}
+                  className={veldClass}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium">pH</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={aPh}
+                  onChange={(e) => setAPh(e.target.value)}
+                  className={veldClass}
+                />
+              </label>
+              <label className="col-span-2 block">
+                <span className="mb-1.5 block text-sm font-medium">Temperatuur (°C)</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={aTemp}
+                  onChange={(e) => setATemp(e.target.value)}
+                  className={veldClass}
+                />
+              </label>
+            </div>
+            {aDichtheid && (
+              <p className="text-xs text-muted-foreground">
+                {aDichtheid.oechsle.toFixed(1)} °Oe · {aDichtheid.brix.toFixed(1)} Brix ·{" "}
+                {aDichtheid.sg.toFixed(4)} SG
+              </p>
+            )}
+            <button
+              type="button"
+              disabled={analyseM.isPending}
+              onClick={bewaarAnalyse}
+              className="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-base font-semibold text-primary-foreground disabled:opacity-40"
+            >
+              {analyseM.isPending ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                "Analyse opslaan"
+              )}
+            </button>
+          </section>
+        )}
 
         {/* Reiniging: twee tikken — methode tikken = loggen (Fase 7 Blok D) */}
         {toonReiniging && (

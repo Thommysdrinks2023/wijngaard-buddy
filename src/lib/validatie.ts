@@ -212,6 +212,8 @@ export function valideerAnalyse(input: Partial<AnalyseInput>): ValidatieFout[] {
     (input.dichtheid_oechsle < -20 || input.dichtheid_oechsle > 200)
   )
     fouten.push({ veld: "dichtheid_oechsle", bericht: "°Oechsle moet tussen -20 en 200 liggen" });
+  if (input.temperatuur_c != null && (input.temperatuur_c < -5 || input.temperatuur_c > 45))
+    fouten.push({ veld: "temperatuur_c", bericht: "Temperatuur moet tussen -5 en 45 °C liggen" });
   if (!input.ingevoerd_door?.trim())
     fouten.push({ veld: "ingevoerd_door", bericht: "Invoerder is verplicht" });
   return fouten;

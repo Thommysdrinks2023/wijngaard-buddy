@@ -545,3 +545,53 @@ test("14 — de herkomst van een partij toont de gekoppelde oogstrijen", async (
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
+
+// Voorstel 2 uit het keldermanager-onderzoek: een analyse vastleggen was de
+// meest voorkomende kelderhandeling én kostte 6+ stappen via de partijpagina.
+// Deze test loopt de korte weg: vanaf de tank zelf. Hij controleert dat het
+// record ECHT op de server staat, inclusief de tankkoppeling — een analyse die
+// zonder tank wordt opgeslagen is niet terug te vinden waar je hem zoekt.
+test("15 — een analyse vanaf de tank komt echt op de server aan", async ({ page }) => {
+  await page.goto("/kelder/tanks");
+
+  const tankId = await page.evaluate(async () => {
+    const filter = encodeURIComponent("huidige_partij!=''");
+    const r = await fetch(
+      `http://127.0.0.1:8090/api/collections/tanks/records?perPage=1&filter=${filter}`,
+    );
+    return ((await r.json()).items?.[0]?.id as string) ?? "";
+  });
+  expect(tankId, "er moet een tank met een gekoppelde partij op de server staan").not.toBe("");
+
+  // Dit paneel heeft bewust geen "Ingevoerd door"-veld — net als Reiniging en
+  // Peiling op ditzelfde scherm gebruikt het de app-brede invoerder. Die wordt
+  // hier vooraf gezet, zodat de opruiming op ingevoerd_door kan blijven werken.
+  await page.evaluate(
+    (naam) => localStorage.setItem("wg.invoerder.v1", JSON.stringify(naam)),
+    TESTINVOERDER,
+  );
+  await page.goto(`/kelder/tanks/${tankId}`);
+  await page.getByRole("button", { name: "Analyse", exact: true }).click();
+  await page.getByLabel("°Oechsle").fill("78");
+  await page.getByLabel("Temperatuur (°C)").fill("19.4");
+  await page.getByRole("button", { name: /analyse opslaan/i }).click();
+
+  await expect.poll(() => telOpServer(page, "analyses"), { timeout: 15_000 }).toBeGreaterThan(0);
+
+  // De temperatuur moet als gemeten waarde herkenbaar zijn, niet als de 0 die
+  // PocketBase van een leeg getalveld maakt (zie meetwaarde.ts).
+  const opgeslagen = await page.evaluate(async () => {
+    const filter = encodeURIComponent(`ingevoerd_door="e2e-rooktest"`);
+    const r = await fetch(
+      `http://127.0.0.1:8090/api/collections/analyses/records?perPage=1&sort=-created&filter=${filter}`,
+    );
+    return (await r.json()).items?.[0];
+  });
+  expect(opgeslagen.temperatuur_c).toBe(19.4);
+  expect(opgeslagen.tank).toBe(tankId);
+  expect(opgeslagen.gemeten_velden).toContain("temperatuur_c");
+
+  await ruimOp(page, "analyses", TESTINVOERDER);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});

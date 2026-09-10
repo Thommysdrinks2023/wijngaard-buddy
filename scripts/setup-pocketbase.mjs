@@ -2582,6 +2582,14 @@ async function main() {
   // één partij, en hoeft niet doorzoekbaar te zijn los van die partij.
   await ensureVelden("partijen", [{ name: "temperatuur_programma", type: "json", maxSize: 20000 }]);
 
+  // September 2026 — handmatige temperatuurmeting bij een analyse. Optioneel:
+  // Thomas meet temperatuur nu niet standaard (zie docs/onderzoek-keldermanager.md,
+  // antwoord 3), dus dit veld levert pas data op als het meten gewoonte wordt.
+  // Bewust op `analyses` en niet als aparte collectie: een temperatuur hoort bij
+  // het meetmoment waarop je toch al Brix/Oechsle noteert, en een los formulier
+  // zou de dubbele invoer vergroten die juist het knelpunt is.
+  await ensureVelden("analyses", [{ name: "temperatuur_c", type: "number" }]);
+
   // Fase 14 Blok D — sensor-alerts, klaar voor een toekomstige regel-engine
   // (Fase 15+: echte drempelregels zodra er sensordata is). Deze fase bouwt
   // BEWUST geen drempels — alleen de plek waar een regel straks een alert in

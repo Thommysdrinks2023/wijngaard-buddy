@@ -39,7 +39,8 @@ export type MeetVeld =
   | "totaalzuur_g_l"
   | "vluchtig_zuur_g_l"
   | "so2_vrij"
-  | "so2_totaal";
+  | "so2_totaal"
+  | "temperatuur_c";
 
 interface VeldRegel {
   /** Kan dit veld in de praktijk werkelijk 0 zijn? */
@@ -77,6 +78,9 @@ export const MEETVELDEN: Record<MeetVeld, VeldRegel> = {
   restsuiker_g_l: { nulGeldig: true, min: -0.001, max: 400, label: "Restsuiker", eenheid: "g/L" },
   so2_vrij: { nulGeldig: true, min: -0.001, max: 200, label: "SO₂ vrij", eenheid: "mg/L" },
   so2_totaal: { nulGeldig: true, min: -0.001, max: 500, label: "SO₂ totaal", eenheid: "mg/L" },
+  // 0 °C is theoretisch een geldige meting maar in een kelder praktisch nooit;
+  // leunt daarom op gemeten_velden i.p.v. op de waarde zelf.
+  temperatuur_c: { nulGeldig: true, min: -5, max: 45, label: "Temperatuur", eenheid: "°C" },
 };
 
 /** Bron waaruit blijkt welke velden zijn ingevuld (leeg bij oudere analyses). */

@@ -308,6 +308,7 @@ function analyseFromPb(r: RecordModel): Analyse {
     vluchtig_zuur_g_l: r["vluchtig_zuur_g_l"] ?? null,
     so2_vrij: r["so2_vrij"] ?? null,
     so2_totaal: r["so2_totaal"] ?? null,
+    temperatuur_c: r["temperatuur_c"] ?? null,
     methode: r["methode"] || null,
     bestand: r["bestand"] ? getPb()?.files.getURL(r, r["bestand"]) : "",
     notitie: r["notitie"] ?? "",
@@ -349,6 +350,7 @@ export interface AnalyseInput {
   vluchtig_zuur_g_l?: number | null;
   so2_vrij?: number | null;
   so2_totaal?: number | null;
+  temperatuur_c?: number | null;
   methode?: AnalyseMethode | null;
   notitie?: string;
   ingevoerd_door?: string;
@@ -369,6 +371,7 @@ const ANALYSE_MEETVELDEN = [
   "vluchtig_zuur_g_l",
   "so2_vrij",
   "so2_totaal",
+  "temperatuur_c",
 ] as const;
 
 function bepaalGemetenVelden(input: AnalyseInput): string {

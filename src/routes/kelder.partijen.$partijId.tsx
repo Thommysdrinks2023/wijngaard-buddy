@@ -222,6 +222,11 @@ function PartijDetailPage() {
             restsuiker_g_l: w("restsuiker_g_l"),
             totaalzuur_g_l: w("totaalzuur_g_l"),
             vluchtig_zuur_g_l: w("vluchtig_zuur_g_l"),
+            // Eigen sleutel, niet temperatuur_c: die is in deze grafiek al van
+            // de sensorlijn. Handmatige metingen en sensordata mogen niet in
+            // één lijn belanden — ze hebben een andere dichtheid en een andere
+            // betrouwbaarheid, en worden daarom apart gestileerd (stippen).
+            temperatuur_handmatig: w("temperatuur_c"),
           };
         }),
     [analysesQ.data],
@@ -316,6 +321,11 @@ function PartijDetailPage() {
             temperatuur_c: sensorPerDag.get(p.datum),
           })),
     [analyseSerieMetVerwachting, sensorPerDag],
+  );
+
+  const heeftHandmatigeTemperatuur = useMemo(
+    () => analyseSerie.some((p) => p.temperatuur_handmatig !== undefined),
+    [analyseSerie],
   );
 
   // Fase 14 Blok C — het gistingsprogramma als extra lijn. Een programmapunt
@@ -1252,6 +1262,24 @@ function PartijDetailPage() {
                       stroke="#f59e0b"
                       strokeWidth={1.5}
                       dot={false}
+                      connectNulls
+                    />
+                  )}
+                  {heeftHandmatigeTemperatuur && (
+                    <Line
+                      type="monotone"
+                      dataKey="temperatuur_handmatig"
+                      name="Temp. handmatig (°C)"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      // Zelfde kleur als de sensorlijn (het is dezelfde
+                      // grootheid), maar gestippeld: handmatige metingen zijn
+                      // losse momentopnamen, geen doorlopende reeks. Bewust
+                      // GEEN dot-only weergave — deze grafiek rendert in de
+                      // huidige recharts-versie helemaal geen dots, dus een
+                      // reeks die alleen uit stippen bestaat is onzichtbaar.
+                      strokeDasharray="1 5"
+                      strokeLinecap="round"
                       connectNulls
                     />
                   )}

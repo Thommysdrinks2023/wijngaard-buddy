@@ -2455,3 +2455,54 @@ had; nu 0 errors.
 welke handelingen Thomas op papier zet en waar dezelfde gegevens twee keer
 ingevoerd worden. Dat vraagt zijn input, geen code-analyse, en blijft de
 belangrijkste openstaande vraag vóór de volgende bouwkeuze.
+
+---
+
+## 2026-09-10 — Analyse vanaf de tank + temperatuurveld (voorstellen 2 en 3)
+
+Tweede en derde voorstel uit `docs/onderzoek-keldermanager.md`, samen gebouwd
+omdat voorstel 3 (temperatuur) nergens anders thuishoort dan in het formulier
+uit voorstel 2 — een apart temperatuurformulier zou de dubbele invoer vergroten
+die volgens Thomas juist het knelpunt is.
+
+**Analyse vanaf tankdetail.** Een analyse vastleggen is de meest voorkomende
+kelderhandeling en kostte 6+ stappen via het partijdetail (1600+ regels). Op
+`kelder.tanks.$tankId.tsx` staat nu een "Analyse"-knop naast Reiniging/Peiling,
+met een compact paneel (datum, °Oechsle óf Brix, pH, temperatuur) en de
+omgerekende dichtheden eronder. Het slaat op via dezelfde `createAnalyse()` als
+het partijdetail — **bewust geen tweede opslagimplementatie**: twee wegen naar
+dezelfde collectie is precies hoe `kelderlog` en `partij_toevoegingen` uit
+elkaar zijn gelopen (zie de nulmeting van 4 juli). Alleen zichtbaar bij een tank
+met gekoppelde partij; een analyse zonder partij is niet terug te vinden waar je
+hem zoekt. Geen "Ingevoerd door"-veld, net als de andere panelen op dit scherm:
+die komt uit de app-brede invoerder.
+
+**Temperatuurveld.** `analyses.temperatuur_c` toegevoegd via `ensureVelden()`,
+plus in `MEETVELDEN` (grenzen -5..45 °C, `nulGeldig: true`) en in
+`ANALYSE_MEETVELDEN`, zodat "0 °C" onderscheidbaar blijft van "niet gemeten" —
+dezelfde reden waarom `gemeten_velden` in Fase 13 bestaat. Schema-driftcontrole
+na afloop: 0 verschillen.
+
+**Op de gistingscurve** verschijnt de handmatige temperatuur als aparte reeks
+(`temperatuur_handmatig`), niet als `temperatuur_c` — die sleutel is in die
+grafiek al van de sensorlijn, en handmatige metingen mogen niet met sensordata
+in één lijn belanden. **Correctie tijdens de bouw:** het onderzoek stelde
+"stippen vs. lijn" voor als onderscheid, en zo is het eerst gebouwd
+(`strokeWidth={0}` met alleen dots). Bij het nalopen van de gerenderde SVG bleek
+dat deze grafiek in de huidige recharts-versie **helemaal geen dots rendert** —
+ook niet voor de bestaande °Oechsle-lijn, die er wel om vraagt. Een reeks van
+alleen stippen zou dus onzichtbaar zijn geweest. Nu een gestippelde lijn in
+dezelfde amberkleur als de sensorlijn (zelfde grootheid, andere herkomst),
+geverifieerd op de daadwerkelijke `stroke-dasharray` in de DOM.
+
+**Getest.** Handmatig het hele pad: analyse opgeslagen vanaf tank 3, server gaf
+`temperatuur_c: 18.5` en `gemeten_velden` inclusief `temperatuur_c` terug; drie
+tijdelijke analyses met temperatuur lieten de derde curve op de juiste
+datumrange verschijnen. Alle testdata daarna verwijderd en geverifieerd op 0
+resterende records. Rooktest 15 bewaakt de korte weg blijvend en controleert
+expliciet dat `temperatuur_c` als 19.4 aankomt en niet als de 0 die PocketBase
+van een leeg getalveld maakt. 15/15 rooktests en 248 unit-tests groen.
+
+**Kanttekening bij antwoord 3 van Thomas:** hij meet temperatuur nu niet
+standaard. Dit veld levert dus pas data op als het meten gewoonte wordt — het is
+een mogelijkheid, geen meetreeks om nu al op te leunen.

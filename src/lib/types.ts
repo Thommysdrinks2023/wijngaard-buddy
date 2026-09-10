@@ -264,6 +264,8 @@ export interface Analyse {
   vluchtig_zuur_g_l?: number | null;
   so2_vrij?: number | null;
   so2_totaal?: number | null;
+  /** Handmatig gemeten tankttemperatuur bij dit meetmoment (optioneel). */
+  temperatuur_c?: number | null;
   methode?: AnalyseMethode | null;
   bestand?: string;
   notitie?: string;
