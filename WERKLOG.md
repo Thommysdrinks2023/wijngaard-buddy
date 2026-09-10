@@ -2592,3 +2592,47 @@ niet automatisch gedaan (buiten scope, kan de build-keten raken). Geen CSP/
 security-headers geconfigureerd — pre-deploy-taak voor de Pi/productie.
 
 248 unit-tests en 17 rooktests groen; schema-drift 0.
+
+---
+
+## 2026-09-10 — Toevoegingenoverzicht (voorstel 4, bijgestuurd na due diligence)
+
+Laatste van de vijf overlevende voorstellen uit `docs/onderzoek-keldermanager.md`
+— maar in een andere vorm dan de research voorstelde, na controle van de premisse.
+
+**Wat de research zei:** bouw een nieuwe collectie `additieven`, want SO2/gist/
+enzymen/bentoniet zitten "als vrije tekst in kelderlog.middel, niet doorzoekbaar,
+niet optelbaar".
+
+**Wat ik live vond:** de premisse klopt maar deels. `partij_toevoegingen`
+(waar CLAUDE.md's nulmeting naar verwees) BESTAAT NIET meer — 404, niet in het
+schema. Toevoegingen worden nu vastgelegd in `kelderlog` met `actie="toevoeging"`
+plus **gestructureerde** velden `middel` (vrije tekst met autocomplete-datalist
+van veelgebruikte middelen), `hoeveelheid` en `eenheid`. Hoeveelheid en eenheid
+zijn dus al gestructureerd; alleen `middel` is vrije tekst.
+
+**Waarom géén nieuwe collectie:** die zou een DERDE parallelle weg zijn naast
+`kelderlog.actie=toevoeging` — precies het anti-patroon dat deze codebase
+herhaaldelijk aanwijst (kelderlog vs. het inmiddels verdwenen
+partij_toevoegingen was al zo'n splitsing). Het echte probleem was niet de
+opslag maar de zichtbaarheid: toevoegingen lagen begraven in de gemengde
+logboeklijst van 10 regels.
+
+**Wat ik bouwde:** een apart "Toevoegingen"-overzicht op het partijdetail dat de
+al opgehaalde kelderlog filtert op `actie=toevoeging` en ze allemaal toont
+(middel, hoeveelheid+eenheid, datum), met een regel "voor etiket en
+NVWA-controle". Nul nieuwe query's, nul schemawijziging, nul nieuwe schrijfweg —
+puur bestaande gestructureerde data ontsluiten. Live geverifieerd: twee
+testtoevoegingen plus een echte bestaande (sulfiet uit de SO2-calculator)
+verschenen correct gesorteerd; testdata daarna verwijderd (0 restanten).
+Rooktest 18 bewaakt het. 248 unit-tests, 18 rooktests groen.
+
+**Bewust NIET gebouwd** (conform de research): het "gemiddeld SO2 per ras/
+jaargang"-rapport — daar is nog geen meerjarendata voor. En het per-stof
+optelbaar maken (normaliseren van `middel`-tikfouten als "Sulfiet"/"sulfiet"/
+"SO2") is uitgesteld: dat vraagt een keuze over een vaste middelenlijst, en de
+research zette dat achter een open vraag.
+
+Hiermee zijn alle vijf overlevende voorstellen uit het keldermanager-onderzoek
+afgerond. Wat blijft staan is stap 0 (dubbele-invoer-inventarisatie) — dat
+vraagt Thomas' input, geen code.

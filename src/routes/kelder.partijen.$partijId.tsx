@@ -325,6 +325,18 @@ function PartijDetailPage() {
     [analyseSerieMetVerwachting, sensorPerDag],
   );
 
+  // Toevoegingen (SO2, gist, enzymen, bentoniet, ...) apart uit het kelderlog
+  // gelicht — dit is de etiket-/NVWA-relevante subset. Ze staan al in de
+  // kelderlog met gestructureerde middel/hoeveelheid/eenheid; het probleem was
+  // niet de opslag maar dat ze in de gemengde log van 10 regels onvindbaar
+  // waren. Geen nieuwe collectie (dat zou een derde parallelle weg zijn naast
+  // kelderlog.actie=toevoeging), geen nieuwe query — puur de bestaande data
+  // ontsluiten. Volledige historie, nieuwste eerst.
+  const toevoegingen = useMemo(
+    () => (kelderlogQ.data ?? []).filter((r) => r.actie === "toevoeging"),
+    [kelderlogQ.data],
+  );
+
   const heeftHandmatigeTemperatuur = useMemo(
     () => analyseSerie.some((p) => p.temperatuur_handmatig !== undefined),
     [analyseSerie],
@@ -722,7 +734,6 @@ function PartijDetailPage() {
             </div>
           </div>
         </section>
-
         {/* Calculators (Fase 7 Blok C).
             Fase 13 Blok A: deze krijgen alleen ÉCHT gemeten waarden mee. Een
             SO₂-berekening op een niet-gemeten "vrij 0" stelt een veel te hoge
@@ -736,7 +747,6 @@ function PartijDetailPage() {
           laatsteOechsle={laatsteGemeten.oechsle ?? partij?.start_dichtheid_oechsle ?? null}
           laatsteTotaalzuur={laatsteGemeten.totaalzuur}
         />
-
         {/* Acties */}
         <div className="grid grid-cols-3 gap-2">
           <Link
@@ -791,7 +801,6 @@ function PartijDetailPage() {
             Bottelen
           </Link>
         </div>
-
         {/* Status wijzigen */}
         <section className="rounded-2xl border border-border bg-card p-3">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -815,7 +824,6 @@ function PartijDetailPage() {
             ))}
           </div>
         </section>
-
         {/* Verwerking: velden uit Logboek_leeg.xlsx, alleen tonen als er iets ingevuld is.
             Let op: PocketBase-nummervelden die nooit expliciet gezet zijn staan op 0,
             niet op null — pH/zuur van 0 komt in de praktijk nooit voor (echte pH ligt
@@ -847,7 +855,6 @@ function PartijDetailPage() {
               </p>
             </section>
           )}
-
         {/* Herkomst — welke rijen zitten er in dit lot. De koppeling oogst.partij
             bestaat sinds Fase 13; hier wordt hij voor het eerst teruggelezen. */}
         {(oogstQ.data?.length ?? 0) > 0 && (
@@ -882,7 +889,6 @@ function PartijDetailPage() {
             </p>
           </section>
         )}
-
         {/* Analyse-invoer */}
         {toonAnalyse && (
           <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4">
@@ -981,7 +987,6 @@ function PartijDetailPage() {
             </button>
           </section>
         )}
-
         {/* Kelderlog-invoer */}
         {toonLog && (
           <section className="space-y-3 rounded-2xl border border-primary/40 bg-card p-4">
@@ -1103,7 +1108,6 @@ function PartijDetailPage() {
             </button>
           </section>
         )}
-
         {/* Tankboek van deze partij */}
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1141,7 +1145,6 @@ function PartijDetailPage() {
             </ul>
           )}
         </section>
-
         {/* Botteling */}
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1190,7 +1193,6 @@ function PartijDetailPage() {
             </ul>
           )}
         </section>
-
         {/* Fase 17 Blok F punt 3 — pasteurisatieruns van deze batch, zelfde
             plek/patroon als Botteling/Analyses hierboven. */}
         <section>
@@ -1240,9 +1242,7 @@ function PartijDetailPage() {
             </ul>
           )}
         </section>
-
         <TemperatuurProgrammaSectie partijId={partijId} programma={partij?.temperatuur_programma} />
-
         {/* Fermentatiecurve + analysewaarden over tijd (Blok E). Temperatuur wordt
             momenteel niet vastgelegd in `analyses` — alleen dichtheid.
             Fase 14 Blok C: ook tonen als er nog geen 2 analyses zijn maar wél
@@ -1460,9 +1460,7 @@ function PartijDetailPage() {
             </ChartCard>
           </>
         )}
-
         <ProefSectie partijId={partijId} />
-
         {/* Analyses */}
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1508,8 +1506,42 @@ function PartijDetailPage() {
             </ul>
           )}
         </section>
-
-        {/* Kelderlog */}
+        {/* Toevoegingen — de etiket-/NVWA-relevante behandelingen apart, over de
+            hele looptijd van de partij (het logboek eronder toont maar 10
+            gemengde regels). */}
+        {toevoegingen.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Toevoegingen ({toevoegingen.length})
+            </h2>
+            <ul className="space-y-1.5">
+              {toevoegingen.map((r) => {
+                const eenheid = KELDERLOG_EENHEDEN.find((e2) => e2.value === r.eenheid);
+                return (
+                  <li
+                    key={r.id}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        🧪 {r.middel || "Toevoeging"}
+                        {r.hoeveelheid ? ` · ${r.hoeveelheid} ${eenheid?.label ?? ""}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(parseISO(r.datum), "d MMM yyyy", { locale: nl })}
+                        {r.notitie ? ` · ${r.notitie}` : ""}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Voor etiket en NVWA-controle — alle toevoegingen van deze partij.
+            </p>
+          </section>
+        )}
+        {/* Kelderlog */} {/* Kelderlog */}
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Logboek
@@ -1565,7 +1597,6 @@ function PartijDetailPage() {
             </ul>
           )}
         </section>
-
         {/* Voedingswaarde-/etiketberekening */}
         <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">

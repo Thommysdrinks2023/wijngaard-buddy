@@ -702,3 +702,55 @@ test("17 — boeken in een tank zonder capaciteit wordt geweigerd", async ({ pag
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
+
+// Voorstel 4 uit het keldermanager-onderzoek, in de vorm die na due diligence
+// overbleef: GEEN nieuwe collectie (dat zou een derde parallelle weg zijn naast
+// kelderlog.actie=toevoeging), maar de bestaande toevoeging-data apart ontsluiten
+// voor etiket/NVWA. Deze test controleert dat een toevoeging in het aparte
+// "Toevoegingen"-overzicht verschijnt — dat het niet stil in de gemengde log
+// van 10 regels blijft hangen.
+test("18 — een toevoeging verschijnt in het aparte toevoegingenoverzicht", async ({ page }) => {
+  await page.goto("/kelder");
+
+  const gemaakt = await page.evaluate(async (invoerder) => {
+    const partij = await (
+      await fetch("http://127.0.0.1:8090/api/collections/partijen/records?perPage=1")
+    ).json();
+    const p = partij.items?.[0];
+    if (!p) return null;
+    const r = await (
+      await fetch("http://127.0.0.1:8090/api/collections/kelderlog/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          datum: "2026-09-11",
+          partij: p.id,
+          actie: "toevoeging",
+          middel: "E2E-Testsulfiet",
+          hoeveelheid: 7.5,
+          eenheid: "mg_l",
+          ingevoerd_door: invoerder,
+        }),
+      })
+    ).json();
+    return { partijId: p.id, logId: r.id };
+  }, TESTINVOERDER);
+
+  expect(gemaakt, "er moet een partij op de server staan").not.toBeNull();
+
+  await page.goto(`/kelder/partijen/${gemaakt!.partijId}`);
+  const sectie = page.locator("section", {
+    has: page.getByRole("heading", { name: /^Toevoegingen/ }),
+  });
+  await expect(sectie).toBeVisible({ timeout: 15_000 });
+  await expect(sectie.getByText("E2E-Testsulfiet")).toBeVisible();
+  await expect(sectie).toContainText("7.5 mg/L");
+
+  await page.evaluate(async (id) => {
+    await fetch(`http://127.0.0.1:8090/api/collections/kelderlog/records/${id}`, {
+      method: "DELETE",
+    });
+  }, gemaakt!.logId);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
