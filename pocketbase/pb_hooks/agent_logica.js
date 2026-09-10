@@ -7,6 +7,15 @@ const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const MAX_TOOL_ITERATIES = 10;
 const MAX_GESCHIEDENIS_BERICHTEN = 30;
 const MAX_TOKENS = 2048; // Sonnet 5-tokenizer produceert ~30% meer tokens dan voorheen
+// Kostenrem tegen denial-of-wallet (pentest 10 sep. 2026, bevinding B5):
+// agent_berichten is bewust open aanmaakbaar (de frontend schrijft het
+// user-bericht rechtstreeks via de SDK), dus een aanvaller kan vooraf zeer
+// lange berichten in een gesprek zetten en die dan met één /bericht tot
+// MAX_TOOL_ITERATIES keer in de context laten herhalen. Deze twee plafonds
+// begrenzen hoeveel tekst er per beurt de dure model-aanroep in gaat,
+// onafhankelijk van het aantal berichten. Ruim boven elk echt kelderbericht.
+const MAX_INHOUD_TEKENS = 8000; // per historisch bericht
+const MAX_CONTEXT_TEKENS = 40000; // totale historie-tekst per beurt
 const MAX_WEB_SEARCHES = 3; // Blok F: begrenst kosten/latency per beurt
 
 // ============= Kleine hulpjes =============
@@ -1216,6 +1225,8 @@ module.exports = {
   MAX_TOOL_ITERATIES,
   MAX_GESCHIEDENIS_BERICHTEN,
   MAX_TOKENS,
+  MAX_INHOUD_TEKENS,
+  MAX_CONTEXT_TEKENS,
   MAX_WEB_SEARCHES,
   TOOL_MODULES,
   LEES_TOOLS,

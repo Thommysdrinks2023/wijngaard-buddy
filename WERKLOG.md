@@ -2540,3 +2540,55 @@ thumbnail laadde. Testrecord daarna verwijderd, 0 resterend. Rooktest 16
 bewaakt het pad met een echte JPEG-buffer — een lege buffer zou op de
 canvas-compressie stukslaan en dus niets bewijzen. 16/16 rooktests, 248
 unit-tests groen.
+
+---
+
+## 2026-09-10 — Beveiligingsonderzoek (geautoriseerde pentest) + twee fixes
+
+Op verzoek van Thomas ("deploy agents die mijn app hacken, kom met een
+conclusie en werk er direct aan"). Drie parallelle offensieve agents tegen de
+lokale server (127.0.0.1:8090), elk op een eigen aanvalsvlak, plus eigen recon.
+Vooraf een verse `pb_data`-backup gemaakt. Volledig rapport:
+`docs/beveiligingsonderzoek-2026-09-10.md`. Alle testdata na afloop verwijderd
+en op 0 restanten gecontroleerd; geen productiedata gewijzigd.
+
+**Gerepareerd en getest:**
+
+- **Capaciteit-0 tankboek-bypass (bevinding 1).** `voerBoekingUit()` in
+  `kelder_logica.js` behandelde `capaciteit_l = 0` als "onbeperkt" i.p.v.
+  "onbekend"; een miljard liter ging live het onwijzigbare tankboek in. Nu wordt
+  boeken in een tank zonder capaciteit hard geweigerd met een duidelijke
+  melding. Live geverifieerd (tank 20 → 400, tank 3 met cap 530 → nog 200) en
+  vastgelegd in rooktest 17. Gevolg: tank 20/21/28 (pulptank/koeltank, bewust
+  capaciteit 0) moeten hun echte capaciteit ingevuld krijgen vóór de oogst —
+  staat als actiepunt in het rapport.
+- **Denial-of-wallet undercount (bevinding B5).** De kostenrem telde berichten,
+  niet model-aanroepen/tokens; een vooraf volgestopt gesprek kon per beurt (tot
+  10 iteraties) een veelvoud aan tokenkosten veroorzaken. De historie die de
+  model-aanroep in gaat is nu begrensd (`MAX_INHOUD_TEKENS` 8000/bericht,
+  `MAX_CONTEXT_TEKENS` 40000 totaal) in `agent_uitvoering.js`. Live geverifieerd
+  met een gesprek van 120k tekens: verwerkte netjes met correct antwoord, context
+  gekapt i.p.v. opgeblazen. Geen auth-wijziging — aanscherping van de bestaande rem.
+
+**Live weerlegd (goed verdedigd, geen actie):** bestandsupload-XSS (content-
+sniffing + nosniff + sandbox-CSP), stored-XSS, geheimen in de client-bundle
+(geen VITE\_-prefix; git-historie schoon), filter-injectie (overal
+geparametriseerd), transactie-atomiciteit, sensor-token, prompt-injectie op de
+agent, rate-limit-header-spoofing (`trustedProxy.headers = []`), directe creatie
+van `agent_acties` (403).
+
+**Openstaand — hoort bij het al bekende auth/rollen-besluit, NIET zelf omgezet**
+("authenticatie voor de hele app aan/uit" is Thomas' beslissing): `/bevestig`
+zonder auth (een netwerk-aanvaller kan een voorstel zelf uitvoeren), `klanten`-
+PII volledig open (AVG), en wildcard-CORS. Alle drie onschadelijk zolang de
+server op 127.0.0.1 luistert; alle drie moeten opgelost zijn vóór de Pi-migratie.
+Deze pentest levert het concrete bewijs waarom "zo laten" dan niet houdbaar is.
+Plus een migratie-waarschuwing: de header-spoofing-verdediging hangt aan
+`trustedProxy.headers = []` — achter een reverse proxy opnieuw beoordelen.
+
+**Recon:** `npm audit` toont 20 kwetsbaarheden maar vrijwel allemaal in build-/
+dev-dependencies (niet in de client-runtime); `npm audit fix` aangeraden maar
+niet automatisch gedaan (buiten scope, kan de build-keten raken). Geen CSP/
+security-headers geconfigureerd — pre-deploy-taak voor de Pi/productie.
+
+248 unit-tests en 17 rooktests groen; schema-drift 0.

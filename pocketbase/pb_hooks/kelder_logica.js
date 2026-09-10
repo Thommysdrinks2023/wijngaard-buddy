@@ -150,7 +150,20 @@ function voerBoekingUit(txApp, b) {
       };
     }
     // Regel 1 — capaciteit
+    // Een capaciteit van 0 betekent "nog niet ingesteld", niet "onbeperkt".
+    // Eerder werd 0 als geen-plafond behandeld, waardoor een fysiek onmogelijk
+    // volume in het onwijzigbare tankboek kon belanden (pentest 10 sep. 2026,
+    // bevinding 1). Een boeking IN een tank zonder bekende capaciteit wordt nu
+    // hard geweigerd — de accijnsbron mag geen ongelimiteerde stand krijgen.
     const capaciteit = naarTank.getFloat("capaciteit_l");
+    if (volume > 0 && capaciteit <= 0) {
+      return {
+        fout:
+          "Tank " +
+          naarTank.getString("code") +
+          " heeft geen capaciteit ingesteld — er kan niets in geboekt worden. Stel eerst de capaciteit van de tank in.",
+      };
+    }
     if (capaciteit > 0 && doelVolume + volume > capaciteit) {
       return {
         fout:

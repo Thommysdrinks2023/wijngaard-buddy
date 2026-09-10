@@ -1954,24 +1954,42 @@ function verwerkBeurt(app, opties) {
   );
 
   // alleen user/assistant-tekstwisselingen repliceren; tool-detail van eerdere
-  // beurten zit al samengevat in het opgeslagen assistant-antwoord van die beurt
+  // beurten zit al samengevat in het opgeslagen assistant-antwoord van die beurt.
+  //
+  // Kostenrem (pentest bevinding B5): elk bericht wordt op MAX_INHOUD_TEKENS
+  // gekapt en de totale historie-tekst op MAX_CONTEXT_TEKENS. Zo kan een gesprek
+  // dat vooraf met zeer lange berichten is volgestopt niet per beurt (tot 10
+  // model-aanroepen) een veelvoud aan tokenkosten veroorzaken.
+  const kap = (t) =>
+    t.length > logica.MAX_INHOUD_TEKENS
+      ? t.slice(0, logica.MAX_INHOUD_TEKENS) + "\n[…afgekapt]"
+      : t;
   const berichten = [];
   for (const b of historie) {
     const rol = b.getString("rol");
+    let tekst = kap(b.getString("inhoud") || "");
+    if (rol === "user" && b.getString("foto")) {
+      tekst += `\n\n[Gebruiker heeft een foto bijgevoegd bij dit bericht - gebruik analyseer_foto met bericht_id "${b.id}" om te bekijken]`;
+    }
     if (rol === "user") {
-      let tekst = b.getString("inhoud") || "";
-      if (b.getString("foto")) {
-        tekst += `\n\n[Gebruiker heeft een foto bijgevoegd bij dit bericht - gebruik analyseer_foto met bericht_id "${b.id}" om te bekijken]`;
-      }
       berichten.push({ role: "user", content: tekst });
     } else if (rol === "assistant") {
-      berichten.push({ role: "assistant", content: b.getString("inhoud") || "(geen antwoord)" });
+      berichten.push({ role: "assistant", content: tekst || "(geen antwoord)" });
     } else if (rol === "tool") {
       // synthetische systeemmelding (bv. na een mislukte actie) - als user-beurt
       // aanbieden, want Anthropic staat geen "tool"-rol zonder voorgaande
       // tool_use toe in de vervangen geschiedenis.
-      berichten.push({ role: "user", content: b.getString("inhoud") || "" });
+      berichten.push({ role: "user", content: tekst });
     }
+  }
+  // Totaalbudget: laat zo nodig de OUDSTE berichten vallen (historie is
+  // oplopend op created), maar houd altijd het laatste — dat is het bericht
+  // waarop de agent nu moet reageren. Zonder deze bewaking zou een vooraf
+  // volgestopt gesprek de hele context per model-aanroep opblazen.
+  let contextTekens = berichten.reduce((som, m) => som + m.content.length, 0);
+  while (berichten.length > 1 && contextTekens > logica.MAX_CONTEXT_TEKENS) {
+    contextTekens -= berichten[0].content.length;
+    berichten.shift();
   }
 
   const tools = logica.bouwTools();

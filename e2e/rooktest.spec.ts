@@ -650,3 +650,55 @@ test("16 — een foto bij een kelderlogregel komt echt op de server aan", async 
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
+
+// Integriteitsgarantie uit de pentest van 10 sep. 2026 (bevinding 1): een
+// boeking IN een tank zonder ingestelde capaciteit (pulptank/koeltank, bewust
+// capaciteit 0) moet worden geweigerd — anders kan een fysiek onmogelijk,
+// ongelimiteerd volume in het onwijzigbare tankboek belanden. Deze test spreekt
+// het endpoint rechtstreeks aan; er komt geen UI aan te pas en er wordt bij
+// succes-verwachting (400) niets weggeschreven dat opgeruimd moet worden.
+test("17 — boeken in een tank zonder capaciteit wordt geweigerd", async ({ page }) => {
+  await page.goto("/kelder");
+
+  const uitkomst = await page.evaluate(async () => {
+    const base = "http://127.0.0.1:8090";
+    const tanks = await (
+      await fetch(
+        `${base}/api/collections/tanks/records?perPage=1&filter=${encodeURIComponent("capaciteit_l=0")}`,
+      )
+    ).json();
+    const partij = await (await fetch(`${base}/api/collections/partijen/records?perPage=1`)).json();
+    const tank = tanks.items?.[0];
+    const p = partij.items?.[0];
+    if (!tank || !p) return { overgeslagen: true };
+    const res = await fetch(`${base}/api/tappenmars/tankboek-boeking`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        datum: "2026-09-10",
+        partij: p.id,
+        actie: "vullen",
+        naar_tank: tank.id,
+        volume_l: 1000,
+        verantwoordelijke: "e2e-capaciteit-guard",
+      }),
+    });
+    const body = await res.json();
+    return { status: res.status, message: body.message ?? "", tankCode: tank.code };
+  });
+
+  expect(uitkomst.overgeslagen, "er moet een tank met capaciteit 0 bestaan").toBeFalsy();
+  expect(uitkomst.status).toBe(400);
+  expect(uitkomst.message).toContain("geen capaciteit");
+
+  // Extra zekerheid: er is niets in het tankboek geschreven.
+  const geschreven = await page.evaluate(async () => {
+    const r = await fetch(
+      `http://127.0.0.1:8090/api/collections/tankboek/records?perPage=1&filter=${encodeURIComponent("verantwoordelijke='e2e-capaciteit-guard'")}`,
+    );
+    return ((await r.json()).totalItems as number) ?? 0;
+  });
+  expect(geschreven).toBe(0);
+
+  await expect(page.locator('[role="alert"]')).toHaveCount(0);
+});
