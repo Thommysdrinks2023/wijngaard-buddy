@@ -2,13 +2,23 @@ import { QueryClient } from "@tanstack/react-query";
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
-function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+// TanStack Router levert `error` als `unknown` (ErrorComponentProps) — een
+// route kan immers ook iets gooien dat geen Error is. Daarom hier narrowen in
+// plaats van aannemen: een string gooien mag de foutpagina zelf niet laten
+// klappen, want dan is er geen vangnet meer.
+function foutTekst(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  return "Onbekende fout.";
+}
+
+function DefaultErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-2xl font-bold text-foreground">Er ging iets mis</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message || "Onbekende fout."}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{foutTekst(error)}</p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
             onClick={() => {

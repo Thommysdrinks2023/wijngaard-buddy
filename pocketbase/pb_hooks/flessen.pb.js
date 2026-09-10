@@ -25,7 +25,11 @@ routerAdd("POST", "/api/tappenmars/flessen-mutatie", (e) => {
       resultaat = logica.voerMutatieUit(txApp, b);
       if (resultaat.fout) throw new Error(resultaat.fout); // rollback
     });
-    return e.json(200, { ok: true, regelId: resultaat.regelId, nieuweStand: resultaat.nieuweStand });
+    return e.json(200, {
+      ok: true,
+      regelId: resultaat.regelId,
+      nieuweStand: resultaat.nieuweStand,
+    });
   } catch (err) {
     if (resultaat && resultaat.fout) throw new BadRequestError(resultaat.fout);
     throw logica.leesbareFout(err);

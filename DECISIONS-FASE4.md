@@ -7,7 +7,6 @@
 > producent maar eigenaar van hun eigen product. De tekst hieronder blijft
 > staan zoals hij destijds is geschreven.
 
-
 Autonome bouwsessie, vervolg op Fase 0–2 (Kelder), de kelder-uitbreiding en Fase 3 (AI-agent). Vóóraf: `pb_data` gekopieerd naar `pocketbase/pb_data_backup_fase4`.
 
 ## Vooraf: discrepanties tussen de opdracht en de werkelijke codebase

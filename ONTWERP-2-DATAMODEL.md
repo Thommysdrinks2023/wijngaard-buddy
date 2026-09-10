@@ -7,14 +7,13 @@
 > producent maar eigenaar van hun eigen product. De tekst hieronder blijft
 > staan zoals hij destijds is geschreven.
 
-
 **Status: BESLOTEN door Thomas (24 juli 2026). Dit document reflecteert de definitieve besluiten en is de basis voor Fase 5 (bouwen).**
 
 ---
 
 ## Leidend principe: bijna geen nieuw schema
 
-De belangrijkste uitkomst van Fase 1 voor het datamodel is contra-intuïtief maar eerlijk: **de proactieve laag heeft in zijn aanbevolen vorm nauwelijks nieuwe database-structuur nodig.** Reden: de regel-signalen worden *berekend* uit bestaande collecties op het moment van tonen, niet *opgeslagen*. Een signaal is een afgeleide, geen entiteit. Opslaan zou betekenen dat we een tweede bron van waarheid introduceren die kan verouderen t.o.v. de brondata — precies de fout die nu al zichtbaar is in de dubbele backup-check (nulmeting 1a).
+De belangrijkste uitkomst van Fase 1 voor het datamodel is contra-intuïtief maar eerlijk: **de proactieve laag heeft in zijn aanbevolen vorm nauwelijks nieuwe database-structuur nodig.** Reden: de regel-signalen worden _berekend_ uit bestaande collecties op het moment van tonen, niet _opgeslagen_. Een signaal is een afgeleide, geen entiteit. Opslaan zou betekenen dat we een tweede bron van waarheid introduceren die kan verouderen t.o.v. de brondata — precies de fout die nu al zichtbaar is in de dubbele backup-check (nulmeting 1a).
 
 Wat wél nieuw schema vraagt (definitief, na Thomas' besluiten):
 
@@ -32,11 +31,11 @@ Verworpen alternatief: een centrale `signalen`-collectie die elk gedetecteerd si
 
 **Nieuw veld** (via `ensureVelden`, niet-destructief) — **besloten: nu al toevoegen**, ook al start Thomas met de globale standaard, zodat er later geen aparte migratie nodig is:
 
-| Veld | Type | Verplicht | Default | Motivatie |
-|---|---|---|---|---|
-| `drempel_aantal` | number | nee | leeg (= gebruik globale standaard uit `app_instellingen`) | Onder dit aantal flessen genereert het voorraad-bijna-op-signaal een waarschuwing. Leeg = val terug op de globale standaard (12). |
+| Veld             | Type   | Verplicht | Default                                                   | Motivatie                                                                                                                         |
+| ---------------- | ------ | --------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `drempel_aantal` | number | nee       | leeg (= gebruik globale standaard uit `app_instellingen`) | Onder dit aantal flessen genereert het voorraad-bijna-op-signaal een waarschuwing. Leeg = val terug op de globale standaard (12). |
 
-**Waarom een veld en geen aparte collectie?** Een drempel is een eigenschap *van* een voorraadrecord, één-op-één, nooit apart bevraagd. Een aparte `voorraad_drempels`-collectie zou een join vereisen voor elke voorraadweergave zonder enig voordeel.
+**Waarom een veld en geen aparte collectie?** Een drempel is een eigenschap _van_ een voorraadrecord, één-op-één, nooit apart bevraagd. Een aparte `voorraad_drempels`-collectie zou een join vereisen voor elke voorraadweergave zonder enig voordeel.
 
 De Tappenmars-voorbeeld: voorraadrecord "Souvignier Gris 2025" met `aantal_huidig: 18`, `drempel_aantal: 24` → signaal "Souvignier Gris 2025 nadert einde voorraad (18 flessen, drempel 24)". Een record zonder ingevulde `drempel_aantal` valt terug op de globale standaard.
 
@@ -69,12 +68,12 @@ Zelfde sleutel/waarde-vorm als `regelgeving_instellingen`, bewust géén `laatst
 
 **Seed-waarden bij aanmaak**:
 
-| `sleutel` | `waarde` | `eenheid` | Betekenis |
-|---|---|---|---|
-| `voorraad_drempel_standaard` | `12` | flessen | Globale voorraad-bijna-op-drempel voor wijnen zonder eigen `drempel_aantal` |
-| `signaal_max_zichtbaar` | `6` | stuks | Plafond op de Vandaag-widget |
-| `backup_waarschuwing_dagen` | `2` | dagen | Vanaf welke leeftijd van de laatste backup een signaal verschijnt — **verhuisd hierheen vanuit de hardcoded `2` in `index.tsx`/`meldingen.tsx`** |
-| `agp_waarschuwing_percentage` | `80` | % | Vanaf welk percentage van de AGP-drempel gewaarschuwd wordt — **verhuisd hierheen vanuit de hardcoded `80` in `meldingen.tsx`**. De AGP-drempel zelf (de wettelijke hoeveelheid liters) blijft in `regelgeving_instellingen` — alleen het *waarschuwingspercentage* is een operationele keuze van Thomas. |
+| `sleutel`                     | `waarde` | `eenheid` | Betekenis                                                                                                                                                                                                                                                                                                 |
+| ----------------------------- | -------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `voorraad_drempel_standaard`  | `12`     | flessen   | Globale voorraad-bijna-op-drempel voor wijnen zonder eigen `drempel_aantal`                                                                                                                                                                                                                               |
+| `signaal_max_zichtbaar`       | `6`      | stuks     | Plafond op de Vandaag-widget                                                                                                                                                                                                                                                                              |
+| `backup_waarschuwing_dagen`   | `2`      | dagen     | Vanaf welke leeftijd van de laatste backup een signaal verschijnt — **verhuisd hierheen vanuit de hardcoded `2` in `index.tsx`/`meldingen.tsx`**                                                                                                                                                          |
+| `agp_waarschuwing_percentage` | `80`     | %         | Vanaf welk percentage van de AGP-drempel gewaarschuwd wordt — **verhuisd hierheen vanuit de hardcoded `80` in `meldingen.tsx`**. De AGP-drempel zelf (de wettelijke hoeveelheid liters) blijft in `regelgeving_instellingen` — alleen het _waarschuwingspercentage_ is een operationele keuze van Thomas. |
 
 **Waarom de bestaande hardcoded drempels wél meeverhuizen (in tegenstelling tot het eerste concept)**: Thomas koos expliciet voor deze scheiding, en het verhuizen van de twee bestaande hardcoded waarden hoort logisch bij "nu eindelijk één plek voor operationele instellingen" — het zou raar zijn om de nieuwe instellingen wél in een generieke store te zetten en de oude twee daarbuiten te laten staan. Dit is een kleine, geïsoleerde refactor van bestaande, werkende code (twee getallen die van een letterlijke `2`/`80` naar een `fetch`-aanroep verhuizen) — laag risico, meegenomen in bouwstap 1/2.
 
@@ -97,7 +96,7 @@ Rechten: **`OPEN_RULE`** op alle vier — consistent met de rest van de app die 
 
 **Query-index**: index op `signaal_id` (puntlookup bij het renderen van elk signaal, en om te bepalen of een status al bestaat vóór een upsert) en op `snooze_tot` (opschoning van verlopen snoozes).
 
-**Migratie vanuit de bestaande localStorage-sleutel** (`wg.meldingen.afgevinkt.v1`): eenmalig bij het eerste laden van de Vandaag-widget, de bestaande lokale id's als `signaal_status`-records met `actie: "genegeerd"` wegschrijven (zie §6). Na een geslaagde migratie blijft de oude localStorage-sleutel *ongebruikt* staan (niet gewist) als terugvaloptie.
+**Migratie vanuit de bestaande localStorage-sleutel** (`wg.meldingen.afgevinkt.v1`): eenmalig bij het eerste laden van de Vandaag-widget, de bestaande lokale id's als `signaal_status`-records met `actie: "genegeerd"` wegschrijven (zie §6). Na een geslaagde migratie blijft de oude localStorage-sleutel _ongebruikt_ staan (niet gewist) als terugvaloptie.
 
 ---
 
@@ -124,16 +123,20 @@ Rechten: `listRule`/`viewRule` = `OPEN_RULE`, `createRule`/`updateRule`/`deleteR
 **Niet-destructief en idempotent via `scripts/setup-pocketbase.mjs`.**
 
 ### Bestaande `inzichten`-records
+
 Volledig ongewijzigd, geen opschoning (zie §2 — herzien besluit).
 
 ### Bestaande meldingen-state (localStorage `wg.meldingen.afgevinkt.v1` → `signaal_status`-collectie)
+
 De Vandaag-widget vervangt `meldingen.tsx`. Bij eerste laden van de widget:
+
 - Lees de oude localStorage-sleutel (array van id's).
 - Voor elk id: `pb.collection("signaal_status").create({ signaal_id: id, actie: "genegeerd" })` — **eenmalig**, met een aparte migratie-vlag in localStorage (`wg.signalen.migratie_v2_gedaan`) zodat dit niet bij elke paginalaad opnieuw gebeurt en geen dubbele records ontstaat.
 - Signaal-id's blijven bewust **identiek** aan de bestaande melding-id's (`onderhoud-<...>`, `backup-<...>`, etc.) — geen vertaling nodig.
 - Oude localStorage-sleutel blijft staan (niet wissen) als terugvaloptie.
 
 ### Bestaande `agent_acties`-flow
+
 Ongewijzigd — **bevestigd, geen schemawijziging nodig**: `bericht_id` is in het huidige schema al `required: false` (curl-geverifieerd op de live database, 24 juli 2026), dus een signaal kan direct een `agent_acties`-record aanmaken zonder tussenkomst van een AI-beurt. De eerder gevreesde "misschien moet dit veld optioneel gemaakt worden" (Fase 4-vraag 11) is dus al opgelost — geen actie nodig in bouwstap 5.
 
 De eerder gemelde frontend/backend-drift (`onderhoud`/`order` ontbraken in `AGENT_ACTIE_CONFIG`) is **al gefixt** (losstaande bugfix, 24 juli 2026, commit `9a4ac67`), dus dat blokkeert bouwstap 5 niet meer.
@@ -142,12 +145,12 @@ De eerder gemelde frontend/backend-drift (`onderhoud`/`order` ontbraken in `AGEN
 
 ## 7. Bewaartermijnen en opschoning (samengevat, herzien)
 
-| Data | Bewaartermijn | Methode | Wie draait het |
-|---|---|---|---|
-| `inzichten` | **Onbeperkt** (herzien besluit) | Geen opschoning | — |
-| `signaal_status` | Verlopen snoozes (`snooze_tot < vandaag`) | Hard verwijderen | Client-side sweep bij laden van de widget (klein aantal records, geen apart proces nodig) |
-| `signaal_analyses` (indien gebouwd) | 90 dagen | Hard verwijderen zodra `vervalt_op < vandaag` | Sweep in het correlatie-endpoint zelf, bij elke aanroep (geen los proces) |
-| Regel-signalen zelf | N.v.t. | Worden niet opgeslagen | — |
+| Data                                | Bewaartermijn                             | Methode                                       | Wie draait het                                                                            |
+| ----------------------------------- | ----------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `inzichten`                         | **Onbeperkt** (herzien besluit)           | Geen opschoning                               | —                                                                                         |
+| `signaal_status`                    | Verlopen snoozes (`snooze_tot < vandaag`) | Hard verwijderen                              | Client-side sweep bij laden van de widget (klein aantal records, geen apart proces nodig) |
+| `signaal_analyses` (indien gebouwd) | 90 dagen                                  | Hard verwijderen zodra `vervalt_op < vandaag` | Sweep in het correlatie-endpoint zelf, bij elke aanroep (geen los proces)                 |
+| Regel-signalen zelf                 | N.v.t.                                    | Worden niet opgeslagen                        | —                                                                                         |
 
 **Geen enkel opschoonproces in dit ontwerp draait als los gepland script** — allemaal gekoppeld aan een bestaande aanroep (client-laden, of het correlatie-endpoint zelf) — leert direct van de Fase 9-bevinding dat losse crons op deze machine niet vuren.
 
@@ -155,13 +158,13 @@ De eerder gemelde frontend/backend-drift (`onderhoud`/`order` ontbraken in `AGEN
 
 ## 8. Verwachte datagroei per jaar (normaal gebruik, herzien)
 
-| Collectie | Groei/jaar | Toelichting |
-|---|---|---|
-| `inzichten` | ~2.080 records/jaar, onbeperkt cumulatief | Klein genoeg voor SQLite over meerdere decennia; dit is expliciet gewenst (jaar-op-jaar) |
-| `voorraad_flessen.drempel_aantal` | 0 nieuwe records | Alleen een veld op bestaande records |
-| `app_instellingen` | +4 records eenmalig | Instellingssleutels, groeien niet |
-| `signaal_status` | Enkele tientallen tegelijk, verlopen snoozes opgeruimd | Netto begrensd |
-| `signaal_analyses` (indien gebouwd) | ~15-20 records/oogstmaand, begrensd op 90 dagen ≈ max. ~60 tegelijk | Alleen tijdens actief seizoen, hard opgeschoond |
+| Collectie                           | Groei/jaar                                                          | Toelichting                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `inzichten`                         | ~2.080 records/jaar, onbeperkt cumulatief                           | Klein genoeg voor SQLite over meerdere decennia; dit is expliciet gewenst (jaar-op-jaar) |
+| `voorraad_flessen.drempel_aantal`   | 0 nieuwe records                                                    | Alleen een veld op bestaande records                                                     |
+| `app_instellingen`                  | +4 records eenmalig                                                 | Instellingssleutels, groeien niet                                                        |
+| `signaal_status`                    | Enkele tientallen tegelijk, verlopen snoozes opgeruimd              | Netto begrensd                                                                           |
+| `signaal_analyses` (indien gebouwd) | ~15-20 records/oogstmaand, begrensd op 90 dagen ≈ max. ~60 tegelijk | Alleen tijdens actief seizoen, hard opgeschoond                                          |
 
 Conclusie: **nog steeds verwaarloosbare groei**, ook na het loslaten van de inzichten-limiet — SQLite/PocketBase heeft geen moeite met een tabel van enkele tienduizenden simpele records.
 
@@ -169,15 +172,15 @@ Conclusie: **nog steeds verwaarloosbare groei**, ook na het loslaten van de inzi
 
 ## 9. Query-patronen van het dashboard
 
-| Vraag | Query | Index nodig? |
-|---|---|---|
-| "Welke tanks stagneren?" | `inzichten` waar `inzicht_type = "gisting_snelheid"` en `deleted != true`, sorteer `-berekend_op`, `limit` op recente records | Bestaande sortering volstaat; met onbeperkte groei wordt een `limit` op de query belangrijker dan bij de eerdere 12-snapshot-aanname — **client-side query moet expliciet een periode/limiet meegeven**, niet de hele tabel ophalen |
-| "Welk onderhoud komt eraan?" | `onderhoudslog` (bestaande `fetchOnderhoud` + client-filter) | Geen — bestaande query |
-| "Welke voorraad is bijna op?" | `voorraad_flessen` waar `aantal_huidig < (drempel_aantal ?? standaard uit app_instellingen)` — client-side filter | Geen nieuwe index nodig |
-| "Welke taken vervallen?" | `kelderlog` waar `notitie` begint met `"TAAK:"` (bestaand) | Geen |
-| "Wat is de backup-status?" | `regelgeving_instellingen` waar `sleutel = "laatste_backup"` | Geen — puntlookup |
-| "Wat is de backup-waarschuwingsdrempel?" | `app_instellingen` waar `sleutel = "backup_waarschuwing_dagen"` | Geen — puntlookup |
-| "Snooze-status van signaal X" | `signaal_status` waar `signaal_id = {:id}` | **Nieuwe index op `signaal_id`** |
+| Vraag                                    | Query                                                                                                                         | Index nodig?                                                                                                                                                                                                                        |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Welke tanks stagneren?"                 | `inzichten` waar `inzicht_type = "gisting_snelheid"` en `deleted != true`, sorteer `-berekend_op`, `limit` op recente records | Bestaande sortering volstaat; met onbeperkte groei wordt een `limit` op de query belangrijker dan bij de eerdere 12-snapshot-aanname — **client-side query moet expliciet een periode/limiet meegeven**, niet de hele tabel ophalen |
+| "Welk onderhoud komt eraan?"             | `onderhoudslog` (bestaande `fetchOnderhoud` + client-filter)                                                                  | Geen — bestaande query                                                                                                                                                                                                              |
+| "Welke voorraad is bijna op?"            | `voorraad_flessen` waar `aantal_huidig < (drempel_aantal ?? standaard uit app_instellingen)` — client-side filter             | Geen nieuwe index nodig                                                                                                                                                                                                             |
+| "Welke taken vervallen?"                 | `kelderlog` waar `notitie` begint met `"TAAK:"` (bestaand)                                                                    | Geen                                                                                                                                                                                                                                |
+| "Wat is de backup-status?"               | `regelgeving_instellingen` waar `sleutel = "laatste_backup"`                                                                  | Geen — puntlookup                                                                                                                                                                                                                   |
+| "Wat is de backup-waarschuwingsdrempel?" | `app_instellingen` waar `sleutel = "backup_waarschuwing_dagen"`                                                               | Geen — puntlookup                                                                                                                                                                                                                   |
+| "Snooze-status van signaal X"            | `signaal_status` waar `signaal_id = {:id}`                                                                                    | **Nieuwe index op `signaal_id`**                                                                                                                                                                                                    |
 
 **Belangrijke aanscherping door het loslaten van de inzichten-limiet**: de `zoek_inzichten`-achtige queries (en de nieuwe stagnatie-signaalproducent) moeten voortaan expliciet een `sort + limit` of een datumfilter meegeven (bv. "laatste 8 weken") in plaats van blind alles op te halen — dat was met een 12-snapshot-limiet vanzelf begrensd, nu niet meer. Dit is een concreet aandachtspunt voor bouwstap 1/2, geen architectuurwijziging.
 

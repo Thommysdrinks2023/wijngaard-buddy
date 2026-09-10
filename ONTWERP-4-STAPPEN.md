@@ -7,7 +7,6 @@
 > producent maar eigenaar van hun eigen product. De tekst hieronder blijft
 > staan zoals hij destijds is geschreven.
 
-
 **Status: BESLOTEN door Thomas (24 juli 2026) — Fase 5 (bouwen) is gestart, stap 1 t/m 5.**
 
 ---
@@ -23,6 +22,7 @@ Elke stap hieronder is **zelfstandig werkend en testbaar**. Stap 1 alleen al lev
 **Wat wordt gebouwd**: `src/lib/signalen.ts` met het `Signaal`/`SignaalProducent`-contract (Fase 3 §1) en de verzamelfunctie `verzamelSignalen()`. Twee bestaande, al werkende detecties verhuizen hier eerst naartoe, ongewijzigd in gedrag: het onderhoud-binnen-30-dagen-signaal en het backup-ouder-dan-2-dagen-signaal (nu dubbel geïmplementeerd — dit is de eerste de-duplicatie).
 
 **Bestanden**:
+
 - Nieuw: `src/lib/signalen.ts`
 - Gewijzigd: `src/components/meldingen.tsx` (onderhoud- en backup-detectie eruit, roept straks `verzamelSignalen()` aan voor die twee) — **maar `meldingen.tsx` blijft in stap 1 nog gewoon bestaan en werken**, dit is een interne verhuizing, geen zichtbare wijziging voor Thomas.
 
@@ -57,6 +57,7 @@ Elke stap hieronder is **zelfstandig werkend en testbaar**. Stap 1 alleen al lev
 **Wat wordt gebouwd**: `src/components/vandaag-widget.tsx`, de eerste **zichtbaar nieuwe** component. Toont `verzamelSignalen()`-resultaat gesorteerd op ernst→datum, met het plafond (instelbaar via `signaal_max_zichtbaar`, default 6, Fase 2 §3) en een "en nog N meer"-regel bij overschrijding. Elk signaal toont zijn `waarom`-tekst uitklapbaar (geen aparte call — staat al in het object, Fase 3 §3). Snooze/dismiss via localStorage (`wg.signalen.staat.v2`), inclusief de eenmalige migratie van de oude `wg.meldingen.afgevinkt.v1`-sleutel (Fase 2 §6).
 
 **Bestanden**:
+
 - Nieuw: `src/components/vandaag-widget.tsx`
 - Gewijzigd: `src/routes/index.tsx` (`Meldingen`-component vervangen door `VandaagWidget`)
 - Verwijderd: `src/components/meldingen.tsx` (na deze stap overbodig — pas verwijderen als de widget in productie draait, niet eerder)
@@ -121,14 +122,14 @@ Elke stap hieronder is **zelfstandig werkend en testbaar**. Stap 1 alleen al lev
 
 ## Samenvattend stappenoverzicht
 
-| Stap | Levert op zichzelf waarde? | AI-aanroep? | Regressierisico |
-|---|---|---|---|
-| 1. Signaal-contract + 2 signalen verhuizen | Ja (interne opschoning, bug-fix) | Nee | Laag |
-| 2. Resterende 2 signalen verhuizen | Ja (voltooit opschoning) | Nee | Laag |
-| 3. Vandaag-widget | Ja (zichtbaar betere hub) | Nee | Middel |
-| 4. Voorraad-bijna-op-signaal | Ja (nieuw, nuttig signaal) | Nee | Laag |
-| 5. Signaal→taak-promotie | Ja (sneller taken aanmaken) | Nee (hergebruikt bestaande flow) | Laag-middel |
-| 6. AI-correlatietool | Optioneel, apart te beoordelen | Ja | Geen (nieuw, additief) — wel scope-risico |
+| Stap                                       | Levert op zichzelf waarde?       | AI-aanroep?                      | Regressierisico                           |
+| ------------------------------------------ | -------------------------------- | -------------------------------- | ----------------------------------------- |
+| 1. Signaal-contract + 2 signalen verhuizen | Ja (interne opschoning, bug-fix) | Nee                              | Laag                                      |
+| 2. Resterende 2 signalen verhuizen         | Ja (voltooit opschoning)         | Nee                              | Laag                                      |
+| 3. Vandaag-widget                          | Ja (zichtbaar betere hub)        | Nee                              | Middel                                    |
+| 4. Voorraad-bijna-op-signaal               | Ja (nieuw, nuttig signaal)       | Nee                              | Laag                                      |
+| 5. Signaal→taak-promotie                   | Ja (sneller taken aanmaken)      | Nee (hergebruikt bestaande flow) | Laag-middel                               |
+| 6. AI-correlatietool                       | Optioneel, apart te beoordelen   | Ja                               | Geen (nieuw, additief) — wel scope-risico |
 
 **Bevestiging van de volgorde-eis**: stappen 1 t/m 5 bevatten **geen enkele** AI-aanroep. Als stap 6 nooit gebouwd wordt, is alles wat er dan staat — een opgeschoonde, uitgebreide, ontdubbelde signaallaag met taak-promotie — op zichzelf een duidelijke verbetering, geen half werk.
 
@@ -141,6 +142,7 @@ Elke stap hieronder is **zelfstandig werkend en testbaar**. Stap 1 alleen al lev
 3. **Stap 6 losgekoppeld**: akkoord, bevestigd. Stap 1-5 is het volledige, af te bouwen resultaat van dit plan; stap 6 blijft een apart besluit na het seizoen.
 
 **Overige besluiten die dit stappenplan raken** (details in `ONTWERP-2-DATAMODEL.md`/`ONTWERP-3-API.md`):
+
 - Snooze/dismiss wordt server-side (`signaal_status`-collectie), niet localStorage — stap 3 bouwt deze collectie mee, geen voorwaardelijk onderdeel meer.
 - `inzichten` krijgt geen opschoning — stap 2 (dat de kritieke-inzichten-signaalproducent verhuist) moet een expliciete `sort`/`limit` gebruiken in plaats van de hele tabel op te halen (zie Fase 2 §9 — nieuw aandachtspunt, was niet relevant toen de 12-snapshot-limiet nog gold).
 - De twee bestaande hardcoded drempels (backup 2 dagen, AGP-waarschuwing 80%) verhuizen mee naar de nieuwe `app_instellingen`-collectie in stap 1/2, niet naar `regelgeving_instellingen`.

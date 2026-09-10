@@ -97,12 +97,7 @@ export type PartijType = "wit" | "rood" | "rosé" | "mousserend" | "overig";
 export const PARTIJ_TYPES: PartijType[] = ["wit", "rood", "rosé", "mousserend", "overig"];
 
 export type PartijStatus =
-  | "most"
-  | "gisting"
-  | "opvoeding"
-  | "klaar_voor_botteling"
-  | "gebotteld"
-  | "afgevoerd";
+  "most" | "gisting" | "opvoeding" | "klaar_voor_botteling" | "gebotteld" | "afgevoerd";
 
 export const PARTIJ_STATUSSEN: { value: PartijStatus; label: string; emoji: string }[] = [
   { value: "most", label: "Most", emoji: "🍇" },
@@ -454,11 +449,7 @@ export interface VoorraadFles {
 }
 
 export type VoorraadMutatieType =
-  | "verkocht"
-  | "eigen_gebruik"
-  | "kapot"
-  | "weggegeven"
-  | "correctie";
+  "verkocht" | "eigen_gebruik" | "kapot" | "weggegeven" | "correctie";
 export const VOORRAAD_MUTATIE_TYPES: {
   value: VoorraadMutatieType;
   label: string;
@@ -518,11 +509,7 @@ export const VEELGEBRUIKTE_FLESKLEUREN_LEEG = ["transparant", "wit", "groen", "m
 export const VEELGEBRUIKTE_FLESSLUITINGEN = ["schroef", "kurk", "vinolok"];
 
 export type FlessenMutatieType =
-  | "ontvangst"
-  | "verbruik_botteling"
-  | "breuk"
-  | "telcorrectie"
-  | "overig";
+  "ontvangst" | "verbruik_botteling" | "breuk" | "telcorrectie" | "overig";
 export const FLESSEN_MUTATIE_TYPES: {
   value: FlessenMutatieType;
   label: string;

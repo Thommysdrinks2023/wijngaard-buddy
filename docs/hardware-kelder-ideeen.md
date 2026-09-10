@@ -82,8 +82,8 @@ CO2 is zwaarder dan lucht, zakt naar de vloer en is reukloos. Wijnmakers
 overlijden hieraan, elk jaar weer, meestal bij het bukken over een put of het
 inklimmen van een tank.
 
-- **NDIR CO2-sensor** (SCD41 op ESP32, ~€35) of een gecertificeerde
-  vaste melder (~€250)
+- **NDIR CO2-sensor** (SCD41 op ESP32, ~~€35) of een gecertificeerde
+  vaste melder (~~€250)
 - Twee stuks: één op ~30 cm hoogte, één op ademhoogte
 - Sirene lokaal **plus** pushmelding in de app
 
@@ -152,6 +152,7 @@ lost een net iets ander probleem op dan QR, en het is de moeite waard om het
 verschil scherp te hebben voordat je kiest.
 
 **Waarin RFID QR verslaat:**
+
 - **Geen zicht/richting nodig.** Een QR-code moet je met de camera recht
   aankijken; een RFID-tag lees je met een lezer die in de buurt komt (tot
   enkele cm–meters, afhankelijk van het type), ook als het label vies,
@@ -244,16 +245,16 @@ Bijgewerkt op basis van Thomas' antwoorden: budget krap → zelfbouw, Pi pas in
 november/december, en er is al koelcapaciteit per tank voor **10 tanks**
 (waar eerder 4–6 werd aangehouden).
 
-| Fase  | Wat                                                                | Ruwe kosten     | Waarom hier / wanneer                                                                                       |
-| ----- | --------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------- |
-| **A** | 1 zelfgebouwde ESP32+DS18B20-proefsonde, POST naar de laptop          | ~€12            | **Nu al te doen**, geen Pi nodig. Valideert ontwerp + bestaand endpoint tijdens de gistingen dit seizoen.   |
-| **B** | CO2-melder + sirene                                                    | €100–250        | Veiligheid gaat voor, sluit direct aan op "geen toezicht 's nachts". Los van de Pi te installeren.          |
-| **C** | Opschalen naar 10× ESP32+DS18B20 (1 per tank) + 1× kelderklimaat      | ~€130           | Zodra proef A goedgekeurd is: kopiëren is goedkoper dan opnieuw ontwerpen. Dekt de volledige koelcapaciteit. |
-| **D** | 1–2 drijvende gistingssensoren (iSpindel, zelfbouw)                    | €60–120         | Continue gistingscurve, dicht het "'s nachts geen toezicht"-gat het meest direct.                            |
-| **E** | Weegplateau onder één tank (proef)                                     | €60             | Maakt de verliezenboekhouding echt. Eerst één tank als proef, later evt. opschalen.                          |
-| **F** | Raspberry Pi als kelderserver (+ inloggen terug, rate-limiting)       | €120            | **Winter (nov/dec).** Fundament voor alles wat 24/7 moet draaien en voor regelen (fase G).                   |
-| **G** | Slimme stekkers op de bestaande 10 koelplekken + gistingsprogramma    | ~€200 (10× €20) | Pas ná de Pi, en pas als A–E bewezen betrouwbaar draaien. Dit is de stap van meten naar automatisch regelen. |
-| **H** | E-ink tankkaartjes, camera, scanner                                    | €200+           | Comfort en plezier, geen noodzaak.                                                                            |
+| Fase  | Wat                                                                | Ruwe kosten     | Waarom hier / wanneer                                                                                        |
+| ----- | ------------------------------------------------------------------ | --------------- | ------------------------------------------------------------------------------------------------------------ |
+| **A** | 1 zelfgebouwde ESP32+DS18B20-proefsonde, POST naar de laptop       | ~€12            | **Nu al te doen**, geen Pi nodig. Valideert ontwerp + bestaand endpoint tijdens de gistingen dit seizoen.    |
+| **B** | CO2-melder + sirene                                                | €100–250        | Veiligheid gaat voor, sluit direct aan op "geen toezicht 's nachts". Los van de Pi te installeren.           |
+| **C** | Opschalen naar 10× ESP32+DS18B20 (1 per tank) + 1× kelderklimaat   | ~€130           | Zodra proef A goedgekeurd is: kopiëren is goedkoper dan opnieuw ontwerpen. Dekt de volledige koelcapaciteit. |
+| **D** | 1–2 drijvende gistingssensoren (iSpindel, zelfbouw)                | €60–120         | Continue gistingscurve, dicht het "'s nachts geen toezicht"-gat het meest direct.                            |
+| **E** | Weegplateau onder één tank (proef)                                 | €60             | Maakt de verliezenboekhouding echt. Eerst één tank als proef, later evt. opschalen.                          |
+| **F** | Raspberry Pi als kelderserver (+ inloggen terug, rate-limiting)    | €120            | **Winter (nov/dec).** Fundament voor alles wat 24/7 moet draaien en voor regelen (fase G).                   |
+| **G** | Slimme stekkers op de bestaande 10 koelplekken + gistingsprogramma | ~€200 (10× €20) | Pas ná de Pi, en pas als A–E bewezen betrouwbaar draaien. Dit is de stap van meten naar automatisch regelen. |
+| **H** | E-ink tankkaartjes, camera, scanner                                | €200+           | Comfort en plezier, geen noodzaak.                                                                           |
 
 Fase A t/m E (dit seizoen, vóór de Pi) is samen ruwweg **€360–550**, en dekt —
 gezien Thomas' antwoord op knelpunten — precies de twee grootste pijnpunten:
@@ -317,13 +318,13 @@ Ontwerpregels die ik zou vasthouden:
 
 ### Zelfbouw vs. kant-en-klaar
 
-| | Zelfbouw (ESP32 e.d.) | Kant-en-klaar (RuuviTag/Shelly/Tilt) |
-|---|---|---|
-| **Kosten per tank** | Laagst: ESP32 + DS18B20 ~€10–12 | Hoger: RuuviTag ~€25–35, Tilt/iSpindel-kant-en-klaar ~€40–60 |
-| **Tijdsinvestering** | Hoog eerste keer (bedrading, flashen, 1 script voor alle sondes schrijven), daarna kopiëren = bijna gratis | Laag: uitpakken, koppelen, klaar |
-| **Onderhoud** | Zelf te repareren/aan te passen, geen abonnement | Meestal ook geen abonnement (lokaal), maar bij defect vervangen i.p.v. repareren |
-| **Past bij 10 tanks?** | Ja — kostenvoordeel schaalt juist mee: 10× €12 = €120 vs. 10× €30 = €300 | Werkt ook, maar bij 10 stuks tikt het prijsverschil harder aan |
-| **Risico** | Eén script/basisontwerp maken kost tijd, maar is daarna herbruikbaar over alle 10 tanks — precies het "samen uitwerken" waar je op doelt | Kant-en-klaar kan sneller resultaat geven om mee te proefdraaien voordat er tijd in zelfbouw gaat |
+|                        | Zelfbouw (ESP32 e.d.)                                                                                                                    | Kant-en-klaar (RuuviTag/Shelly/Tilt)                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Kosten per tank**    | Laagst: ESP32 + DS18B20 ~€10–12                                                                                                          | Hoger: RuuviTag ~€25–35, Tilt/iSpindel-kant-en-klaar ~€40–60                                      |
+| **Tijdsinvestering**   | Hoog eerste keer (bedrading, flashen, 1 script voor alle sondes schrijven), daarna kopiëren = bijna gratis                               | Laag: uitpakken, koppelen, klaar                                                                  |
+| **Onderhoud**          | Zelf te repareren/aan te passen, geen abonnement                                                                                         | Meestal ook geen abonnement (lokaal), maar bij defect vervangen i.p.v. repareren                  |
+| **Past bij 10 tanks?** | Ja — kostenvoordeel schaalt juist mee: 10× €12 = €120 vs. 10× €30 = €300                                                                 | Werkt ook, maar bij 10 stuks tikt het prijsverschil harder aan                                    |
+| **Risico**             | Eén script/basisontwerp maken kost tijd, maar is daarna herbruikbaar over alle 10 tanks — precies het "samen uitwerken" waar je op doelt | Kant-en-klaar kan sneller resultaat geven om mee te proefdraaien voordat er tijd in zelfbouw gaat |
 
 **Advies gegeven het budget en de schaal (10 tanks)**: begin met **1 zelfgebouwde
 ESP32+DS18B20-sonde als proef** (een middagje samen, ~€12) om het basisontwerp

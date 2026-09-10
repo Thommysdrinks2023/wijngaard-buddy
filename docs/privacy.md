@@ -5,12 +5,12 @@ geen juridisch document.
 
 ## Welke persoonsgegevens staan in het systeem?
 
-| Collectie              | Gegevens                                   | Doel                                       |
-| ---------------------- | ------------------------------------------ | ------------------------------------------ |
-| `users`                | naam, e-mail, rol                          | toegang en rolbeheer voor eigen mensen     |
-| `klanten`              | naam, type, contactgegevens (e-mail/tel.)  | verkoopadministratie en levering           |
-| `orders`               | koppeling aan klant, gekochte wijnen       | verkoop-, voorraad- en accijnsadministratie |
-| logvelden (`ingevoerd_door`, `verantwoordelijke`) | naam van de invoerder | traceerbaarheid van boekingen (wettelijk gewenst) |
+| Collectie                                         | Gegevens                                  | Doel                                              |
+| ------------------------------------------------- | ----------------------------------------- | ------------------------------------------------- |
+| `users`                                           | naam, e-mail, rol                         | toegang en rolbeheer voor eigen mensen            |
+| `klanten`                                         | naam, type, contactgegevens (e-mail/tel.) | verkoopadministratie en levering                  |
+| `orders`                                          | koppeling aan klant, gekochte wijnen      | verkoop-, voorraad- en accijnsadministratie       |
+| logvelden (`ingevoerd_door`, `verantwoordelijke`) | naam van de invoerder                     | traceerbaarheid van boekingen (wettelijk gewenst) |
 
 Er worden geen bijzondere persoonsgegevens verwerkt. Foto's worden vóór opslag
 ontdaan van EXIF-metadata (GPS/tijd/toestel) — zie `docs/security.md` punt 3.

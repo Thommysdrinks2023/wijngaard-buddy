@@ -25,8 +25,8 @@ functies ontbreken die de markt wel standaard biedt?
   Kelderbazen, Winestro) tot $95–299+/maand (vintrace, Commerce7,
   Bottle360) voor volwaardige "winery operating systems" — de zelfbouw
   vertegenwoordigt dus makkelijk een equivalent van enkele honderden tot
-  >duizend euro per jaar aan commerciële licentiewaarde, met enkele
-  modules (PU-monitor, AI-agent) die in geen enkel standaardpakket zitten.
+  > duizend euro per jaar aan commerciële licentiewaarde, met enkele
+  > modules (PU-monitor, AI-agent) die in geen enkel standaardpakket zitten.
 
 ## Key findings
 
@@ -117,12 +117,12 @@ Relevant vanwege omvang kleine familie-Weingüter — Duitsland telde
 Agrarstrukturerhebung 2023.
 
 - **Winestro.Cloud** (voorheen Weinbau-online.de; >2.300 gebruikers,
-  >15 jaar): amtlich zugelassen (officieel toegelaten) cloudpakket: Schlag
-  (perceel), Flaschenbuch, Kellerbuch, Stoffbuch, Herbstbuch (onwijzigbaar/
-  geprotocolleerd), Aufträge, TSE-kassa, webshop/Winestro.Shop,
-  paketmarken/verzendkoppelingen, e-label/QR-Nährwerte, GPT-4-
-  tekstgeneratie (newsletters/wijnbeschrijving uit analysewaarden),
-  tijdregistratie. Modulair met veel add-ons.
+  > 15 jaar): amtlich zugelassen (officieel toegelaten) cloudpakket: Schlag
+  > (perceel), Flaschenbuch, Kellerbuch, Stoffbuch, Herbstbuch (onwijzigbaar/
+  > geprotocolleerd), Aufträge, TSE-kassa, webshop/Winestro.Shop,
+  > paketmarken/verzendkoppelingen, e-label/QR-Nährwerte, GPT-4-
+  > tekstgeneratie (newsletters/wijnbeschrijving uit analysewaarden),
+  > tijdregistratie. Modulair met veel add-ons.
 - **DWine** (DE): amtlich zugelassen Weinbuchführung (Kellerbuch,
   Flaschenbuch, Stoffkonten, Herbstbuch), plus klantbeheer/facturatie;
   platformoverschrijdend.
@@ -204,6 +204,7 @@ Agrarstrukturerhebung 2023.
   compliance-focus (VS-markt).
 
 ## Feature-gaps (op vermoedelijke relevantie voor een kleine NL-wijngaard
+
 ## met óók loonverwerking voor derden)
 
 1. **Ziekte-/plaagvoorspelling + weerstation-integratie** (valse

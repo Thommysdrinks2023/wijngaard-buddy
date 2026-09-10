@@ -32,8 +32,8 @@ Body:    {
 }
 ```
 
-  Bij `bron_type` `kelder` of `overig` is `bron_id` vrije tekst (bijv.
-  `"ruimte-1"`) — er is geen collectie om tegen te valideren.
+Bij `bron_type` `kelder` of `overig` is `bron_id` vrije tekst (bijv.
+`"ruimte-1"`) — er is geen collectie om tegen te valideren.
 
 - Auth via een **apart sensor-token** (env `SENSOR_TOKEN` in `.env`, naast de
   bestaande sleutels). Geen token gezet = endpoint geeft 503 en is dus

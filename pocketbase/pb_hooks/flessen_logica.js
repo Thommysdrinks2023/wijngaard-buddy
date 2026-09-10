@@ -13,14 +13,9 @@ function leesbareFout(err) {
 // waarheid blijft flessen_mutaties (zelfde principe als tanks-herbereken) —
 // dit is alleen de rekenstap, geen cache.
 function huidigeStand(txApp, flestypeId) {
-  const regels = txApp.findRecordsByFilter(
-    "flessen_mutaties",
-    "flestype = {:id}",
-    "",
-    100000,
-    0,
-    { id: flestypeId },
-  );
+  const regels = txApp.findRecordsByFilter("flessen_mutaties", "flestype = {:id}", "", 100000, 0, {
+    id: flestypeId,
+  });
   let stand = 0;
   for (let i = 0; i < regels.length; i++) stand += regels[i].getFloat("aantal");
   return stand;

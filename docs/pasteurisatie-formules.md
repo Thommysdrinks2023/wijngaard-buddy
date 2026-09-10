@@ -62,7 +62,7 @@ waarom dat een vastgestelde oorzaak van het eerdere dopfalen was.
 de breed gepubliceerde temperatuurcoëfficiënt voor de Henry-constante van CO2
 in water (oplossingsenthalpie ≈ 19,4 kJ/mol; vergelijk R. Sander,
 "Compilation of Henry's law constants for water as solvent",
-*Atmos. Chem. Phys.* 15, 4399–4981, 2015).
+_Atmos. Chem. Phys._ 15, 4399–4981, 2015).
 
 **Absolute schaal**: `S` bij 10 °C is gekalibreerd zodat
 `co2GehalteUitDruk(1,0 bar, 10 °C)` op 4,35 g/L uitkomt — het midden van de

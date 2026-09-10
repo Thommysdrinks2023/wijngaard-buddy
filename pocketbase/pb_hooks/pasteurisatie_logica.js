@@ -51,14 +51,9 @@ function startRun(txApp, b) {
       return { fout: "Opgegeven partij niet gevonden." };
     }
   } else {
-    const gevonden = txApp.findRecordsByFilter(
-      "partijen",
-      "lotnummer = {:lot}",
-      "-created",
-      1,
-      0,
-      { lot: b.lotnummer },
-    );
+    const gevonden = txApp.findRecordsByFilter("partijen", "lotnummer = {:lot}", "-created", 1, 0, {
+      lot: b.lotnummer,
+    });
     if (gevonden.length > 0) {
       partij = gevonden[0];
     } else if (b.nieuwe_partij) {
@@ -103,7 +98,8 @@ function startRun(txApp, b) {
   run.set("doeltemperatuur_c", b.doeltemperatuur_c);
   if (b.berekende_max_druk_bar != null) run.set("berekende_max_druk_bar", b.berekende_max_druk_bar);
   if (b.veiligheidsoordeel) run.set("veiligheidsoordeel", b.veiligheidsoordeel);
-  if (b.oordeel_geaccepteerd_door) run.set("oordeel_geaccepteerd_door", b.oordeel_geaccepteerd_door);
+  if (b.oordeel_geaccepteerd_door)
+    run.set("oordeel_geaccepteerd_door", b.oordeel_geaccepteerd_door);
   run.set("sensor_positie", b.sensor_positie || "");
   run.set("status", "actief");
   if (b.uitgevoerd_door) run.set("uitgevoerd_door", b.uitgevoerd_door);

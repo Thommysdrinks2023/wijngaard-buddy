@@ -20,11 +20,7 @@
 // 200 met een lege lijst kreeg en dat als "geen data" werd getoond.
 
 export type LaadFoutSoort =
-  | "niet_ingelogd"
-  | "geen_verbinding"
-  | "geannuleerd"
-  | "server_fout"
-  | "onbekend";
+  "niet_ingelogd" | "geen_verbinding" | "geannuleerd" | "server_fout" | "onbekend";
 
 export class LaadFout extends Error {
   readonly soort: LaadFoutSoort;
