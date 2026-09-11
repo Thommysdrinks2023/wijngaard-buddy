@@ -1910,10 +1910,22 @@ function controleerRateLimit(app, ip) {
 function leesJsonVeld(record, veld) {
   const ruw = record.get(veld);
   if (ruw == null) return {};
+  // JSON.parse gooit een kale SyntaxError op een leeg of half weggeschreven
+  // veld. Dat werd een onbruikbare melding voor de gebruiker ("Unexpected end
+  // of JSON input"); liever een fout die zegt wat er aan de hand is.
+  const parse = (tekst) => {
+    try {
+      return JSON.parse(tekst);
+    } catch (e) {
+      throw new Error(
+        `Het opgeslagen veld "${veld}" is onleesbaar (geen geldige JSON). Het voorstel kan niet worden uitgevoerd; maak een nieuw voorstel aan.`,
+      );
+    }
+  };
   if (typeof ruw === "object" && typeof ruw.string === "function") {
-    return JSON.parse(ruw.string());
+    return parse(ruw.string());
   }
-  if (typeof ruw === "string") return JSON.parse(ruw);
+  if (typeof ruw === "string") return parse(ruw);
   return ruw;
 }
 

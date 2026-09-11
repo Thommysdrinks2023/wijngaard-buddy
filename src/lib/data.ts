@@ -45,9 +45,14 @@ export function getPbStatus() {
   return pbStatus;
 }
 
+// Wanneer is de status voor het laatst vastgesteld? Nodig om een "offline"
+// niet oneindig te laten plakken — zie ensureOnline() hieronder.
+let pbStatusSinds = 0;
+
 function setPbStatus(nieuw: "online" | "offline") {
   const veranderd = pbStatus !== nieuw;
   pbStatus = nieuw;
+  pbStatusSinds = Date.now();
   if (veranderd && typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("wg.pbstatus.changed"));
   }
@@ -86,10 +91,22 @@ export async function pingPb(): Promise<boolean> {
 // Bug-fix eerste keer laden: alle data-functies wachten op één gedeelde ping
 // in plaats van blind de (nog onbekende) status te lezen.
 let pingInFlight: Promise<boolean> | null = null;
+// Hoe lang een vastgestelde "offline" geldig blijft voordat ensureOnline()
+// opnieuw wil pingen. Zonder deze grens bleef één trage ping (de timeout is
+// 3,5s) de status tot 30 seconden op "offline" zetten — de hersteltik zit in
+// VerbindingBadge en draait maar elke 30s. Gevolg: op een trage verbinding in
+// de kelder faalden ALLE online-only schermen tegelijk, en hielp opnieuw
+// proberen de eerste halve minuut niet, ook al was de server gewoon bereikbaar.
+const OFFLINE_HERKANSING_MS = 5000;
+
 export async function ensureOnline(): Promise<boolean> {
   if (!getPb()) return false;
   if (pbStatus === "online") return true;
-  if (pbStatus === "offline") return false;
+  // Verse "offline" vertrouwen we; een oudere krijgt een herkansing in plaats
+  // van blind `false` terug te geven.
+  if (pbStatus === "offline" && Date.now() - pbStatusSinds < OFFLINE_HERKANSING_MS) {
+    return false;
+  }
   if (!pingInFlight) {
     pingInFlight = pingPb().finally(() => {
       pingInFlight = null;

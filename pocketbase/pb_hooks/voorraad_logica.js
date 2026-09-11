@@ -104,8 +104,19 @@ function voerMutatieUit(txApp, b) {
 function leesJsonVeld(record, veld) {
   const ruw = record.get(veld);
   if (ruw == null) return null;
-  if (typeof ruw === "object" && typeof ruw.string === "function") return JSON.parse(ruw.string());
-  if (typeof ruw === "string") return JSON.parse(ruw);
+  // Zie agent_uitvoering.js: een kale SyntaxError levert een onbruikbare
+  // melding op bij een leeg/half weggeschreven veld.
+  const parse = (tekst) => {
+    try {
+      return JSON.parse(tekst);
+    } catch (e) {
+      throw new Error(
+        `Het opgeslagen veld "${veld}" is onleesbaar (geen geldige JSON). De mutatie is niet uitgevoerd.`,
+      );
+    }
+  };
+  if (typeof ruw === "object" && typeof ruw.string === "function") return parse(ruw.string());
+  if (typeof ruw === "string") return parse(ruw);
   return ruw;
 }
 

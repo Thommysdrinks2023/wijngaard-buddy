@@ -18,6 +18,7 @@ import {
 } from "@/lib/agent-data";
 import { isPbConfigured } from "@/lib/data";
 import { comprimeerFoto } from "@/lib/foto-compressie";
+import { datumTekst } from "@/lib/datumtekst";
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -146,7 +147,9 @@ function GesprekkenLijst({ naam, onOpen }: { naam: string; onOpen: (id: string) 
               >
                 <p className="truncate text-sm font-semibold">{g.titel}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {format(parseISO(g.laatste_bericht_op), "d MMM yyyy HH:mm", { locale: nl })}
+                  {/* laatste_bericht_op is niet verplicht in het schema; een leeg
+                      veld liet date-fns gooien en haalde de hele lijst onderuit. */}
+                  {datumTekst(g.laatste_bericht_op, "d MMM yyyy HH:mm")}
                 </p>
               </button>
             </li>

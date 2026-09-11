@@ -10,6 +10,7 @@ import { maxDrukBekend, SLUITING_TYPES, type SluitingType } from "@/lib/types";
 import { AppHeader } from "@/components/app-header";
 import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { EmptyState } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
 import { Loader2, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/instellingen_/sluitingen")({
@@ -155,7 +156,12 @@ function SluitingenBeheer() {
           </div>
         )}
 
-        {(sluitingenQ.data ?? []).length === 0 ? (
+        {/* Een mislukte query gaf via `?? []` een lege lijst en dus
+            "Nog geen sluitingen" — dan lijkt het alsof de gegevens weg zijn
+            terwijl de server alleen even niet bereikbaar was. Fout eerst. */}
+        {sluitingenQ.isError ? (
+          <ErrorState error={sluitingenQ.error} onRetry={() => sluitingenQ.refetch()} />
+        ) : (sluitingenQ.data ?? []).length === 0 ? (
           <EmptyState message="Nog geen sluitingen." />
         ) : (
           <ul className="space-y-2">

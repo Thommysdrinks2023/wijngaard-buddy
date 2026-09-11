@@ -754,3 +754,34 @@ test("18 — een toevoeging verschijnt in het aparte toevoegingenoverzicht", asy
 
   await expect(page.locator('[role="alert"]')).toHaveCount(0);
 });
+
+// Robuustheids-audit 10 sep. 2026, bevinding 1 — het zwaarste geval dat de
+// audit vond. De jaarafsluiting rekent zijn cijfers uit vier queries die
+// allemaal `?? []` gebruiken. Faalt er één, dan toont het scherm keurig nullen
+// en zouden die nullen ONOMKEERBAAR in het append-only archief belanden.
+// Deze test blokkeert bewust één bron en controleert dat afsluiten dan
+// geblokkeerd is. Er wordt niets weggeschreven — dat is precies het punt.
+test("19 — jaarafsluiting is geblokkeerd als de cijfers niet compleet zijn", async ({ page }) => {
+  // Eén van de vier bronnen onbereikbaar maken, vóór het laden van de pagina.
+  await page.route("**/api/collections/tankboek/records**", (route) => route.abort());
+
+  await page.goto("/kelder/jaaroverzicht");
+
+  const knop = page.getByRole("button", { name: /sluit .* definitief af/i });
+  // De knop bestaat alleen als het jaar nog niet afgesloten is; is dat wel zo,
+  // dan is er niets te toetsen en slaan we over in plaats van vals te slagen.
+  if ((await knop.count()) === 0) {
+    test.skip(true, "dit jaar is al afgesloten — geen afsluitknop om te toetsen");
+    return;
+  }
+
+  await expect(knop).toBeDisabled({ timeout: 15_000 });
+  // Specifiek op de tekst selecteren: er staat ook een offline-waarschuwing op
+  // dit scherm, dus getByRole("alert") alleen levert twee treffers op.
+  // "nog geladen" (query nog bezig, TanStack Query blijft even herproberen) en
+  // "niet geladen" (query definitief gefaald) zijn allebei goed — in beide
+  // gevallen hoort afsluiten geblokkeerd te zijn.
+  await expect(
+    page.getByRole("alert").filter({ hasText: /niet geladen|nog geladen/i }),
+  ).toBeVisible();
+});

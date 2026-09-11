@@ -49,6 +49,16 @@ function JaaroverzichtPage() {
   const qc = useQueryClient();
   const afsluitM = useMutation({
     mutationFn: async () => {
+      // De cijfers hieronder komen uit vier queries die allemaal `?? []`
+      // gebruiken. Faalt of laadt er één, dan rekent het scherm keurig nullen
+      // uit en zouden die nullen ONOMKEERBAAR in het append-only archief
+      // belanden. Daarom hier nog een keer hard blokkeren, los van de
+      // uitgeschakelde knop: een archiefregel is niet terug te draaien.
+      if (!bronnenCompleet) {
+        throw new Error(
+          "De cijfers zijn niet volledig geladen — het jaar is niet afgesloten. Ververs de pagina en probeer opnieuw.",
+        );
+      }
       const pb = getPb();
       if (!pb) throw new Error("Geen verbinding met de server — kon het jaar niet afsluiten.");
       return pb.collection("archief").create({
@@ -81,6 +91,13 @@ function JaaroverzichtPage() {
     queryFn: () => fetchBottelrondes(),
   });
   const tankboekQ = useQuery({ queryKey: ["tankboek", "alle"], queryFn: () => fetchTankboek() });
+
+  // Alle vier de bronnen moeten geladen én foutloos zijn voordat er iets
+  // gearchiveerd mag worden.
+  const bronQueries = [oogstQ, partijenQ, bottelrondesQ, tankboekQ];
+  const bronnenLaden = bronQueries.some((q) => q.isPending);
+  const bronnenFout = bronQueries.some((q) => q.isError);
+  const bronnenCompleet = !bronnenLaden && !bronnenFout;
 
   const partijenVanJaar = useMemo(
     () => (partijenQ.data ?? []).filter((p) => p.jaargang === jaar),
@@ -294,12 +311,19 @@ function JaaroverzichtPage() {
                   )
                     afsluitM.mutate();
                 }}
-                disabled={afsluitM.isPending}
+                disabled={afsluitM.isPending || !bronnenCompleet}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {afsluitM.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 Sluit {jaar} definitief af
               </button>
+              {!bronnenCompleet && (
+                <p role="alert" className="rounded-lg bg-warning/15 px-3 py-2 text-sm text-warning">
+                  {bronnenLaden
+                    ? "De cijfers worden nog geladen — wacht tot ze compleet zijn voor je afsluit."
+                    : "Een deel van de gegevens kon niet geladen worden. De cijfers hierboven zijn daardoor onbetrouwbaar; afsluiten is geblokkeerd tot dit is opgelost."}
+                </p>
+              )}
             </>
           )}
         </section>

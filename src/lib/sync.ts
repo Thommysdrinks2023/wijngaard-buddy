@@ -69,7 +69,17 @@ function readQueue(): SyncItem[] {
 
 function writeQueue(items: SyncItem[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(LS_QUEUE, JSON.stringify(items));
+  try {
+    localStorage.setItem(LS_QUEUE, JSON.stringify(items));
+  } catch {
+    // Anders dan bij de caches is dit ECHT dataverlies: wat niet in de
+    // wachtrij komt, wordt nooit gesynchroniseerd en is stilzwijgend weg.
+    // Liever een eerlijke fout die als toast bij Thomas landt dan een
+    // invoer die lijkt te zijn opgeslagen en verdwenen is.
+    throw new Error(
+      "De opslag van je telefoon zit vol — deze invoer kon niet in de wachtrij worden bewaard. Maak ruimte vrij of synchroniseer eerst wat er al klaarstaat.",
+    );
+  }
   window.dispatchEvent(new CustomEvent(SYNC_CHANGED_EVENT));
 }
 

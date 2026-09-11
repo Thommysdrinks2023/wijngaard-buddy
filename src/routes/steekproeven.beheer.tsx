@@ -68,6 +68,9 @@ function BeheerPage() {
       qc.invalidateQueries({ queryKey: ["steekproef_metingen"] });
       toast.success("Verwijderd");
     },
+    // Zonder dit faalde een verwijdering volledig stil: geen melding, en de
+    // plant bleef gewoon in de lijst staan zonder uitleg.
+    onError: (e: Error) => toast.error(e.message),
   });
 
   return (

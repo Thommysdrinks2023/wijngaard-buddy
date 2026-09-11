@@ -121,16 +121,32 @@ function OverhevelenPage() {
         notitie,
       });
       if (verschil > 0) {
-        await boekTankboek({
-          datum,
-          partij: partij!.id,
-          eigenaar: partij?.eigenaar ?? undefined,
-          actie: "verlies",
-          van_tank: vanTank,
-          volume_l: verschil,
-          verantwoordelijke: invoerder,
-          notitie: `Verlies bij overhevelen naar tank (${verliesType})${notitie ? ` — ${notitie}` : ""}`,
-        });
+        // Twee losse serveraanroepen: de overheveling is op dit punt AL
+        // geboekt. Valt de verbinding hier weg, dan mag de melding niet
+        // suggereren dat er niets gebeurd is — dan boekt Thomas de hele
+        // overheveling opnieuw en staat hij dubbel in het accijnsregister.
+        // (Structureel netter zou één endpoint zijn dat beide regels in één
+        // transactie schrijft, zoals partij-aanmaken en order-leveren doen.)
+        try {
+          await boekTankboek({
+            datum,
+            partij: partij!.id,
+            eigenaar: partij?.eigenaar ?? undefined,
+            actie: "verlies",
+            van_tank: vanTank,
+            volume_l: verschil,
+            verantwoordelijke: invoerder,
+            notitie: `Verlies bij overhevelen naar tank (${verliesType})${notitie ? ` — ${notitie}` : ""}`,
+          });
+        } catch (e) {
+          const fout = new Error(
+            `De overheveling IS geboekt, alleen de verliesregel van ${verschil} L niet: ${
+              e instanceof Error ? e.message : "onbekende fout"
+            }. Boek die verliesregel los na — herhaal de overheveling NIET, die staat er al.`,
+          );
+          (fout as Error & { deelsGelukt?: boolean }).deelsGelukt = true;
+          throw fout;
+        }
       }
       return r;
     },
@@ -145,7 +161,17 @@ function OverhevelenPage() {
       qc.invalidateQueries({ queryKey: ["tankboek"] });
       navigate({ to: "/kelder" });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      const deelsGelukt = (e as Error & { deelsGelukt?: boolean }).deelsGelukt === true;
+      // Bij een half geslaagde boeking blijft de melding staan tot Thomas hem
+      // wegklikt, en worden de tankstanden ververst zodat het scherm de al
+      // geboekte overheveling toont in plaats van de oude situatie.
+      toast.error(e.message, deelsGelukt ? { duration: Infinity } : undefined);
+      if (deelsGelukt) {
+        qc.invalidateQueries({ queryKey: ["tanks"] });
+        qc.invalidateQueries({ queryKey: ["tankboek"] });
+      }
+    },
   });
 
   const handleSave = () => {
