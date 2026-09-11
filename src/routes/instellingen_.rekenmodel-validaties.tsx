@@ -10,6 +10,8 @@ import { fetchRekenmodelValidaties, zetRekenmodelValidatie } from "@/lib/pasteur
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
+import { ErrorState } from "@/components/error-state";
+import { EmptyState } from "@/components/empty-state";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/instellingen_/rekenmodel-validaties")({
@@ -58,6 +60,18 @@ function ValidatiesBeheer() {
           Zet een model pas op "gevalideerd" nadat een echte run is nagemeten en de uitkomst is
           vergeleken met wat het model voorspelde.
         </p>
+        {/* Zonder deze takken rendert een mislukte query simpelweg niets: een
+            lege pagina zonder uitleg, uitgerekend op het scherm dat bepaalt of
+            een rekenmodel als gevalideerd geldt. "Ik zie geen modellen" mag
+            hier nooit hetzelfde zijn als "de lijst kon niet geladen worden". */}
+        {validatiesQ.isError && (
+          <ErrorState error={validatiesQ.error} onRetry={() => validatiesQ.refetch()} />
+        )}
+        {!validatiesQ.isError &&
+          !validatiesQ.isPending &&
+          (validatiesQ.data ?? []).length === 0 && (
+            <EmptyState message="Nog geen rekenmodellen geregistreerd." />
+          )}
         {(validatiesQ.data ?? []).map((v) => (
           <section key={v.id} className="space-y-2 rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center justify-between">
