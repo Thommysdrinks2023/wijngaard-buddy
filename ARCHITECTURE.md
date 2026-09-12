@@ -266,6 +266,15 @@ Voor elke fase geldt het bestaande projectprincipe: eerst schema-migratie in het
 
 ### 6.1 Huidige situatie eerlijk benoemd
 
+> **CORRECTIE 12 september 2026 (Claude Code):** deze alinea is achterhaald.
+> `src/lib/assistent.ts` en `pocketbase/pb_hooks/assistent.pb.js` bestaan
+> allebei NIET (live gecontroleerd). Alle Anthropic-aanroepen lopen
+> server-side via `pb_hooks/agent.pb.js` + `agent_logica.js` +
+> `agent_uitvoering.js`, en `VITE_ANTHROPIC_API_KEY` komt nergens meer
+> voor. Het document sprak zichzelf hier al tegen: zie punt 6 onder
+> "open vragen", dat dit als afgerond markeert. Hieronder blijft staan
+> als historisch ontwerp, niet als beschrijving van de huidige code.
+
 Er zijn nu **twee generaties** assistent-code: `src/lib/assistent.ts` roept de Anthropic API nog rechtstreeks vanuit de browser aan (met `VITE_ANTHROPIC_API_KEY` in de bundel — in het bestand zelf al als beveiligingsrisico gemarkeerd), terwijl de server-side proxy-hook (`pb_hooks/assistent.pb.js` met `get_rijen_info`, `get_metingen`, `get_fenologie`, `get_oogst`) de beoogde architectuur is. **Maak de afronding van die hook-migratie onderdeel van fase 6** — zeker vóór de Pi publiek via `pb.tappenmars.nl` bereikbaar is, want dan staat die sleutel anders op internet.
 
 ### 6.2 Nieuwe tools (allemaal read-only)
@@ -324,6 +333,25 @@ _Bewuste afweging — niet-`httpOnly`_: de cookie kan niet `httpOnly` zijn, want
 _Enige echte trade-off_: `getPb()` gebruikt een module-scoped singleton-`PocketBase`-instantie die het Node-proces overleeft. Voor een single-user lokale devmachine (dit project) is dat onschadelijk, maar bij een toekomstige multi-user server zou een sessie uit request A in theorie zichtbaar kunnen blijven voor request B als beide requests toevallig na elkaar dezelfde Node-worker raken vóórdat de cookie van request B is ingeladen. Voor de geplande Pi/VPS-migratie (nog steeds in de kern single-tenant, één wijngaard) is dit acceptabel; bij een echte multi-tenant uitbouw moet `getPb()` per-request een verse instantie teruggeven in plaats van de gedeelde singleton.
 
 **Test**: ingelogd + F5 op `/kelder/partijen/nieuw` → blijft ingelogd (nog te bevestigen door Thomas met echte credentials, zie VRAGEN VOOR THOMAS in WERKLOG.md); uitgelogd + dezelfde URL → nog steeds nette redirect (bevestigd in de browser, ongewijzigd gedrag). Build/tsc/eslint/vitest allemaal schoon na de wijziging.
+
+> **CORRECTIE 12 september 2026 (Claude Code) — de update hieronder is NIET MEER WAAR.**
+> De fix zat in `src/lib/auth-guard.ts`. Dat bestand is op 22 augustus 2026
+> meeverwijderd toen het inloggen voor de derde keer werd weggehaald.
+> Live geverifieerd op 12 september: `src/lib/auth-guard.ts` bestaat niet,
+> `synchroniseerServerSessieMetCookie`/`laadServerSessieUitCookie` komen
+> nergens meer in `src/` voor, en `getPb()` in `src/lib/data.ts` is nog
+> steeds een module-scoped singleton.
+>
+> **Waarom het nu niet bijt:** er is momenteel geen enkele authenticatie,
+> dus er is ook geen sessie die tussen gebruikers kan lekken.
+>
+> **Waarom het er toch toe doet:** het lek komt terug op het moment dat
+> authenticatie wordt hersteld — en dat moet gebeuren vóór de Pi-migratie.
+> Deze landmijn ligt dus precies op het kritieke pad. Wie aan die
+> herstelklus begint: dit hoort erbij, en het stond NIET in het
+> stappenplan in `CLAUDE.md`. Het is bewust niet nu al gerepareerd —
+> `getPb()` per request maken heeft vandaag geen enkel effect en zou
+> zonder noodzaak aan de SSR-laag sleutelen.
 
 **Update 21 augustus 2026 — de trade-off hierboven is GEDICHT, niet meer "acceptabel voor later".** Bij het herstellen van het inloggen bleek de beschreven singleton-trade-off geen theoretisch risico maar een reproduceerbaar cross-user session leak: een volledig anonieme `curl`-aanroep kreeg, direct na een ingelogd bezoek, de server-gerenderde kelderpagina én het beheerder-only gebruikersbeheer te zien. Gefixt in `synchroniseerServerSessieMetCookie()` (`src/lib/auth-guard.ts`, hernoemd vanuit `laadServerSessieUitCookie`): elke serverrender bepaalt de sessie nu altijd opnieuw uit de cookie van díe specifieke request — nooit meer uit de restwaarde van een vorige. Aangeroepen vanuit `__root.tsx`'s `beforeLoad`, dus voor élke route, niet alleen de guarded routes. Geverifieerd met 5x herhaalde curl-tests (ingelogd met cookie vs. direct daarna anoniem), consistent geen lek meer.
 

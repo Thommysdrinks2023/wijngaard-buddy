@@ -217,6 +217,23 @@ verbindingsbadge, het gebruikersbeheer) terughalen uit de git-geschiedenis —
 zoek de commit "inloggen hersteld" van 21 augustus 2026 als exact voorbeeld.
 **Doe dat vóórdat de server van `127.0.0.1` af gaat, niet erna.**
 
+**ONTBREKENDE STAP in bovenstaand draaiboek (gevonden 12 september 2026).**
+Het herstel van 21 augustus bevatte óók een fix voor een **cross-user
+session leak**, en die staat hierboven niet genoemd. `getPb()` in
+`src/lib/data.ts` is een module-scoped singleton die het serverproces
+overleeft; in augustus is met curl bewezen dat een volledig anonieme
+aanvraag direct na een ingelogd bezoek de server-gerenderde kelderpagina
+én het beheerder-only gebruikersbeheer terugkreeg. De fix daarvoor zat in
+`synchroniseerServerSessieMetCookie()` in `src/lib/auth-guard.ts` — en is
+op 22 augustus meeverwijderd met de rest van het inloggen. Live
+geverifieerd op 12 september: dat bestand en die functie bestaan niet
+meer, en `getPb()` is nog steeds een singleton.
+
+Nu onschadelijk (geen auth = geen sessie om te lekken), maar het lek komt
+**terug zodra authenticatie wordt hersteld**. Neem deze fix dus mee in
+diezelfde klus, niet erna. Zie `ARCHITECTURE.md` §7 voor het
+curl-testbewijs uit augustus.
+
 **BESLISSING NOG OPEN (audit 5 september 2026, zie WERKLOG.md "Audit 5 september 2026 — authenticatie en rollen"):** de audit stelde vast dat er momenteel GEEN enkel onderscheid meer tussen gebruikers bestaat — iedereen die de server bereikt is functioneel beheerder voor alle kelder-/voorraad-/verkoop-/materieelacties (`rolVan()` geeft bij afwezige auth altijd `"beheerder"` terug, live geverifieerd: een beheerder-only endpoint anoniem aangeroepen gaf gewoon 200). Alleen gebruikersbeheer blijft echt dicht (`requireAuth()` in `gebruikers.pb.js`). Drie opties liggen klaar (zie WERKLOG.md voor de volledige afweging): (A) zo laten, (B) login+rollen volledig terug, (C) een tussenweg — geen algemene login, wel een drempel vóór alleen de zware acties (tarieven, correcties, gebruikersbeheer). Thomas heeft op 9 september 2026 expliciet gekozen dit **nog niet** te beslissen. **Harde eis: dit moet opgelost zijn vóórdat de server van `127.0.0.1` af gaat (Pi-migratie/`pb.tappenmars.nl`) — niet erna.** Een volgende sessie die aan de Pi-migratie begint moet dit punt eerst voorleggen, niet aannemen dat "zo laten" de keuze is.
 
 **Bewust ONGEWIJZIGD gebleven, en dat blijft zo, alle drie de keren:**
