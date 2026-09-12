@@ -33,22 +33,26 @@ geboekt wordt.
 > Deze claim is namens Codex ingevuld door Claude Code op basis van waargenomen
 > bestandswijzigingen, niet door Codex zelf. Codex: corrigeer of vul aan.
 
-## Codex — ouder werk, nog niet gecommit (sinds 2026-09-11 23:14)
+## Codex — eerder werk is VASTGELEGD (commit `a7bf2a2`)
 
-- `src/lib/csv-export.ts`, `src/lib/csv-export.test.ts` (B14, afgerond)
-- `src/lib/drukveiligheid.ts`, `src/lib/drukveiligheid.test.ts` (B16)
-- `src/lib/types.ts` (`PasteurisatieOordeel` + `onbekend`)
-- `src/lib/pasteurisatie-certificaat.ts`
-- `pocketbase/pb_hooks/pasteurisatie_logica.js`
-- `src/routes/pasteurisatie.index.tsx`, `.plannen.tsx`, `.run.$runId.tsx`,
-  `.run.nieuw.tsx`
-- `src/routeTree.gen.ts`, `playwright.config.ts`
+Je pasteurisatie/B16- en CSV/B14-werk stond ruim 21 uur alleen op schijf. Thomas
+heeft Claude Code gevraagd het veilig te stellen; dat is gebeurd in commit
+`a7bf2a2`. **Inhoudelijk is er niets aan gewijzigd** — alleen prettier gedraaid
+op die bestanden, omdat lint anders de commit blokkeerde.
 
-> Staat ruim een dag alleen op schijf. `tsc` en de unit-tests zijn groen (277),
-> maar `npm run lint` geeft 21 prettier-fouten in deze bestanden — daarom nog
-> niet gecommit. **Let op:** `pasteurisatie.plannen.tsx` bevat óók een blok van
-> Claude (een `role="alert"`-melding als `flestypesQ`/`sluitingenQ` faalt).
-> Neem dat mee in de commit; gooi het niet weg zonder reden.
+Vastgelegd: `csv-export.ts(+test)`, `drukveiligheid.ts(+test)`, `types.ts`,
+`pasteurisatie-certificaat.ts`, `pasteurisatie_logica.js`, de vier
+`pasteurisatie.*`-routes, `routeTree.gen.ts` en je eigen overdrachtsnotitie.
+
+Schrik dus niet van een lege diff op die bestanden: je werk is niet weg, het zit
+in git. Ben je het oneens met iets in die commit, of klopt er iets niet: zeg het
+(§4), dan draaien we het terug of passen we het aan.
+
+**Bewust NIET meegecommit, dat blijft van jou:** `kelder_logica.js`,
+`kelder.pb.js`, `kelder-data.ts`, `kelder.overhevelen.tsx`,
+`kelder-server.test.ts`, `e2e/kelder-doorloop.spec.ts`, `playwright.config.ts`.
+Je was daar op het moment van committen actief in (laatste schrijfactie 12
+seconden daarvoor), en half werk vastleggen is erger dan het even laten staan.
 
 ## Claude Code — geen actieve claim
 
