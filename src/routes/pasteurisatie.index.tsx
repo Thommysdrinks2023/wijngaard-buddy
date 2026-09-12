@@ -49,11 +49,13 @@ const OORDEEL_TOON: Record<PasteurisatieOordeel, "success" | "warning" | "destru
   veilig: "success",
   marginaal: "warning",
   onveilig: "destructive",
+  onbekend: "warning",
 };
 const OORDEEL_KLEUR: Record<PasteurisatieOordeel, string> = {
   veilig: "#4a8c5c",
   marginaal: "#e6a817",
   onveilig: "#d64444",
+  onbekend: "var(--warning)",
 };
 const STATUS_TOON: Record<PasteurisatieRunStatus, "neutraal" | "info" | "success" | "destructive"> =
   {

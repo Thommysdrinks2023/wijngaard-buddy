@@ -84,6 +84,44 @@ describe("verwachteDruk — kopruimte-effect", () => {
 });
 
 describe("veiligheidsoordeel — het historische faalscenario en het huidige proces", () => {
+  const referentie = () =>
+    verwachteDruk({
+      co2GehalteGl: 4,
+      flesinhoudMl: 250,
+      vulvolumeMl: 225,
+      doeltemperatuurC: 48,
+    });
+
+  it.each([NaN, Infinity, -Infinity])(
+    "geeft onvoldoende gegevens bij ongeldige druk %s",
+    (druk) => {
+      expect(veiligheidsoordeel({ ...referentie(), drukGaugeBovengrensBar: druk }, 8).oordeel).toBe(
+        "onbekend",
+      );
+    },
+  );
+
+  it.each([NaN, Infinity, -Infinity, 0, -1])("weigert ongeldige sluitingslimiet %s", (limiet) => {
+    expect(veiligheidsoordeel(referentie(), limiet).oordeel).toBe("onbekend");
+  });
+
+  it.each([NaN, Infinity, -0.1, 1, 2])("weigert ongeldige marge %s", (marge) => {
+    expect(veiligheidsoordeel(referentie(), 8, marge).oordeel).toBe("onbekend");
+  });
+
+  it("weigert een kapotte tussenwaarde ook als de bovengrens geldig lijkt", () => {
+    expect(veiligheidsoordeel({ ...referentie(), co2GehalteGl: NaN }, 8).oordeel).toBe("onbekend");
+  });
+
+  it("houdt uitgeputte kopruimte expliciet onveilig", () => {
+    expect(
+      veiligheidsoordeel(
+        { ...referentie(), kopruimteOpgebruikt: true, drukGaugeBovengrensBar: Infinity },
+        8,
+      ).oordeel,
+    ).toBe("onveilig");
+  });
+
   // Enige HARDE empirische gegeven (zie WERKLOG.md Fase 17): het 750 ml
   // BVS-formaat met 6 bar-schroefdoppen is bij een te hoog vulniveau
   // daadwerkelijk bezweken (doppen + barstend glas). Dit scenario moet dus

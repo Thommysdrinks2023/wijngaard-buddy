@@ -42,6 +42,7 @@ const OORDEEL_TOON: Record<PasteurisatieOordeel, "success" | "warning" | "destru
   veilig: "success",
   marginaal: "warning",
   onveilig: "destructive",
+  onbekend: "warning",
 };
 
 function oordeelBadge(oordeel: PasteurisatieOordeel | null | undefined) {

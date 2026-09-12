@@ -61,6 +61,7 @@ const OORDEEL_TOON: Record<PasteurisatieOordeel, "success" | "warning" | "destru
   veilig: "success",
   marginaal: "warning",
   onveilig: "destructive",
+  onbekend: "warning",
 };
 
 export const Route = createFileRoute("/pasteurisatie/plannen")({
@@ -315,6 +316,31 @@ function PlannerPagina() {
       <AppHeader back title="Pasteurisatie plannen" subtitle="Drukveiligheid vooraf" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
         <OfflineWaarschuwing wat="het planningsscherm (flestypes en sluitingen)" />
+        {/* Zonder deze melding leverde een mislukte query simpelweg lege
+            keuzelijsten op: je kunt dan niets kiezen en er staat nergens
+            waarom. Een drukberekening op half geladen gegevens is bovendien
+            precies wat je hier niet wilt. */}
+        {(flestypesQ.isError || sluitingenQ.isError) && (
+          <div
+            role="alert"
+            className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            De {flestypesQ.isError ? "flestypes" : ""}
+            {flestypesQ.isError && sluitingenQ.isError ? " en " : ""}
+            {sluitingenQ.isError ? "sluitingen" : ""} konden niet geladen worden — de keuzelijsten
+            hieronder zijn daardoor leeg. Controleer de verbinding en probeer opnieuw.{" "}
+            <button
+              type="button"
+              onClick={() => {
+                if (flestypesQ.isError) void flestypesQ.refetch();
+                if (sluitingenQ.isError) void sluitingenQ.refetch();
+              }}
+              className="font-semibold underline underline-offset-2"
+            >
+              Opnieuw proberen
+            </button>
+          </div>
+        )}
         <section className="space-y-4 rounded-2xl border border-border bg-card p-4">
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Flestype</span>
@@ -506,7 +532,9 @@ function PlannerPagina() {
                       ? "Veilig"
                       : oordeel.oordeel === "marginaal"
                         ? "Marginaal"
-                        : "Onveilig"
+                        : oordeel.oordeel === "onbekend"
+                          ? "Onvoldoende gegevens"
+                          : "Onveilig"
                   }
                   emoji={
                     oordeel.oordeel === "veilig"

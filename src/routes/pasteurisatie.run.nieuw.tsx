@@ -137,6 +137,7 @@ function RunStartenPagina() {
   const magStarten =
     lotnummer &&
     Number(doeltemperatuur) > 0 &&
+    oordeel?.oordeel !== "onbekend" &&
     (!oordeel || oordeel.oordeel === "veilig" || akkoordOndanksOordeel) &&
     (partijQ.data || nieuweNaam);
 
@@ -412,7 +413,9 @@ function RunStartenPagina() {
                   ? "Veilig"
                   : oordeel.oordeel === "marginaal"
                     ? "Marginaal"
-                    : "Onveilig"
+                    : oordeel.oordeel === "onbekend"
+                      ? "Onvoldoende gegevens"
+                      : "Onveilig"
               }
               emoji={
                 oordeel.oordeel === "veilig" ? "✅" : oordeel.oordeel === "marginaal" ? "⚠️" : "🛑"
@@ -426,7 +429,7 @@ function RunStartenPagina() {
               }
             />
             <p className="mt-1 text-sm">{oordeel.toelichting}</p>
-            {oordeel.oordeel !== "veilig" && (
+            {oordeel.oordeel !== "veilig" && oordeel.oordeel !== "onbekend" && (
               <label className="mt-3 flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"

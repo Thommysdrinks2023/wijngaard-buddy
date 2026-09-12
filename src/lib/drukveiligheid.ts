@@ -263,7 +263,7 @@ export function verwachteDruk(params: DrukParams): DrukResultaat {
   };
 }
 
-export type OordeelType = "veilig" | "marginaal" | "onveilig";
+export type OordeelType = "veilig" | "marginaal" | "onveilig" | "onbekend";
 
 export interface Oordeel {
   oordeel: OordeelType;
@@ -286,6 +286,35 @@ export function veiligheidsoordeel(
   margeFractie: number = 0.2,
 ): Oordeel {
   const druk = drukResultaat.drukGaugeBovengrensBar;
+  const geldigeGrenzen =
+    Number.isFinite(sluitingMaxBar) &&
+    sluitingMaxBar > 0 &&
+    Number.isFinite(margeFractie) &&
+    margeFractie >= 0 &&
+    margeFractie < 1;
+  // Een expliciet uitgeputte kopruimte blijft onveilig (het model gebruikt
+  // daarvoor Infinity). Andere ongeldige getallen zijn geen veiligheidsbewijs.
+  if (
+    !geldigeGrenzen ||
+    (!drukResultaat.kopruimteOpgebruikt &&
+      ![
+        druk,
+        drukResultaat.drukGaugeBar,
+        drukResultaat.drukAbsBar,
+        drukResultaat.co2GehalteGl,
+        drukResultaat.kopruimteMlBijDoeltemp,
+        drukResultaat.thermischeUitzettingsfactor,
+      ].every(Number.isFinite))
+  ) {
+    return {
+      oordeel: "onbekend",
+      drukGebruiktBar: druk,
+      sluitingMaxBar,
+      margeFractie,
+      toelichting:
+        "Onvoldoende betrouwbare gegevens voor een drukbeoordeling. Controleer de invoer, berekening en dopspecificatie; dit is geen toestemming om te starten.",
+    };
+  }
   const marginaalGrens = sluitingMaxBar * (1 - margeFractie);
 
   if (drukResultaat.kopruimteOpgebruikt || druk >= sluitingMaxBar) {

@@ -142,6 +142,7 @@ export function genereerPuCertificaat(ctx: CertificaatContext): Blob {
       veilig: "Veilig",
       marginaal: "Marginaal",
       onveilig: "Onveilig",
+      onbekend: "Onvoldoende gegevens — geen veiligheidsbeoordeling",
     };
     const [r, g, b] = oordeelKleur[ctx.run.veiligheidsoordeel] ?? [0, 0, 0];
     doc.setFont("helvetica", "bold");

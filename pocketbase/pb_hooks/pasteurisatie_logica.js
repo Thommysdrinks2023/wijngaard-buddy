@@ -31,6 +31,11 @@ function vandaagStr() {
  * eist vóór een run met dat oordeel mag starten.
  */
 function startRun(txApp, b) {
+  if (b.veiligheidsoordeel && !["veilig", "marginaal", "onveilig"].includes(b.veiligheidsoordeel)) {
+    return {
+      fout: "Onvoldoende betrouwbare gegevens voor een drukbeoordeling. Controleer de invoer vóór het starten.",
+    };
+  }
   if (!b.lotnummer) return { fout: "lotnummer is verplicht" };
   if (!b.product_soort) return { fout: "product_soort is verplicht" };
   if (!b.doeltemperatuur_c) return { fout: "doeltemperatuur_c is verplicht" };

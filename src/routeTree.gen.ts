@@ -9,188 +9,73 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ZoekenRouteImport } from './routes/zoeken'
-import { Route as WijngaardRouteImport } from './routes/wijngaard'
-import { Route as WerkrapportRouteImport } from './routes/werkrapport'
-import { Route as VoorraadRouteImport } from './routes/voorraad'
-import { Route as VerkoopRouteImport } from './routes/verkoop'
-import { Route as TrendsRouteImport } from './routes/trends'
-import { Route as SnelRouteImport } from './routes/snel'
-import { Route as SeizoenRouteImport } from './routes/seizoen'
-import { Route as ScanRouteImport } from './routes/scan'
-import { Route as RapportRouteImport } from './routes/rapport'
-import { Route as QrRouteImport } from './routes/qr'
-import { Route as PrullenbakRouteImport } from './routes/prullenbak'
-import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
-import { Route as PasteurisatieRouteImport } from './routes/pasteurisatie'
-import { Route as OogstRouteImport } from './routes/oogst'
-import { Route as MaterieelRouteImport } from './routes/materieel'
-import { Route as LabRouteImport } from './routes/lab'
-import { Route as KelderRouteImport } from './routes/kelder'
-import { Route as KaartRouteImport } from './routes/kaart'
-import { Route as InstellingenRouteImport } from './routes/instellingen'
-import { Route as GrafiekenRouteImport } from './routes/grafieken'
-import { Route as GezondheidRouteImport } from './routes/gezondheid'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as BodemRouteImport } from './routes/bodem'
-import { Route as AssistentRouteImport } from './routes/assistent'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as VoorraadIndexRouteImport } from './routes/voorraad.index'
-import { Route as SteekproevenIndexRouteImport } from './routes/steekproeven.index'
-import { Route as PasteurisatieIndexRouteImport } from './routes/pasteurisatie.index'
-import { Route as KelderIndexRouteImport } from './routes/kelder.index'
-import { Route as VoorraadFlessenRouteImport } from './routes/voorraad_.flessen'
-import { Route as VoorraadVoorraadIdRouteImport } from './routes/voorraad.$voorraadId'
-import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.beheer'
-import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
-import { Route as PasteurisatiePlannenRouteImport } from './routes/pasteurisatie.plannen'
-import { Route as KelderTankboekRouteImport } from './routes/kelder.tankboek'
-import { Route as KelderQrRouteImport } from './routes/kelder.qr'
-import { Route as KelderOverhevelenRouteImport } from './routes/kelder.overhevelen'
-import { Route as KelderLogboekRouteImport } from './routes/kelder.logboek'
-import { Route as KelderJaaroverzichtRouteImport } from './routes/kelder.jaaroverzicht'
-import { Route as KelderAccijnsRouteImport } from './routes/kelder.accijns'
-import { Route as InstellingenSluitingenRouteImport } from './routes/instellingen_.sluitingen'
-import { Route as InstellingenRekenmodelValidatiesRouteImport } from './routes/instellingen_.rekenmodel-validaties'
-import { Route as InstellingenFlestypesRouteImport } from './routes/instellingen_.flestypes'
-import { Route as InstellingenEigenaarsRouteImport } from './routes/instellingen_.eigenaars'
+import { Route as AssistentRouteImport } from './routes/assistent'
+import { Route as BodemRouteImport } from './routes/bodem'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as GezondheidRouteImport } from './routes/gezondheid'
+import { Route as GrafiekenRouteImport } from './routes/grafieken'
+import { Route as InstellingenRouteImport } from './routes/instellingen'
+import { Route as KaartRouteImport } from './routes/kaart'
+import { Route as KelderRouteImport } from './routes/kelder'
+import { Route as LabRouteImport } from './routes/lab'
+import { Route as MaterieelRouteImport } from './routes/materieel'
+import { Route as OogstRouteImport } from './routes/oogst'
+import { Route as PasteurisatieRouteImport } from './routes/pasteurisatie'
+import { Route as PerceelkaartRouteImport } from './routes/perceelkaart'
+import { Route as PrullenbakRouteImport } from './routes/prullenbak'
+import { Route as QrRouteImport } from './routes/qr'
+import { Route as RapportRouteImport } from './routes/rapport'
+import { Route as ScanRouteImport } from './routes/scan'
+import { Route as SeizoenRouteImport } from './routes/seizoen'
+import { Route as SnelRouteImport } from './routes/snel'
+import { Route as TrendsRouteImport } from './routes/trends'
+import { Route as VerkoopRouteImport } from './routes/verkoop'
+import { Route as VoorraadRouteImport } from './routes/voorraad'
+import { Route as WerkrapportRouteImport } from './routes/werkrapport'
+import { Route as WijngaardRouteImport } from './routes/wijngaard'
+import { Route as ZoekenRouteImport } from './routes/zoeken'
 import { Route as EtiketBerekeningIdRouteImport } from './routes/etiket.$berekeningId'
-import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
-import { Route as KelderTanksIndexRouteImport } from './routes/kelder.tanks.index'
-import { Route as KelderPartijenIndexRouteImport } from './routes/kelder.partijen.index'
-import { Route as VoorraadFlessenFlestypeIdRouteImport } from './routes/voorraad_.flessen_.$flestypeId'
-import { Route as SteekproevenPuntIdInvoerRouteImport } from './routes/steekproeven.$puntId.invoer'
-import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten'
-import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
-import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
-import { Route as RijRijIdFenologieRouteImport } from './routes/rij.$rijId.fenologie'
-import { Route as PasteurisatieRunNieuwRouteImport } from './routes/pasteurisatie.run.nieuw'
-import { Route as PasteurisatieRunRunIdRouteImport } from './routes/pasteurisatie.run.$runId'
-import { Route as KelderTanksTankIdRouteImport } from './routes/kelder.tanks.$tankId'
-import { Route as KelderPartijenNieuwRouteImport } from './routes/kelder.partijen.nieuw'
-import { Route as KelderPartijenPartijIdRouteImport } from './routes/kelder.partijen.$partijId'
+import { Route as InstellingenEigenaarsRouteImport } from './routes/instellingen_.eigenaars'
+import { Route as InstellingenFlestypesRouteImport } from './routes/instellingen_.flestypes'
+import { Route as InstellingenRekenmodelValidatiesRouteImport } from './routes/instellingen_.rekenmodel-validaties'
+import { Route as InstellingenSluitingenRouteImport } from './routes/instellingen_.sluitingen'
+import { Route as KelderIndexRouteImport } from './routes/kelder.index'
+import { Route as KelderAccijnsRouteImport } from './routes/kelder.accijns'
+import { Route as KelderJaaroverzichtRouteImport } from './routes/kelder.jaaroverzicht'
+import { Route as KelderLogboekRouteImport } from './routes/kelder.logboek'
+import { Route as KelderOverhevelenRouteImport } from './routes/kelder.overhevelen'
+import { Route as KelderQrRouteImport } from './routes/kelder.qr'
+import { Route as KelderTankboekRouteImport } from './routes/kelder.tankboek'
+import { Route as PasteurisatieIndexRouteImport } from './routes/pasteurisatie.index'
+import { Route as PasteurisatiePlannenRouteImport } from './routes/pasteurisatie.plannen'
+import { Route as RijRijIdRouteImport } from './routes/rij.$rijId'
+import { Route as SteekproevenIndexRouteImport } from './routes/steekproeven.index'
+import { Route as SteekproevenBeheerRouteImport } from './routes/steekproeven.beheer'
+import { Route as VoorraadIndexRouteImport } from './routes/voorraad.index'
+import { Route as VoorraadVoorraadIdRouteImport } from './routes/voorraad.$voorraadId'
+import { Route as VoorraadFlessenRouteImport } from './routes/voorraad_.flessen'
 import { Route as FenologieFenIdBewerkenRouteImport } from './routes/fenologie.$fenId.bewerken'
-import { Route as PasteurisatieRunRunIdCertificaatRouteImport } from './routes/pasteurisatie.run.$runId_.certificaat'
+import { Route as KelderPartijenIndexRouteImport } from './routes/kelder.partijen.index'
+import { Route as KelderPartijenPartijIdRouteImport } from './routes/kelder.partijen.$partijId'
+import { Route as KelderPartijenNieuwRouteImport } from './routes/kelder.partijen.nieuw'
+import { Route as KelderTanksIndexRouteImport } from './routes/kelder.tanks.index'
+import { Route as KelderTanksTankIdRouteImport } from './routes/kelder.tanks.$tankId'
+import { Route as PasteurisatieRunRunIdRouteImport } from './routes/pasteurisatie.run.$runId'
+import { Route as PasteurisatieRunNieuwRouteImport } from './routes/pasteurisatie.run.nieuw'
+import { Route as RijRijIdIndexRouteImport } from './routes/rij.$rijId.index'
+import { Route as RijRijIdFenologieRouteImport } from './routes/rij.$rijId.fenologie'
+import { Route as RijRijIdMetingRouteImport } from './routes/rij.$rijId.meting'
+import { Route as RijRijIdObservatieRouteImport } from './routes/rij.$rijId.observatie'
+import { Route as RijRijIdPlantenRouteImport } from './routes/rij.$rijId.planten'
+import { Route as SteekproevenPuntIdInvoerRouteImport } from './routes/steekproeven.$puntId.invoer'
+import { Route as VoorraadFlessenFlestypeIdRouteImport } from './routes/voorraad_.flessen_.$flestypeId'
 import { Route as KelderPartijenPartijIdBottelenRouteImport } from './routes/kelder.partijen.$partijId_.bottelen'
+import { Route as PasteurisatieRunRunIdCertificaatRouteImport } from './routes/pasteurisatie.run.$runId_.certificaat'
 
-const ZoekenRoute = ZoekenRouteImport.update({
-  id: '/zoeken',
-  path: '/zoeken',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const WijngaardRoute = WijngaardRouteImport.update({
-  id: '/wijngaard',
-  path: '/wijngaard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const WerkrapportRoute = WerkrapportRouteImport.update({
-  id: '/werkrapport',
-  path: '/werkrapport',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VoorraadRoute = VoorraadRouteImport.update({
-  id: '/voorraad',
-  path: '/voorraad',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VerkoopRoute = VerkoopRouteImport.update({
-  id: '/verkoop',
-  path: '/verkoop',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TrendsRoute = TrendsRouteImport.update({
-  id: '/trends',
-  path: '/trends',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SnelRoute = SnelRouteImport.update({
-  id: '/snel',
-  path: '/snel',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SeizoenRoute = SeizoenRouteImport.update({
-  id: '/seizoen',
-  path: '/seizoen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScanRoute = ScanRouteImport.update({
-  id: '/scan',
-  path: '/scan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RapportRoute = RapportRouteImport.update({
-  id: '/rapport',
-  path: '/rapport',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QrRoute = QrRouteImport.update({
-  id: '/qr',
-  path: '/qr',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrullenbakRoute = PrullenbakRouteImport.update({
-  id: '/prullenbak',
-  path: '/prullenbak',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PerceelkaartRoute = PerceelkaartRouteImport.update({
-  id: '/perceelkaart',
-  path: '/perceelkaart',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PasteurisatieRoute = PasteurisatieRouteImport.update({
-  id: '/pasteurisatie',
-  path: '/pasteurisatie',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OogstRoute = OogstRouteImport.update({
-  id: '/oogst',
-  path: '/oogst',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MaterieelRoute = MaterieelRouteImport.update({
-  id: '/materieel',
-  path: '/materieel',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LabRoute = LabRouteImport.update({
-  id: '/lab',
-  path: '/lab',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KelderRoute = KelderRouteImport.update({
-  id: '/kelder',
-  path: '/kelder',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KaartRoute = KaartRouteImport.update({
-  id: '/kaart',
-  path: '/kaart',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InstellingenRoute = InstellingenRouteImport.update({
-  id: '/instellingen',
-  path: '/instellingen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GrafiekenRoute = GrafiekenRouteImport.update({
-  id: '/grafieken',
-  path: '/grafieken',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GezondheidRoute = GezondheidRouteImport.update({
-  id: '/gezondheid',
-  path: '/gezondheid',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BodemRoute = BodemRouteImport.update({
-  id: '/bodem',
-  path: '/bodem',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssistentRoute = AssistentRouteImport.update({
@@ -198,89 +83,139 @@ const AssistentRoute = AssistentRouteImport.update({
   path: '/assistent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BodemRoute = BodemRouteImport.update({
+  id: '/bodem',
+  path: '/bodem',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VoorraadIndexRoute = VoorraadIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => VoorraadRoute,
-} as any)
-const SteekproevenIndexRoute = SteekproevenIndexRouteImport.update({
-  id: '/steekproeven/',
-  path: '/steekproeven/',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PasteurisatieIndexRoute = PasteurisatieIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PasteurisatieRoute,
-} as any)
-const KelderIndexRoute = KelderIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => KelderRoute,
-} as any)
-const VoorraadFlessenRoute = VoorraadFlessenRouteImport.update({
-  id: '/voorraad_/flessen',
-  path: '/voorraad/flessen',
+const GezondheidRoute = GezondheidRouteImport.update({
+  id: '/gezondheid',
+  path: '/gezondheid',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VoorraadVoorraadIdRoute = VoorraadVoorraadIdRouteImport.update({
-  id: '/$voorraadId',
-  path: '/$voorraadId',
-  getParentRoute: () => VoorraadRoute,
-} as any)
-const SteekproevenBeheerRoute = SteekproevenBeheerRouteImport.update({
-  id: '/steekproeven/beheer',
-  path: '/steekproeven/beheer',
+const GrafiekenRoute = GrafiekenRouteImport.update({
+  id: '/grafieken',
+  path: '/grafieken',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RijRijIdRoute = RijRijIdRouteImport.update({
-  id: '/rij/$rijId',
-  path: '/rij/$rijId',
+const InstellingenRoute = InstellingenRouteImport.update({
+  id: '/instellingen',
+  path: '/instellingen',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PasteurisatiePlannenRoute = PasteurisatiePlannenRouteImport.update({
-  id: '/plannen',
-  path: '/plannen',
-  getParentRoute: () => PasteurisatieRoute,
+const KaartRoute = KaartRouteImport.update({
+  id: '/kaart',
+  path: '/kaart',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const KelderTankboekRoute = KelderTankboekRouteImport.update({
-  id: '/tankboek',
-  path: '/tankboek',
-  getParentRoute: () => KelderRoute,
+const KelderRoute = KelderRouteImport.update({
+  id: '/kelder',
+  path: '/kelder',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const KelderQrRoute = KelderQrRouteImport.update({
+const LabRoute = LabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MaterieelRoute = MaterieelRouteImport.update({
+  id: '/materieel',
+  path: '/materieel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OogstRoute = OogstRouteImport.update({
+  id: '/oogst',
+  path: '/oogst',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasteurisatieRoute = PasteurisatieRouteImport.update({
+  id: '/pasteurisatie',
+  path: '/pasteurisatie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerceelkaartRoute = PerceelkaartRouteImport.update({
+  id: '/perceelkaart',
+  path: '/perceelkaart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrullenbakRoute = PrullenbakRouteImport.update({
+  id: '/prullenbak',
+  path: '/prullenbak',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrRoute = QrRouteImport.update({
   id: '/qr',
   path: '/qr',
-  getParentRoute: () => KelderRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const KelderOverhevelenRoute = KelderOverhevelenRouteImport.update({
-  id: '/overhevelen',
-  path: '/overhevelen',
-  getParentRoute: () => KelderRoute,
+const RapportRoute = RapportRouteImport.update({
+  id: '/rapport',
+  path: '/rapport',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const KelderLogboekRoute = KelderLogboekRouteImport.update({
-  id: '/logboek',
-  path: '/logboek',
-  getParentRoute: () => KelderRoute,
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const KelderJaaroverzichtRoute = KelderJaaroverzichtRouteImport.update({
-  id: '/jaaroverzicht',
-  path: '/jaaroverzicht',
-  getParentRoute: () => KelderRoute,
+const SeizoenRoute = SeizoenRouteImport.update({
+  id: '/seizoen',
+  path: '/seizoen',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const KelderAccijnsRoute = KelderAccijnsRouteImport.update({
-  id: '/accijns',
-  path: '/accijns',
-  getParentRoute: () => KelderRoute,
+const SnelRoute = SnelRouteImport.update({
+  id: '/snel',
+  path: '/snel',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const InstellingenSluitingenRoute = InstellingenSluitingenRouteImport.update({
-  id: '/instellingen_/sluitingen',
-  path: '/instellingen/sluitingen',
+const TrendsRoute = TrendsRouteImport.update({
+  id: '/trends',
+  path: '/trends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerkoopRoute = VerkoopRouteImport.update({
+  id: '/verkoop',
+  path: '/verkoop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VoorraadRoute = VoorraadRouteImport.update({
+  id: '/voorraad',
+  path: '/voorraad',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WerkrapportRoute = WerkrapportRouteImport.update({
+  id: '/werkrapport',
+  path: '/werkrapport',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WijngaardRoute = WijngaardRouteImport.update({
+  id: '/wijngaard',
+  path: '/wijngaard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZoekenRoute = ZoekenRouteImport.update({
+  id: '/zoeken',
+  path: '/zoeken',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EtiketBerekeningIdRoute = EtiketBerekeningIdRouteImport.update({
+  id: '/etiket/$berekeningId',
+  path: '/etiket/$berekeningId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstellingenEigenaarsRoute = InstellingenEigenaarsRouteImport.update({
+  id: '/instellingen_/eigenaars',
+  path: '/instellingen/eigenaars',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InstellingenFlestypesRoute = InstellingenFlestypesRouteImport.update({
+  id: '/instellingen_/flestypes',
+  path: '/instellingen/flestypes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InstellingenRekenmodelValidatiesRoute =
@@ -289,86 +224,94 @@ const InstellingenRekenmodelValidatiesRoute =
     path: '/instellingen/rekenmodel-validaties',
     getParentRoute: () => rootRouteImport,
   } as any)
-const InstellingenFlestypesRoute = InstellingenFlestypesRouteImport.update({
-  id: '/instellingen_/flestypes',
-  path: '/instellingen/flestypes',
+const InstellingenSluitingenRoute = InstellingenSluitingenRouteImport.update({
+  id: '/instellingen_/sluitingen',
+  path: '/instellingen/sluitingen',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InstellingenEigenaarsRoute = InstellingenEigenaarsRouteImport.update({
-  id: '/instellingen_/eigenaars',
-  path: '/instellingen/eigenaars',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EtiketBerekeningIdRoute = EtiketBerekeningIdRouteImport.update({
-  id: '/etiket/$berekeningId',
-  path: '/etiket/$berekeningId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
+const KelderIndexRoute = KelderIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => RijRijIdRoute,
-} as any)
-const KelderTanksIndexRoute = KelderTanksIndexRouteImport.update({
-  id: '/tanks/',
-  path: '/tanks/',
   getParentRoute: () => KelderRoute,
+} as any)
+const KelderAccijnsRoute = KelderAccijnsRouteImport.update({
+  id: '/accijns',
+  path: '/accijns',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderJaaroverzichtRoute = KelderJaaroverzichtRouteImport.update({
+  id: '/jaaroverzicht',
+  path: '/jaaroverzicht',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderLogboekRoute = KelderLogboekRouteImport.update({
+  id: '/logboek',
+  path: '/logboek',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderOverhevelenRoute = KelderOverhevelenRouteImport.update({
+  id: '/overhevelen',
+  path: '/overhevelen',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderQrRoute = KelderQrRouteImport.update({
+  id: '/qr',
+  path: '/qr',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderTankboekRoute = KelderTankboekRouteImport.update({
+  id: '/tankboek',
+  path: '/tankboek',
+  getParentRoute: () => KelderRoute,
+} as any)
+const PasteurisatieIndexRoute = PasteurisatieIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PasteurisatieRoute,
+} as any)
+const PasteurisatiePlannenRoute = PasteurisatiePlannenRouteImport.update({
+  id: '/plannen',
+  path: '/plannen',
+  getParentRoute: () => PasteurisatieRoute,
+} as any)
+const RijRijIdRoute = RijRijIdRouteImport.update({
+  id: '/rij/$rijId',
+  path: '/rij/$rijId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SteekproevenIndexRoute = SteekproevenIndexRouteImport.update({
+  id: '/steekproeven/',
+  path: '/steekproeven/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SteekproevenBeheerRoute = SteekproevenBeheerRouteImport.update({
+  id: '/steekproeven/beheer',
+  path: '/steekproeven/beheer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VoorraadIndexRoute = VoorraadIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VoorraadRoute,
+} as any)
+const VoorraadVoorraadIdRoute = VoorraadVoorraadIdRouteImport.update({
+  id: '/$voorraadId',
+  path: '/$voorraadId',
+  getParentRoute: () => VoorraadRoute,
+} as any)
+const VoorraadFlessenRoute = VoorraadFlessenRouteImport.update({
+  id: '/voorraad_/flessen',
+  path: '/voorraad/flessen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FenologieFenIdBewerkenRoute = FenologieFenIdBewerkenRouteImport.update({
+  id: '/fenologie/$fenId/bewerken',
+  path: '/fenologie/$fenId/bewerken',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const KelderPartijenIndexRoute = KelderPartijenIndexRouteImport.update({
   id: '/partijen/',
   path: '/partijen/',
-  getParentRoute: () => KelderRoute,
-} as any)
-const VoorraadFlessenFlestypeIdRoute =
-  VoorraadFlessenFlestypeIdRouteImport.update({
-    id: '/voorraad_/flessen_/$flestypeId',
-    path: '/voorraad/flessen/$flestypeId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SteekproevenPuntIdInvoerRoute =
-  SteekproevenPuntIdInvoerRouteImport.update({
-    id: '/steekproeven/$puntId/invoer',
-    path: '/steekproeven/$puntId/invoer',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const RijRijIdPlantenRoute = RijRijIdPlantenRouteImport.update({
-  id: '/planten',
-  path: '/planten',
-  getParentRoute: () => RijRijIdRoute,
-} as any)
-const RijRijIdObservatieRoute = RijRijIdObservatieRouteImport.update({
-  id: '/observatie',
-  path: '/observatie',
-  getParentRoute: () => RijRijIdRoute,
-} as any)
-const RijRijIdMetingRoute = RijRijIdMetingRouteImport.update({
-  id: '/meting',
-  path: '/meting',
-  getParentRoute: () => RijRijIdRoute,
-} as any)
-const RijRijIdFenologieRoute = RijRijIdFenologieRouteImport.update({
-  id: '/fenologie',
-  path: '/fenologie',
-  getParentRoute: () => RijRijIdRoute,
-} as any)
-const PasteurisatieRunNieuwRoute = PasteurisatieRunNieuwRouteImport.update({
-  id: '/run/nieuw',
-  path: '/run/nieuw',
-  getParentRoute: () => PasteurisatieRoute,
-} as any)
-const PasteurisatieRunRunIdRoute = PasteurisatieRunRunIdRouteImport.update({
-  id: '/run/$runId',
-  path: '/run/$runId',
-  getParentRoute: () => PasteurisatieRoute,
-} as any)
-const KelderTanksTankIdRoute = KelderTanksTankIdRouteImport.update({
-  id: '/tanks/$tankId',
-  path: '/tanks/$tankId',
-  getParentRoute: () => KelderRoute,
-} as any)
-const KelderPartijenNieuwRoute = KelderPartijenNieuwRouteImport.update({
-  id: '/partijen/nieuw',
-  path: '/partijen/nieuw',
   getParentRoute: () => KelderRoute,
 } as any)
 const KelderPartijenPartijIdRoute = KelderPartijenPartijIdRouteImport.update({
@@ -376,22 +319,79 @@ const KelderPartijenPartijIdRoute = KelderPartijenPartijIdRouteImport.update({
   path: '/partijen/$partijId',
   getParentRoute: () => KelderRoute,
 } as any)
-const FenologieFenIdBewerkenRoute = FenologieFenIdBewerkenRouteImport.update({
-  id: '/fenologie/$fenId/bewerken',
-  path: '/fenologie/$fenId/bewerken',
-  getParentRoute: () => rootRouteImport,
+const KelderPartijenNieuwRoute = KelderPartijenNieuwRouteImport.update({
+  id: '/partijen/nieuw',
+  path: '/partijen/nieuw',
+  getParentRoute: () => KelderRoute,
 } as any)
-const PasteurisatieRunRunIdCertificaatRoute =
-  PasteurisatieRunRunIdCertificaatRouteImport.update({
-    id: '/run/$runId_/certificaat',
-    path: '/run/$runId/certificaat',
-    getParentRoute: () => PasteurisatieRoute,
+const KelderTanksIndexRoute = KelderTanksIndexRouteImport.update({
+  id: '/tanks/',
+  path: '/tanks/',
+  getParentRoute: () => KelderRoute,
+} as any)
+const KelderTanksTankIdRoute = KelderTanksTankIdRouteImport.update({
+  id: '/tanks/$tankId',
+  path: '/tanks/$tankId',
+  getParentRoute: () => KelderRoute,
+} as any)
+const PasteurisatieRunRunIdRoute = PasteurisatieRunRunIdRouteImport.update({
+  id: '/run/$runId',
+  path: '/run/$runId',
+  getParentRoute: () => PasteurisatieRoute,
+} as any)
+const PasteurisatieRunNieuwRoute = PasteurisatieRunNieuwRouteImport.update({
+  id: '/run/nieuw',
+  path: '/run/nieuw',
+  getParentRoute: () => PasteurisatieRoute,
+} as any)
+const RijRijIdIndexRoute = RijRijIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
+const RijRijIdFenologieRoute = RijRijIdFenologieRouteImport.update({
+  id: '/fenologie',
+  path: '/fenologie',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
+const RijRijIdMetingRoute = RijRijIdMetingRouteImport.update({
+  id: '/meting',
+  path: '/meting',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
+const RijRijIdObservatieRoute = RijRijIdObservatieRouteImport.update({
+  id: '/observatie',
+  path: '/observatie',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
+const RijRijIdPlantenRoute = RijRijIdPlantenRouteImport.update({
+  id: '/planten',
+  path: '/planten',
+  getParentRoute: () => RijRijIdRoute,
+} as any)
+const SteekproevenPuntIdInvoerRoute =
+  SteekproevenPuntIdInvoerRouteImport.update({
+    id: '/steekproeven/$puntId/invoer',
+    path: '/steekproeven/$puntId/invoer',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const VoorraadFlessenFlestypeIdRoute =
+  VoorraadFlessenFlestypeIdRouteImport.update({
+    id: '/voorraad_/flessen_/$flestypeId',
+    path: '/voorraad/flessen/$flestypeId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const KelderPartijenPartijIdBottelenRoute =
   KelderPartijenPartijIdBottelenRouteImport.update({
     id: '/partijen/$partijId_/bottelen',
     path: '/partijen/$partijId/bottelen',
     getParentRoute: () => KelderRoute,
+  } as any)
+const PasteurisatieRunRunIdCertificaatRoute =
+  PasteurisatieRunRunIdCertificaatRouteImport.update({
+    id: '/run/$runId_/certificaat',
+    path: '/run/$runId/certificaat',
+    getParentRoute: () => PasteurisatieRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -823,172 +823,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/zoeken': {
-      id: '/zoeken'
-      path: '/zoeken'
-      fullPath: '/zoeken'
-      preLoaderRoute: typeof ZoekenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/wijngaard': {
-      id: '/wijngaard'
-      path: '/wijngaard'
-      fullPath: '/wijngaard'
-      preLoaderRoute: typeof WijngaardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/werkrapport': {
-      id: '/werkrapport'
-      path: '/werkrapport'
-      fullPath: '/werkrapport'
-      preLoaderRoute: typeof WerkrapportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/voorraad': {
-      id: '/voorraad'
-      path: '/voorraad'
-      fullPath: '/voorraad'
-      preLoaderRoute: typeof VoorraadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/verkoop': {
-      id: '/verkoop'
-      path: '/verkoop'
-      fullPath: '/verkoop'
-      preLoaderRoute: typeof VerkoopRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/trends': {
-      id: '/trends'
-      path: '/trends'
-      fullPath: '/trends'
-      preLoaderRoute: typeof TrendsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/snel': {
-      id: '/snel'
-      path: '/snel'
-      fullPath: '/snel'
-      preLoaderRoute: typeof SnelRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/seizoen': {
-      id: '/seizoen'
-      path: '/seizoen'
-      fullPath: '/seizoen'
-      preLoaderRoute: typeof SeizoenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scan': {
-      id: '/scan'
-      path: '/scan'
-      fullPath: '/scan'
-      preLoaderRoute: typeof ScanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rapport': {
-      id: '/rapport'
-      path: '/rapport'
-      fullPath: '/rapport'
-      preLoaderRoute: typeof RapportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/qr': {
-      id: '/qr'
-      path: '/qr'
-      fullPath: '/qr'
-      preLoaderRoute: typeof QrRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/prullenbak': {
-      id: '/prullenbak'
-      path: '/prullenbak'
-      fullPath: '/prullenbak'
-      preLoaderRoute: typeof PrullenbakRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/perceelkaart': {
-      id: '/perceelkaart'
-      path: '/perceelkaart'
-      fullPath: '/perceelkaart'
-      preLoaderRoute: typeof PerceelkaartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pasteurisatie': {
-      id: '/pasteurisatie'
-      path: '/pasteurisatie'
-      fullPath: '/pasteurisatie'
-      preLoaderRoute: typeof PasteurisatieRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/oogst': {
-      id: '/oogst'
-      path: '/oogst'
-      fullPath: '/oogst'
-      preLoaderRoute: typeof OogstRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/materieel': {
-      id: '/materieel'
-      path: '/materieel'
-      fullPath: '/materieel'
-      preLoaderRoute: typeof MaterieelRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lab': {
-      id: '/lab'
-      path: '/lab'
-      fullPath: '/lab'
-      preLoaderRoute: typeof LabRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kelder': {
-      id: '/kelder'
-      path: '/kelder'
-      fullPath: '/kelder'
-      preLoaderRoute: typeof KelderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kaart': {
-      id: '/kaart'
-      path: '/kaart'
-      fullPath: '/kaart'
-      preLoaderRoute: typeof KaartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/instellingen': {
-      id: '/instellingen'
-      path: '/instellingen'
-      fullPath: '/instellingen'
-      preLoaderRoute: typeof InstellingenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/grafieken': {
-      id: '/grafieken'
-      path: '/grafieken'
-      fullPath: '/grafieken'
-      preLoaderRoute: typeof GrafiekenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gezondheid': {
-      id: '/gezondheid'
-      path: '/gezondheid'
-      fullPath: '/gezondheid'
-      preLoaderRoute: typeof GezondheidRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bodem': {
-      id: '/bodem'
-      path: '/bodem'
-      fullPath: '/bodem'
-      preLoaderRoute: typeof BodemRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assistent': {
@@ -998,144 +837,172 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssistentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/bodem': {
+      id: '/bodem'
+      path: '/bodem'
+      fullPath: '/bodem'
+      preLoaderRoute: typeof BodemRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/voorraad/': {
-      id: '/voorraad/'
-      path: '/'
-      fullPath: '/voorraad/'
-      preLoaderRoute: typeof VoorraadIndexRouteImport
-      parentRoute: typeof VoorraadRoute
-    }
-    '/steekproeven/': {
-      id: '/steekproeven/'
-      path: '/steekproeven'
-      fullPath: '/steekproeven/'
-      preLoaderRoute: typeof SteekproevenIndexRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pasteurisatie/': {
-      id: '/pasteurisatie/'
-      path: '/'
-      fullPath: '/pasteurisatie/'
-      preLoaderRoute: typeof PasteurisatieIndexRouteImport
-      parentRoute: typeof PasteurisatieRoute
-    }
-    '/kelder/': {
-      id: '/kelder/'
-      path: '/'
-      fullPath: '/kelder/'
-      preLoaderRoute: typeof KelderIndexRouteImport
-      parentRoute: typeof KelderRoute
-    }
-    '/voorraad_/flessen': {
-      id: '/voorraad_/flessen'
-      path: '/voorraad/flessen'
-      fullPath: '/voorraad/flessen'
-      preLoaderRoute: typeof VoorraadFlessenRouteImport
+    '/gezondheid': {
+      id: '/gezondheid'
+      path: '/gezondheid'
+      fullPath: '/gezondheid'
+      preLoaderRoute: typeof GezondheidRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/voorraad/$voorraadId': {
-      id: '/voorraad/$voorraadId'
-      path: '/$voorraadId'
-      fullPath: '/voorraad/$voorraadId'
-      preLoaderRoute: typeof VoorraadVoorraadIdRouteImport
-      parentRoute: typeof VoorraadRoute
-    }
-    '/steekproeven/beheer': {
-      id: '/steekproeven/beheer'
-      path: '/steekproeven/beheer'
-      fullPath: '/steekproeven/beheer'
-      preLoaderRoute: typeof SteekproevenBeheerRouteImport
+    '/grafieken': {
+      id: '/grafieken'
+      path: '/grafieken'
+      fullPath: '/grafieken'
+      preLoaderRoute: typeof GrafiekenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rij/$rijId': {
-      id: '/rij/$rijId'
-      path: '/rij/$rijId'
-      fullPath: '/rij/$rijId'
-      preLoaderRoute: typeof RijRijIdRouteImport
+    '/instellingen': {
+      id: '/instellingen'
+      path: '/instellingen'
+      fullPath: '/instellingen'
+      preLoaderRoute: typeof InstellingenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pasteurisatie/plannen': {
-      id: '/pasteurisatie/plannen'
-      path: '/plannen'
-      fullPath: '/pasteurisatie/plannen'
-      preLoaderRoute: typeof PasteurisatiePlannenRouteImport
-      parentRoute: typeof PasteurisatieRoute
+    '/kaart': {
+      id: '/kaart'
+      path: '/kaart'
+      fullPath: '/kaart'
+      preLoaderRoute: typeof KaartRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/kelder/tankboek': {
-      id: '/kelder/tankboek'
-      path: '/tankboek'
-      fullPath: '/kelder/tankboek'
-      preLoaderRoute: typeof KelderTankboekRouteImport
-      parentRoute: typeof KelderRoute
+    '/kelder': {
+      id: '/kelder'
+      path: '/kelder'
+      fullPath: '/kelder'
+      preLoaderRoute: typeof KelderRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/kelder/qr': {
-      id: '/kelder/qr'
+    '/lab': {
+      id: '/lab'
+      path: '/lab'
+      fullPath: '/lab'
+      preLoaderRoute: typeof LabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/materieel': {
+      id: '/materieel'
+      path: '/materieel'
+      fullPath: '/materieel'
+      preLoaderRoute: typeof MaterieelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oogst': {
+      id: '/oogst'
+      path: '/oogst'
+      fullPath: '/oogst'
+      preLoaderRoute: typeof OogstRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pasteurisatie': {
+      id: '/pasteurisatie'
+      path: '/pasteurisatie'
+      fullPath: '/pasteurisatie'
+      preLoaderRoute: typeof PasteurisatieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/perceelkaart': {
+      id: '/perceelkaart'
+      path: '/perceelkaart'
+      fullPath: '/perceelkaart'
+      preLoaderRoute: typeof PerceelkaartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prullenbak': {
+      id: '/prullenbak'
+      path: '/prullenbak'
+      fullPath: '/prullenbak'
+      preLoaderRoute: typeof PrullenbakRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr': {
+      id: '/qr'
       path: '/qr'
-      fullPath: '/kelder/qr'
-      preLoaderRoute: typeof KelderQrRouteImport
-      parentRoute: typeof KelderRoute
-    }
-    '/kelder/overhevelen': {
-      id: '/kelder/overhevelen'
-      path: '/overhevelen'
-      fullPath: '/kelder/overhevelen'
-      preLoaderRoute: typeof KelderOverhevelenRouteImport
-      parentRoute: typeof KelderRoute
-    }
-    '/kelder/logboek': {
-      id: '/kelder/logboek'
-      path: '/logboek'
-      fullPath: '/kelder/logboek'
-      preLoaderRoute: typeof KelderLogboekRouteImport
-      parentRoute: typeof KelderRoute
-    }
-    '/kelder/jaaroverzicht': {
-      id: '/kelder/jaaroverzicht'
-      path: '/jaaroverzicht'
-      fullPath: '/kelder/jaaroverzicht'
-      preLoaderRoute: typeof KelderJaaroverzichtRouteImport
-      parentRoute: typeof KelderRoute
-    }
-    '/kelder/accijns': {
-      id: '/kelder/accijns'
-      path: '/accijns'
-      fullPath: '/kelder/accijns'
-      preLoaderRoute: typeof KelderAccijnsRouteImport
-      parentRoute: typeof KelderRoute
-    }
-    '/instellingen_/sluitingen': {
-      id: '/instellingen_/sluitingen'
-      path: '/instellingen/sluitingen'
-      fullPath: '/instellingen/sluitingen'
-      preLoaderRoute: typeof InstellingenSluitingenRouteImport
+      fullPath: '/qr'
+      preLoaderRoute: typeof QrRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/instellingen_/rekenmodel-validaties': {
-      id: '/instellingen_/rekenmodel-validaties'
-      path: '/instellingen/rekenmodel-validaties'
-      fullPath: '/instellingen/rekenmodel-validaties'
-      preLoaderRoute: typeof InstellingenRekenmodelValidatiesRouteImport
+    '/rapport': {
+      id: '/rapport'
+      path: '/rapport'
+      fullPath: '/rapport'
+      preLoaderRoute: typeof RapportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/instellingen_/flestypes': {
-      id: '/instellingen_/flestypes'
-      path: '/instellingen/flestypes'
-      fullPath: '/instellingen/flestypes'
-      preLoaderRoute: typeof InstellingenFlestypesRouteImport
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/instellingen_/eigenaars': {
-      id: '/instellingen_/eigenaars'
-      path: '/instellingen/eigenaars'
-      fullPath: '/instellingen/eigenaars'
-      preLoaderRoute: typeof InstellingenEigenaarsRouteImport
+    '/seizoen': {
+      id: '/seizoen'
+      path: '/seizoen'
+      fullPath: '/seizoen'
+      preLoaderRoute: typeof SeizoenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/snel': {
+      id: '/snel'
+      path: '/snel'
+      fullPath: '/snel'
+      preLoaderRoute: typeof SnelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trends': {
+      id: '/trends'
+      path: '/trends'
+      fullPath: '/trends'
+      preLoaderRoute: typeof TrendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verkoop': {
+      id: '/verkoop'
+      path: '/verkoop'
+      fullPath: '/verkoop'
+      preLoaderRoute: typeof VerkoopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/voorraad': {
+      id: '/voorraad'
+      path: '/voorraad'
+      fullPath: '/voorraad'
+      preLoaderRoute: typeof VoorraadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/werkrapport': {
+      id: '/werkrapport'
+      path: '/werkrapport'
+      fullPath: '/werkrapport'
+      preLoaderRoute: typeof WerkrapportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wijngaard': {
+      id: '/wijngaard'
+      path: '/wijngaard'
+      fullPath: '/wijngaard'
+      preLoaderRoute: typeof WijngaardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zoeken': {
+      id: '/zoeken'
+      path: '/zoeken'
+      fullPath: '/zoeken'
+      preLoaderRoute: typeof ZoekenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/etiket/$berekeningId': {
@@ -1145,95 +1012,151 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EtiketBerekeningIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rij/$rijId/': {
-      id: '/rij/$rijId/'
-      path: '/'
-      fullPath: '/rij/$rijId/'
-      preLoaderRoute: typeof RijRijIdIndexRouteImport
-      parentRoute: typeof RijRijIdRoute
+    '/instellingen_/eigenaars': {
+      id: '/instellingen_/eigenaars'
+      path: '/instellingen/eigenaars'
+      fullPath: '/instellingen/eigenaars'
+      preLoaderRoute: typeof InstellingenEigenaarsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/kelder/tanks/': {
-      id: '/kelder/tanks/'
-      path: '/tanks'
-      fullPath: '/kelder/tanks/'
-      preLoaderRoute: typeof KelderTanksIndexRouteImport
+    '/instellingen_/flestypes': {
+      id: '/instellingen_/flestypes'
+      path: '/instellingen/flestypes'
+      fullPath: '/instellingen/flestypes'
+      preLoaderRoute: typeof InstellingenFlestypesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/instellingen_/rekenmodel-validaties': {
+      id: '/instellingen_/rekenmodel-validaties'
+      path: '/instellingen/rekenmodel-validaties'
+      fullPath: '/instellingen/rekenmodel-validaties'
+      preLoaderRoute: typeof InstellingenRekenmodelValidatiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/instellingen_/sluitingen': {
+      id: '/instellingen_/sluitingen'
+      path: '/instellingen/sluitingen'
+      fullPath: '/instellingen/sluitingen'
+      preLoaderRoute: typeof InstellingenSluitingenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kelder/': {
+      id: '/kelder/'
+      path: '/'
+      fullPath: '/kelder/'
+      preLoaderRoute: typeof KelderIndexRouteImport
       parentRoute: typeof KelderRoute
+    }
+    '/kelder/accijns': {
+      id: '/kelder/accijns'
+      path: '/accijns'
+      fullPath: '/kelder/accijns'
+      preLoaderRoute: typeof KelderAccijnsRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/jaaroverzicht': {
+      id: '/kelder/jaaroverzicht'
+      path: '/jaaroverzicht'
+      fullPath: '/kelder/jaaroverzicht'
+      preLoaderRoute: typeof KelderJaaroverzichtRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/logboek': {
+      id: '/kelder/logboek'
+      path: '/logboek'
+      fullPath: '/kelder/logboek'
+      preLoaderRoute: typeof KelderLogboekRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/overhevelen': {
+      id: '/kelder/overhevelen'
+      path: '/overhevelen'
+      fullPath: '/kelder/overhevelen'
+      preLoaderRoute: typeof KelderOverhevelenRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/qr': {
+      id: '/kelder/qr'
+      path: '/qr'
+      fullPath: '/kelder/qr'
+      preLoaderRoute: typeof KelderQrRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/tankboek': {
+      id: '/kelder/tankboek'
+      path: '/tankboek'
+      fullPath: '/kelder/tankboek'
+      preLoaderRoute: typeof KelderTankboekRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/pasteurisatie/': {
+      id: '/pasteurisatie/'
+      path: '/'
+      fullPath: '/pasteurisatie/'
+      preLoaderRoute: typeof PasteurisatieIndexRouteImport
+      parentRoute: typeof PasteurisatieRoute
+    }
+    '/pasteurisatie/plannen': {
+      id: '/pasteurisatie/plannen'
+      path: '/plannen'
+      fullPath: '/pasteurisatie/plannen'
+      preLoaderRoute: typeof PasteurisatiePlannenRouteImport
+      parentRoute: typeof PasteurisatieRoute
+    }
+    '/rij/$rijId': {
+      id: '/rij/$rijId'
+      path: '/rij/$rijId'
+      fullPath: '/rij/$rijId'
+      preLoaderRoute: typeof RijRijIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/steekproeven/': {
+      id: '/steekproeven/'
+      path: '/steekproeven'
+      fullPath: '/steekproeven/'
+      preLoaderRoute: typeof SteekproevenIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/steekproeven/beheer': {
+      id: '/steekproeven/beheer'
+      path: '/steekproeven/beheer'
+      fullPath: '/steekproeven/beheer'
+      preLoaderRoute: typeof SteekproevenBeheerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/voorraad/': {
+      id: '/voorraad/'
+      path: '/'
+      fullPath: '/voorraad/'
+      preLoaderRoute: typeof VoorraadIndexRouteImport
+      parentRoute: typeof VoorraadRoute
+    }
+    '/voorraad/$voorraadId': {
+      id: '/voorraad/$voorraadId'
+      path: '/$voorraadId'
+      fullPath: '/voorraad/$voorraadId'
+      preLoaderRoute: typeof VoorraadVoorraadIdRouteImport
+      parentRoute: typeof VoorraadRoute
+    }
+    '/voorraad_/flessen': {
+      id: '/voorraad_/flessen'
+      path: '/voorraad/flessen'
+      fullPath: '/voorraad/flessen'
+      preLoaderRoute: typeof VoorraadFlessenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fenologie/$fenId/bewerken': {
+      id: '/fenologie/$fenId/bewerken'
+      path: '/fenologie/$fenId/bewerken'
+      fullPath: '/fenologie/$fenId/bewerken'
+      preLoaderRoute: typeof FenologieFenIdBewerkenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/kelder/partijen/': {
       id: '/kelder/partijen/'
       path: '/partijen'
       fullPath: '/kelder/partijen/'
       preLoaderRoute: typeof KelderPartijenIndexRouteImport
-      parentRoute: typeof KelderRoute
-    }
-    '/voorraad_/flessen_/$flestypeId': {
-      id: '/voorraad_/flessen_/$flestypeId'
-      path: '/voorraad/flessen/$flestypeId'
-      fullPath: '/voorraad/flessen/$flestypeId'
-      preLoaderRoute: typeof VoorraadFlessenFlestypeIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/steekproeven/$puntId/invoer': {
-      id: '/steekproeven/$puntId/invoer'
-      path: '/steekproeven/$puntId/invoer'
-      fullPath: '/steekproeven/$puntId/invoer'
-      preLoaderRoute: typeof SteekproevenPuntIdInvoerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rij/$rijId/planten': {
-      id: '/rij/$rijId/planten'
-      path: '/planten'
-      fullPath: '/rij/$rijId/planten'
-      preLoaderRoute: typeof RijRijIdPlantenRouteImport
-      parentRoute: typeof RijRijIdRoute
-    }
-    '/rij/$rijId/observatie': {
-      id: '/rij/$rijId/observatie'
-      path: '/observatie'
-      fullPath: '/rij/$rijId/observatie'
-      preLoaderRoute: typeof RijRijIdObservatieRouteImport
-      parentRoute: typeof RijRijIdRoute
-    }
-    '/rij/$rijId/meting': {
-      id: '/rij/$rijId/meting'
-      path: '/meting'
-      fullPath: '/rij/$rijId/meting'
-      preLoaderRoute: typeof RijRijIdMetingRouteImport
-      parentRoute: typeof RijRijIdRoute
-    }
-    '/rij/$rijId/fenologie': {
-      id: '/rij/$rijId/fenologie'
-      path: '/fenologie'
-      fullPath: '/rij/$rijId/fenologie'
-      preLoaderRoute: typeof RijRijIdFenologieRouteImport
-      parentRoute: typeof RijRijIdRoute
-    }
-    '/pasteurisatie/run/nieuw': {
-      id: '/pasteurisatie/run/nieuw'
-      path: '/run/nieuw'
-      fullPath: '/pasteurisatie/run/nieuw'
-      preLoaderRoute: typeof PasteurisatieRunNieuwRouteImport
-      parentRoute: typeof PasteurisatieRoute
-    }
-    '/pasteurisatie/run/$runId': {
-      id: '/pasteurisatie/run/$runId'
-      path: '/run/$runId'
-      fullPath: '/pasteurisatie/run/$runId'
-      preLoaderRoute: typeof PasteurisatieRunRunIdRouteImport
-      parentRoute: typeof PasteurisatieRoute
-    }
-    '/kelder/tanks/$tankId': {
-      id: '/kelder/tanks/$tankId'
-      path: '/tanks/$tankId'
-      fullPath: '/kelder/tanks/$tankId'
-      preLoaderRoute: typeof KelderTanksTankIdRouteImport
-      parentRoute: typeof KelderRoute
-    }
-    '/kelder/partijen/nieuw': {
-      id: '/kelder/partijen/nieuw'
-      path: '/partijen/nieuw'
-      fullPath: '/kelder/partijen/nieuw'
-      preLoaderRoute: typeof KelderPartijenNieuwRouteImport
       parentRoute: typeof KelderRoute
     }
     '/kelder/partijen/$partijId': {
@@ -1243,19 +1166,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KelderPartijenPartijIdRouteImport
       parentRoute: typeof KelderRoute
     }
-    '/fenologie/$fenId/bewerken': {
-      id: '/fenologie/$fenId/bewerken'
-      path: '/fenologie/$fenId/bewerken'
-      fullPath: '/fenologie/$fenId/bewerken'
-      preLoaderRoute: typeof FenologieFenIdBewerkenRouteImport
+    '/kelder/partijen/nieuw': {
+      id: '/kelder/partijen/nieuw'
+      path: '/partijen/nieuw'
+      fullPath: '/kelder/partijen/nieuw'
+      preLoaderRoute: typeof KelderPartijenNieuwRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/tanks/': {
+      id: '/kelder/tanks/'
+      path: '/tanks'
+      fullPath: '/kelder/tanks/'
+      preLoaderRoute: typeof KelderTanksIndexRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/kelder/tanks/$tankId': {
+      id: '/kelder/tanks/$tankId'
+      path: '/tanks/$tankId'
+      fullPath: '/kelder/tanks/$tankId'
+      preLoaderRoute: typeof KelderTanksTankIdRouteImport
+      parentRoute: typeof KelderRoute
+    }
+    '/pasteurisatie/run/$runId': {
+      id: '/pasteurisatie/run/$runId'
+      path: '/run/$runId'
+      fullPath: '/pasteurisatie/run/$runId'
+      preLoaderRoute: typeof PasteurisatieRunRunIdRouteImport
+      parentRoute: typeof PasteurisatieRoute
+    }
+    '/pasteurisatie/run/nieuw': {
+      id: '/pasteurisatie/run/nieuw'
+      path: '/run/nieuw'
+      fullPath: '/pasteurisatie/run/nieuw'
+      preLoaderRoute: typeof PasteurisatieRunNieuwRouteImport
+      parentRoute: typeof PasteurisatieRoute
+    }
+    '/rij/$rijId/': {
+      id: '/rij/$rijId/'
+      path: '/'
+      fullPath: '/rij/$rijId/'
+      preLoaderRoute: typeof RijRijIdIndexRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
+    '/rij/$rijId/fenologie': {
+      id: '/rij/$rijId/fenologie'
+      path: '/fenologie'
+      fullPath: '/rij/$rijId/fenologie'
+      preLoaderRoute: typeof RijRijIdFenologieRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
+    '/rij/$rijId/meting': {
+      id: '/rij/$rijId/meting'
+      path: '/meting'
+      fullPath: '/rij/$rijId/meting'
+      preLoaderRoute: typeof RijRijIdMetingRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
+    '/rij/$rijId/observatie': {
+      id: '/rij/$rijId/observatie'
+      path: '/observatie'
+      fullPath: '/rij/$rijId/observatie'
+      preLoaderRoute: typeof RijRijIdObservatieRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
+    '/rij/$rijId/planten': {
+      id: '/rij/$rijId/planten'
+      path: '/planten'
+      fullPath: '/rij/$rijId/planten'
+      preLoaderRoute: typeof RijRijIdPlantenRouteImport
+      parentRoute: typeof RijRijIdRoute
+    }
+    '/steekproeven/$puntId/invoer': {
+      id: '/steekproeven/$puntId/invoer'
+      path: '/steekproeven/$puntId/invoer'
+      fullPath: '/steekproeven/$puntId/invoer'
+      preLoaderRoute: typeof SteekproevenPuntIdInvoerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pasteurisatie/run/$runId_/certificaat': {
-      id: '/pasteurisatie/run/$runId_/certificaat'
-      path: '/run/$runId/certificaat'
-      fullPath: '/pasteurisatie/run/$runId/certificaat'
-      preLoaderRoute: typeof PasteurisatieRunRunIdCertificaatRouteImport
-      parentRoute: typeof PasteurisatieRoute
+    '/voorraad_/flessen_/$flestypeId': {
+      id: '/voorraad_/flessen_/$flestypeId'
+      path: '/voorraad/flessen/$flestypeId'
+      fullPath: '/voorraad/flessen/$flestypeId'
+      preLoaderRoute: typeof VoorraadFlessenFlestypeIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/kelder/partijen/$partijId_/bottelen': {
       id: '/kelder/partijen/$partijId_/bottelen'
@@ -1263,6 +1256,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/kelder/partijen/$partijId/bottelen'
       preLoaderRoute: typeof KelderPartijenPartijIdBottelenRouteImport
       parentRoute: typeof KelderRoute
+    }
+    '/pasteurisatie/run/$runId_/certificaat': {
+      id: '/pasteurisatie/run/$runId_/certificaat'
+      path: '/run/$runId/certificaat'
+      fullPath: '/pasteurisatie/run/$runId/certificaat'
+      preLoaderRoute: typeof PasteurisatieRunRunIdCertificaatRouteImport
+      parentRoute: typeof PasteurisatieRoute
     }
   }
 }

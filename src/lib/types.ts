@@ -768,7 +768,7 @@ export const PRODUCT_SOORTEN: { value: ProductSoort; label: string }[] = [
   { value: "overige_gegiste_drank", label: "Overige gegiste drank" },
 ];
 
-export type PasteurisatieOordeel = "veilig" | "marginaal" | "onveilig";
+export type PasteurisatieOordeel = "veilig" | "marginaal" | "onveilig" | "onbekend";
 export const PASTEURISATIE_OORDELEN: {
   value: PasteurisatieOordeel;
   label: string;
@@ -777,6 +777,7 @@ export const PASTEURISATIE_OORDELEN: {
   { value: "veilig", label: "Veilig", emoji: "✅" },
   { value: "marginaal", label: "Marginaal", emoji: "⚠️" },
   { value: "onveilig", label: "Onveilig", emoji: "🛑" },
+  { value: "onbekend", label: "Onvoldoende gegevens", emoji: "❓" },
 ];
 
 export type PasteurisatieRunStatus = "gepland" | "actief" | "afgerond" | "afgebroken";
