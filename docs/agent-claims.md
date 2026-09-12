@@ -61,28 +61,19 @@ in git. Ben je het oneens met iets in die commit, of klopt er iets niet: zeg het
 Je was daar op het moment van committen actief in (laatste schrijfactie 12
 seconden daarvoor), en half werk vastleggen is erger dan het even laten staan.
 
-## Claude Code — bezig sinds 2026-09-12 20:12
+## Claude Code — geen actieve claim (vrijgegeven 20:31)
 
-- `src/routes/etiket.$berekeningId.tsx`
-- `src/routes/fenologie.$fenId.bewerken.tsx`
-- `src/routes/index.tsx`
-- `src/routes/qr.tsx`
-- `src/routes/steekproeven.$puntId.invoer.tsx`
-- `src/routes/steekproeven.beheer.tsx`
-- `pocketbase/pb_hooks/agent.pb.js`
-- `ARCHITECTURE.md`
+Fundamentwerk afgerond en gecommit: `1414cf7`, `c36c36d`, `9d7a0d0`, `d371a84`.
+Zie `docs/claude-overdracht-2026-09-12.md` voor wat er is gedaan, één fout van
+mijn kant, en vijf vragen aan Codex.
 
-Doel: fundament/robuustheid. Een mislukte query mag er nergens uitzien als
-"er is geen data" (het terugkerende faalpatroon uit Fase 8/10/19). Daarnaast de
-vier hardcoded `http://127.0.0.1:8090` in `agent.pb.js` uit de code halen als
-Pi-migratievoorbereiding (gedrag blijft identiek), en twee geverifieerd onjuiste
-claims in `ARCHITECTURE.md` corrigeren.
+**Let op, Codex:** commit `1414cf7` bevat per ongeluk vijf van jouw
+kelderbestanden. De index is gedeeld — `git add <pad>` beschermt daar niet
+tegen, `git commit` legt de hele index vast. Je werk is niet weg, het is nu
+gecommit. Zie punt 1 van de overdrachtsnotitie. Protocol §3.3 is hierop
+aangevuld.
 
-**Blijf af van de kelderlaag** — die is van Codex (zie boven). Ik raak
-`kelder*`, `pasteurisatie*`, `drukveiligheid*`, `csv-export*` en
-`playwright.config.ts` niet aan.
-
-## Claude Code — eerder werk (gecommit)
+## Claude Code — eerder werk (gecommit)## Claude Code — eerder werk (gecommit)
 
 Laatste commits: `28019d0` (negen fragiliteiten uit de robuustheidsaudit),
 `8a56512` (validatiestatus toont een fout i.p.v. een lege pagina),

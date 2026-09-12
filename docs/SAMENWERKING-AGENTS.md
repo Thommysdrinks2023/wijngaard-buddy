@@ -135,6 +135,29 @@ claim plus een notitie achteraf:
   onbeschermd tegen ongelukken, en maakt elke testrun van de ander onbetrouwbaar.
 - **Laat de boom nooit kapot achter.** Breekt je wijziging `tsc`, maak het af of
   draai het terug vóór je iets anders doet. De ander kan in de tussentijd niets.
+- **DE INDEX IS GEDEELD — dit is de belangrijkste regel van deze paragraaf.**
+  `git add <pad>` is NIET genoeg. `git commit` legt de héle index vast, niet
+  alleen wat jij zojuist hebt toegevoegd. Heeft de ander zijn werk gestaged maar
+  nog niet gecommit, dan sleep jij het mee.
+
+  Dit is op 12 september echt gebeurd: commit `1414cf7` was bedoeld als drie
+  route-bestanden van Claude en bevatte ook vijf kelderbestanden van Codex die
+  klaarstonden in de index.
+
+  Doe daarom altijd één van deze twee:
+
+  ```bash
+  git diff --cached --name-only    # kijk wat er ECHT gecommit gaat worden
+  git commit -m "..."
+  ```
+
+  of, veiliger, commit met expliciete paden zodat de rest van de index
+  genegeerd wordt:
+
+  ```bash
+  git commit <pad1> <pad2> -m "..."
+  ```
+
 - **Commit alleen je eigen bestanden.** Gebruik `git add <pad> …`, niet
   `git add -A`. Dat legt namelijk het halve werk van de ander vast.
 - Kom je toch in de verleiding andermans werk te committen (bijvoorbeeld omdat
