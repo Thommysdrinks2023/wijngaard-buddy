@@ -9,11 +9,12 @@
 // in agent_uitvoering.js en wordt die per handler opnieuw via require()
 // geladen. Zelfde patroon als pb_hooks/kelder.pb.js.
 //
-// Hardcoded op http://127.0.0.1:8090 (lokale dev-machine, zie CLAUDE.md - de
-// Pi/VPS-deploy is er nog niet). Bij die migratie: vervangen door de echte
-// server-URL of $os.getenv("POCKETBASE_URL"). Geen top-level const: dezelfde
-// VM-pool-eigenaardigheid als bij functies geldt ook voor constanten, dus de
-// letterlijke waarde staat rechtstreeks in elke handler.
+// De server-URL waarop de agent zichzelf bereikt (nodig voor foto-analyse)
+// komt uit uitvoering.pocketbaseBasisUrl(): POCKETBASE_URL uit .env, met
+// http://127.0.0.1:8090 als terugval. Stond hier eerder drie keer als
+// letterlijke string - een landmijn voor de Pi/VPS-migratie. Bewust geen
+// top-level const in dit bestand: die bestaat niet binnen een routerAdd-
+// handler (VM-pool), vandaar de helper in agent_uitvoering.js.
 
 // ---------- POST /api/agent/bericht ----------
 // body: { bericht_id, verantwoordelijke? } - het user-bericht dat de frontend
@@ -38,7 +39,7 @@ routerAdd("POST", "/api/agent/bericht", (e) => {
     const resultaat = uitvoering.verwerkBeurt(e.app, {
       gesprekId,
       systeemprompt: uitvoering.leesSysteemprompt(),
-      pocketbaseUrl: "http://127.0.0.1:8090",
+      pocketbaseUrl: uitvoering.pocketbaseBasisUrl(),
       verantwoordelijke: naam,
     });
     if (resultaat.fout) throw new BadRequestError(resultaat.fout);
@@ -118,7 +119,7 @@ routerAdd("POST", "/api/agent/actie/{id}/bevestig", (e) => {
       vervolg = uitvoering.verwerkBeurt(e.app, {
         gesprekId,
         systeemprompt: uitvoering.leesSysteemprompt(),
-        pocketbaseUrl: "http://127.0.0.1:8090",
+        pocketbaseUrl: uitvoering.pocketbaseBasisUrl(),
         verantwoordelijke: naam,
       });
     }
@@ -169,7 +170,7 @@ routerAdd("POST", "/api/agent/actie/{id}/afwijzen", (e) => {
     const vervolg = uitvoering.verwerkBeurt(e.app, {
       gesprekId,
       systeemprompt: uitvoering.leesSysteemprompt(),
-      pocketbaseUrl: "http://127.0.0.1:8090",
+      pocketbaseUrl: uitvoering.pocketbaseBasisUrl(),
       verantwoordelijke: naam,
     });
 

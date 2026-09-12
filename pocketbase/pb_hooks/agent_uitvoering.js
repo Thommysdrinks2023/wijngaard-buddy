@@ -2207,7 +2207,30 @@ function verwerkBeurt(app, opties) {
   };
 }
 
+/**
+ * Basis-URL waarop deze PocketBase zichzelf kan bereiken.
+ *
+ * De agent haalt foto's op via een echte HTTP-aanroep naar zijn eigen server,
+ * dus dit adres moet kloppen. Stond eerder als letterlijke string op drie
+ * plekken in agent.pb.js — een landmijn voor de Pi/VPS-migratie, want dan
+ * wijst hij naar de verkeerde machine zonder dat iets faalt behalve
+ * foto-analyse.
+ *
+ * Zit hier en niet als top-level const in agent.pb.js vanwege de bekende
+ * JSVM-eigenaardigheid: constanten uit een .pb.js-bestand bestaan niet binnen
+ * een routerAdd-handler. Dit bestand wordt per handler ge-require'd, dus dit
+ * is de plek die wél werkt.
+ *
+ * Zonder POCKETBASE_URL in .env blijft het gedrag exact zoals het was.
+ */
+function pocketbaseBasisUrl() {
+  const uitEnv = $os.getenv("POCKETBASE_URL");
+  const url = uitEnv && uitEnv.trim() ? uitEnv.trim() : "http://127.0.0.1:8090";
+  return url.replace(/\/+$/, "");
+}
+
 module.exports = {
+  pocketbaseBasisUrl,
   voerLeesToolUit,
   bouwActieVoorstel,
   voerBevestigdeActieUit,
