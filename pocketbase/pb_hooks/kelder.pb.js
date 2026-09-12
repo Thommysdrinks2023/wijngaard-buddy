@@ -17,33 +17,37 @@
 // logica zelf via require() (zie kelder_logica.js).
 
 // ---------- POST /api/tappenmars/tankboek-boeking ----------
-routerAdd("POST", "/api/tappenmars/tankboek-boeking", (e) => {
-  const logica = require(`${__hooks}/kelder_logica.js`);
-  let resultaat = null;
-  try {
-    const b = e.requestInfo().body;
-    // Blok B — rolhandhaving vóór alles (dus ook vóór validatie)
-    const schrijfFout = logica.eisSchrijfrecht(e.auth);
-    if (schrijfFout) return e.json(403, { message: schrijfFout });
-    if (b.actie === "correctie" || b.corrigeert) {
-      const rolFout = logica.eisBeheerder(e.auth, "correctieboekingen doen");
-      if (rolFout) return e.json(403, { message: rolFout });
+for (const route of [
+  "/api/tappenmars/tankboek-boeking",
+  "/api/tappenmars/overhevelen-met-verlies",
+]) {
+  routerAdd("POST", route, (e) => {
+    const logica = require(`${__hooks}/kelder_logica.js`);
+    let resultaat = null;
+    try {
+      const b = e.requestInfo().body;
+      // Blok B — rolhandhaving vóór alles (dus ook vóór validatie)
+      const schrijfFout = logica.eisSchrijfrecht(e.auth);
+      if (schrijfFout) return e.json(403, { message: schrijfFout });
+      if (b.actie === "correctie" || b.corrigeert) {
+        const rolFout = logica.eisBeheerder(e.auth, "correctieboekingen doen");
+        if (rolFout) return e.json(403, { message: rolFout });
+      }
+      e.app.runInTransaction((txApp) => {
+        resultaat = logica.voerBoekingUit(txApp, b);
+        if (resultaat.fout) throw new Error(resultaat.fout); // rollback
+      });
+      return e.json(200, {
+        ok: true,
+        waarschuwing: resultaat.waarschuwing || "",
+        regelId: resultaat.regelId,
+      });
+    } catch (err) {
+      if (resultaat && resultaat.fout) throw new BadRequestError(resultaat.fout);
+      throw logica.leesbareFout(err);
     }
-    e.app.runInTransaction((txApp) => {
-      resultaat = logica.voerBoekingUit(txApp, b);
-      if (resultaat.fout) throw new Error(resultaat.fout); // rollback
-    });
-    return e.json(200, {
-      ok: true,
-      waarschuwing: resultaat.waarschuwing || "",
-      regelId: resultaat.regelId,
-    });
-  } catch (err) {
-    if (resultaat && resultaat.fout) throw new BadRequestError(resultaat.fout);
-    throw logica.leesbareFout(err);
-  }
-});
-
+  });
+}
 // ---------- POST /api/tappenmars/partij-aanmaken ----------
 // Maakt de partij aan en boekt (indien starttank + startvolume opgegeven)
 // direct de eerste "vullen"-regel — alles of niets.

@@ -36,6 +36,19 @@ function BackupWidget() {
     queryFn: fetchAppInstellingen,
     enabled: isIngelogd(),
   });
+  // Faalt het ophalen, dan verdween deze widget spoorloos — en dat is precies
+  // wat hier niet mag. Het besluit uit Fase 10 was "stilte is dubbelzinnig bij
+  // backups": Thomas wil kunnen zien dát de controle werkt, niet alleen een
+  // melding krijgen als er iets mis is. Een verdwenen widget leest als "alles
+  // in orde", terwijl er in werkelijkheid niets gecontroleerd is.
+  if (q.isError || instellingenQ.isError) {
+    return (
+      <div className="mt-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm text-warning">
+        ⚠️ De backupstatus kon niet gecontroleerd worden — dit zegt niets over of de backup zelf
+        gelukt is.
+      </div>
+    );
+  }
   const record = (q.data ?? []).find((r) => r.sleutel === "laatste_backup");
   if (!record?.laatst_gecontroleerd) return null;
   const laatst = new Date(record.laatst_gecontroleerd.replace(" ", "T"));

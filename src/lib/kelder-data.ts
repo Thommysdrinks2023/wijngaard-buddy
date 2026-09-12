@@ -238,6 +238,8 @@ export async function fetchTankboek(filter?: TankboekFilter): Promise<TankboekRe
 }
 
 export interface BoekingInput {
+  verlies_l?: number;
+  verlies_type?: string;
   datum: string;
   tijd?: string;
   partij: string;
@@ -262,7 +264,13 @@ export interface BoekingResultaat {
 export async function boekTankboek(input: BoekingInput): Promise<BoekingResultaat> {
   const pb = await pbOfFout();
   logAudit("aangemaakt", "tankboek", `${input.actie} · ${input.volume_l}L · ${input.datum}`);
-  return await pb.send("/api/tappenmars/tankboek-boeking", {
+  // Een oudere server mag verlies niet stil negeren: het aparte pad geeft
+  // dan 404 vóórdat er ook maar één tankboekregel wordt geschreven.
+  const endpoint =
+    input.verlies_l != null
+      ? "/api/tappenmars/overhevelen-met-verlies"
+      : "/api/tappenmars/tankboek-boeking";
+  return await pb.send(endpoint, {
     method: "POST",
     body: input,
   });
@@ -460,11 +468,11 @@ export async function fetchKelderlog(filter?: string | KelderlogFilter): Promise
   return haalLijst("het kelderlog", [], async (pb) => {
     const f: KelderlogFilter = typeof filter === "string" ? { partij: filter } : (filter ?? {});
     const delen: string[] = [];
-    if (f.partij) delen.push(`partij = "${f.partij}"`);
-    if (f.tank) delen.push(`tank = "${f.tank}"`);
-    if (f.actie) delen.push(`actie = "${f.actie}"`);
-    if (f.vanaf) delen.push(`datum >= "${f.vanaf}"`);
-    if (f.tot) delen.push(`datum <= "${f.tot}"`);
+    if (f.partij) delen.push(pb.filter("partij = {:partij}", { partij: f.partij }));
+    if (f.tank) delen.push(pb.filter("tank = {:tank}", { tank: f.tank }));
+    if (f.actie) delen.push(pb.filter("actie = {:actie}", { actie: f.actie }));
+    if (f.vanaf) delen.push(pb.filter("datum >= {:vanaf}", { vanaf: f.vanaf }));
+    if (f.tot) delen.push(pb.filter("datum <= {:tot}", { tot: f.tot }));
     const records = await pb.collection("kelderlog").getFullList({
       sort: "-datum,-created",
       filter: delen.join(" && "),

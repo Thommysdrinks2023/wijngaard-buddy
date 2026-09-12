@@ -117,37 +117,11 @@ function OverhevelenPage() {
         van_tank: vanTank,
         naar_tank: naarTank,
         volume_l: overhevelVolume,
+        verlies_l: verschil > 0 ? verschil : undefined,
+        verlies_type: verschil > 0 ? verliesType : undefined,
         verantwoordelijke: invoerder,
         notitie,
       });
-      if (verschil > 0) {
-        // Twee losse serveraanroepen: de overheveling is op dit punt AL
-        // geboekt. Valt de verbinding hier weg, dan mag de melding niet
-        // suggereren dat er niets gebeurd is — dan boekt Thomas de hele
-        // overheveling opnieuw en staat hij dubbel in het accijnsregister.
-        // (Structureel netter zou één endpoint zijn dat beide regels in één
-        // transactie schrijft, zoals partij-aanmaken en order-leveren doen.)
-        try {
-          await boekTankboek({
-            datum,
-            partij: partij!.id,
-            eigenaar: partij?.eigenaar ?? undefined,
-            actie: "verlies",
-            van_tank: vanTank,
-            volume_l: verschil,
-            verantwoordelijke: invoerder,
-            notitie: `Verlies bij overhevelen naar tank (${verliesType})${notitie ? ` — ${notitie}` : ""}`,
-          });
-        } catch (e) {
-          const fout = new Error(
-            `De overheveling IS geboekt, alleen de verliesregel van ${verschil} L niet: ${
-              e instanceof Error ? e.message : "onbekende fout"
-            }. Boek die verliesregel los na — herhaal de overheveling NIET, die staat er al.`,
-          );
-          (fout as Error & { deelsGelukt?: boolean }).deelsGelukt = true;
-          throw fout;
-        }
-      }
       return r;
     },
     onSuccess: (r) => {
@@ -162,15 +136,7 @@ function OverhevelenPage() {
       navigate({ to: "/kelder" });
     },
     onError: (e: Error) => {
-      const deelsGelukt = (e as Error & { deelsGelukt?: boolean }).deelsGelukt === true;
-      // Bij een half geslaagde boeking blijft de melding staan tot Thomas hem
-      // wegklikt, en worden de tankstanden ververst zodat het scherm de al
-      // geboekte overheveling toont in plaats van de oude situatie.
-      toast.error(e.message, deelsGelukt ? { duration: Infinity } : undefined);
-      if (deelsGelukt) {
-        qc.invalidateQueries({ queryKey: ["tanks"] });
-        qc.invalidateQueries({ queryKey: ["tankboek"] });
-      }
+      toast.error(e.message);
     },
   });
 
@@ -186,6 +152,18 @@ function OverhevelenPage() {
       verantwoordelijke: invoerder,
     });
     if (!partij) validatie.unshift({ veld: "van_tank", bericht: "Kies een gevulde brontank" });
+    if (!Number.isFinite(Number(volume)) || Number(volume) <= 0)
+      validatie.push({ veld: "volume_l", bericht: "Vul een positief, geldig vertrekvolume in." });
+    if (
+      aangekomen !== "" &&
+      (!Number.isFinite(Number(aangekomen)) ||
+        Number(aangekomen) < 0 ||
+        Number(aangekomen) > Number(volume))
+    )
+      validatie.push({
+        veld: "aangekomen",
+        bericht: "Aangekomen volume moet tussen nul en het vertrekvolume liggen.",
+      });
     if (!isGeldig(validatie)) {
       setFouten(foutenPerVeld(validatie));
       toast.error(validatie[0].bericht);
@@ -308,6 +286,9 @@ function OverhevelenPage() {
               className={veldClass}
               placeholder="leeg = gelijk aan verzonden volume"
             />
+            {fouten.aangekomen && (
+              <span className="mt-1 block text-sm text-destructive">{fouten.aangekomen}</span>
+            )}
           </label>
 
           {verschil > 0 && (

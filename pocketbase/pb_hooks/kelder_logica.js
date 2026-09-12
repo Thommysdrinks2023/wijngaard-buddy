@@ -17,14 +17,67 @@ function leesbareFout(err) {
  * die de transactiegrens passeren verliezen hun boodschap.
  */
 function voerBoekingUit(txApp, b) {
+  if (b.verlies_l != null) {
+    const verlies = Number(b.verlies_l);
+    const aangekomen = Number(b.volume_l);
+    if (
+      b.actie !== "overhevelen" ||
+      !Number.isFinite(verlies) ||
+      verlies < 0 ||
+      !Number.isFinite(aangekomen) ||
+      aangekomen < 0 ||
+      !Number.isFinite(aangekomen + verlies)
+    )
+      return {
+        fout: "Verlies is alleen toegestaan bij overhevelen en moet een geldig positief volume of nul zijn.",
+      };
+    let bron;
+    try {
+      bron = txApp.findRecordById("tanks", b.van_tank);
+    } catch {
+      return { fout: "Van-tank niet gevonden." };
+    }
+    if (aangekomen + verlies > bron.getFloat("huidig_volume_l"))
+      return { fout: "Aangekomen volume plus verlies is groter dan de inhoud van de brontank." };
+    const basis = Object.assign({}, b);
+    delete basis.verlies_l;
+    delete basis.verlies_type;
+    const transfer = voerBoekingUit(txApp, basis);
+    if (transfer.fout || verlies === 0) return transfer;
+    const verliesregel = voerBoekingUit(
+      txApp,
+      Object.assign({}, basis, {
+        actie: "verlies",
+        naar_tank: "",
+        volume_l: verlies,
+        notitie:
+          "Verlies bij overhevelen (" +
+          (b.verlies_type || "overig") +
+          ")" +
+          (b.notitie ? " — " + b.notitie : ""),
+      }),
+    );
+    // Na de eerste write moet een fout gooien: ook aanroepers die een
+    // { fout }-resultaat alleen registreren mogen geen halve boeking committen.
+    if (verliesregel.fout) throw new Error(verliesregel.fout);
+    return Object.assign({}, transfer, { verliesRegelId: verliesregel.regelId });
+  }
   if (!b.partij) return { fout: "partij is verplicht" };
   if (!b.actie) return { fout: "actie is verplicht" };
   if (!b.datum || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.datum)))
     return { fout: "datum is verplicht (jjjj-mm-dd)" };
   if (!b.verantwoordelijke) return { fout: "verantwoordelijke is verplicht" };
   const volume = Number(b.volume_l == null ? 0 : b.volume_l);
-  if (Number.isNaN(volume) || volume < 0)
+  if (!Number.isFinite(volume) || volume < 0)
     return { fout: "volume_l moet 0 of positief zijn (richting volgt uit de actie)" };
+  const boekingsdatum = new Date(b.datum + "T12:00:00Z");
+  if (
+    !Number.isFinite(boekingsdatum.getTime()) ||
+    boekingsdatum.toISOString().slice(0, 10) !== b.datum
+  )
+    return { fout: "Boekingsdatum bestaat niet. Controleer dag, maand en jaar." };
+  if (b.actie === "overhevelen" && b.van_tank && b.van_tank === b.naar_tank)
+    return { fout: "Kies voor overhevelen twee verschillende tanks." };
 
   // Regel 6 — geen toekomstboekingen (hard); terugdateren >24u = waarschuwing (zacht)
   const nu = new Date();
@@ -246,10 +299,13 @@ function voerBottelrondeUit(txApp, b) {
       : b.aantal_flessen,
   );
   const flesinhoudMl = Number(b.flesinhoud_ml);
-  if (!aantalFlessen || aantalFlessen <= 0) return { fout: "aantal_flessen moet positief zijn" };
-  if (!flesinhoudMl || flesinhoudMl <= 0) return { fout: "flesinhoud_ml moet positief zijn" };
+  if (!Number.isSafeInteger(aantalFlessen) || aantalFlessen <= 0)
+    return { fout: "aantal_flessen moet een positief geheel getal zijn" };
+  if (!Number.isFinite(flesinhoudMl) || flesinhoudMl <= 0)
+    return { fout: "flesinhoud_ml moet positief en eindig zijn" };
   const breuk = Number(b.flessen_breuk || 0);
-  if (breuk < 0) return { fout: "flessen_breuk kan niet negatief zijn" };
+  if (!Number.isSafeInteger(breuk) || breuk < 0)
+    return { fout: "flessen_breuk moet een geheel getal van nul of meer zijn" };
 
   // Het gebottelde volume (wat in de flessen zit).
   const gebotteldL = (aantalFlessen * flesinhoudMl) / 1000;

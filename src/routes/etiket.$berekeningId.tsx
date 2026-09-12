@@ -49,7 +49,30 @@ function EtiketPagina() {
     );
   }
 
-  if (berekeningQ.isError || (berekeningQ.isFetched && !berekening)) {
+  // Publieke etiketpagina (QR op de fles, Vo. 1169/2011): hier scant een klant,
+  // geen beheerder. Daarom geen technische foutmelding — maar wél onderscheid
+  // tussen "bestaat niet" en "kon even niet geladen worden". Die laatste als
+  // definitief brengen ("niet meer beschikbaar") is onjuist én zou een klant
+  // wegsturen bij een hapering in het bereik.
+  if (berekeningQ.isError) {
+    return (
+      <div className="mx-auto max-w-md space-y-3 px-4 py-10 text-center text-neutral-700">
+        <p className="text-sm">
+          De productinformatie kon nu niet geladen worden. Controleer je internetverbinding en
+          probeer het opnieuw.
+        </p>
+        <button
+          type="button"
+          onClick={() => berekeningQ.refetch()}
+          className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium"
+        >
+          Opnieuw proberen
+        </button>
+      </div>
+    );
+  }
+
+  if (berekeningQ.isFetched && !berekening) {
     return (
       <div className="mx-auto max-w-md px-4 py-10 text-center text-neutral-700">
         <p className="text-sm">Deze productinformatie is niet (meer) beschikbaar.</p>

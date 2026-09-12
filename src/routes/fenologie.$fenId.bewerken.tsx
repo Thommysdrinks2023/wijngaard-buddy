@@ -6,6 +6,7 @@ import { deleteFenologie, fetchFenologieById, fetchRijen, updateFenologie } from
 import { FENOLOGIE_MOMENTEN, type FenologieMoment } from "@/lib/types";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
+import { ErrorState } from "@/components/error-state";
 import { Loader2, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/fenologie/$fenId/bewerken")({
@@ -91,6 +92,25 @@ function FenologieBewerkenPage() {
         <AppHeader back title="Fenologie bewerken" />
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </>
+    );
+  }
+
+  // Een mislukte query is iets anders dan een niet-bestaande regel. Zonder dit
+  // onderscheid kreeg je bij een onbereikbare server "Fenologie-regel niet
+  // gevonden" te zien — dat suggereert dat je invoer weg is, terwijl hij er
+  // gewoon staat. Precies het faalpatroon uit Fase 8/10/19.
+  if (fenQ.isError) {
+    return (
+      <>
+        <AppHeader back title="Fenologie bewerken" />
+        <div className="mx-auto max-w-screen-md px-3 py-6">
+          <ErrorState
+            message="De fenologie-regel kon niet geladen worden. Hij is niet verdwenen — controleer de verbinding en probeer opnieuw."
+            error={fenQ.error}
+            onRetry={() => fenQ.refetch()}
+          />
         </div>
       </>
     );
