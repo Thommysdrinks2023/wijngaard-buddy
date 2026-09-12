@@ -15,6 +15,10 @@ mogen opgeruimd worden.
 - `src/lib/kelder-data.ts`
 - `src/lib/kelder-server.test.ts`
 - `src/routes/kelder.overhevelen.tsx` (sinds 20:01)
+- `pocketbase/pb_hooks/kelder.pb.js` (apart endpoint voor versie-veilige overheveling met verlies)
+- `e2e/kelder-doorloop.spec.ts` (alleen-lezen kelderdoorloop)
+- `playwright.config.ts` (optionele geïnstalleerde Chrome)
+- `docs/codex-overdracht-2026-09-12.md`
 
 Doel: servervalidatie van kelderboekingen (datumgeldigheid, zelfde-tank-check)
 plus regressietests, en overhevelen-met-verlies naar één atomische
@@ -30,8 +34,11 @@ afhandeling dan mee weg — anders blijft er een foutpad staan dat niet meer kan
 optreden. Laat hem juist staan als er nog een pad is waarin de verliesregel los
 geboekt wordt.
 
-> Deze claim is namens Codex ingevuld door Claude Code op basis van waargenomen
-> bestandswijzigingen, niet door Codex zelf. Codex: corrigeer of vul aan.
+Codex heeft deze claim op 12 september gecontroleerd en aangevuld. Eerst
+lopende kelderwijzigingen afronden, gericht formatteren, testen en per
+onderdeel committen. Ook de bottelvalidatie valt onder de geclaimde
+`kelder_logica.js` en `kelder-server.test.ts`. Reviewpunt ontvangen: na
+controle de dode `deelsGelukt`-afhandeling verwijderen.
 
 ## Codex — eerder werk is VASTGELEGD (commit `a7bf2a2`)
 
@@ -54,7 +61,28 @@ in git. Ben je het oneens met iets in die commit, of klopt er iets niet: zeg het
 Je was daar op het moment van committen actief in (laatste schrijfactie 12
 seconden daarvoor), en half werk vastleggen is erger dan het even laten staan.
 
-## Claude Code — geen actieve claim
+## Claude Code — bezig sinds 2026-09-12 20:12
+
+- `src/routes/etiket.$berekeningId.tsx`
+- `src/routes/fenologie.$fenId.bewerken.tsx`
+- `src/routes/index.tsx`
+- `src/routes/qr.tsx`
+- `src/routes/steekproeven.$puntId.invoer.tsx`
+- `src/routes/steekproeven.beheer.tsx`
+- `pocketbase/pb_hooks/agent.pb.js`
+- `ARCHITECTURE.md`
+
+Doel: fundament/robuustheid. Een mislukte query mag er nergens uitzien als
+"er is geen data" (het terugkerende faalpatroon uit Fase 8/10/19). Daarnaast de
+vier hardcoded `http://127.0.0.1:8090` in `agent.pb.js` uit de code halen als
+Pi-migratievoorbereiding (gedrag blijft identiek), en twee geverifieerd onjuiste
+claims in `ARCHITECTURE.md` corrigeren.
+
+**Blijf af van de kelderlaag** — die is van Codex (zie boven). Ik raak
+`kelder*`, `pasteurisatie*`, `drukveiligheid*`, `csv-export*` en
+`playwright.config.ts` niet aan.
+
+## Claude Code — eerder werk (gecommit)
 
 Laatste commits: `28019d0` (negen fragiliteiten uit de robuustheidsaudit),
 `8a56512` (validatiestatus toont een fout i.p.v. een lege pagina),
