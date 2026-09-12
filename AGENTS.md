@@ -2,6 +2,27 @@
 
 Projectinstructies voor Codex. Lees dit aan het begin van elke sessie. Lees ook `ARCHITECTURE.md` — het autoritatieve systeemontwerp voor de uitbouw naar **Tappenmars Buddy** (modulair bedrijfsdashboard met Wijngaard/Kelder/Voorraad). Kelder Fase 0–2, de kelder-uitbreiding, AI-agent Fase 3 én Botteling & Voorraad (Fase 4) zijn gebouwd — zie de `DECISIONS-*.md`-bestanden voor de precieze, geteste staat per onderdeel (deze wijkt op punten af van `ARCHITECTURE.md`, dat het oorspronkelijke ontwerp beschrijft, niet altijd de uiteindelijk gebouwde versie).
 
+> ## ⚠️ LEES EERST — er werkt meer dan één AI-agent aan dit project
+>
+> Claude Code én Codex/ChatGPT werken in **dezelfde map op dezelfde branch**.
+> Op 11 september 2026 zaten ze aantoonbaar in elkaars werk: hetzelfde bestand
+> dubbel bewerkt, een tijdelijk niet-compileerbare boom, en een testrun die
+> faalde door bouwvervuiling.
+>
+> **Vóór je één bestand aanraakt:**
+>
+> 1. Lees `docs/SAMENWERKING-AGENTS.md` — de volledige afspraken, het gedeelde
+>    doel, en wat geen enkele agent zelfstandig mag doen.
+> 2. Kijk in `docs/agent-claims.md` wie op dit moment waar werkt, en **claim je
+>    eigen bestanden daar** voor je begint.
+>
+> Kort samengevat: claim smal, commit zodra het compileert en lint schoon is,
+> laat de boom nooit kapot achter, `git add <pad>` in plaats van `git add -A`,
+> en draai nooit `format`/`lint --fix` over de hele repo.
+>
+> Elkaars werk nakijken op fouten en verbeteringen is **uitdrukkelijk gewenst** —
+> mits met bewijs en eerlijk over je zekerheid. Zie §4 van dat document.
+
 ## Wat is dit?
 
 **Wijngaard Buddy** is een Progressive Web App (PWA) voor het beheren van wijngaard **De Tappenmars** in Den Ham (Overijssel). Eigenaar: Thomas (thomas@tappenmars.nl). De app groeit uit tot **Tappenmars Buddy**: `/` is een modulekiezer, `/wijngaard` is deze bestaande wijngaardmodule, `/kelder/*` is de kelder-uitbouw (zie `ARCHITECTURE.md`).
