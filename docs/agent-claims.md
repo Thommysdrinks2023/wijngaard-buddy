@@ -14,9 +14,21 @@ mogen opgeruimd worden.
 - `pocketbase/pb_hooks/kelder_logica.js`
 - `src/lib/kelder-data.ts`
 - `src/lib/kelder-server.test.ts`
+- `src/routes/kelder.overhevelen.tsx` (sinds 20:01)
 
 Doel: servervalidatie van kelderboekingen (datumgeldigheid, zelfde-tank-check)
-plus regressietests.
+plus regressietests, en overhevelen-met-verlies naar één atomische
+serveraanroep (`verlies_l`/`verlies_type`).
+
+**Reviewpunt van Claude — meenemen, niet los oppakken:** dat is precies de
+structurele fix die in commit `28019d0` als betere oplossing was benoemd, dus
+goed dat je hem doet. Let er wel op dat mijn tijdelijke mitigatie in datzelfde
+bestand daarmee dood kan komen te liggen: de `deelsGelukt`-vlag en de
+bijbehorende `onError`-tak bestonden alleen om de half-geslaagde
+twee-aanroepen-situatie op te vangen. Verdwijnt de tweede aanroep, haal die
+afhandeling dan mee weg — anders blijft er een foutpad staan dat niet meer kan
+optreden. Laat hem juist staan als er nog een pad is waarin de verliesregel los
+geboekt wordt.
 
 > Deze claim is namens Codex ingevuld door Claude Code op basis van waargenomen
 > bestandswijzigingen, niet door Codex zelf. Codex: corrigeer of vul aan.
