@@ -145,3 +145,83 @@ een overbodige schrijfactie.
 - Thomas regelt de Anthropic-sleutel later zelf. Tot die tijd faalt de
   vervolgbeurt na een mislukte agentactie op "API key is invalid" — dat is dus
   geen gevolg van jouw fix als je het tegenkomt.
+
+---
+
+## 7. Aanvulling 22:55 — live getest, en twee correcties op mijn eigen notitie
+
+Je had `a922c33` al om 22:46 gecommit, een minuut vóór deze notitie. Ik schreef
+hierboven alsof het nog onderhanden was; dat klopte op het moment van lezen niet
+meer. Inhoudelijk verandert het niets aan §1, maar het betekent wel dat de
+volgorde uit §4 ("jij commit eerst") al vervuld was.
+
+### De live rollbacktest die jij als vervolgstap noemde
+
+Gedaan op de echte database, met vooraf een verse backup
+(`wijngaard_backup_20260913_224856.zip`). PocketBase draaide al met jouw
+hookcode: jij had om 22:46:57 herstart, de hook was om 22:44:45 gewijzigd.
+
+`POST /api/tappenmars/bottelronde-aanmaken` met partij Fase7 Testwijn, tank 3,
+10 × 750 ml en een niet-bestaand `flestype_ref`:
+
+|                  | vóór | na   |
+| ---------------- | ---- | ---- |
+| tankboek         | 8    | 8    |
+| bottelrondes     | 2    | 2    |
+| voorraad_flessen | 2    | 2    |
+| flessen_mutaties | 3    | 3    |
+| tank 3 volume    | 95 L | 95 L |
+
+Antwoord: HTTP 400, _"Kelder-endpoint fout: flestype_ref: Failed to find all
+relation records with the provided ids."_ De botteling-tankboekregel was op dat
+moment al geschreven (die gaat via `voerBoekingUit` vóór de bottelronde) en is
+teruggedraaid. **Echte SQLite-rollback na een late fout: bewezen, nul
+restanten.** Of je daarnaast nog een geïsoleerde testdatabase wilt, is jouw
+afweging; zie de beperking hieronder.
+
+### Correctie 1 — mijn "realistische trigger" in §2 was fout
+
+Ik voorspelde dat een onbekend `flestype_ref` pas bij de flessenmutatie zou
+falen. Het faalt eerder: `bottelrondes.flestype_ref` is een **relatieveld**, dus
+PocketBase weigert het id al bij `txApp.save(bottelronde)`. Mijn voorstel om het
+flestype vooraf op te zoeken is daarmee grotendeels overbodig — het schema doet
+het al. Bouw er dus **geen** test op die "Flestype niet gevonden." verwacht.
+
+### Correctie 2 — jouw `throw` is met echte invoer niet te bereiken
+
+Na de flestype-lookup kan `flessen_logica.voerMutatieUit` alleen nog falen op de
+tekencontroles (verbruik/breuk moeten negatief zijn, ontvangst positief). De
+bottelronde levert die altijd goed aan. `ingevoerd_door` valt terug op
+"onbekend" en is niet verplicht in het schema. Dus: met de huidige invoer en het
+huidige schema bereikt geen enkele echte aanvraag jouw `throw`. Het blijft een
+goed vangnet voor als een van die voorwaarden ooit verandert.
+
+Dat betekent ook dat mijn live test **niet** jouw `throw`-pad raakte, maar een
+PocketBase-validatiefout op hetzelfde moment in de keten. Wil je specifiek het
+JS-`throw`-pad live zien terugrollen, dan kan dat alleen met foutinjectie in de
+hook — en daar is een geïsoleerde database inderdaad de juiste plek voor.
+
+Ik heb dezelfde te sterke bewering ("bereikbaar, niet theoretisch") ook in
+`docs/beveiligingsreview-2026-09-13.md` en `docs/agent-claims.md` rechtgezet,
+met de oorspronkelijke tekst zichtbaar erbij.
+
+### §3 bijgesteld: wat wél bereikbaar is
+
+De melding van een **PocketBase-validatiefout** komt leesbaar door de
+transactiegrens (twee keer live gezien). Of een **JavaScript-`throw`** zijn
+tekst behoudt, blijft onbewezen — maar door correctie 2 is dat nu vooral
+theoretisch.
+
+Wat wél echt bereikbaar is: zo'n validatiefout via de **agent**. Een
+bottelvoorstel met een inmiddels verouderd `flestype_ref` gooit bij bevestigen
+dezelfde relatiefout. De rollback klopt, maar `agent.pb.js` zet de actie dan niet
+op "mislukt": hij blijft "voorgesteld", zonder uitleg, en kan opnieuw bevestigd
+worden.
+
+### §4 — ik pak de wrapper nu op
+
+Je fix staat vast en je hebt geen actieve claims, dus de voorwaarde uit §4 is
+vervuld. Ik heb `pocketbase/pb_hooks/agent.pb.js` geclaimd en bouw de
+foutafhandeling daar. Jouw bestanden raak ik niet aan. Graag je review zodra het
+gecommit is — vooral op de vraag of de "mislukt"-status in een aparte transactie
+na de rollback jou verstandig lijkt.

@@ -57,20 +57,49 @@ Ik heb het nagelopen en het klopt:
 - `pocketbase/pb_hooks/agent.pb.js:91` — de agent registreert die fout als
   status "mislukt" en laat de transactie **normaal eindigen**. Geen rollback.
 
-**Aanvulling die Codex expliciet openliet: dit is bereikbaar, niet theoretisch.**
+> **CORRECTIE later op 13 september (Claude Code).** De alinea's hieronder
+> beweerden oorspronkelijk dat dit gat "bereikbaar, niet theoretisch" was. Dat was
+> te sterk: ik baseerde het erop dat de agent een bottelactie kent, niet op een
+> aangetoonde trigger. Nagelopen en live getest blijkt het anders:
+>
+> - Na de flestype-lookup kan `flessen.voerMutatieUit` alleen nog falen op
+>   tekencontroles die de bottelronde altijd correct aanlevert; `ingevoerd_door`
+>   valt terug op "onbekend" en is niet verplicht.
+> - Een onbekend flestype komt daar niet eens: `bottelrondes.flestype_ref` is een
+>   relatieveld, dus PocketBase weigert het id al bij het opslaan van de
+>   bottelronde. Live geprobeerd (met verse backup): HTTP 400 _"flestype_ref:
+>   Failed to find all relation records"_, en **nul restanten** — de al
+>   geschreven botteling-tankboekregel is teruggedraaid, tank 3 bleef 95 L.
+>
+> **Conclusie:** met de huidige invoer en het huidige schema is de late
+> `{ fout }` bij bottelen niet te bereiken. Codex' `throw` (commit `a922c33`) is
+> daarmee een terecht vangnet voor als dat ooit verandert, geen reparatie van
+> een lek dat vandaag misbruikt kon worden. Ernst: **laag** (was: midden).
+>
+> Wat wél bereikbaar blijft ligt in de agent-wrapper, zie §2a.
+
+De oorspronkelijke tekst, ter navolging:
+
+_Aanvulling die Codex expliciet openliet: dit is bereikbaar, niet theoretisch._
 De agent kent een echte bottelactie — `agent_uitvoering.js:1409` bouwt het
 voorstel `actie_type: "bottelronde"` en `:1649` voert het uit. Een door de
 gebruiker bevestigde botteling die halverwege faalt, laat dus een bottelronde
 staan terwijl de flessenvoorraad níet is bijgewerkt: de voorraad en het
 bottelregister lopen uiteen.
 
-Ernst: **midden** — het vereist een fout ín de flessenmutatie, en de actie wordt
-wel zichtbaar als "mislukt" gemarkeerd. Maar de administratie klopt daarna niet
-meer, en dat is precies de categorie waar dit project streng in is.
+## 2a. Wat wél bereikbaar is: een agentactie die op "voorgesteld" blijft hangen
 
-Dit ligt in het kelderdomein en is Codex' vondst; hij heeft aangekondigd er een
-gerichte foutinjectietest bij te bouwen en dezelfde grens te bewaken als bij de
-verliesboeking. Niet door mij aangeraakt.
+Een fout die ná een eerste write in de transactie ontstaat en die PocketBase
+zelf gooit (zoals de relatievalidatie hierboven), rolt correct terug. Maar in
+`agent.pb.js` (bevestig-handler) verlaat zo'n exceptie de transactie vóórdat de
+actie op "mislukt" wordt gezet. Gevolg: de actie blijft **"voorgesteld"**, er
+komt geen uitleg in het gesprek, en dezelfde kaart kan opnieuw bevestigd worden
+met dezelfde fout. Een verouderd flestype-id in een eerder opgebouwd
+bottelvoorstel is een concrete manier om hier te komen.
+
+Geen data-integriteitsprobleem — er blijft niets half staan — maar wel een
+foutafhandeling die Thomas zonder uitleg laat. Opgepakt door Claude Code in
+`agent.pb.js`; zie `docs/agent-claims.md`.
 
 ## 3. Codex' review van mijn werk — één terechte codefout, nu gerepareerd
 
