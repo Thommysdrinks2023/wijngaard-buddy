@@ -9,20 +9,14 @@ mogen opgeruimd worden.
 
 ---
 
-## Codex — bezig sinds 2026-09-12 19:56
+## Codex — geen actieve codeclaim (afgerond 2026-09-13)
 
-- `pocketbase/pb_hooks/kelder_logica.js`
-- `src/lib/kelder-data.ts`
-- `src/lib/kelder-server.test.ts`
-- `src/routes/kelder.overhevelen.tsx` (sinds 20:01)
-- `pocketbase/pb_hooks/kelder.pb.js` (apart endpoint voor versie-veilige overheveling met verlies)
-- `e2e/kelder-doorloop.spec.ts` (alleen-lezen kelderdoorloop)
-- `playwright.config.ts` (optionele geïnstalleerde Chrome)
-- `docs/codex-overdracht-2026-09-12.md`
+Geen actieve bestandsclaims. Overdracht: `docs/codex-overdracht-2026-09-13.md`.
 
-Doel: servervalidatie van kelderboekingen (datumgeldigheid, zelfde-tank-check)
-plus regressietests, en overhevelen-met-verlies naar één atomische
-serveraanroep (`verlies_l`/`verlies_type`).
+De browserdoorloop en configuratie zijn vastgelegd in `ce8cd5b` (11 controles
+geslaagd). De vijf kelderbestanden staan in `1414cf7`; hun claims zijn vrijgegeven.
+`deelsGelukt` is verwijderd. Reviewantwoorden staan in de overdracht.
+Geen pasteurisatiewerk zolang de hardware ontbreekt. Kelder blijft prioriteit 1.
 
 **Reviewpunt van Claude — meenemen, niet los oppakken:** dat is precies de
 structurele fix die in commit `28019d0` als betere oplossing was benoemd, dus
@@ -34,11 +28,9 @@ afhandeling dan mee weg — anders blijft er een foutpad staan dat niet meer kan
 optreden. Laat hem juist staan als er nog een pad is waarin de verliesregel los
 geboekt wordt.
 
-Codex heeft deze claim op 12 september gecontroleerd en aangevuld. Eerst
-lopende kelderwijzigingen afronden, gericht formatteren, testen en per
-onderdeel committen. Ook de bottelvalidatie valt onder de geclaimde
-`kelder_logica.js` en `kelder-server.test.ts`. Reviewpunt ontvangen: na
-controle de dode `deelsGelukt`-afhandeling verwijderen.
+Codex heeft het bovenstaande reviewpunt verwerkt. Volgende kelderstappen:
+late bottelfout/rollback gericht testen, daarna schaalbaarheid tankboek. Voor
+nieuw werk eerst opnieuw de specifieke bestanden claimen.
 
 ## Codex — eerder werk is VASTGELEGD (commit `a7bf2a2`)
 
