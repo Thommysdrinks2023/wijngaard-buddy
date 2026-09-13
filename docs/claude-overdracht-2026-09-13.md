@@ -286,3 +286,45 @@ uitvoeringswrites óók blijven staan, en dat is precies het gat.
 
 PocketBase is om ~22:55 herstart om de hook te laden (health 200 na 2 s). Er
 was op dat moment geen activiteit van jou in de code.
+
+---
+
+## 9. Voorwerk voor jouw volgende stap: schaalbaarheid tankboek (alleen gelezen)
+
+Je noemde dit als volgende kelderstap en waarschuwde terecht dat simpel pagineren
+accijns en jaaroverzicht onvolledig laat rekenen. Ik heb per aanroeper nagelopen
+wát er van het tankboek gebruikt wordt. Niets aangepast, geen claim nodig; het
+is jouw domein.
+
+**Eerst de realiteit:** het tankboek telt vandaag **8 regels**. Dit is
+toekomstbestendigheid, geen brandend probleem — dat zei je zelf al.
+
+### Aanroepers zonder filter (halen het hele register op)
+
+| Aanroeper                     | Gebruikt eigenlijk                                                                                                                                                                  | Veilige begrenzing                                         | Valkuil                                                                                                                                                                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kelder.accijns.tsx:103`      | alleen `actie === "verlies"` binnen de aangifteperiode (r.116–121). `berekenAccijnsOverzicht` krijgt het tankboek **niet** mee (r.146–156: alleen bottelrondes, mutaties, voorraad) | `fetchTankboek({ vanaf: periode.van, tot: periode.tot })`  | queryKey is nu `["tankboek", "accijns"]` **zonder periode** — met een periodefilter moet de periode in de key, anders blijft bij wisselen de vorige periode staan                                                        |
+| `kelder.jaaroverzicht.tsx:93` | alleen `actie === "verlies"` van partijen uit de gekozen jaargang (r.148–151)                                                                                                       | server-filter op `actie = "verlies"` (klein aantal regels) | **geen datumfilter**: een partij van jaargang 2025 kan in 2026 verlies boeken, dan valt die weg. `TankboekFilter` kent nog geen `actie`-veld. Hou `tankboekQ` in `bronQueries` (r.97): daar hangt de afsluitblokkade aan |
+| `controle-pakket.ts:175`      | alleen de volledige historie van partijen die in de periode gebotteld zijn (`r.partij === b.partij`)                                                                                | `fetchTankboek({ partij })` per unieke gebottelde partij   | **auto-cancellation** (CLAUDE.md): `fetchTankboek` zet geen `requestKey: null`. Die aanroepen parallel met `Promise.all` doen annuleert ze elkaar stil; sequentieel `await` of `requestKey: null`                        |
+| `kelder.tankboek.tsx:39`      | de registerpagina zelf; met alle filters leeg (de standaardstand) = alles                                                                                                           | paginering of een standaardperiode                         | ontwerpkeuze: dit verandert wat Thomas standaard in zijn register ziet. Niet stilzwijgend doen                                                                                                                           |
+
+### Aanroepers mét filter, maar die toch meer ophalen dan nodig
+
+| Aanroeper                           | Gebruikt eigenlijk                                                                              | Veilige begrenzing                                                                                                                                        |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kelder.overhevelen.tsx:79`         | alleen `doelTankboekQ.data?.[0]?.datum` — de nieuwste regel, voor de hygiënewaarschuwing (r.85) | één regel (`getList(1, 1)` met dezelfde sortering). De reinigingsquery ernaast (`fetchKelderlog({ tank, actie: "reiniging" })`) gebruikt ook alleen `[0]` |
+| `kelder.tanks.$tankId.tsx:39`       | de volledige tankhistorie wordt echt getoond (r.611–637)                                        | groeit per tank over jaren; paginering is hier UX, geen correctheid                                                                                       |
+| `kelder.partijen.$partijId.tsx:105` | historie van één partij                                                                         | van nature begrensd                                                                                                                                       |
+
+### Wat ik zou aanraden, als jij het oppakt
+
+1. **accijns** en **overhevelen** eerst: kleinste wijziging, geen correctheidsrisico
+   mits de queryKey-valkuil wordt meegenomen.
+2. **jaaroverzicht** met een `actie`-filter in `TankboekFilter` (jouw
+   `kelder-data.ts`).
+3. **controlepakket** per partij, sequentieel.
+4. **registerpagina en tankdetail** pas na een keuze van Thomas over wat hij
+   standaard wil zien.
+
+Wil je dat ik een deel overneem of je wijziging review: zet het in je notitie.
+Ik begin er niet aan zonder dat.
