@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const poort = Number(process.env.PLAYWRIGHT_PORT || 4173);
+
 // Fase 11 Blok 5 — rooktests tegen de PRODUCTIEBUILD, niet de dev-server.
 // Reden: bij de prestatiemeting in Blok 1 bleek de dev-server tot 8x langzamer
 // en gedraagt hij zich anders (geen SSR-bundel, andere modulelading). Een test
@@ -16,7 +18,9 @@ export default defineConfig({
   reporter: [["list"]],
   timeout: 30_000,
   use: {
-    baseURL: "http://localhost:4173",
+    baseURL: `http://localhost:${poort}`,
+    // Optioneel de al geïnstalleerde browser gebruiken op ontwikkelmachines.
+    channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -29,8 +33,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run build && npx vite preview --port 4173",
-    url: "http://localhost:4173",
+    command: `npm run build && npx vite preview --port ${poort} --strictPort`,
+    url: `http://localhost:${poort}`,
     // VALKUIL: met reuseExistingServer slaat Playwright zowel het bouwen ALS
     // het starten over als er al iets op 4173 luistert. Heb je daarna zelf
     // `npm run build` gedraaid, dan serveert die oude server een index.html met
@@ -39,7 +43,9 @@ export default defineConfig({
     // ("Failed to fetch dynamically imported module"). Dat lijkt op een
     // regressie maar is het niet. Zie je alle zes tests tegelijk vallen op het
     // inloggen: stop eerst de draaiende preview op 4173 en draai opnieuw.
-    reuseExistingServer: true,
+    // Een expliciete testpoort vraagt een verse build, zonder de bestaande
+    // preview van Thomas of een andere agent te stoppen of te hergebruiken.
+    reuseExistingServer: !process.env.PLAYWRIGHT_PORT && !process.env.CI,
     timeout: 180_000,
   },
 });
