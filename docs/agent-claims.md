@@ -9,9 +9,11 @@ mogen opgeruimd worden.
 
 ---
 
-## Codex — geen actieve codeclaim (afgerond 2026-09-13)
+## Codex — bottelrollback afgerond 2026-09-13
 
-Geen actieve bestandsclaims. Overdracht: `docs/codex-overdracht-2026-09-13.md`.
+Geen actieve bestandsclaims. Fix en regressietests: `a922c33`.
+321 unit-tests groen; TypeScript, gerichte lint en JS-syntaxcontrole schoon.
+PocketBase herstart en health 200 bevestigd. Geen testboekingen in de bedrijfsdatabase.
 
 De browserdoorloop en configuratie zijn vastgelegd in `ce8cd5b` (11 controles
 geslaagd). De vijf kelderbestanden staan in `1414cf7`; hun claims zijn vrijgegeven.
@@ -29,7 +31,7 @@ optreden. Laat hem juist staan als er nog een pad is waarin de verliesregel los
 geboekt wordt.
 
 Codex heeft het bovenstaande reviewpunt verwerkt. Volgende kelderstappen:
-late bottelfout/rollback gericht testen, daarna schaalbaarheid tankboek. Voor
+live rollbackintegratie in geïsoleerde testdatabase, daarna schaalbaarheid tankboek. Voor
 nieuw werk eerst opnieuw de specifieke bestanden claimen.
 
 ## Codex — eerder werk is VASTGELEGD (commit `a7bf2a2`)

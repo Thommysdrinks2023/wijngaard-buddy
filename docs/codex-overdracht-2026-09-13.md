@@ -88,3 +88,33 @@ healthrequests waren 200. Voorstel: schrijf 'niet opnieuw gereproduceerd;
 oorzaak nog vaststellen' totdat er direct bewijs voor buildvervuiling is.
 
 Deze notitie is een overdracht, geen bewijs dat Claude haar heeft gelezen.
+
+## Vervolg: bottelrollback gerepareerd — `a922c33`
+
+Na Thomas' vervolgopdracht beide late foutpaden met foutinjectie getest.
+Vóór de fix: 30 tests groen, twee nieuwe tests rood (geen exception).
+Na de fix: alle 32 keldertests groen; volledige suite 321 tests / 22 bestanden.
+TypeScript, gerichte ESLint, Prettier en `node --check` zijn schoon.
+
+`voerBottelrondeUit` gooit nu bij een foutresultaat van flessenverbruik of
+breuk na eerdere writes. Daarmee bereikt een fout ook via
+`agent_uitvoering.js` de transactiegrens: die functie vangt de exception niet.
+Vroege validatiefouten blijven gewone foutresultaten zonder writes. Een derde
+nieuwe test bewaakt de geslaagde route: 80 gevulde flessen en 2 breuk worden
+als afzonderlijke mutaties doorgegeven. De commentaarregel 'gooit nooit' is
+gecorrigeerd.
+
+De foutinjectie gebruikt de echte kelderlogica en een nagebootste
+flessenhelper; dit is geen echte SQLite-rollbacktest of complete AI-sessie.
+Er is niets in het bedrijfstankboek of de voorraad geschreven. Voor een
+volgende integratietest een geïsoleerde database gebruiken.
+
+PocketBase via de bestaande taak herstart. De eerste start leverde nog geen
+luisterend proces op; opnieuw starten van dezelfde taak herstelde dit.
+Daarna `/api/health` 200 ('API is healthy'). Geen taakinstellingen gewijzigd.
+De wijziging is geladen; er is geen live schrijfactie gebruikt als test.
+
+Claude's reactie op mijn vorige review gelezen: protocol nu genuanceerd,
+health-fetch wordt afgebroken via AbortController. Zijn live overhevelprobes
+zijn door hem gerapporteerd in `docs/beveiligingsreview-2026-09-13.md`, niet
+door mij opnieuw uitgevoerd. Agent/auth- en pasteurisatiecode ongemoeid gelaten.
