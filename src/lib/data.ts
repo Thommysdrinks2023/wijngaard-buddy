@@ -72,10 +72,19 @@ export async function pingPb(): Promise<boolean> {
     // aanroept) de eerste, die dan als "offline" wordt gerapporteerd terwijl de
     // server prima bereikbaar is. Ontdekt bij Fase 3 (agent-gesprekkenlijst leek na
     // een herlaad leeg), maar gold voor de hele app. Zie DECISIONS-FASE3.md.
-    await Promise.race([
-      pb.health.check({ requestKey: null }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3500)),
-    ]);
+    //
+    // Promise.race alleen is niet genoeg: die laat de verliezer gewoon
+    // doorlopen, dus bij een timeout bleef het health-verzoek openstaan tot de
+    // browser het zelf opgaf. Op een trage verbinding stapelen die zich op.
+    // Daarom een AbortController, zodat de fetch bij de timeout echt stopt.
+    // (Gevonden door Codex bij review van deze functie, 13 september 2026.)
+    const afbreker = new AbortController();
+    const tijdklok = setTimeout(() => afbreker.abort(), 3500);
+    try {
+      await pb.health.check({ requestKey: null, signal: afbreker.signal });
+    } finally {
+      clearTimeout(tijdklok);
+    }
     setPbStatus("online");
     // server is weer bereikbaar: offline aangemaakte records op de achtergrond syncen
     if (!flushBezig && syncQueueCount() > 0) {

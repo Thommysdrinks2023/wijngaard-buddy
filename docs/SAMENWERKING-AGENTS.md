@@ -181,8 +181,19 @@ Deze commando's raken bestanden van de ander en maken zijn diff onleesbaar:
   volledige `npx playwright test`: kijk in `docs/agent-claims.md` of de ander
   bezig is, en of `git status` stabiel is.
 - **Faalt een test onverwacht: draai hem eerst los opnieuw** (`--grep`). Slaagt
-  hij dan wel, dan was het vrijwel zeker bouwvervuiling — geen regressie.
-  Vermeld dat expliciet, verzwijg het niet.
+  hij dan wél, dan weet je precies één ding: hij is niet opnieuw
+  gereproduceerd. Dat is géén bewijs van bouwvervuiling — een wisselvallige
+  netwerkfout of een timingbug geeft exact hetzelfde patroon. Schrijf dus
+  "niet opnieuw gereproduceerd, oorzaak nog vast te stellen" totdat je direct
+  bewijs hebt (bijvoorbeeld een trace met een afgebroken request, of een
+  aantoonbaar half geschreven bestand tijdens de build). Verzwijg de mislukking
+  nooit.
+
+  > Deze regel is op 13 september aangescherpt nadat Codex terecht opmerkte dat
+  > de oude formulering ("vrijwel zeker bouwvervuiling — geen regressie") een
+  > conclusie trok die niet uit één geslaagde herhaling volgt, en bovendien in
+  > strijd was met de regel hieronder. Precies waar §4 voor bedoeld is.
+
 - `retries: 0` in de Playwright-config is bewust. Een wisselvallige test is een
   bevinding, geen ruis om weg te retryen.
 - PocketBase-hooks herladen **niet** op Windows. Wijzig je iets in `pb_hooks/`,
