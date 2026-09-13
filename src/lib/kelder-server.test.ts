@@ -19,9 +19,10 @@ class TestRecord {
   }
 }
 
-function omgeving() {
+function omgeving(foutBij?: string) {
   const records = new Map<string, TestRecord>();
   const schrijft: TestRecord[] = [];
+  const flessenMutaties: Record<string, unknown>[] = [];
   for (const [id, collectie, waarden] of [
     ["partij", "partijen", { eigenaar: "eigenaar" }],
     [
@@ -53,7 +54,22 @@ function omgeving() {
   };
   runInNewContext(
     readFileSync(new URL("../../pocketbase/pb_hooks/kelder_logica.js", import.meta.url), "utf8"),
-    { module, Record: TestRecord },
+    {
+      module,
+      Record: TestRecord,
+      __hooks: "test-hooks",
+      require: (pad: string) => {
+        if (pad !== "test-hooks/flessen_logica.js") throw new Error(`Onverwachte module: ${pad}`);
+        return {
+          huidigeStand: () => 1000,
+          voerMutatieUit: (_app: unknown, invoer: Record<string, unknown>) => {
+            flessenMutaties.push(invoer);
+            if (invoer.mutatie_type === foutBij) return { fout: `Testfout bij ${foutBij}` };
+            return { regelId: `flessen-${flessenMutaties.length}` };
+          },
+        };
+      },
+    },
   );
   const app = {
     findRecordById: (_collectie: string, id: string) => {
@@ -87,10 +103,29 @@ function omgeving() {
       ingevoerd_door: "test",
       ...input,
     });
-  return { boek, bottel, records, schrijft };
+  return { boek, bottel, records, schrijft, flessenMutaties };
 }
 
 describe("Kelder — echte serverboekingslogica", () => {
+  it.each(["verbruik_botteling", "breuk"])("gooit bij late bottelfout: %s", (foutBij) => {
+    const { bottel, schrijft, flessenMutaties } = omgeving(foutBij);
+    expect(() => bottel({ flestype_ref: "flestype", flessen_breuk: 2 })).toThrow(
+      `Testfout bij ${foutBij}`,
+    );
+    // De fout ontstaat bewust na de writes: alleen gooien dwingt de
+    // transactie-aanroeper (ook de agent) tot afbreken. Geen SQLite-mockclaim.
+    expect(schrijft.some((r) => r.collectie === "bottelrondes")).toBe(true);
+    expect(schrijft.some((r) => r.collectie === "voorraad_flessen")).toBe(true);
+    expect(flessenMutaties.at(-1)?.mutatie_type).toBe(foutBij);
+  });
+  it("boekt gevuld aantal en breuk afzonderlijk bij gekoppeld flestype", () => {
+    const { bottel, flessenMutaties } = omgeving();
+    expect(bottel({ flestype_ref: "flestype", flessen_breuk: 2 }).fout).toBeUndefined();
+    expect(flessenMutaties.map((m) => [m.mutatie_type, m.aantal])).toEqual([
+      ["verbruik_botteling", -80],
+      ["breuk", -2],
+    ]);
+  });
   it("bottelt met gekoppelde ronde, voorraad en tankboek", () => {
     const { bottel, records, schrijft } = omgeving();
     expect(bottel().fout).toBeUndefined();

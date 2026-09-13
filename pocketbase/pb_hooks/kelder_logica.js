@@ -283,7 +283,7 @@ function voerBoekingUit(txApp, b) {
  * server-endpoint (kelder.pb.js) en de bevestigde AI-agent-actie
  * (agent_uitvoering.js) exact dezelfde logica delen i.p.v. hem te dupliceren.
  * Retourneert { fout } (nog niets geschreven) of { waarschuwing,
- * bottelrondeId, voorraadId }. Gooit zelf nooit (transactiegrens-regel).
+ * bottelrondeId, voorraadId }. Fouten na writes gooien voor rollback.
  */
 function voerBottelrondeUit(txApp, b) {
   if (!b.partij) return { fout: "partij is verplicht" };
@@ -427,7 +427,9 @@ function voerBottelrondeUit(txApp, b) {
       ingevoerd_door: b.ingevoerd_door,
       vineyard_id: b.vineyard_id,
     });
-    if (verbruik.fout) return { fout: verbruik.fout };
+    // De agent registreert een teruggegeven fout zonder rollback. Na writes
+    // moet de fout daarom de transactie verlaten, niet als resultaat terugkomen.
+    if (verbruik.fout) throw new Error(verbruik.fout);
 
     if (breuk > 0) {
       const breukRegel = flessen.voerMutatieUit(txApp, {
@@ -440,7 +442,7 @@ function voerBottelrondeUit(txApp, b) {
         ingevoerd_door: b.ingevoerd_door,
         vineyard_id: b.vineyard_id,
       });
-      if (breukRegel.fout) return { fout: breukRegel.fout };
+      if (breukRegel.fout) throw new Error(breukRegel.fout);
     }
   }
 
