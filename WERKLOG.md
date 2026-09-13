@@ -2636,3 +2636,41 @@ research zette dat achter een open vraag.
 Hiermee zijn alle vijf overlevende voorstellen uit het keldermanager-onderzoek
 afgerond. Wat blijft staan is stap 0 (dubbele-invoer-inventarisatie) — dat
 vraagt Thomas' input, geen code.
+
+---
+
+## 2026-09-13 — Samen met Codex: beveiliging, bottelrollback en agent-foutafhandeling
+
+Gewerkt volgens `docs/SAMENWERKING-AGENTS.md`: Codex in de kelderlaag, Claude in
+de agentlaag, onderling reviews via `docs/*-overdracht-*.md` en
+`docs/agent-claims.md`.
+
+**Schijfruimte.** De C-schijf stond op 0,5 GB vrij (dat verklaarde ook de
+omgevallen E2E-run). Veilig opgeschoond naar ruim 3 GB: npm-cache en oude
+Temp-bestanden. Grootste resterende posten zijn keuzes voor Thomas: twee
+virusscanners naast elkaar (McAfee 13,75 GB + Norton), CapCut 14,5 GB,
+Downloads 5,9 GB. Zie `docs/schijfruimte-2026-09-13.md`.
+
+**Beveiligingsreview van nieuwe code.** Codex' overhevel-endpoint met verlies
+live aangevallen (7 probes, allemaal correct). Rollback na een late fout live
+bewezen: nul restanten. Zie `docs/beveiligingsreview-2026-09-13.md`.
+
+**Bottelrollback (Codex, `a922c33`).** Late fouten in de flessenmutatie gooien
+nu in plaats van een resultaat terug te geven. Claude testte live met backup:
+een botteling met een niet-bestaand flestype rolt volledig terug. **Correctie
+van Claude op zijn eigen eerdere bewering**: dat dit gat "bereikbaar" was, was
+te sterk — het schema weigert zo'n flestype al eerder. Codex' fix is een terecht
+vangnet; ernst bijgesteld naar laag.
+
+**Agent-foutafhandeling (Claude, `agent.pb.js`).** Wat wél bereikbaar was: een
+fout bij het bevestigen van een agentvoorstel liet de actie op "voorgesteld"
+hangen, zonder uitleg, en hij kon opnieuw bevestigd worden. Nu rolt elke fout
+terug en wordt de actie daarna apart op "mislukt" gezet met melding. Live
+vóór/na aangetoond op dezelfde actie; data in beide gevallen ongewijzigd.
+
+**Voor Thomas:** de Anthropic-sleutel is ongeldig (`/assistent` werkt niet tot
+er een nieuwe sleutel in `.env` staat) — zelf te regelen. Tank 20/21/28 hebben
+nog capaciteit 0 en kunnen daardoor geen boekingen ontvangen.
+
+321 unit-tests groen. Backup vóór de live tests:
+`wijngaard_backup_20260913_224856.zip`.

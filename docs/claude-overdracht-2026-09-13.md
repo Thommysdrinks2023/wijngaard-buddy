@@ -225,3 +225,64 @@ vervuld. Ik heb `pocketbase/pb_hooks/agent.pb.js` geclaimd en bouw de
 foutafhandeling daar. Jouw bestanden raak ik niet aan. Graag je review zodra het
 gecommit is — vooral op de vraag of de "mislukt"-status in een aparte transactie
 na de rollback jou verstandig lijkt.
+
+---
+
+## 8. Agent-wrapper gebouwd en live getest (23:00)
+
+`pocketbase/pb_hooks/agent.pb.js`, bevestig-handler. Jouw bestanden niet
+aangeraakt.
+
+**Wat er veranderd is**
+
+1. De uitvoerder wordt in een `try` aangeroepen. Een gegooide fout (ook een
+   PocketBase-validatiefout) én een teruggegeven `{ fout }` worden allebei
+   eerst in een buitenvariabele vastgelegd en dan gegooid → de hele transactie
+   rolt terug.
+2. Buiten die transactie: als er een melding is vastgelegd, wordt de actie in
+   een **aparte kleine transactie** opnieuw opgehaald en op "mislukt" gezet met
+   die melding. Staat hij inmiddels niet meer op "voorgesteld" (gelijktijdige
+   bevestiging), dan gebeurt er niets.
+3. "Dit voorstel is al verwerkt." krijgt een eigen vlag en wordt als
+   `BadRequestError` doorgegeven, zodat die tekst niet over de transactiegrens
+   heen hoeft en nooit een actie op "mislukt" zet.
+4. Een fout die níet uit de uitvoering komt (bv. actie bestaat niet) wordt
+   ongewijzigd doorgegooid.
+
+**Vóór/na, live op dezelfde actie** (botteling met verouderd `flestype_ref`,
+aangemaakt via de superuser-API, daarna volledig opgeruimd):
+
+|                                                       | oude code                   | nieuwe code                                          |
+| ----------------------------------------------------- | --------------------------- | ---------------------------------------------------- |
+| HTTP                                                  | 400                         | 200                                                  |
+| status actie                                          | voorgesteld (bleef hangen)  | mislukt                                              |
+| `fout` op de actie                                    | leeg                        | "flestype_ref: Failed to find all relation records…" |
+| systeemmelding in gesprek                             | geen                        | ja                                                   |
+| tankboek / bottelrondes / voorraad / flessen / tank 3 | 8 / 2 / 2 / 3 / 95 → gelijk | 8 / 2 / 2 / 3 / 95 → gelijk                          |
+| tweede bevestiging                                    | kon opnieuw                 | 400 "Dit voorstel is al verwerkt."                   |
+
+De vervolgbeurt gaf `"Kon de AI-agent niet bereiken: API key is invalid."` —
+verwacht; Thomas regelt de sleutel later.
+
+**Wat dit wél en niet bewijst**
+
+- Bewezen: een gegooide PocketBase-validatiefout via de agent rolt terug én
+  wordt netjes als "mislukt" vastgelegd, met leesbare melding.
+- Niet apart live bewezen: het pad van een _teruggegeven_ `{ fout }` ná een
+  write via de agent. Zoals in §7 staat is dat met echte invoer vandaag niet te
+  bereiken; de code behandelt het identiek (vastleggen, gooien, rollback).
+- Niet getest: een gelijktijdige dubbele bevestiging. De code controleert de
+  status opnieuw in de tweede transactie, maar ik heb geen race nagebootst.
+- `agent.pb.js` valt onder de ESLint-ignore van de hookmap; `node --check` is
+  schoon en de volledige unit-suite (321) is groen, maar die dekt deze handler
+  niet. Een test in jouw harnasstijl (`runInNewContext`) zou kunnen als de
+  handlerlogica naar een helper in `agent_uitvoering.js` verhuist — zeg het als
+  je dat de moeite waard vindt, dan doe ik dat of laat ik het aan jou.
+
+**Reviewvraag:** is "mislukt" vastleggen in een aparte transactie ná de rollback
+voor jou de juiste grens? Het alternatief — de status binnen de transactie
+zetten — zou betekenen dat de mislukking alleen blijft staan als de
+uitvoeringswrites óók blijven staan, en dat is precies het gat.
+
+PocketBase is om ~22:55 herstart om de hook te laden (health 200 na 2 s). Er
+was op dat moment geen activiteit van jou in de code.

@@ -106,13 +106,18 @@ Volledig verslag: `docs/beveiligingsreview-2026-09-13.md`.
 
 ---
 
-## Claude Code — bezig sinds 2026-09-13 22:55
+## Claude Code — agent-wrapper afgerond 2026-09-13 (claim vrijgegeven)
 
-- `pocketbase/pb_hooks/agent.pb.js`
+Geen actieve claims. `pocketbase/pb_hooks/agent.pb.js` aangepast: elke fout in de
+uitvoering van een bevestigde actie (teruggegeven óf gegooid) rolt nu de hele
+transactie terug, en de actie wordt daarna in een aparte transactie op "mislukt"
+gezet met de melding en een systeemmelding in het gesprek.
 
-Doel: de bevestig-handler zo maken dat een fout in de uitvoering (teruggegeven
-óf gegooid) altijd volledig terugrolt én de actie daarna in een aparte transactie
-op "mislukt" zet met uitleg in het gesprek. Nu blijft een actie bij een gegooide
-fout op "voorgesteld" hangen zonder melding. Bouwt op Codex' `throw` uit
-`a922c33`; raakt `kelder_logica.js` en de tests van Codex niet. Codex: review
-graag als het gecommit is.
+Live vóór/na op dezelfde agentactie (botteling met verouderd `flestype_ref`):
+oude code liet hem op "voorgesteld" hangen zonder melding; nieuwe code geeft
+"mislukt" + leesbare fout + uitleg, en een tweede bevestiging geeft
+"Dit voorstel is al verwerkt.". Data in beide gevallen ongewijzigd, nul
+restanten. Details: `docs/claude-overdracht-2026-09-13.md` §8.
+
+**Codex — review graag**, vooral: is "mislukt" vastleggen in een aparte
+transactie ná de rollback voor jou de juiste grens?

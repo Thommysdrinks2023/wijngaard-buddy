@@ -67,40 +67,79 @@ routerAdd("POST", "/api/agent/actie/{id}/bevestig", (e) => {
     let fout = "";
     let uitgevoerdRecordId = "";
     let gesprekId = "";
+    let alVerwerkt = false;
 
-    e.app.runInTransaction((txApp) => {
-      const actie = txApp.findRecordById("agent_acties", actieId);
-      if (actie.getString("status") !== "voorgesteld") {
-        throw new Error("Dit voorstel is al verwerkt.");
-      }
-      gesprekId = actie.getString("gesprek_id");
-      // bevestigd_door is een relatie naar "users" - een superuser-token (bv.
-      // bij handmatig testen/support via de admin-API) zit in _superusers en
-      // faalt dan op de relatie-validatie ("Failed to find all relation
-      // records"). isSuperuser() sluit dat geval uit; anonieme/normale
-      // gebruikers-auth blijft ongewijzigd.
-      actie.set("bevestigd_door", e.auth && !e.auth.isSuperuser() ? e.auth.id : "");
-      actie.set("bevestigd_op", new Date().toISOString());
+    // Foutafhandeling in twee stappen (13 september 2026, samen met Codex'
+    // bottelfix a922c33). Eerder zette deze handler een TERUGGEGEVEN fout op
+    // "mislukt" binnen dezelfde transactie — waardoor eventuele eerdere writes
+    // van de uitvoerder mee committeerden — en liet een GEGOOIDE fout (bv. een
+    // PocketBase-relatievalidatie na de eerste write) de transactie verlaten
+    // zonder de actie bij te werken: die bleef dan op "voorgesteld" hangen,
+    // zonder uitleg, en kon opnieuw bevestigd worden.
+    //
+    // Nu: elke fout in de uitvoering rolt de hele transactie terug, en pas
+    // daarna wordt de mislukking in een aparte, kleine transactie vastgelegd.
+    // De melding wordt vóór het gooien in een buitenvariabele gezet, omdat
+    // fouten die de transactiegrens passeren hun boodschap kunnen verliezen
+    // (JSVM-valkuil 2 in CLAUDE.md).
+    try {
+      e.app.runInTransaction((txApp) => {
+        const actie = txApp.findRecordById("agent_acties", actieId);
+        if (actie.getString("status") !== "voorgesteld") {
+          alVerwerkt = true;
+          throw new Error("Dit voorstel is al verwerkt.");
+        }
+        gesprekId = actie.getString("gesprek_id");
+        // bevestigd_door is een relatie naar "users" - een superuser-token (bv.
+        // bij handmatig testen/support via de admin-API) zit in _superusers en
+        // faalt dan op de relatie-validatie ("Failed to find all relation
+        // records"). isSuperuser() sluit dat geval uit; anonieme/normale
+        // gebruikers-auth blijft ongewijzigd.
+        actie.set("bevestigd_door", e.auth && !e.auth.isSuperuser() ? e.auth.id : "");
+        actie.set("bevestigd_op", new Date().toISOString());
 
-      const resultaat = uitvoering.voerBevestigdeActieUit(
-        txApp,
-        actie.getString("actie_type"),
-        uitvoering.leesJsonVeld(actie, "payload"),
-        naam,
-      );
-      if (resultaat.fout) {
-        actie.set("status", "mislukt");
-        actie.set("fout", resultaat.fout);
-        fout = resultaat.fout;
-        statusNa = "mislukt";
-      } else {
+        let resultaat;
+        try {
+          resultaat = uitvoering.voerBevestigdeActieUit(
+            txApp,
+            actie.getString("actie_type"),
+            uitvoering.leesJsonVeld(actie, "payload"),
+            naam,
+          );
+        } catch (uitvoerFout) {
+          fout = (uitvoerFout && uitvoerFout.message) || "De actie kon niet worden uitgevoerd.";
+          throw uitvoerFout;
+        }
+        if (resultaat.fout) {
+          fout = resultaat.fout;
+          throw new Error(fout);
+        }
         actie.set("status", "uitgevoerd");
         actie.set("uitgevoerd_record_id", resultaat.record_id);
         uitgevoerdRecordId = resultaat.record_id;
         statusNa = "uitgevoerd";
-      }
-      txApp.save(actie);
-    });
+        txApp.save(actie);
+      });
+    } catch (txFout) {
+      if (alVerwerkt) throw new BadRequestError("Dit voorstel is al verwerkt.");
+      // Geen melding vastgelegd = de fout kwam niet uit de uitvoering (bv. de
+      // actie bestaat niet): ongewijzigd gedrag, gewoon doorgooien.
+      if (!fout) throw txFout;
+      let gemarkeerd = false;
+      e.app.runInTransaction((txApp) => {
+        const actie = txApp.findRecordById("agent_acties", actieId);
+        // Een gelijktijdige bevestiging kan hem inmiddels verwerkt hebben.
+        if (actie.getString("status") !== "voorgesteld") return;
+        actie.set("status", "mislukt");
+        actie.set("fout", fout);
+        actie.set("bevestigd_door", e.auth && !e.auth.isSuperuser() ? e.auth.id : "");
+        actie.set("bevestigd_op", new Date().toISOString());
+        txApp.save(actie);
+        gesprekId = actie.getString("gesprek_id");
+        gemarkeerd = true;
+      });
+      statusNa = gemarkeerd ? "mislukt" : "";
+    }
 
     let vervolg = null;
     if (statusNa === "mislukt") {
