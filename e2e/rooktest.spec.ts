@@ -18,21 +18,30 @@ const TESTINVOERDER = "e2e-rooktest";
 // opzet — zie hulp.ts). credentials.txt is dezelfde, al door Thomas
 // geautoriseerde beheerderscredential als scripts/setup-pocketbase.mjs
 // gebruikt (zie CLAUDE.md, "Superuser-credentials").
-async function verwijderAlsSuperuser(collectie: string, id: string) {
+const PB_COLLECTIES = "http://127.0.0.1:8090/api/collections";
+
+let superuserTokenCache: string | null = null;
+async function superuserToken(): Promise<string> {
+  if (superuserTokenCache) return superuserTokenCache;
   const [email, wachtwoord] = readFileSync(
     new URL("../pocketbase/backup-credentials.txt", import.meta.url),
     "utf8",
   )
     .trim()
     .split(/\r?\n/);
-  const auth = await fetch("http://127.0.0.1:8090/api/collections/_superusers/auth-with-password", {
+  const auth = await fetch(`${PB_COLLECTIES}/_superusers/auth-with-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ identity: email, password: wachtwoord }),
   }).then((r) => r.json());
-  await fetch(`http://127.0.0.1:8090/api/collections/${collectie}/records/${id}`, {
+  superuserTokenCache = auth.token as string;
+  return superuserTokenCache;
+}
+
+async function verwijderAlsSuperuser(collectie: string, id: string) {
+  await fetch(`${PB_COLLECTIES}/${collectie}/records/${id}`, {
     method: "DELETE",
-    headers: { Authorization: auth.token },
+    headers: { Authorization: await superuserToken() },
   });
 }
 
@@ -97,6 +106,59 @@ async function ruimOpOpNaam(
 
 test.beforeEach(async ({ page }) => {
   await openApp(page);
+});
+
+// Opruimvangnet (14 september 2026). De tests hieronder ruimden hun records pas
+// op ná hun laatste controle. Faalde er één halverwege, dan bleven testrecords in
+// de échte database staan: op 14 september drie oogstregels van `e2e-rooktest`,
+// waardoor elke volgende run van test 14 het dubbele gewicht zag. Dit vangnet
+// draait na élke test, ook bij een mislukte, en gaat via de API — niet via de
+// pagina, want die kan na een fout onbruikbaar zijn. Het raakt uitsluitend
+// records met de testmarkers hieronder.
+// Volgorde telt: orders vóór klanten, onderhoudslog vóór materieel.
+const MET_INVOERDER = [
+  "oogst",
+  "metingen",
+  "observaties",
+  "kelderlog",
+  "analyses",
+  "onderhoudslog",
+  "orders",
+];
+
+async function wisOpFilter(
+  collectie: string,
+  filter: string,
+  headers: Record<string, string> = {},
+) {
+  const lijst = await fetch(
+    `${PB_COLLECTIES}/${collectie}/records?perPage=200&filter=${encodeURIComponent(filter)}`,
+    { headers },
+  );
+  // Niet stil overslaan: een ongeldig filter (bv. een veld dat niet bestaat)
+  // gaf hier eerst HTTP 400, waardoor pasteurisatieruns ongemerkt nooit werden
+  // opgeruimd. Een kapot vangnet moet als rode test zichtbaar zijn.
+  if (!lijst.ok) {
+    throw new Error(`Opruimvangnet: ${collectie} kon niet gelezen worden (HTTP ${lijst.status})`);
+  }
+  const data = (await lijst.json()) as { items?: { id: string }[] };
+  for (const r of data.items ?? []) {
+    await fetch(`${PB_COLLECTIES}/${collectie}/records/${r.id}`, { method: "DELETE", headers });
+  }
+}
+
+test.afterEach(async () => {
+  for (const collectie of MET_INVOERDER) {
+    await wisOpFilter(collectie, `ingevoerd_door="${TESTINVOERDER}"`);
+  }
+  await wisOpFilter("klanten", 'naam~"E2E Testklant"');
+  await wisOpFilter("materieel", 'naam~"E2E Testmachine"');
+  // pasteurisatie_runs heeft deleteRule=null: alleen een superuser mag wissen.
+  // Deze collectie kent geen ingevoerd_door; het startformulier zet de naam in
+  // uitgevoerd_door.
+  await wisOpFilter("pasteurisatie_runs", `uitgevoerd_door="${TESTINVOERDER}"`, {
+    Authorization: await superuserToken(),
+  });
 });
 
 test("1 — de hub laadt met echte cijfers, niet een lege huls", async ({ page }) => {

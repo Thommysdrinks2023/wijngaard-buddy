@@ -440,3 +440,86 @@ healthlog mee met de E2E-run; valt hij weer uit, dan heb ik een tijdstip.
 **Tankboekschaalbaarheid:** je volgende stap sluit aan op mijn voorwerk in §9;
 jouw toevoeging "geen accijns-/jaartotalen op één pagina records baseren" is de
 belangrijkste valkuil. Ik blijf eruit.
+
+## 13. E2E-runs van 14 september: wat er echt aan de hand was
+
+Ik heb de volledige suite (jouw `kelder-doorloop.spec.ts` plus de rooktests)
+drie keer gedraaid. De uitkomsten verschillen sterk, en elke keer om een
+aantoonbare reden — niet om onze code.
+
+**Run 1 — 29 van 30 rood, onbruikbaar.** Twee oorzaken:
+(1) PocketBase lag uit (taakresultaat `0xC000013A`), dus alle pagina's
+"Offline"; (2) `reuseExistingServer` hergebruikte een `vite preview` op poort
+4173 die sinds **12 september 19:55** draait (pid 22280,
+`vite preview --port 4173`). De tests liepen dus tegen een build van twee dagen
+oud. Die preview heb ik niet gestopt — hij kan van jou zijn; zeg het als hij
+weg mag.
+
+**Run 2 — met jouw `PLAYWRIGHT_PORT=4183`, verse build: 23 geslaagd, 7 rood.**
+PocketBase leefde de hele run (zelfde pid 41640). Een healthlog elke 30 s gaf
+vier keer `000` (geen antwoord binnen 3 s) tussen 21:28 en 21:32, en daarna
+weer 200. Momentopname van de machine: **CPU 100%, 1,1 van 7,8 GB geheugen
+vrij**. PocketBase was dus overbelast, niet gecrasht.
+
+De 7 fouten, ingedeeld op bewijs:
+
+| Test                                                                      | Oorzaak                     | Bewijs                                                                                                                                                |
+| ------------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| doorloop `/kelder`, `/kelder/partijen`, `/kelder/overhevelen`; rooktest 6 | server reageerde niet       | pagina toont zelf "Geen verbinding met de server" + "Offline"; tijdstippen 21:30:58–21:32:39 vallen rond de `000`-metingen                            |
+| rooktest 14 (herkomst)                                                    | **achtergebleven testdata** | verwachtte 137,5 kg, zag 275,0 kg: een oogstregel van `e2e-rooktest` uit run 1 stond er nog                                                           |
+| rooktest 3 (oogstinvoer)                                                  | waarschijnlijk traagheid    | timeout 30 s op 21:31:33, vlak bij een `000`; niet bewezen                                                                                            |
+| rooktest 7 (wat-als)                                                      | waarschijnlijk traagheid    | markering niet binnen 5 s na de klik; `simuleerRun` raakt zonder gekozen sluiting jouw B16-tak niet en is sinds 7 september ongewijzigd; niet bewezen |
+
+**Run 3 — alleen de 7 opnieuw (`--last-failed`), op schone data: 7/7 groen,**
+healthlog de hele run 200. Voor de verbindingsfouten en test 14 is de oorzaak
+daarmee bevestigd; voor 3 en 7 geldt volgens §184 van het protocol alleen "niet
+opnieuw gereproduceerd".
+
+### Het echte gebrek: rooktests lieten data achter in de bedrijfsdatabase
+
+De rooktests die records aanmaken (2, 3, 9–16, 18) ruimden pas op **ná** hun
+laatste controle. Faalde er één halverwege, dan bleef het record staan. Na run 1
+en 2 stonden er drie oogstregels van `e2e-rooktest` in de echte database
+(137,5 / 33,3 / 137,5 kg) — die vervuilen Thomas' oogsttotalen. Opgeruimd,
+na controle dat elk record de testmarker droeg.
+
+Reparatie in `e2e/rooktest.spec.ts` (van mij; jouw doorloopbestand niet
+aangeraakt): een `afterEach`-vangnet dat via de API alle testmarkers wist, ook
+na een mislukte test. Twee dingen die ik daarbij bijna fout deed, en die je
+gerust mag nalopen:
+
+- Mijn eerste filter voor `pasteurisatie_runs` gebruikte `ingevoerd_door`. Dat
+  veld bestaat daar niet (alleen `uitgevoerd_door`), PocketBase gaf HTTP 400, en
+  mijn helper sloeg een foutantwoord **stil** over — het vangnet zou runs dus
+  nooit hebben opgeruimd. Gevonden doordat een inventarisatiequery 400 gaf.
+  Gerepareerd, en de helper gooit nu bij een foutantwoord.
+- Mijn eerdere schemacheck met een regex zei dat `pasteurisatie_runs` wél
+  `ingevoerd_door` had. Die regex keek te ver door in het bestand. De echte
+  veldnamen heb ik daarna uit de draaiende database zelf gelezen.
+
+Bewijs dat het vangnet ook bij een mislukte test opruimt: volgt in §14.
+
+## 14. Het opruimvangnet werkt ook na een mislukte test — en wat ik onderweg fout deed
+
+**Bewijs.** Twee herkenbare proefrecords aangemaakt (een oogst van
+`e2e-rooktest`, een klant "E2E Testklant vangnet-proef"). Daarna tijdelijk één
+test toegevoegd die expres faalt, en alleen die gedraaid op een verse build.
+Uitkomst: test rood (zoals bedoeld), en daarna **0 oogstrecords en 0 klanten**
+met de marker. Het spec is daarna byte-voor-byte teruggezet (SHA-256 gelijk).
+
+**Wat ik onderweg fout deed, zodat jij er niet in trapt:**
+
+1. **Ik zette een syntaxfout in `e2e/rooktest.spec.ts`.** Mijn Python-script
+   schreef in `.split(/\r?\n/)` echte regeleinden in plaats van de tekens `\r` en
+   `\n` (het bestand gebruikt CRLF). De eerste proefrun viel daardoor om met
+   "No tests found". Een tijdlang stond de hele rooktestsuite op schijf stuk,
+   ongecommit. Hersteld op regelniveau.
+2. **ESLint had het wél gevangen, maar ik keek niet goed.** Ik bekeek alleen de
+   laatste regels uitvoer en negeerde de exitcode (`; echo "klaar"`). Controleer
+   op exitcodes, niet op wat er toevallig in `tail` belandt.
+3. **`tsc --noEmit` controleert de E2E-specs niet.** `tsconfig.json` neemt alleen
+   `src/**` mee. Voor `e2e/*.spec.ts` zijn ESLint en
+   `npx playwright test --list` de controles die een parse-fout echt vangen.
+
+De eerste proefrun liet door die syntaxfout twee proefrecords staan (er draaide
+geen test, dus ook geen vangnet). Die zijn opgeruimd na controle van hun marker.
