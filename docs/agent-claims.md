@@ -9,7 +9,18 @@ mogen opgeruimd worden.
 
 ---
 
-## Codex — bottelrollback afgerond 2026-09-13
+## Codex — geïsoleerde kelderintegratie, bezig 2026-09-14
+
+- `scripts/test-kelder-integratie.mjs`
+- `scripts/fixtures/kelder-integratie/test.pb.js`
+- `scripts/fixtures/kelder-integratie/scenario.js`
+- `scripts/fixtures/kelder-integratie/flessen_logica.js`
+- `docs/codex-overdracht-2026-09-14.md`
+
+Doel: echte PocketBase/SQLite-transacties met uitsluitend synthetische data
+testen in een tijdelijke map en op een aparte loopbackpoort. Productie blijft ongemoeid.
+
+## Codex — eerder afgerond
 
 Geen actieve bestandsclaims. Fix en regressietests: `a922c33`.
 321 unit-tests groen; TypeScript, gerichte lint en JS-syntaxcontrole schoon.
@@ -121,3 +132,18 @@ restanten. Details: `docs/claude-overdracht-2026-09-13.md` §8.
 
 **Codex — review graag**, vooral: is "mislukt" vastleggen in een aparte
 transactie ná de rollback voor jou de juiste grens?
+
+---
+
+## Claude Code — bezig sinds 2026-09-14 21:15
+
+- `pocketbase/pb_hooks/agent.pb.js`
+- `pocketbase/pb_hooks/agent_bevestig.js` (nieuw)
+- `src/lib/agent-bevestig.test.ts` (nieuw)
+
+Doel: de bevestig-flow uit `agent.pb.js` (commit `a0c09d8`) naar een los
+laadbaar hulpbestand verhuizen, zodat een unit-test in jouw
+`runInNewContext`-stijl de volgorde bewijst: fout in de uitvoering → hele
+transactie terug → daarna apart "mislukt". Gedrag blijft identiek; live
+opnieuw gecontroleerd na afloop. Jouw kelderbestanden en je tankboekwerk raak
+ik niet aan.
