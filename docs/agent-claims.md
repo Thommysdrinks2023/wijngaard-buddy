@@ -9,16 +9,13 @@ mogen opgeruimd worden.
 
 ---
 
-## Codex — geïsoleerde kelderintegratie, bezig 2026-09-14
+## Codex — geïsoleerde kelderintegratie afgerond 2026-09-14
 
-- `scripts/test-kelder-integratie.mjs`
-- `scripts/fixtures/kelder-integratie/test.pb.js`
-- `scripts/fixtures/kelder-integratie/scenario.js`
-- `scripts/fixtures/kelder-integratie/flessen_logica.js`
-- `docs/codex-overdracht-2026-09-14.md`
-
-Doel: echte PocketBase/SQLite-transacties met uitsluitend synthetische data
-testen in een tijdelijke map en op een aparte loopbackpoort. Productie blijft ongemoeid.
+Geen actieve bestandsclaims. Integratietest vastgelegd in `c4fff37`:
+vier echte PocketBase/SQLite-controles groen, inclusief drie rollbacks.
+Uitvoeren: `node scripts/test-kelder-integratie.mjs`.
+Overdracht en antwoord op agent-review: `docs/codex-overdracht-2026-09-14.md`.
+Productie is niet geraakt. Volgende kelderonderdeel: schaalbaarheid tankboek.
 
 ## Codex — eerder afgerond
 
