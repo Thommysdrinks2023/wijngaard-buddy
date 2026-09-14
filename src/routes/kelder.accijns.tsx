@@ -80,6 +80,8 @@ function AccijnsPage() {
   const [soortPeriode, setSoortPeriode] = useState<"maand" | "kwartaal">("kwartaal");
   const [maand, setMaand] = useState(new Date().getMonth() + 1);
   const [kwartaal, setKwartaal] = useState(Math.ceil((new Date().getMonth() + 1) / 3));
+  const periode =
+    soortPeriode === "maand" ? maandPeriode(jaar, maand) : kwartaalPeriode(jaar, kwartaal);
 
   const instellingenQ = useQuery({
     queryKey: ["regelgeving"],
@@ -100,7 +102,10 @@ function AccijnsPage() {
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
   const analysesQ = useQuery({ queryKey: ["analyses", "alle"], queryFn: () => fetchAnalyses() });
   // Fase 7 Blok D — kelderverliezen (tankboek-actie "verlies") in de periode
-  const tankboekQ = useQuery({ queryKey: ["tankboek", "accijns"], queryFn: () => fetchTankboek() });
+  const tankboekQ = useQuery({
+    queryKey: ["tankboek", "accijns", "verlies", periode.van, periode.tot],
+    queryFn: () => fetchTankboek({ actie: "verlies", vanaf: periode.van, tot: periode.tot }),
+  });
 
   const instelling = (sleutel: string) =>
     (instellingenQ.data ?? []).find((i) => i.sleutel === sleutel);
@@ -109,9 +114,6 @@ function AccijnsPage() {
   const tariefStil = alsTarief(instelling(REGELGEVING_SLEUTELS.accijnsStil));
   const tariefMousserend = alsTarief(instelling(REGELGEVING_SLEUTELS.accijnsMousserend));
   const agpDrempel = instelling(REGELGEVING_SLEUTELS.agpDrempel);
-
-  const periode =
-    soortPeriode === "maand" ? maandPeriode(jaar, maand) : kwartaalPeriode(jaar, kwartaal);
 
   const kelderverliesRegels = useMemo(
     () =>

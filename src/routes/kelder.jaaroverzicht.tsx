@@ -90,7 +90,11 @@ function JaaroverzichtPage() {
     queryKey: ["bottelrondes", "alle"],
     queryFn: () => fetchBottelrondes(),
   });
-  const tankboekQ = useQuery({ queryKey: ["tankboek", "alle"], queryFn: () => fetchTankboek() });
+  // Geen kalenderjaarfilter: verlies in 2026 kan bij jaargang 2025 horen.
+  const tankboekQ = useQuery({
+    queryKey: ["tankboek", "jaaroverzicht", "verlies"],
+    queryFn: () => fetchTankboek({ actie: "verlies" }),
+  });
 
   // Alle vier de bronnen moeten geladen én foutloos zijn voordat er iets
   // gearchiveerd mag worden.

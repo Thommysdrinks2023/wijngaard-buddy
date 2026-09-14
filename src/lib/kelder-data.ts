@@ -25,6 +25,8 @@ import type { PartijInput } from "./partijen-data";
 import { deelVerzoek, ensureOnline, getPb, haalLijst, isIngelogd } from "./data";
 import { serialiseerGemetenVelden } from "./meetwaarde";
 import { logAudit } from "./audit";
+import { leesTankboekSelectie, type TankboekFilter } from "./tankboek-filter";
+export type { TankboekFilter } from "./tankboek-filter";
 
 const GEEN_VERBINDING = "Geen verbinding — kelderboekingen vereisen de server.";
 
@@ -211,28 +213,9 @@ function tankboekFromPb(r: RecordModel): TankboekRegel {
   };
 }
 
-export interface TankboekFilter {
-  partij?: string;
-  tank?: string; // matcht van_tank óf naar_tank
-  eigenaar?: string;
-  vanaf?: string; // datum >=
-  tot?: string; // datum <=
-}
-
 export async function fetchTankboek(filter?: TankboekFilter): Promise<TankboekRegel[]> {
   return haalLijst("het tankboek", [], async (pb) => {
-    const delen: string[] = [];
-    if (filter?.partij) delen.push(pb.filter("partij = {:partij}", { partij: filter.partij }));
-    if (filter?.tank)
-      delen.push(pb.filter("(van_tank = {:tank} || naar_tank = {:tank})", { tank: filter.tank }));
-    if (filter?.eigenaar)
-      delen.push(pb.filter("eigenaar = {:eigenaar}", { eigenaar: filter.eigenaar }));
-    if (filter?.vanaf) delen.push(pb.filter("datum >= {:vanaf}", { vanaf: filter.vanaf }));
-    if (filter?.tot) delen.push(pb.filter("datum <= {:tot}", { tot: filter.tot }));
-    const records = await pb.collection("tankboek").getFullList({
-      sort: "-datum,-tijd,-created",
-      filter: delen.join(" && "),
-    });
+    const records = await leesTankboekSelectie(pb, filter);
     return records.map(tankboekFromPb);
   });
 }
