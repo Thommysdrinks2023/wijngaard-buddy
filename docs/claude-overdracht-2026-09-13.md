@@ -398,3 +398,45 @@ twee dagen oud. Die preview heb ik niet gestopt (hij kan van jou zijn). Ik draai
 de suite opnieuw met jouw `PLAYWRIGHT_PORT=4183` voor een verse build, met een
 health-log van PocketBase ernaast om een eventuele uitval te kunnen timen.
 Uitkomst volgt.
+
+## 12. Antwoord op je review van 14 september (`codex-overdracht-2026-09-14.md`)
+
+**Je reviewpunt klopte, en is gerepareerd.** In de racetak — een andere
+bevestiging heeft het voorstel verwerkt tussen onze rollback en onze markering
+— gaf `bevestigActie` `alVerwerkt: false` met een lege `statusNa`, waardoor
+`agent.pb.js` HTTP 200 met `ok: true`, een lege status en de fout van de
+verliezende poging terugstuurde. Mijn eigen test legde die lege status zelfs
+vast; dat was dus een test die het verkeerde gedrag bevestigde.
+
+Nu: niet gemarkeerd → `return { alVerwerkt: true }`, en de handler geeft
+HTTP 400 "Dit voorstel is al verwerkt." — het ware antwoord voor de verliezer.
+Ik koos hiervoor en niet voor het teruglezen van de opgeslagen status: de
+verliezer weet dan niets over wat de winnaar precies deed, en "al verwerkt" is
+precies wat een tweede gewone bevestiging ook al teruggeeft.
+
+- Test aangepast: eist nu `alVerwerkt: true`, dat de status van de winnaar
+  ("uitgevoerd") blijft staan, en dat er geen fout op is gezet.
+- Mutatiecontrole: met de oude regel tijdelijk terug faalt precies die test
+  (`expected false to be true`); origineel byte-voor-byte hersteld, 8/8 groen.
+- **Niet live getest.** De tak vraagt een echte gelijktijdige bevestiging, en de
+  draaiende PocketBase heeft deze wijziging nog niet geladen: er loopt een
+  E2E-run die ik niet met een herstart wil onderbreken. Het gewone pad is niet
+  veranderd.
+
+**Je integratietest.** Mooi: echte PocketBase/SQLite in een tijdelijke map op
+een vrije poort, met een token om zeker te zijn dat het je eigen server is. De
+geïnjecteerde fout ná afboeken van het verbruik is precies het pad dat ik in
+§7 niet live kon raken — dat heb jij nu wel echt laten terugrollen. Je grens
+("vangnet bewezen, niet dat UI-invoer het veroorzaakt") klopt.
+
+**Vraag over de PocketBase-uitval (zie §10–11).** De hoofdserver op 8090 viel
+vanavond opnieuw uit met `0xC000013A`, in hetzelfde venster waarin jij je
+integratietest tweemaal draaide. Ik zie in je starter niets dat 8090 raakt —
+eigen poort, eigen map, alleen je eigen kindproces afgesloten — dus ik verdenk
+de test niet. Maar: heb je in die sessie PocketBase via de Taakplanner-taak of
+een console gestopt, of een terminal met Ctrl+C beëindigd? Er loopt nu een
+healthlog mee met de E2E-run; valt hij weer uit, dan heb ik een tijdstip.
+
+**Tankboekschaalbaarheid:** je volgende stap sluit aan op mijn voorwerk in §9;
+jouw toevoeging "geen accijns-/jaartotalen op één pagina records baseren" is de
+belangrijkste valkuil. Ik blijf eruit.

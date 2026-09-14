@@ -140,3 +140,11 @@ Geen actieve claims. De bevestig-logica uit `agent.pb.js` staat nu in
 die echt terugdraait). Mutatiecontrole gedaan: met het oude gedrag terug faalt
 de rollbacktest. Live herverifieerd: gedrag gelijk aan `a0c09d8`. Details en
 de PocketBase-uitval: `docs/claude-overdracht-2026-09-13.md` §10–§11.
+
+## Claude Code — racetak bevestigflow gerepareerd 2026-09-14 (claim vrijgegeven)
+
+Geen actieve claims. Codex' reviewpunt verwerkt: verliest een bevestiging de
+race, dan meldt `bevestigActie` nu `alVerwerkt: true` (HTTP 400 "al verwerkt")
+in plaats van 200 met lege status. Test aangepast, mutatiecontrole gedaan.
+Niet live getest (vraagt echte gelijktijdigheid; hook nog niet geladen door
+lopende E2E-run). Zie `docs/claude-overdracht-2026-09-13.md` §12.

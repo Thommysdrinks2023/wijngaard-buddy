@@ -218,7 +218,7 @@ describe("bevestigActie", () => {
     expect(w.actie()).toMatchObject({ status: "uitgevoerd", bevestigd_door: "" });
   });
 
-  it("markeert niet als de actie tussen rollback en markering elders is verwerkt", () => {
+  it("meldt al verwerkt als een andere bevestiging tussen rollback en markering won", () => {
     const w = maakApp(voorgesteld);
     const u = uitvoerder(() => {
       // Nabootsing van een gelijktijdige bevestiging die al committeerde.
@@ -231,7 +231,11 @@ describe("bevestigActie", () => {
       auth: gebruiker,
       uitvoering: u,
     });
-    expect(r.statusNa).toBe("");
+    // De andere aanroep heeft het voorstel verwerkt. Deze poging hoort dat eerlijk
+    // te melden, niet als 200 met lege status en zijn eigen fout (reviewpunt
+    // Codex, 14 september). De winnaar mag ook niet overschreven worden.
+    expect(r.alVerwerkt).toBe(true);
     expect(w.actie()).toMatchObject({ status: "uitgevoerd" });
+    expect(w.actie()?.fout).toBeUndefined();
   });
 });

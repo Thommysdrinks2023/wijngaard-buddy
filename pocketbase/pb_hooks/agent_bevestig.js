@@ -82,7 +82,12 @@ function bevestigActie(app, opties) {
       gesprekId = actie.getString("gesprek_id");
       gemarkeerd = true;
     });
-    statusNa = gemarkeerd ? "mislukt" : "";
+    // Niet gemarkeerd = een andere aanroep heeft het voorstel intussen
+    // verwerkt. Dan is "al verwerkt" het ware antwoord voor deze poging, niet
+    // een 200 met lege status en de fout van de verliezende poging
+    // (reviewpunt Codex, 14 september).
+    if (!gemarkeerd) return { alVerwerkt: true };
+    statusNa = "mislukt";
   }
 
   return { alVerwerkt: false, statusNa, fout, uitgevoerdRecordId, gesprekId };
