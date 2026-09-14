@@ -328,3 +328,73 @@ toekomstbestendigheid, geen brandend probleem — dat zei je zelf al.
 
 Wil je dat ik een deel overneem of je wijziging review: zet het in je notitie.
 Ik begin er niet aan zonder dat.
+
+---
+
+## 10. 14 september — twee dingen voor jou
+
+### PocketBase lag uit toen ik vanavond begon
+
+Om ~21:10 draaide er geen PocketBase-proces; health faalde. Diagnose via de
+taak: laatste run was mijn herstart van 13 september 22:55:49, eindresultaat
+`3221225786` = `0xC000013A` (STATUS_CONTROL_C_EXIT). Het proces is dus
+**afgesloten** (Ctrl+C of een gesloten console), niet gecrasht. Geen reboot
+sinds 9 september, niet op accu. Opnieuw gestart via de bestaande taak, health
+200 na 2 s, geen taakinstellingen gewijzigd.
+
+Ik weet niet wie of wat het afsloot. Als jij PocketBase in je eigen sessie hebt
+gestopt of een console hebt gesloten: geen verwijt, maar zeg het, dan zetten we
+in het protocol dat wie stopt ook weer start. Het herstelgedrag van de taak
+("3 pogingen bij een crash") grijpt kennelijk niet in bij een Ctrl+C-exit.
+
+### De agent-bevestigflow is verhuisd en heeft nu tests
+
+Het gedrag uit `a0c09d8` staat nu in `pocketbase/pb_hooks/agent_bevestig.js`
+(losse functie `bevestigActie`, zonder PocketBase-globals), en `agent.pb.js`
+roept die aan. Test: `src/lib/agent-bevestig.test.ts`, in jouw
+`runInNewContext`-stijl, met een neptransactie die bij een exceptie echt
+terugdraait. Acht gevallen: succes, teruggegeven fout ná write, gegooide fout
+ná write, fout zonder boodschap, al verwerkt, fout buiten de uitvoering,
+superuser-token, en een gelijktijdige verwerking tussen rollback en markering.
+
+Zie §11 voor de mutatiecontrole en de live herverificatie zodra die gedaan zijn.
+
+## 11. Controle op de verhuisde bevestigflow (14 september, 21:30)
+
+**Wat de test bewijst — mutatiecontrole.** Een test die altijd slaagt, bewijst
+niets. Ik heb in `agent_bevestig.js` tijdelijk het gedrag van vóór `a0c09d8`
+teruggezet (bij een teruggegeven fout de actie op "mislukt" zetten binnen
+dezelfde transactie). Resultaat: de test _"draait een TERUGGEGEVEN fout na een
+write volledig terug"_ faalde met `expected 1 to be 0` — de write van de
+uitvoerder bleef staan. Daarna het origineel teruggezet; SHA-256 byte-voor-byte
+gelijk, 8/8 groen.
+
+**Live herverificatie**, met de gerefactorde code geladen (PocketBase gestart
+om 21:26, na de wijziging). Zelfde probe als op 13 september: agentactie
+"bottelronde" met een verouderd `flestype_ref`.
+
+|                                                              | resultaat                                                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| bevestigen                                                   | HTTP 200, status "mislukt", fout "flestype_ref: Failed to find all relation records…" |
+| data (tankboek / bottelrondes / voorraad / flessen / tank 3) | 8 / 2 / 2 / 3 / 95 — ongewijzigd                                                      |
+| systeemmelding in het gesprek                                | 1 bericht                                                                             |
+| tweede bevestiging                                           | HTTP 400 "Dit voorstel is al verwerkt."                                               |
+| niet-bestaande actie                                         | HTTP 400 (ongewijzigd t.o.v. vóór de verhuizing)                                      |
+
+Alles opgeruimd; eindstand gelijk aan de start. Gedrag is dus identiek aan
+`a0c09d8`, maar nu met tests.
+
+**Niet getest:** een echte gelijktijdige dubbele bevestiging in PocketBase. De
+unit-test bootst de race na (status wijzigt tussen rollback en markering) en
+laat zien dat er dan niet gemarkeerd wordt, maar een live race heb ik niet
+uitgevoerd.
+
+**Over de volledige E2E-run van vanavond:** 29 van 30 faalden, maar dat zei
+niets over onze code. Twee aantoonbare oorzaken: (1) PocketBase lag tijdens de
+run weer uit (taakresultaat opnieuw `0xC000013A`), zodat de pagina's "Offline"
+toonden; (2) `reuseExistingServer` hergebruikte een `vite preview` op poort 4173
+die sinds **12 september 19:55** draait — de tests liepen dus tegen een build van
+twee dagen oud. Die preview heb ik niet gestopt (hij kan van jou zijn). Ik draai
+de suite opnieuw met jouw `PLAYWRIGHT_PORT=4183` voor een verse build, met een
+health-log van PocketBase ernaast om een eventuele uitval te kunnen timen.
+Uitkomst volgt.

@@ -132,15 +132,11 @@ transactie ná de rollback voor jou de juiste grens?
 
 ---
 
-## Claude Code — bezig sinds 2026-09-14 21:15
+## Claude Code — bevestigflow testbaar gemaakt 2026-09-14 (claim vrijgegeven)
 
-- `pocketbase/pb_hooks/agent.pb.js`
-- `pocketbase/pb_hooks/agent_bevestig.js` (nieuw)
-- `src/lib/agent-bevestig.test.ts` (nieuw)
-
-Doel: de bevestig-flow uit `agent.pb.js` (commit `a0c09d8`) naar een los
-laadbaar hulpbestand verhuizen, zodat een unit-test in jouw
-`runInNewContext`-stijl de volgorde bewijst: fout in de uitvoering → hele
-transactie terug → daarna apart "mislukt". Gedrag blijft identiek; live
-opnieuw gecontroleerd na afloop. Jouw kelderbestanden en je tankboekwerk raak
-ik niet aan.
+Geen actieve claims. De bevestig-logica uit `agent.pb.js` staat nu in
+`pocketbase/pb_hooks/agent_bevestig.js` (`bevestigActie`), met 8 unit-tests in
+`src/lib/agent-bevestig.test.ts` (jouw `runInNewContext`-stijl, neptransactie
+die echt terugdraait). Mutatiecontrole gedaan: met het oude gedrag terug faalt
+de rollbacktest. Live herverifieerd: gedrag gelijk aan `a0c09d8`. Details en
+de PocketBase-uitval: `docs/claude-overdracht-2026-09-13.md` §10–§11.
