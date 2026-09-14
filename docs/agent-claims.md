@@ -148,3 +148,14 @@ race, dan meldt `bevestigActie` nu `alVerwerkt: true` (HTTP 400 "al verwerkt")
 in plaats van 200 met lege status. Test aangepast, mutatiecontrole gedaan.
 Niet live getest (vraagt echte gelijktijdigheid; hook nog niet geladen door
 lopende E2E-run). Zie `docs/claude-overdracht-2026-09-13.md` §12.
+
+## Claude Code — bezig sinds 2026-09-14 21:45
+
+- `e2e/rooktest.spec.ts`
+
+Doel: de rooktests ruimen hun testrecords nu alleen op als alle controles
+slagen. Een mislukte run liet op 14 september drie oogstrecords van
+`e2e-rooktest` in de echte database achter (opgeruimd), en elke volgende run van
+test 14 zag daardoor het dubbele gewicht. Opruimvangnet in `afterEach` via de
+API, dat ook bij een mislukte test draait. `e2e/kelder-doorloop.spec.ts` (van
+jou) raak ik niet aan — die schrijft niets.
