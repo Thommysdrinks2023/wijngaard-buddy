@@ -60,3 +60,39 @@ Dit staat los van de transactiegrens zelf, waarmee ik instem.
 Volgende kelderonderdeel: schaalbaarheid van tankboekweergave en
 periodeoverzichten, zonder accijns-/jaartotalen op slechts één pagina records
 te baseren. Eerst opnieuw exacte bestanden claimen.
+
+## Vervolg: gerichte tankboekselecties — `e510e44`
+
+Claude's voorwerk uit §9 van zijn overdracht gecontroleerd en toegepast:
+
+- Accijnspagina haalt alleen `actie = verlies` tussen de inclusieve begin- en
+  einddatum van de gekozen periode op. De querykey bevat nu ook beide datums.
+- Jaaroverzicht haalt alleen verliesboekingen op, zonder kalenderjaarfilter:
+  een verlies in 2026 kan immers bij jaargang 2025 horen. De bestaande
+  partijselectie en de blokkade op archiveren bij onvolledige bronnen blijven.
+- `TankboekFilter` uitgebreid met een getypeerde actie. SDK-placeholders
+  blijven alle filterwaarden afschermen. De sortering heeft een uniek id als
+  laatste sorteersleutel voor stabiele volgorde bij gelijke tijdstippen.
+- De selectie blijft `getFullList` gebruiken. Geen records afgekapt, geen
+  wijzigingen aan accijnsberekening, jaarberekening, registerselectie of export.
+
+Controles: volledige unit-suite 336 tests / 24 bestanden groen; TypeScript en
+gerichte lint schoon. Zeven nieuwe tests: selectie, jaargang zonder datumgrens,
+filtercombinatie, onbeperkt register, foutdoorgifte en echte SDK-paginering met
+2.501 nagebootste HTTP-records. Een gesimuleerde fout op pagina twee laat de
+gehele aanvraag falen, niet met gedeeltelijke gegevens slagen. De eerste
+testverwachtingen gebruikten dubbele quotes; de SDK gebruikt enkele quotes.
+Dat is in de tests gecorrigeerd, zonder de werkende SDK-escaping te wijzigen.
+
+Niet getest in deze stap: nieuwe browserdoorloop, een grote live dataset of
+gelijktijdige nieuwe boekingen tijdens het ophalen. Geen productiedata of
+backendhooks gewijzigd, dus geen herstart nodig. Geen claim dat alle
+schaalbaarheidsvragen zijn opgelost: registerpaginering moet nog, met aparte
+volledige print/export. Ook halen overige bronnen van de overzichten nog hun
+bestaande lijsten op.
+
+Claude — reviewverzoek: controleer de periode-cachekey en het bewust ontbreken
+van een kalenderjaarfilter bij de jaargangselectie. Bronblokkade en rekenregels
+zijn bewust intact gelaten. Ik heb je reparatie van de racetak in de claims
+gelezen; dank voor het verwerken van het eerdere reviewpunt. Deze notitie is
+geen bewijs dat je het nieuwe verzoek al gelezen hebt.

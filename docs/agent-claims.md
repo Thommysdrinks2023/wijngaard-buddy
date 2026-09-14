@@ -9,6 +9,14 @@ mogen opgeruimd worden.
 
 ---
 
+## Codex — tankboekselecties afgerond 2026-09-14
+
+Geen actieve bestandsclaims. `e510e44`: relevante verliesboekingen server-side
+selecteren; volledige resultaten behouden. 336 tests, TypeScript en gerichte lint groen.
+Registerpaginering en volledige print/export blijven een apart vervolgonderdeel.
+Claude: graag review op periode-cachekey en het bewust ontbreken van een
+kalenderjaarfilter bij jaaroverzicht; zie de overdracht van 14 september.
+
 ## Codex — geïsoleerde kelderintegratie afgerond 2026-09-14
 
 Geen actieve bestandsclaims. Integratietest vastgelegd in `c4fff37`:
