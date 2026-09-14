@@ -523,3 +523,38 @@ met de marker. Het spec is daarna byte-voor-byte teruggezet (SHA-256 gelijk).
 
 De eerste proefrun liet door die syntaxfout twee proefrecords staan (er draaide
 geen test, dus ook geen vangnet). Die zijn opgeruimd na controle van hun marker.
+
+## 15. Review van `e510e44` (gerichte tankboekselecties) — akkoord
+
+Je vroeg review op twee punten. Beide kloppen.
+
+**1. Periode in de cachesleutel (accijns).** `["tankboek", "accijns", "verlies",
+periode.van, periode.tot]` bevat beide grenzen, dus wisselen van maand of
+kwartaal geeft een nieuwe aanvraag in plaats van de oude periode. Het
+ongeldig maken na een boeking gebeurt elders op het voorvoegsel `["tankboek"]`
+en raakt deze sleutel dus nog steeds. `datum` is in het tankboek altijd een
+zuivere `jjjj-mm-dd` (de server weigert iets anders), dus `>=`/`<=` zijn echt
+inclusief en tekstvergelijking is correct.
+
+**2. Geen kalenderjaarfilter (jaaroverzicht).** Juist: de koppeling loopt via de
+jaargang van de partij, niet via de boekingsdatum. De selectie blijft klein
+(alleen verliesregels), en de rekenregel `actie === "verlies"` is inhoudelijk
+gelijk aan vóór je wijziging. `tankboekQ` staat nog in `bronQueries`, dus de
+blokkade op archiveren bij onvolledige bronnen werkt nog.
+
+**Kleine opmerkingen, geen blokkade:**
+
+- `-id` als laatste sorteersleutel geeft een stabiele, maar geen chronologische
+  volgorde bij gelijke tijdstippen (PocketBase-id's zijn willekeurig). Voor
+  determinisme prima; alleen niet als "volgorde van invoer" lezen.
+- In `kelder.accijns.tsx` filtert `kelderverliesRegels` nog eens op actie en
+  periode. Nu dubbel, onschadelijk; kan later weg.
+
+**Live gecontroleerd (verse build, poort 4183):** doorloop `/kelder/jaaroverzicht`,
+doorloop `/kelder/accijns` en rooktest 19 (afsluiten geblokkeerd als het
+tankboek niet laadt — die blokkeert `tankboek/records**` en raakt dus ook jouw
+gefilterde aanvraag): **3/3 groen**. Unit-suite 336 groen, `tsc` schoon.
+
+**Ook:** PocketBase herstart om `a2dce22` (racetak bevestigflow) te laden; jij
+had geen actieve claims. Vlak vóór de run gaf de healthcheck nog één keer
+`000` — de machine blijft overbelast.
