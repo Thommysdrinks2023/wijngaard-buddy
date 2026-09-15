@@ -1,0 +1,232 @@
+/// <reference path="../pb_data/types.d.ts" />
+//
+// INLOGGEN WEER VERWIJDERD (besluit Thomas, 22 augustus 2026): de
+// $apis.requireAuth()-middleware is opnieuw van elk endpoint in dit bestand
+// weggehaald — Thomas zat zichzelf buiten zijn eigen app. De rolcontroles
+// (eisSchrijfrecht/eisBeheerder) staan er bewust NOG IN: rolVan() in
+// kelder_logica.js geeft bij ontbrekende auth weer "beheerder" terug, dus ze
+// laten alles door. Geschiedenis: dit is de TWEEDE keer (eerder 26 juli
+// 2026, toen op 21 augustus hersteld, nu weer weg). Zie CLAUDE.md.
+// Kelder-endpoints: alle tankboek-boekingen lopen hierlangs, atomisch
+// (regel + tankcaches in één transactie). De tankboek-collectie zelf staat
+// dicht in de API-rules (create/update/delete = null): dit is de enige route
+// naar het register. Correcties zijn nieuwe regels, nooit bewerkingen.
+//
+// JSVM-eigenaardigheid: handlers draaien in een VM-pool waarin niets uit dit
+// bestand buiten de handler bestaat — daarom laadt elke handler de gedeelde
+// logica zelf via require() (zie kelder_logica.js).
+
+// ---------- POST /api/tappenmars/tankboek-boeking ----------
+for (const route of [
+  "/api/tappenmars/tankboek-boeking",
+  "/api/tappenmars/overhevelen-met-verlies",
+]) {
+  routerAdd("POST", route, (e) => {
+    const logica = require(`${__hooks}/kelder_logica.js`);
+    const sleutels = require(`${__hooks}/boeking_sleutel.js`);
+    try {
+      const b = e.requestInfo().body;
+      // Blok B — rolhandhaving vóór alles (dus ook vóór validatie)
+      const schrijfFout = logica.eisSchrijfrecht(e.auth);
+      if (schrijfFout) return e.json(403, { message: schrijfFout });
+      if (b.actie === "correctie" || b.corrigeert) {
+        const rolFout = logica.eisBeheerder(e.auth, "correctieboekingen doen");
+        if (rolFout) return e.json(403, { message: rolFout });
+      }
+      // Idempotent: met een al bekende boeking_sleutel wordt niet opnieuw
+      // geboekt (zie boeking_sleutel.js). Transactie + rollback zitten daarin.
+      const uitkomst = sleutels.boekMetSleutel(e.app, b, (txApp, body) =>
+        logica.voerBoekingUit(txApp, body),
+      );
+      if (uitkomst.fout) throw new BadRequestError(uitkomst.fout);
+      return e.json(200, {
+        ok: true,
+        waarschuwing: uitkomst.waarschuwing,
+        regelId: uitkomst.regelId,
+        alGeboekt: uitkomst.alGeboekt,
+      });
+    } catch (err) {
+      throw logica.leesbareFout(err);
+    }
+  });
+}
+// ---------- POST /api/tappenmars/partij-aanmaken ----------
+// Maakt de partij aan en boekt (indien starttank + startvolume opgegeven)
+// direct de eerste "vullen"-regel — alles of niets.
+routerAdd("POST", "/api/tappenmars/partij-aanmaken", (e) => {
+  const logica = require(`${__hooks}/kelder_logica.js`);
+  let resultaat = null;
+  try {
+    const b = e.requestInfo().body;
+    const schrijfFout = logica.eisSchrijfrecht(e.auth);
+    if (schrijfFout) return e.json(403, { message: schrijfFout });
+    let partijId = "";
+    e.app.runInTransaction((txApp) => {
+      const col = txApp.findCollectionByNameOrId("partijen");
+      const partij = new Record(col);
+      const velden = [
+        "naam",
+        "jaargang",
+        "type",
+        "status",
+        "samenstelling",
+        "start_volume_l",
+        "notitie",
+        "eigenaar",
+        "opdracht_type",
+        "ouder_partij",
+        "lotnummer",
+        "pers_datum",
+        "gist",
+        "start_dichtheid_oechsle",
+        "start_dichtheid_brix",
+        "start_dichtheid_sg",
+        "start_tank",
+        "ontstelen",
+        "voorklaren",
+        "ph_bij_aanmaak",
+        "totaal_zuur_bij_aanmaak",
+        "standtijd",
+        "koeling",
+        "vineyard_id",
+      ];
+      for (let i = 0; i < velden.length; i++) {
+        const veld = velden[i];
+        if (b[veld] !== undefined && b[veld] !== null) partij.set(veld, b[veld]);
+      }
+      txApp.save(partij);
+      partijId = partij.id;
+
+      const startVolume = Number(b.start_volume_l == null ? 0 : b.start_volume_l);
+      if (b.start_tank && startVolume > 0) {
+        const nu = new Date();
+        const vandaag =
+          nu.getFullYear() +
+          "-" +
+          String(nu.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(nu.getDate()).padStart(2, "0");
+        resultaat = logica.voerBoekingUit(txApp, {
+          datum: b.pers_datum || b.boek_datum || vandaag,
+          partij: partij.id,
+          eigenaar: b.eigenaar,
+          actie: "vullen",
+          naar_tank: b.start_tank,
+          volume_l: startVolume,
+          verantwoordelijke: b.verantwoordelijke || b.ingevoerd_door || "onbekend",
+          notitie: "Eerste vulling bij aanmaak partij",
+          vineyard_id: b.vineyard_id,
+        });
+        if (resultaat.fout) throw new Error(resultaat.fout); // rollback: ook de partij
+      }
+    });
+    return e.json(200, {
+      ok: true,
+      id: partijId,
+      waarschuwing: (resultaat && resultaat.waarschuwing) || "",
+    });
+  } catch (err) {
+    if (resultaat && resultaat.fout) throw new BadRequestError(resultaat.fout);
+    throw logica.leesbareFout(err);
+  }
+});
+
+// ---------- POST /api/tappenmars/bottelronde-aanmaken ----------
+// Fase 4 (Botteling & Voorraad, zie DECISIONS-FASE4.md). Eén gebruikersactie
+// -> drie samenhangende records atomisch: de tankboekregel (actie "botteling",
+// hergebruikt de bestaande voerBoekingUit-validatie/Regel 3 ongewijzigd),
+// het bottelronde-record en het voorraad_flessen-record. Faalt de
+// tankboekboeking (te weinig volume, tank op reiniging/defect, etc.), dan
+// rolt de hele transactie terug — er blijft geen wees-bottelronde of
+// wees-voorraadrecord achter.
+routerAdd("POST", "/api/tappenmars/bottelronde-aanmaken", (e) => {
+  const logica = require(`${__hooks}/kelder_logica.js`);
+  let resultaat = null;
+  try {
+    const b = e.requestInfo().body;
+    const schrijfFout = logica.eisSchrijfrecht(e.auth);
+    if (schrijfFout) return e.json(403, { message: schrijfFout });
+    e.app.runInTransaction((txApp) => {
+      resultaat = logica.voerBottelrondeUit(txApp, b);
+      if (resultaat.fout) throw new Error(resultaat.fout); // rollback
+    });
+    return e.json(200, {
+      ok: true,
+      id: resultaat.bottelrondeId,
+      voorraad_id: resultaat.voorraadId,
+      waarschuwing: resultaat.waarschuwing || "",
+      // Fase 15 Blok C — het bottelverlies zoals de server het heeft
+      // vastgelegd, zodat de client niet zijn eigen berekening hoeft te
+      // vertrouwen bij het terugmelden.
+      bottelverlies_l: resultaat.bottelverliesL || 0,
+      gebotteld_l: resultaat.gebotteldL || 0,
+    });
+  } catch (err) {
+    if (resultaat && resultaat.fout) throw new BadRequestError(resultaat.fout);
+    throw logica.leesbareFout(err);
+  }
+});
+
+// ---------- POST /api/tappenmars/tanks-herbereken ----------
+// Vangnet (ARCHITECTURE.md §7.1): reconstrueert alle tankcaches uit het
+// tankboek. Draaien bij twijfel of na handmatig ingrijpen in de admin.
+routerAdd("POST", "/api/tappenmars/tanks-herbereken", (e) => {
+  const logica = require(`${__hooks}/kelder_logica.js`);
+  try {
+    const rolFout = logica.eisBeheerder(e.auth, "de herberekening draaien");
+    if (rolFout) return e.json(403, { message: rolFout });
+    let bijgewerkt = 0;
+    e.app.runInTransaction((txApp) => {
+      const tanks = txApp.findRecordsByFilter("tanks", "id != ''", "code", 500, 0);
+      const regels = txApp.findRecordsByFilter(
+        "tankboek",
+        "id != ''",
+        "datum,tijd,created",
+        100000,
+        0,
+      );
+      const perTank = {};
+      for (let i = 0; i < regels.length; i++) {
+        const regel = regels[i];
+        const vol = regel.getFloat("volume_l");
+        const actie = regel.getString("actie");
+        const van = regel.getString("van_tank");
+        const naar = regel.getString("naar_tank");
+        const partij = regel.getString("partij");
+        // Zelfde categorisering als voerBoekingUit() in kelder_logica.js —
+        // "correctie" is richtingafhankelijk (Regel D1), niet statisch.
+        const uitBron =
+          ["overhevelen", "aftappen", "botteling", "verlies", "monster"].includes(actie) ||
+          (actie === "correctie" && !!van);
+        const naarDoel =
+          ["vullen", "overhevelen"].includes(actie) || (actie === "correctie" && !!naar);
+        if (van && uitBron) {
+          perTank[van] = perTank[van] || { volume: 0, partij: "" };
+          perTank[van].volume -= vol;
+          if (perTank[van].volume <= 0) perTank[van].partij = "";
+        }
+        if (naar && naarDoel) {
+          perTank[naar] = perTank[naar] || { volume: 0, partij: "" };
+          perTank[naar].volume += vol;
+          perTank[naar].partij = partij;
+        }
+      }
+      for (let i = 0; i < tanks.length; i++) {
+        const tank = tanks[i];
+        const stand = perTank[tank.id] || { volume: 0, partij: "" };
+        const volume = Math.max(0, Math.round(stand.volume * 100) / 100);
+        const status = tank.getString("status");
+        tank.set("huidig_volume_l", volume);
+        tank.set("huidige_partij", volume > 0 ? stand.partij : "");
+        if (status !== "reiniging" && status !== "defect") {
+          tank.set("status", volume > 0 ? "in_gebruik" : "leeg");
+        }
+        txApp.save(tank);
+        bijgewerkt++;
+      }
+    });
+    return e.json(200, { ok: true, tanks_bijgewerkt: bijgewerkt });
+  } catch (err) {
+    throw logica.leesbareFout(err);
+  }
+});

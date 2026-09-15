@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { getPb, isIngelogd, isPbConfigured, pingPb } from "@/lib/data";
+import { getPb, isPbConfigured, pingPb } from "@/lib/data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { AppHeader } from "@/components/app-header";
 import {
@@ -17,7 +17,6 @@ import {
   Grape,
   Clock,
   TrendingUp,
-  LogIn,
   Database,
   FlaskConical,
   MapPinned,
@@ -30,6 +29,16 @@ import {
   Sun,
   History,
   Sparkles,
+  Home,
+  Wine,
+  Package,
+  BookOpen,
+  NotebookPen,
+  ShoppingCart,
+  Wrench,
+  PackagePlus,
+  Users,
+  Thermometer,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -47,6 +56,12 @@ import {
 import { getWijngaardConfig, setWijngaardConfig } from "@/lib/wijngaard-config";
 import { getSyncFouten, wisSyncFouten } from "@/lib/sync";
 import { getAuditLog } from "@/lib/audit";
+import {
+  getAutoStartModule,
+  getLaatsteModule,
+  MODULE_LABELS,
+  setAutoStartModule,
+} from "@/lib/module-keuze";
 
 // Volledig menu, gegroepeerd: Veld (registreren), Analyse (bekijken), Beheer
 const MENU_GROEPEN = [
@@ -136,9 +151,114 @@ const MENU_GROEPEN = [
     ],
   },
   {
+    kop: "🍷 Kelder",
+    items: [
+      {
+        to: "/kelder/tankboek",
+        label: "Tankboek",
+        omschrijving: "Onwijzigbaar register van keldermutaties",
+        icon: BookOpen,
+      },
+      {
+        to: "/kelder/logboek",
+        label: "Logboek",
+        omschrijving: "Alle kelderwerkzaamheden, filterbaar",
+        icon: NotebookPen,
+      },
+      {
+        to: "/kelder/jaaroverzicht",
+        label: "Jaaroverzicht",
+        omschrijving: "Oogst, productie en botteling per jaargang",
+        icon: BarChart3,
+      },
+      {
+        to: "/kelder/accijns",
+        label: "Accijns",
+        omschrijving: "Indicatief overzicht per aangifteperiode",
+        icon: FileText,
+      },
+    ],
+  },
+  {
+    kop: "🌡️ Pasteurisatie",
+    items: [
+      {
+        to: "/pasteurisatie",
+        label: "Pasteurisatie",
+        omschrijving: "Runoverzicht en logboek per klant",
+        icon: Thermometer,
+      },
+      {
+        to: "/pasteurisatie/plannen",
+        label: "Vooraf plannen",
+        omschrijving: "PU en drukveiligheid vooraf doorrekenen",
+        icon: Thermometer,
+      },
+      {
+        to: "/instellingen/sluitingen",
+        label: "Sluitingen beheren",
+        omschrijving: "Dopspecificaties voor het veiligheidsoordeel",
+        icon: Package,
+      },
+      {
+        to: "/instellingen/rekenmodel-validaties",
+        label: "Validatiestatus rekenmodellen",
+        omschrijving: "Nog niet gevalideerd tegen een echte run",
+        icon: FileText,
+      },
+    ],
+  },
+  {
+    kop: "🍾 Botteling & Voorraad",
+    items: [
+      {
+        to: "/voorraad",
+        label: "Voorraad",
+        omschrijving: "Flessenvoorraad per wijn/jaargang",
+        icon: Package,
+      },
+      {
+        to: "/voorraad/flessen",
+        label: "Flessenvoorraad (leeg)",
+        omschrijving: "Lege flessen per type — ontvangst en telcorrectie",
+        icon: PackagePlus,
+      },
+      {
+        to: "/instellingen/eigenaars",
+        label: "Eigenaars beheren",
+        omschrijving: "Van wie is de partij — met administratiecode",
+        icon: Users,
+      },
+      {
+        to: "/instellingen/flestypes",
+        label: "Flestypes beheren",
+        omschrijving: "Vorm, inhoud, kleur en sluiting per flestype",
+        icon: PackagePlus,
+      },
+      {
+        to: "/kelder/partijen",
+        label: "Bottelen",
+        omschrijving: "Start een bottelronde vanuit een partij",
+        icon: Wine,
+      },
+      {
+        to: "/verkoop",
+        label: "Verkoop",
+        omschrijving: "Klanten, orders en omzet",
+        icon: ShoppingCart,
+      },
+    ],
+  },
+  {
     kop: "⚙️ Beheer",
     items: [
       { to: "/kaart", label: "GPS-kaart", omschrijving: "Rijlocaties vastleggen", icon: MapPinned },
+      {
+        to: "/materieel",
+        label: "Materieel",
+        omschrijving: "Machines en onderhoudslog",
+        icon: Wrench,
+      },
       {
         to: "/qr",
         label: "QR-codes printen",
@@ -151,7 +271,6 @@ const MENU_GROEPEN = [
         omschrijving: "Verwijderde records terugzetten",
         icon: Trash2,
       },
-      { to: "/login", label: "Inloggen", omschrijving: "Account voor synchronisatie", icon: LogIn },
     ],
   },
 ] as const;
@@ -250,15 +369,11 @@ function downloadCsvBackup() {
   toast.success("CSV gedownload", { description: "Te openen in Excel." });
 }
 
-// Volledige backup van alle PocketBase-collecties (vereist login)
+// Volledige backup van alle PocketBase-collecties
 async function downloadServerBackup() {
   const pb = getPb();
   if (!pb || !(await pingPb())) {
     toast.error("Server niet bereikbaar", { description: "Probeer het later opnieuw." });
-    return;
-  }
-  if (!pb.authStore.isValid) {
-    toast.error("Log eerst in", { description: "Serverdata downloaden vereist een account." });
     return;
   }
   const collecties = [
@@ -293,7 +408,6 @@ export const Route = createFileRoute("/instellingen")({
 });
 
 function Instellingen() {
-  const navigate = useNavigate();
   const [invoerder, setInvoerder] = useInvoerder();
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [drempel, setDrempel] = useState<number>(() => getMetingDrempel());
@@ -307,6 +421,8 @@ function Instellingen() {
   const [weergave, setWeergaveState] = useState<Weergave>(() => getWeergave());
   const [syncFouten, setSyncFouten] = useState(() => getSyncFouten());
   const [toonAudit, setToonAudit] = useState(false);
+  const [autoStart, setAutoStartState] = useState(() => getAutoStartModule());
+  const laatsteModule = getLaatsteModule();
 
   const wijzigWeergave = (deel: Partial<Weergave>) => {
     const nieuw = { ...weergave, ...deel };
@@ -575,6 +691,34 @@ function Instellingen() {
           </div>
         </section>
 
+        {/* Startscherm: modulekiezer of direct naar laatst gebruikte module */}
+        <section className="space-y-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <Home className="h-4 w-4" /> Startscherm
+          </h2>
+          <button
+            type="button"
+            onClick={() => {
+              const nieuw = !autoStart;
+              setAutoStartState(nieuw);
+              setAutoStartModule(nieuw);
+            }}
+            className={`flex h-14 w-full items-center justify-between rounded-xl border-2 px-4 text-sm font-semibold transition ${
+              autoStart
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card"
+            }`}
+          >
+            Start direct in laatst gebruikte module
+            <span className="text-xs font-normal opacity-70">{autoStart ? "aan" : "uit"}</span>
+          </button>
+          <p className="text-xs text-muted-foreground">
+            Laatst gebruikt:{" "}
+            {laatsteModule ? MODULE_LABELS[laatsteModule] : "nog geen module gekozen"}. Indien uit,
+            toont het startscherm altijd de modulekeuze.
+          </p>
+        </section>
+
         {/* Sync-problemen: records die de server blijvend weigerde */}
         {syncFouten.length > 0 && (
           <section className="space-y-2">
@@ -681,20 +825,6 @@ function Instellingen() {
               om te verbinden met je PocketBase backend.
             </p>
           )}
-          {isIngelogd() && (
-            <button
-              type="button"
-              onClick={() => {
-                getPb()?.authStore.clear();
-                localStorage.removeItem("wg.offline.keuze.v1");
-                toast.success("Uitgelogd");
-                navigate({ to: "/login" });
-              }}
-              className="h-12 w-full rounded-xl border border-border bg-card text-sm font-semibold text-destructive"
-            >
-              Uitloggen
-            </button>
-          )}
         </section>
 
         <section className="space-y-2">
@@ -729,8 +859,8 @@ function Instellingen() {
           </div>
           <p className="text-xs text-muted-foreground">
             JSON/CSV exporteert de lokale gegevens van dit apparaat. Serverdata exporteert álle
-            collecties uit PocketBase (vereist login). De laptop maakt daarnaast elke avond om 20:00
-            automatisch een volledige backup.
+            collecties uit PocketBase. De laptop maakt daarnaast elke avond om 20:00 automatisch een
+            volledige backup.
           </p>
         </section>
 

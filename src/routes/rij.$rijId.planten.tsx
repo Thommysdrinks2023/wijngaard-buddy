@@ -84,7 +84,7 @@ function PlantenPage() {
         {/* Back to map */}
         <Link
           to="/perceelkaart"
-          className="inline-flex h-10 items-center gap-1 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground"
+          className="inline-flex h-11 items-center gap-1 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Terug naar perceelkaart

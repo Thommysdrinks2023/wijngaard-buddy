@@ -18,6 +18,7 @@ import {
   syncQueueCount,
   updateQueuedCreate,
 } from "./sync";
+import { classificeerLeesfout, LaadFout } from "./laadfout";
 import { deleteOfflineFoto, getOfflineFoto, saveOfflineFoto } from "./foto-opslag";
 import { naarPrullenbak, verwijderUitPrullenbak } from "./prullenbak";
 import { logAudit } from "./audit";
@@ -30,7 +31,9 @@ let pbStatus: "unknown" | "online" | "offline" = "unknown";
 
 export function getPb(): PocketBase | null {
   if (!PB_URL) return null;
-  if (!pbInstance) pbInstance = new PocketBase(PB_URL);
+  if (!pbInstance) {
+    pbInstance = new PocketBase(PB_URL);
+  }
   return pbInstance;
 }
 
@@ -42,9 +45,14 @@ export function getPbStatus() {
   return pbStatus;
 }
 
+// Wanneer is de status voor het laatst vastgesteld? Nodig om een "offline"
+// niet oneindig te laten plakken — zie ensureOnline() hieronder.
+let pbStatusSinds = 0;
+
 function setPbStatus(nieuw: "online" | "offline") {
   const veranderd = pbStatus !== nieuw;
   pbStatus = nieuw;
+  pbStatusSinds = Date.now();
   if (veranderd && typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("wg.pbstatus.changed"));
   }
@@ -57,11 +65,26 @@ export async function pingPb(): Promise<boolean> {
     return false;
   }
   try {
-    // maximaal 3,5s wachten: in het veld zonder bereik mag de app niet blijven hangen
-    await Promise.race([
-      pb.health.check(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3500)),
-    ]);
+    // maximaal 3,5s wachten: in het veld zonder bereik mag de app niet blijven hangen.
+    // requestKey: null schakelt PocketBase's auto-cancellation uit voor deze call —
+    // zonder die vlag annuleert een tweede gelijktijdige pingPb()-aanroep (bv. de
+    // VerbindingBadge in AppHeader naast een paginaquery die zelf ensureOnline()
+    // aanroept) de eerste, die dan als "offline" wordt gerapporteerd terwijl de
+    // server prima bereikbaar is. Ontdekt bij Fase 3 (agent-gesprekkenlijst leek na
+    // een herlaad leeg), maar gold voor de hele app. Zie DECISIONS-FASE3.md.
+    //
+    // Promise.race alleen is niet genoeg: die laat de verliezer gewoon
+    // doorlopen, dus bij een timeout bleef het health-verzoek openstaan tot de
+    // browser het zelf opgaf. Op een trage verbinding stapelen die zich op.
+    // Daarom een AbortController, zodat de fetch bij de timeout echt stopt.
+    // (Gevonden door Codex bij review van deze functie, 13 september 2026.)
+    const afbreker = new AbortController();
+    const tijdklok = setTimeout(() => afbreker.abort(), 3500);
+    try {
+      await pb.health.check({ requestKey: null, signal: afbreker.signal });
+    } finally {
+      clearTimeout(tijdklok);
+    }
     setPbStatus("online");
     // server is weer bereikbaar: offline aangemaakte records op de achtergrond syncen
     if (!flushBezig && syncQueueCount() > 0) {
@@ -77,10 +100,22 @@ export async function pingPb(): Promise<boolean> {
 // Bug-fix eerste keer laden: alle data-functies wachten op één gedeelde ping
 // in plaats van blind de (nog onbekende) status te lezen.
 let pingInFlight: Promise<boolean> | null = null;
+// Hoe lang een vastgestelde "offline" geldig blijft voordat ensureOnline()
+// opnieuw wil pingen. Zonder deze grens bleef één trage ping (de timeout is
+// 3,5s) de status tot 30 seconden op "offline" zetten — de hersteltik zit in
+// VerbindingBadge en draait maar elke 30s. Gevolg: op een trage verbinding in
+// de kelder faalden ALLE online-only schermen tegelijk, en hielp opnieuw
+// proberen de eerste halve minuut niet, ook al was de server gewoon bereikbaar.
+const OFFLINE_HERKANSING_MS = 5000;
+
 export async function ensureOnline(): Promise<boolean> {
   if (!getPb()) return false;
   if (pbStatus === "online") return true;
-  if (pbStatus === "offline") return false;
+  // Verse "offline" vertrouwen we; een oudere krijgt een herkansing in plaats
+  // van blind `false` terug te geven.
+  if (pbStatus === "offline" && Date.now() - pbStatusSinds < OFFLINE_HERKANSING_MS) {
+    return false;
+  }
   if (!pingInFlight) {
     pingInFlight = pingPb().finally(() => {
       pingInFlight = null;
@@ -89,9 +124,87 @@ export async function ensureOnline(): Promise<boolean> {
   return pingInFlight;
 }
 
+// Fase 11 Blok 1 — verzoeken bundelen. Op de hub bleken 8 van de 22 API-calls
+// exacte duplicaten (app_instellingen 5x, regelgeving_instellingen 3x): elke
+// signaalproducent haalt dezelfde instellingenlijst zelfstandig op. Eerder was
+// dat onzichtbaar doordat PocketBase's auto-cancellation ze wegkaapte — met
+// `requestKey: null` (de fix daarvoor) vuren ze nu allemaal echt af. Bundelen
+// lost beide problemen tegelijk op: één lopend verzoek dat de aanroepers delen,
+// dus geen annulering en geen duplicaat. Zelfde patroon als pingInFlight.
+const lopendeVerzoeken = new Map<string, Promise<unknown>>();
+export function deelVerzoek<T>(sleutel: string, maak: () => Promise<T>): Promise<T> {
+  const lopend = lopendeVerzoeken.get(sleutel);
+  if (lopend) return lopend as Promise<T>;
+  const verzoek = maak().finally(() => {
+    lopendeVerzoeken.delete(sleutel);
+  });
+  lopendeVerzoeken.set(sleutel, verzoek);
+  return verzoek;
+}
+
+// INLOGGEN WEER VERWIJDERD (besluit Thomas, 22 augustus 2026 — zie CLAUDE.md
+// "Inloggen verwijderd"). De app kent geen accounts meer; alle API-regels
+// staan open. Deze functie geeft daarom altijd true terug in plaats van te
+// verdwijnen: de signaalproducenten en datalagen gebruiken hem als "mag ik de
+// server bevragen?"-poortje, en dat antwoord is nu onvoorwaardelijk ja. Zo
+// blijft één plek de schakelaar als het inloggen ooit terugkomt (verplicht
+// vóór de Pi of pb.tappenmars.nl).
 export function isIngelogd(): boolean {
+  return true;
+}
+
+// Fase 8 — gedeelde leeshelper voor de ONLINE-ONLY datalagen (kelder, verkoop,
+// materieel, regelgeving, bodem, middelen, proefnotities, partijen). Root
+// cause van de dropdown-bug: PocketBase's listRule ("@request.auth.id != ''")
+// beantwoordt een anoniem verzoek met een geldige 200 + lege items-lijst, en
+// het oude patroon `if (!pb || !(await ensureOnline())) return []` gaf dat
+// stil door — react-query zag een geslaagde lege query, nooit een fout.
+// Deze helper gooit in plaats daarvan een leesbare Nederlandse Error bij een
+// ontbrekende sessie, een onbereikbare server of een mislukte fetch, zodat
+// de aanroepende query.isError wordt en de UI het kan tonen.
+// NB: bewust NIET gebruiken voor de offline-first wijngaard-datalagen
+// (data.ts/extra-data.ts/steekproef.ts/…) — stil terugvallen op localStorage
+// is dáár het ontwerp. Ook niet voor agent-data.ts (bewust login-vrij).
+export async function haalLijst<T>(
+  wat: string,
+  leeg: T,
+  lees: (pb: PocketBase) => Promise<T>,
+): Promise<T> {
   const pb = getPb();
-  return Boolean(pb?.authStore.isValid);
+  if (!pb) return leeg; // geen server geconfigureerd — lege staat is dan correct
+  // Hier stond een sessiecontrole; die is vervallen met het verwijderen van het
+  // inloggen (22 augustus 2026). De rest van deze helper blijft onverminderd nodig:
+  // een onbereikbare server en een mislukte fetch moeten nog steeds een echte
+  // fout opleveren in plaats van een stille lege lijst.
+  if (!(await ensureOnline()))
+    throw new LaadFout(
+      "geen_verbinding",
+      `Geen verbinding met de server — kon ${wat} niet laden. Controleer je bereik.`,
+    );
+  try {
+    return await lees(pb);
+  } catch (fout) {
+    // Fase 11 Blok 6: niet meer alles op één hoop. Zie laadfout.ts voor waarom
+    // dit ertoe doet — de oude generieke melding maakte vier verschillende
+    // oorzaken ononderscheidbaar, en dat heeft in vier fases bugs gekost.
+    const geclassificeerd = classificeerLeesfout(fout, wat);
+
+    // Een geannuleerd verzoek is geen storing maar een botsing tussen twee
+    // gelijktijdige aanroepen: de server is bereikbaar en de gebruiker is
+    // ingelogd. Eén keer opnieuw proberen lost dat op in plaats van er een
+    // foutmelding van te maken. Dit is de vangnetlaag onder deelVerzoek() en
+    // requestKey: null — die voorkomen de botsing, dit vangt af wat er alsnog
+    // doorheen glipt.
+    if (geclassificeerd.soort === "geannuleerd") {
+      try {
+        return await lees(pb);
+      } catch (tweedeFout) {
+        throw classificeerLeesfout(tweedeFout, wat);
+      }
+    }
+
+    throw geclassificeerd;
+  }
 }
 
 // ---------- localStorage helpers ----------
@@ -158,7 +271,7 @@ export async function fetchMetingen(rijId?: string): Promise<Meting[]> {
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
-      const filter = rijId ? `rij = "${rijId}"` : "";
+      const filter = rijId ? pb.filter("rij = {:rijId}", { rijId }) : "";
       const records = await pb.collection("metingen").getFullList({
         sort: "-datum,-created",
         filter,
@@ -206,7 +319,7 @@ export async function fetchObservaties(rijId?: string): Promise<Observatie[]> {
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
-      const filter = rijId ? `rij = "${rijId}"` : "";
+      const filter = rijId ? pb.filter("rij = {:rijId}", { rijId }) : "";
       const records = await pb.collection("observaties").getFullList({
         sort: "-datum,-created",
         filter,
@@ -430,7 +543,7 @@ export async function fetchFenologie(rijId?: string): Promise<Fenologie[]> {
   const pb = getPb();
   if (pb && (await ensureOnline())) {
     try {
-      const filter = rijId ? `rij = "${rijId}"` : "";
+      const filter = rijId ? pb.filter("rij = {:rijId}", { rijId }) : "";
       const records = await pb.collection("fenologie").getFullList({
         sort: "-datum,-created",
         filter,
@@ -698,7 +811,11 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
   flushBezig = true;
   try {
     try {
-      await pb.health.check();
+      // requestKey: null — zonder dit kan een gelijktijdige pingPb() deze check
+      // annuleren, waarna de flush denkt dat de server offline is en de hele
+      // wachtrij ongemoeid laat terwijl er niets aan de hand is. Zelfde
+      // auto-cancellation-valkuil als in pingPb() zelf, zie CLAUDE.md.
+      await pb.health.check({ requestKey: null });
       pbStatus = "online";
     } catch {
       pbStatus = "offline";
@@ -728,6 +845,9 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
         if (actie === "create") {
           const heeftOfflineFoto = payload.__fotoOffline === true;
           delete payload.__fotoOffline;
+          // vooraf bepaald id meesturen: maakt een herhaalde poging herkenbaar
+          // in plaats van een duplicaat (zie recordId in sync.ts)
+          if (item.recordId) payload.id = item.recordId;
           let body: Record<string, unknown> | FormData = payload;
           if (heeftOfflineFoto) {
             // foto uit IndexedDB ophalen en als multipart meesturen
@@ -780,13 +900,34 @@ export async function flushSyncQueue(): Promise<{ verzonden: number; mislukt: nu
         verzonden++;
       } catch (err) {
         const status = (err as { status?: number }).status ?? 0;
+        const velden = (err as { response?: { data?: Record<string, { code?: string }> } }).response
+          ?.data;
+
+        // Het record bestaat al met precies dit id: een eerdere poging IS
+        // aangekomen, alleen ging het antwoord verloren. Dus geslaagd, niet
+        // mislukt — anders zou elke nieuwe poging een duplicaat opleveren.
+        if (status === 400 && velden?.id?.code === "validation_not_unique") {
+          removeFromSyncQueue(item.queueId);
+          const lsKey = item.lsKey ?? SOORT_LS_KEY[item.soort];
+          if (lsKey) removeLocalRecord(lsKey, item.localId);
+          verzonden++;
+          continue;
+        }
+
         // 400 = blijvende validatiefout: uit de wachtrij (lokale kopie blijft).
         // 401/403 (niet ingelogd) en netwerk-/serverfouten blijven staan voor
         // een nieuwe poging na inloggen of als de server weer bereikbaar is.
         if (status === 400 || status === 404) {
           removeFromSyncQueue(item.queueId);
-          // niet stil laten verdwijnen: registreren en melden
-          const bericht = (err as { message?: string }).message ?? "Onbekende fout";
+          // niet stil laten verdwijnen: registreren en melden. PocketBase zet
+          // de bruikbare informatie in response.data per veld; de bovenliggende
+          // message is altijd het nietszeggende "Failed to create record."
+          const veldFouten = velden
+            ? Object.entries(velden)
+                .map(([veld, f]) => `${veld}: ${(f as { message?: string }).message ?? f.code}`)
+                .join("; ")
+            : "";
+          const bericht = veldFouten || (err as { message?: string }).message || "Onbekende fout";
           registreerSyncFout(item, status, bericht);
           if (item.soort !== "audit") {
             toast.error(

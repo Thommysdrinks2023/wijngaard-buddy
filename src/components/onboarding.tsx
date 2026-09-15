@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { APP_NAAM } from "@/config/app";
 import { Link } from "@tanstack/react-router";
 import { getWijngaardConfig } from "@/lib/wijngaard-config";
 
@@ -8,7 +9,7 @@ const STAPPEN = [
   {
     logo: true,
     emoji: "",
-    titel: "Welkom bij Wijngaard Buddy",
+    titel: `Welkom bij ${APP_NAAM}`,
     tekst: `De veld-app van ${getWijngaardConfig().naam}. Alles wat je in de wijngaard registreert — metingen, observaties, oogst — staat veilig op één plek en werkt ook zonder bereik.`,
   },
   {
@@ -27,13 +28,22 @@ const STAPPEN = [
   },
 ];
 
-// Drie welkomstschermen bij het allereerste gebruik
+// Drie welkomstschermen bij het allereerste gebruik.
+//
+// Fase 13 Blok F — ALLEEN op het startscherm. Voorheen verscheen deze dialoog
+// bij de eerste paginalading ongeacht waar je binnenkwam: scan je een QR-code
+// op een rijpaal, of open je een signaal dat naar /kelder/partijen/<id> wijst,
+// dan lag er een introcarrousel over je werkscherm die eerst weggeklikt moest
+// worden. Wie diep binnenkomt weet waar hij is; wie op de hub begint niet.
+// Uitgesteld tonen is bovendien niet erg: bij het volgende bezoek aan het
+// startscherm komt hij alsnog, want de vlag is dan nog niet gezet.
 export function Onboarding() {
   const [stap, setStap] = useState(0);
   const [tonen, setTonen] = useState(false);
 
   useEffect(() => {
-    setTonen(!localStorage.getItem(LS_GEZIEN));
+    const opStartscherm = window.location.pathname === "/";
+    setTonen(opStartscherm && !localStorage.getItem(LS_GEZIEN));
   }, []);
 
   if (!tonen) return null;
@@ -50,11 +60,14 @@ export function Onboarding() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center shadow-[0_8px_30px_rgba(0,0,0,0.18)]">
         {huidige.logo ? (
-          <img
-            src="/logo-icon.png"
-            alt={getWijngaardConfig().naam}
-            className="mx-auto h-24 w-24 object-contain"
-          />
+          <picture>
+            <source srcSet="/logo-icon.webp" type="image/webp" />
+            <img
+              src="/logo-icon.png"
+              alt={getWijngaardConfig().naam}
+              className="mx-auto h-24 w-24 object-contain"
+            />
+          </picture>
         ) : (
           <div className="text-5xl">{huidige.emoji}</div>
         )}

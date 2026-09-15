@@ -1,6 +1,12 @@
-import type { RecordModel } from "pocketbase";
+import PocketBase, { type RecordModel } from "pocketbase";
 import type { FenologieMoment, Ras } from "./types";
 import { ensureOnline, getPb } from "./data";
+
+// pb.filter() is pure string-escaping (geen netwerk), maar op dit punt in de
+// sync-wachtrij is er niet altijd een live pb-instantie (offline-first) —
+// een kale instantie volstaat om dezelfde escaping te krijgen.
+const pbFilter = (expr: string, params: Record<string, unknown>) =>
+  new PocketBase().filter(expr, params);
 import { addToSyncQueue, getSyncQueue, removeFromSyncQueue, removeQueuedByLocalId } from "./sync";
 import { logAudit } from "./audit";
 import { naarPrullenbak } from "./prullenbak";
@@ -164,7 +170,7 @@ export function deleteSteekproefPlant(id: string) {
       {
         collection: "steekproef_planten",
         actie: "delete",
-        filter: `client_id='${id}'`,
+        filter: pbFilter("client_id = {:id}", { id }),
       },
     );
     addToSyncQueue(
@@ -174,7 +180,7 @@ export function deleteSteekproefPlant(id: string) {
       {
         collection: "steekproef_metingen",
         actie: "delete",
-        filter: `plant_client_id='${id}'`,
+        filter: pbFilter("plant_client_id = {:id}", { id }),
       },
     );
   }

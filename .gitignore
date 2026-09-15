@@ -6,8 +6,18 @@
 # PocketBase wachtwoorden (nooit committen!)
 pocketbase-accounts.txt
 
+# Testdata-boekhouding van seed-testdata-agent.mjs (lokaal, per omgeving)
+scripts/.seed-testdata-agent.json
+scripts/.seed-pasteurisatie.json
+
 # Lokale PocketBase server + database (nooit committen!)
-pocketbase/
+# pb_hooks/ blijft WEL getrackt: dat is handgeschreven servercode (kelder-
+# validatielogica), geen binary/database.
+pocketbase/pocketbase.exe
+pocketbase/pb_data/
+pocketbase/pb_data_backup_*/
+pocketbase/pb_migrations/
+pocketbase/backup-credentials.txt
 
 # Logs
 logs
@@ -41,3 +51,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+scripts/healthcheck-url.txt
+
+# Playwright (Fase 11 Blok 5)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

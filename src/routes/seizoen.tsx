@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
+import { datumTekst } from "@/lib/datumtekst";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
 import {
@@ -318,7 +319,11 @@ function SeizoenPage() {
                                   : `${ras} — ${k.label}: nog niet ingevuld`
                               }
                             >
-                              {entry ? format(parseISO(entry.datum), "d MMM", { locale: nl }) : "+"}
+                              {/* werkkalender.datum is niet verplicht — via
+                                  datumTekst zodat een leeg veld geen RangeError
+                                  geeft. De fenologie-variant hierboven is wél
+                                  verplicht en blijft daarom ongewijzigd. */}
+                              {entry ? datumTekst(entry.datum, "d MMM") : "+"}
                             </button>
                           </td>
                         );

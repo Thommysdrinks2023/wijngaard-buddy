@@ -86,7 +86,7 @@ function SteekproevenPage() {
             <YearSelector />
             <Link
               to="/steekproeven/beheer"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium"
+              className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium"
             >
               <Settings2 className="h-4 w-4" /> Beheer
             </Link>

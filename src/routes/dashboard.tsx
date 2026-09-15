@@ -23,6 +23,7 @@ import {
   ScanLine,
   Sparkles,
   TrendingUp,
+  Wine,
 } from "lucide-react";
 import { WeerKaart } from "@/components/weer-kaart";
 import { fetchGezondheid, fetchOogst } from "@/lib/extra-data";
@@ -296,6 +297,7 @@ function Dashboard() {
         {/* Snelkoppelingen naar registratiepagina's */}
         <div className="grid grid-cols-4 gap-2">
           {[
+            { to: "/kelder", label: "Kelder", icon: Wine },
             { to: "/gezondheid", label: "Gezondheid", icon: HeartPulse },
             { to: "/oogst", label: "Oogst", icon: Grape },
             { to: "/werkrapport", label: "Werk", icon: Clock },
@@ -451,7 +453,7 @@ function Dashboard() {
                     <Link
                       to="/rij/$rijId/meting"
                       params={{ rijId: rij.id }}
-                      className="h-9 shrink-0 rounded-lg bg-primary px-3 text-sm font-medium leading-9 text-primary-foreground"
+                      className="h-11 shrink-0 rounded-lg bg-primary px-3 text-sm font-medium leading-[2.75rem] text-primary-foreground"
                     >
                       Meten
                     </Link>

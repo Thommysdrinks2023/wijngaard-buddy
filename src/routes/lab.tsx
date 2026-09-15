@@ -276,15 +276,21 @@ function LabPage() {
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
+                    {/* Fase 13 Blok A: `!= null` liet een 0 door, en PocketBase
+                        maakt van elk leeg getalveld een 0. Een bodem-pH van 0
+                        bestaat niet, en "YAN 0" leest als "geen voeding
+                        aanwezig" — dat is precies de meting waarop je besluit
+                        of er gistvoeding bij moet. Daarom hier op waarheid
+                        toetsen in plaats van op aanwezigheid. */}
                     {[
-                      l.ph != null ? `pH ${l.ph}` : null,
-                      l.organische_stof != null ? `org. stof ${l.organische_stof}%` : null,
-                      l.n != null ? `N ${l.n}` : null,
-                      l.p != null ? `P ${l.p}` : null,
-                      l.k != null ? `K ${l.k}` : null,
-                      l.yan != null ? `YAN ${l.yan}` : null,
-                      l.nh4 != null ? `NH₄ ${l.nh4}` : null,
-                      l.nopa != null ? `NOPA ${l.nopa}` : null,
+                      l.ph ? `pH ${l.ph}` : null,
+                      l.organische_stof ? `org. stof ${l.organische_stof}%` : null,
+                      l.n ? `N ${l.n}` : null,
+                      l.p ? `P ${l.p}` : null,
+                      l.k ? `K ${l.k}` : null,
+                      l.yan ? `YAN ${l.yan}` : null,
+                      l.nh4 ? `NH₄ ${l.nh4}` : null,
+                      l.nopa ? `NOPA ${l.nopa}` : null,
                     ]
                       .filter(Boolean)
                       .join(" · ") || "Geen meetwaarden"}

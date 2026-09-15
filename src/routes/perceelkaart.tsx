@@ -1,11 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { differenceInDays, parseISO } from "date-fns";
-import { fetchFenologie, fetchMetingen, fetchObservaties, fetchRijen } from "@/lib/data";
+import { useMemo, useState } from "react";
+import { differenceInDays, format, parseISO } from "date-fns";
+import { fetchWerkuren } from "@/lib/extra-data";
+import { fetchMiddelen } from "@/lib/middelen-data";
+import { berekenWachttijden } from "@/lib/wachttijd";
+import {
+  fetchFenologie,
+  fetchMetingen,
+  fetchObservaties,
+  fetchRijen,
+  isIngelogd,
+} from "@/lib/data";
+import { fetchBodemObservaties, laatstePerRij, type BodemObservatie } from "@/lib/bodem-data";
 import { RAS_OPTIONS, type Ras } from "@/lib/seed-rijen";
 import { AppHeader } from "@/components/app-header";
 import { WeerKaart } from "@/components/weer-kaart";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, HelpCircle } from "lucide-react";
 
 export const Route = createFileRoute("/perceelkaart")({
@@ -30,6 +41,40 @@ function fysiekeLengteBasis(aantalPlanten: number, plantenPerVak?: number): numb
   return aantalPlanten * (STANDAARD_PER_VAK / (plantenPerVak ?? STANDAARD_PER_VAK));
 }
 
+// Fase 7 Blok B — inkleuringsweergaven op basis van de laatste bodemobservatie
+const WEERGAVEN = [
+  { key: "ras", label: "Ras" },
+  { key: "bodemvocht", label: "Bodemvocht" },
+  { key: "ph", label: "pH (veld)" },
+  { key: "ouderdom", label: "Observatie-ouderdom" },
+] as const;
+type Weergave = (typeof WEERGAVEN)[number]["key"];
+
+const GEEN_DATA_KLEUR = "#d1d5db";
+const BODEMVOCHT_KLEUR: Record<string, string> = {
+  droog: "#f59e0b",
+  vochtig: "#4ade80",
+  nat: "#3b82f6",
+  verzadigd: "#1e3a8a",
+};
+
+function bodemKleur(weergave: Weergave, obs: BodemObservatie | undefined): string {
+  if (!obs) return GEEN_DATA_KLEUR;
+  if (weergave === "bodemvocht")
+    return obs.bodemvocht ? BODEMVOCHT_KLEUR[obs.bodemvocht] : GEEN_DATA_KLEUR;
+  if (weergave === "ph") {
+    if (obs.ph_veld == null) return GEEN_DATA_KLEUR;
+    if (obs.ph_veld < 5.5) return "#ef4444";
+    if (obs.ph_veld > 6.8) return "#3b82f6";
+    return "#4a8c5c";
+  }
+  // ouderdom
+  const dagen = differenceInDays(new Date(), parseISO(obs.datum));
+  if (dagen < 14) return "#4a8c5c";
+  if (dagen < 60) return "#f59e0b";
+  return "#ef4444";
+}
+
 const RAS_KLEUR: Record<Ras, string> = {
   Muscaris: "#fde68a",
   "Souvignier Gris": "#eab308",
@@ -46,6 +91,28 @@ function Perceelkaart() {
   const metingenQ = useQuery({ queryKey: ["metingen"], queryFn: () => fetchMetingen() });
   const obsQ = useQuery({ queryKey: ["observaties"], queryFn: () => fetchObservaties() });
   const fenQ = useQuery({ queryKey: ["fenologie"], queryFn: () => fetchFenologie() });
+  const bodemQ = useQuery({
+    queryKey: ["bodem"],
+    queryFn: fetchBodemObservaties,
+    enabled: isIngelogd(), // auth-only bron; anoniem kleurt de kaart gewoon op ras (Fase 8)
+  });
+  const [weergave, setWeergave] = useState<Weergave>("ras");
+  const bodemPerRij = useMemo(() => laatstePerRij(bodemQ.data ?? []), [bodemQ.data]);
+
+  // Fase 13 Blok B — welke rijen staan nog in de veiligheidstermijn na een
+  // bespuiting? Die worden op de kaart gemarkeerd; hier mag niet geplukt worden.
+  const werkurenQ = useQuery({ queryKey: ["werkuren"], queryFn: fetchWerkuren });
+  const middelenQ = useQuery({ queryKey: ["middelen"], queryFn: fetchMiddelen });
+  const wachttijden = useMemo(
+    () =>
+      berekenWachttijden(
+        werkurenQ.data ?? [],
+        middelenQ.data ?? [],
+        (rijenQ.data ?? []).map((r) => r.id),
+        format(new Date(), "yyyy-MM-dd"),
+      ),
+    [werkurenQ.data, middelenQ.data, rijenQ.data],
+  );
 
   const recencyByRij = useMemo(() => {
     const map = new Map<string, { recentMeting: boolean; recentZiekteSchade: boolean }>();
@@ -184,6 +251,22 @@ function Perceelkaart() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rijGeom]);
 
+  // Offline-first: fetchRijen valt vrijwel meteen terug op de geseede
+  // rijenlijst, dus dit triggert in de praktijk zelden — maar bij een echt
+  // lege eerste laadbeurt (geen cache, geen seed nog geschreven) voorkomt
+  // dit dat de kaart even leeg/kapot oogt in plaats van een laadstaat.
+  if (rijenQ.isLoading && rijen.length === 0) {
+    return (
+      <>
+        <AppHeader title="Perceelkaart" />
+        <div className="mx-auto max-w-screen-md space-y-3 px-3 py-4">
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-[420px] w-full rounded-xl" />
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <AppHeader title="Perceelkaart" />
@@ -203,6 +286,67 @@ function Perceelkaart() {
         >
           ⚡ Snelle meting — Brix in 3 tikken
         </Link>
+
+        {/* Fase 13 Blok B — rijen waar nog niet geplukt mag worden. Boven de
+            kaart, want hier kijk je als je de plukvolgorde bepaalt. */}
+        {wachttijden.size > 0 && (
+          <div
+            role="alert"
+            className="rounded-xl border-2 border-destructive bg-destructive/10 px-3 py-2.5"
+          >
+            <p className="text-sm font-semibold text-destructive">
+              ⚠️ {wachttijden.size} {wachttijden.size === 1 ? "rij staat" : "rijen staan"} nog in de
+              veiligheidstermijn
+            </p>
+            <p className="mt-1 text-xs text-destructive/90">
+              Gestreepte rijen op de kaart: hier niet plukken. Vrij vanaf{" "}
+              {[...new Set([...wachttijden.values()].map((w) => w.vrijVanaf))].sort().join(" / ")}.
+            </p>
+          </div>
+        )}
+
+        {/* Fase 11 Blok 3: oogst en spuitregistratie waren alleen bereikbaar via
+            het dashboard of de instellingen — twee kijkschermen. Het zijn juist
+            de twee registraties die in het seizoen buiten worden gedaan, en
+            werkuren is bovendien de wettelijk verplichte spuitregistratie. */}
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            to="/oogst"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-sm font-medium"
+          >
+            🍇 Oogst registreren
+          </Link>
+          <Link
+            to="/werkrapport"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-sm font-medium"
+          >
+            🕒 Werk & spuiten
+          </Link>
+        </div>
+
+        {/* Weergave-toggle (Fase 7 Blok B) */}
+        <div className="flex flex-wrap gap-1.5">
+          {WEERGAVEN.map((w) => (
+            <button
+              key={w.key}
+              type="button"
+              onClick={() => setWeergave(w.key)}
+              className={`h-11 rounded-lg border px-3 text-xs font-medium ${
+                weergave === w.key
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card"
+              }`}
+            >
+              {w.label}
+            </button>
+          ))}
+          <Link
+            to="/bodem"
+            className="ml-auto flex h-11 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium"
+          >
+            + Bodemobservatie
+          </Link>
+        </div>
 
         <div className="overflow-x-auto rounded-2xl border border-border bg-card p-3">
           <svg
@@ -228,7 +372,8 @@ function Perceelkaart() {
             {/* Rijen — verticaal, hangen vanaf de bovenrand */}
             {rijGeom.map(({ r, x, yTop, yBottom }) => {
               const rec = recencyByRij.get(r.id);
-              const color = RAS_KLEUR[r.ras];
+              const color =
+                weergave === "ras" ? RAS_KLEUR[r.ras] : bodemKleur(weergave, bodemPerRij.get(r.id));
               const showLabel =
                 r.rijnummer % 5 === 0 ||
                 r.rijnummer === 1 ||
@@ -240,7 +385,12 @@ function Perceelkaart() {
                   onClick={() => navigate({ to: "/rij/$rijId", params: { rijId: r.id } })}
                   tabIndex={0}
                   role="button"
-                  aria-label={`Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten`}
+                  aria-label={
+                    `Rij ${r.rijnummer} – ${r.ras}, ${r.aantal_planten} planten` +
+                    (wachttijden.has(r.id)
+                      ? ` — LET OP: veiligheidstermijn tot ${wachttijden.get(r.id)!.vrijVanaf}`
+                      : "")
+                  }
                 >
                   {/* Tap target — extra breed voor gebruik met handschoenen in het veld */}
                   <line
@@ -261,6 +411,21 @@ function Perceelkaart() {
                     strokeWidth="4"
                     strokeLinecap="round"
                   />
+                  {/* Fase 13 Blok B — rij in veiligheidstermijn: hier mag nog
+                      niet geplukt worden. Streepjespatroon over de rij heen,
+                      zodat het los staat van de gekozen kleurweergave. */}
+                  {wachttijden.has(r.id) && (
+                    <line
+                      x1={x}
+                      y1={yTop}
+                      x2={x}
+                      y2={yBottom}
+                      stroke="var(--destructive)"
+                      strokeWidth="4"
+                      strokeDasharray="3 3"
+                      strokeLinecap="round"
+                    />
+                  )}
                   {/* Status indicator aan de tip (onderkant) */}
                   {rec?.recentZiekteSchade && (
                     <circle

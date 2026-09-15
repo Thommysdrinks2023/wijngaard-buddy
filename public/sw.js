@@ -35,8 +35,15 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         try {
           const res = await fetch(req);
-          const cache = await caches.open(CACHE);
-          cache.put(req, res.clone());
+          // Alleen een GESLAAGD antwoord cachen. Zonder deze check belandde
+          // ook een 500- of foutpagina in de cache en werd die daarna offline
+          // als "de app" teruggegeven — dan zit je aan een kapotte versie vast
+          // terwijl de vorige goede pagina er nog was. De asset-tak hieronder
+          // deed dit al wél.
+          if (res.ok) {
+            const cache = await caches.open(CACHE);
+            cache.put(req, res.clone());
+          }
           return res;
         } catch {
           const cached = (await caches.match(req)) || (await caches.match("/"));

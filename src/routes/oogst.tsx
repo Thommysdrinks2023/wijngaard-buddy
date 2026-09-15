@@ -1,11 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
-import { fetchRijen } from "@/lib/data";
-import { createOogstRecord, fetchOogst, VERWACHTE_KG_PER_PLANT } from "@/lib/extra-data";
+import { Link } from "@tanstack/react-router";
+import { ongekoppeldeOogst } from "@/lib/oogst-naar-partij";
+import { fetchRijen, isIngelogd } from "@/lib/data";
+import {
+  createOogstRecord,
+  fetchOogst,
+  fetchWerkuren,
+  VERWACHTE_KG_PER_PLANT,
+} from "@/lib/extra-data";
+import { fetchMiddelen } from "@/lib/middelen-data";
+import { berekenWachttijden, omschrijfWachttijd } from "@/lib/wachttijd";
+import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerOogst } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
@@ -24,6 +34,7 @@ import { AppHeader } from "@/components/app-header";
 import { YearSelector } from "@/components/year-selector";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
+import { OfflineWaarschuwing } from "@/components/offline-waarschuwing";
 import { type Ras, type Rij } from "@/lib/types";
 import { Grape, Loader2 } from "lucide-react";
 
@@ -43,12 +54,28 @@ function OogstPage() {
   const [invoerder, setInvoerder] = useInvoerder();
   const rijenQ = useQuery({ queryKey: ["rijen"], queryFn: fetchRijen });
   const oogstQ = useQuery({ queryKey: ["oogst-records"], queryFn: fetchOogst });
+  // partijen zijn auth-only (Fase 8): zonder sessie niet bevragen — de
+  // oogstinvoer zelf blijft offline-first gewoon werken
+  const partijenQ = useQuery({
+    queryKey: ["partijen"],
+    queryFn: fetchPartijen,
+    enabled: isIngelogd(),
+  });
 
   const [rijId, setRijId] = useState("");
   const [kg, setKg] = useState("");
   const [datum, setDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [partijId, setPartijId] = useState("");
   const [notitie, setNotitie] = useState("");
   const [fouten, setFouten] = useState<Record<string, string>>({});
+  const kgRef = useRef<HTMLInputElement>(null);
+  const [toonWachttijdBevestiging, setToonWachttijdBevestiging] = useState(false);
+  const [wachttijdBevestigd, setWachttijdBevestigd] = useState(false);
+
+  const partijenJaar = useMemo(
+    () => (partijenQ.data ?? []).filter((p) => p.jaargang === jaar),
+    [partijenQ.data, jaar],
+  );
 
   const wisFout = (veld: string) =>
     setFouten((f) => {
@@ -66,6 +93,24 @@ function OogstPage() {
 
   const gekozenRij = rijId ? rijenById.get(rijId) : undefined;
 
+  // Fase 13 Blok B — veiligheidstermijn per rij. Blokkeert niet (op een
+  // plukdag moet je door kunnen), maar dwingt wél een bewuste keuze af en legt
+  // die vast in het record: zonder dat is de afweging achteraf niet te
+  // reconstrueren, en juist dát wil een controleur zien.
+  const werkurenQ = useQuery({ queryKey: ["werkuren"], queryFn: fetchWerkuren });
+  const middelenQ = useQuery({ queryKey: ["middelen"], queryFn: fetchMiddelen });
+  const wachttijden = useMemo(
+    () =>
+      berekenWachttijden(
+        werkurenQ.data ?? [],
+        middelenQ.data ?? [],
+        (rijenQ.data ?? []).map((r) => r.id),
+        format(new Date(), "yyyy-MM-dd"),
+      ),
+    [werkurenQ.data, middelenQ.data, rijenQ.data],
+  );
+  const wachttijdVanGekozenRij = rijId ? (wachttijden.get(rijId) ?? null) : null;
+
   const m = useMutation({
     mutationFn: async () => {
       if (!gekozenRij) throw new Error("Kies een rij");
@@ -77,13 +122,45 @@ function OogstPage() {
         kg: Number(kg),
         notitie,
         ingevoerd_door: invoerder,
+        partij: partijId || null,
+        wachttijd_bevestigd: wachttijdVanGekozenRij
+          ? `Geoogst binnen de veiligheidstermijn, bevestigd door ${invoerder} op ${format(new Date(), "yyyy-MM-dd")}. ` +
+            omschrijfWachttijd(wachttijdVanGekozenRij, gekozenRij.rijnummer)
+          : "",
       });
     },
     onSuccess: () => {
-      toast.success("Oogst geregistreerd ✓");
       qc.invalidateQueries({ queryKey: ["oogst-records"] });
       setKg("");
       setNotitie("");
+      // Fase 11 Blok 4: op een oogstdag worden de rijen op volgorde geplukt en
+      // werden er tot 69 achter elkaar ingevoerd — telkens door een keuzelijst
+      // van 69 rijen scrollen. Na het opslaan springt de keuze daarom door naar
+      // de volgende rij en gaat de cursor terug naar het gewichtsveld, zodat de
+      // volgende invoer alleen nog "typen + opslaan" is. Wie niet op volgorde
+      // plukt, kiest gewoon zelf een rij — er verandert niets aan wat er kan.
+      const rijen = rijenQ.data ?? [];
+      const idx = rijen.findIndex((r) => r.id === rijId);
+      const volgende = idx >= 0 ? rijen[idx + 1] : undefined;
+      setWachttijdBevestigd(false); // per rij opnieuw bevestigen
+      if (volgende) {
+        setRijId(volgende.id);
+        toast.success(`Oogst geregistreerd ✓ — nu rij ${volgende.rijnummer}`);
+      } else {
+        toast.success("Oogst geregistreerd ✓ — dit was de laatste rij");
+      }
+      // Fase 13 Blok E — zonder partij is de keten van fles terug naar rij
+      // verbroken. Bewust GEEN blokkade: op een plukdag is de partij vaak nog
+      // niet aangemaakt, en de kilo's moeten door kunnen. Wel een zichtbare
+      // herinnering, want anders blijft die koppeling stilletjes leeg — precies
+      // wat er tot nu toe gebeurde. Het overzicht onderaan deze pagina laat de
+      // openstaande regels staan tot ze wél gekoppeld zijn.
+      if (!partijId) {
+        toast.info("Nog niet aan een partij gekoppeld", {
+          description: "Onderaan deze pagina koppel je ze later in één keer.",
+        });
+      }
+      kgRef.current?.focus();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -102,6 +179,14 @@ function OogstPage() {
       return;
     }
     setFouten({});
+    // Veiligheidstermijn: één expliciete bevestiging per registratie. Bewust
+    // géén blokkade — er kunnen goede redenen zijn (bijv. een bespuiting die
+    // deze rij niet echt raakte) — maar wel een bewuste handeling die in het
+    // record terechtkomt.
+    if (wachttijdVanGekozenRij && !wachttijdBevestigd) {
+      setToonWachttijdBevestiging(true);
+      return;
+    }
     m.mutate();
   };
 
@@ -141,12 +226,43 @@ function OogstPage() {
 
   const recent = useMemo(() => seizoenOogst.slice(0, 10), [seizoenOogst]);
 
+  // Fase 13 Blok E — oogst die nog aan geen partij hangt. Dit is de plek waar
+  // de keten wijngaard → kelder zichtbaar wordt: zolang hier regels staan, is
+  // van die kilo's niet te herleiden in welke fles ze terechtkwamen.
+  const ongekoppeld = useMemo(
+    () => ongekoppeldeOogst(oogstQ.data ?? [], jaar),
+    [oogstQ.data, jaar],
+  );
+  const [selectie, setSelectie] = useState<Set<string>>(new Set());
+  const zichtbareSelectie = useMemo(
+    () => ongekoppeld.filter((o) => selectie.has(o.id)),
+    [ongekoppeld, selectie],
+  );
+  const wisselSelectie = (id: string) =>
+    setSelectie((s) => {
+      const kopie = new Set(s);
+      if (kopie.has(id)) kopie.delete(id);
+      else kopie.add(id);
+      return kopie;
+    });
+  const selecteerAlles = () =>
+    setSelectie((s) =>
+      s.size === ongekoppeld.length ? new Set() : new Set(ongekoppeld.map((o) => o.id)),
+    );
+  // Hele kilo's met een Nederlandse duizendtalnotatie. Bij een volle plukdag
+  // stond hier "3680.9 kg": een Engelse punt én een decimaal die niemand
+  // interesseert als er bijna vier ton op de weegschaal ligt.
+  const geselecteerdeKg = Math.round(
+    zichtbareSelectie.reduce((som, o) => som + (o.kg || 0), 0),
+  ).toLocaleString("nl-NL");
+
   const veldClass = "h-12 w-full rounded-xl border border-input bg-card px-3 text-base";
 
   return (
     <>
       <AppHeader back title="Oogst" subtitle="Registratie en opbrengst" />
       <div className="mx-auto max-w-screen-md space-y-5 px-3 py-4">
+        <OfflineWaarschuwing wat="de oogstregistratie" />
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Oogst</h1>
@@ -199,6 +315,9 @@ function OogstPage() {
                 onChange={(e) => {
                   setRijId(e.target.value);
                   wisFout("rij");
+                  // bevestiging geldt per rij: hem laten meelopen naar de
+                  // volgende rij zou de waarborg waardeloos maken
+                  setWachttijdBevestigd(false);
                 }}
                 className={`${veldClass} ${fouten.rij ? "border-destructive" : ""}`}
               >
@@ -216,6 +335,7 @@ function OogstPage() {
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium">Gewicht (kg)</span>
               <input
+                ref={kgRef}
                 type="number"
                 inputMode="decimal"
                 step="0.1"
@@ -236,6 +356,33 @@ function OogstPage() {
             <p className="text-xs text-muted-foreground">
               Ras: <strong>{gekozenRij.ras}</strong> · {gekozenRij.aantal_planten} planten
             </p>
+          )}
+
+          {/* Fase 13 Blok B — veiligheidstermijn. Prominent, want dit is het
+              enige scherm waar een verkeerde keuze de wijn onverkoopbaar maakt. */}
+          {wachttijdVanGekozenRij && (
+            <div
+              role="alert"
+              className="rounded-xl border-2 border-destructive bg-destructive/10 px-3 py-2.5"
+            >
+              <p className="text-sm font-semibold text-destructive">
+                ⚠️ Deze rij staat nog in de veiligheidstermijn
+              </p>
+              <p className="mt-1 text-xs text-destructive/90">
+                {omschrijfWachttijd(wachttijdVanGekozenRij, gekozenRij?.rijnummer)}
+              </p>
+              {wachttijdVanGekozenRij.alleBronnen.length > 1 && (
+                <p className="mt-1 text-[11px] text-destructive/80">
+                  Er zijn {wachttijdVanGekozenRij.alleBronnen.length} bespuitingen die deze rij
+                  raken; de langst lopende bepaalt de datum.
+                </p>
+              )}
+              {wachttijdBevestigd && (
+                <p className="mt-1.5 text-[11px] font-medium text-destructive">
+                  Bevestigd — dit wordt bij de oogstregistratie vastgelegd.
+                </p>
+              )}
+            </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
@@ -270,6 +417,26 @@ function OogstPage() {
             </label>
           </div>
           <label className="block">
+            <span className="mb-1.5 block text-sm font-medium">Partij (optioneel)</span>
+            <select
+              value={partijId}
+              onChange={(e) => setPartijId(e.target.value)}
+              className={veldClass}
+            >
+              <option value="">Geen partij</option>
+              {partijenJaar.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.naam} · {p.jaargang}
+                </option>
+              ))}
+            </select>
+            {partijenJaar.length === 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Nog geen partijen voor {jaar} — aan te maken op de partijenpagina in de kelder.
+              </p>
+            )}
+          </label>
+          <label className="block">
             <span className="mb-1.5 block text-sm font-medium">Notitie</span>
             <input
               value={notitie}
@@ -287,6 +454,46 @@ function OogstPage() {
             {m.isPending && <Loader2 className="h-5 w-5 animate-spin" />}
             Oogst opslaan
           </button>
+
+          {/* Fase 13 Blok B — bevestiging bij oogst binnen de veiligheidstermijn.
+              Geen blokkade, wel een bewuste handeling die wordt vastgelegd. */}
+          {toonWachttijdBevestiging && wachttijdVanGekozenRij && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-sm rounded-2xl border border-destructive bg-card p-5 shadow-xl">
+                <h3 className="text-base font-bold text-destructive">
+                  Oogsten binnen de veiligheidstermijn?
+                </h3>
+                <p className="mt-2 text-sm text-foreground">
+                  {omschrijfWachttijd(wachttijdVanGekozenRij, gekozenRij?.rijnummer)}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Druiven die binnen de termijn geplukt zijn, kunnen de wijn onverkoopbaar maken. Ga
+                  je door, dan wordt deze bevestiging bij de oogstregistratie vastgelegd — met
+                  middel, datum en termijn.
+                </p>
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWachttijdBevestigd(true);
+                      setToonWachttijdBevestiging(false);
+                      m.mutate();
+                    }}
+                    className="h-12 w-full rounded-xl bg-destructive text-sm font-semibold text-destructive-foreground"
+                  >
+                    Ja, toch registreren
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setToonWachttijdBevestiging(false)}
+                    className="h-12 w-full rounded-xl border border-input bg-card text-sm font-medium"
+                  >
+                    Annuleren
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Opbrengst vs verwachting per ras */}
@@ -379,6 +586,81 @@ function OogstPage() {
             </ul>
           )}
         </section>
+
+        {/* Fase 13 Blok E — nog niet aan een partij gekoppeld */}
+        {ongekoppeld.length > 0 && (
+          <section className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Nog niet in de kelder
+              </h2>
+              <button
+                type="button"
+                onClick={selecteerAlles}
+                className="text-xs font-semibold text-primary underline"
+              >
+                {selectie.size === ongekoppeld.length ? "Selectie wissen" : "Alles selecteren"}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {ongekoppeld.length === 1
+                ? "1 oogstregel hangt"
+                : `${ongekoppeld.length} oogstregels hangen`}{" "}
+              nog aan geen enkele partij. Zolang dat zo is, kun je van deze kilo&apos;s niet
+              terugvinden in welke fles ze terechtkwamen.
+            </p>
+
+            <ul className="space-y-1.5">
+              {ongekoppeld.map((o) => {
+                const r = o.rij ? rijenById.get(o.rij) : undefined;
+                const aan = selectie.has(o.id);
+                return (
+                  <li key={o.id}>
+                    <label
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${
+                        aan ? "border-primary bg-primary/5" : "border-border bg-card"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={aan}
+                        onChange={() => wisselSelectie(o.id)}
+                        className="h-5 w-5 shrink-0 accent-[var(--primary)]"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">
+                          {o.kg} kg · {o.ras}
+                          {r ? ` · rij ${r.rijnummer}` : ""}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {format(parseISO(o.datum), "d MMMM", { locale: nl })}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Meelopend onderaan het scherm. Bij een volle plukdag staan hier
+                37+ regels en was deze knop 6 schermen naar beneden — je vinkt
+                bovenaan aan en moest daarna langs alles heen scrollen om iets
+                te kunnen doen. `bottom-20` houdt hem boven de navigatiebalk. */}
+            {zichtbareSelectie.length > 0 && (
+              <div className="sticky bottom-20 z-10 pt-1">
+                <Link
+                  to="/kelder/partijen/nieuw"
+                  search={{ oogst: zichtbareSelectie.map((o) => o.id).join(",") }}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg"
+                >
+                  <Grape className="h-4 w-4" />
+                  Nieuwe partij van {zichtbareSelectie.length} regel
+                  {zichtbareSelectie.length === 1 ? "" : "s"} · {geselecteerdeKg} kg
+                </Link>
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </>
   );

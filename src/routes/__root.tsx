@@ -4,9 +4,11 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Scripts,
+  useLocation,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { APP_NAAM, APP_NAAM_KORT } from "@/config/app";
 import { BottomNav } from "@/components/bottom-nav";
 import { InstalleerBanner } from "@/components/installeer-banner";
 import { Onboarding } from "@/components/onboarding";
@@ -56,13 +58,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: "theme-color", content: "#2d5a3d" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Wijngaard" },
-      { title: "Wijngaard — Veld-app" },
+      { name: "apple-mobile-web-app-title", content: APP_NAAM_KORT },
+      { title: APP_NAAM },
       {
         name: "description",
-        content: "Mobiele veld-app voor metingen en observaties per wijngaardrij.",
+        content: "Bedrijfsdashboard voor wijngaard, kelder en voorraad van De Tappenmars.",
       },
-      { property: "og:title", content: "Wijngaard" },
+      { property: "og:title", content: APP_NAAM },
       { property: "og:description", content: "Veld-app voor de wijngaard" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -70,6 +72,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -93,8 +96,20 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { pathname } = useLocation();
+  // Fase 20 — het publieke e-label (/etiket/$id, gescand via een QR-code op
+  // een fysiek wijnetiket) mag geen app-chrome tonen: geen bottom-nav (dat
+  // is navigatie naar een besloten bedrijfsapp), geen installatiebanner
+  // (reclame), geen onboarding-modal, geen sync-indicator. De verordening
+  // eist expliciet dat deze pagina puur informatief is — zie
+  // src/routes/etiket.$berekeningId.tsx.
+  const kaal = pathname.startsWith("/etiket");
 
-  // "Ongedaan maken" en prullenbak-herstel verversen alle queries
+  // "Ongedaan maken" en prullenbak-herstel verversen alle queries. Hooks
+  // moeten onvoorwaardelijk lopen (Rules of Hooks) — de kale-paginacheck zit
+  // daarom pas in de JSX hieronder, niet in een vroege return. Op de kale
+  // e-labelpagina is dit alles onschadelijk maar overbodig werk; dat is
+  // acceptabel voor een publieke pagina die toch al minimaal is.
   useEffect(() => {
     const ververs = () => queryClient.invalidateQueries();
     window.addEventListener("wg.data.changed", ververs);
@@ -117,6 +132,15 @@ function RootComponent() {
       });
     }
   }, []);
+
+  if (kaal) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background pb-20">

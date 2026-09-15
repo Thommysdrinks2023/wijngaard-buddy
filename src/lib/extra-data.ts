@@ -80,7 +80,7 @@ function maakEntity<T extends { id: string; datum: string }>(cfg: EntityConfig<T
     return lokaal;
   }
 
-  return { fetchAll, create };
+  return { fetchAll, create, fromPb: cfg.fromPb };
 }
 
 // ============= Gezondheid (vine health) =============
@@ -132,6 +132,14 @@ export interface OogstRecord {
   kg: number;
   notitie?: string;
   ingevoerd_door?: string;
+  partij?: string | null; // partij id — koppeling wijngaard → kelder
+  /**
+   * Fase 13 Blok B — leeg tenzij er binnen de veiligheidstermijn is geoogst.
+   * Bevat dan wie het wanneer heeft bevestigd, met middel, spuitdatum, termijn
+   * en bron. Oogsten binnen de termijn wordt niet geblokkeerd, maar moet wel
+   * navolgbaar zijn: dit is de regel die een controleur zou willen zien.
+   */
+  wachttijd_bevestigd?: string;
   created: string;
 }
 
@@ -148,12 +156,81 @@ const oogstEntity = maakEntity<OogstRecord>({
     kg: r["kg"],
     notitie: r["notitie"] ?? "",
     ingevoerd_door: r["ingevoerd_door"] ?? "",
+    partij: r["partij"] || null,
+    wachttijd_bevestigd: r["wachttijd_bevestigd"] ?? "",
     created: r["created"],
   }),
 });
 
 export const fetchOogst = oogstEntity.fetchAll;
 export const createOogstRecord = oogstEntity.create;
+
+/**
+ * Oogstregels die aan één partij gekoppeld zijn — de herkomst van een lot.
+ *
+ * De koppeling `oogst.partij` bestaat sinds Fase 13, maar werd nergens
+ * teruggelezen: "uit welke rijen komt dit lot" was daardoor onbeantwoordbaar
+ * terwijl de data er gewoon stond (AUDIT-MEDEWERKER.md §4).
+ *
+ * Filtert op de server wanneer die bereikbaar is, en valt anders terug op de
+ * lokale oogstcache — die vult zich al bij elk bezoek aan de wijngaardmodule.
+ */
+export async function fetchOogstVanPartij(partijId: string): Promise<OogstRecord[]> {
+  const uitCache = () =>
+    readLs<OogstRecord[]>("wg.oogst.v1", [])
+      .filter((o) => o.partij === partijId)
+      .sort((a, b) => (a.datum < b.datum ? 1 : -1));
+
+  const pb = getPb();
+  if (pb && (await ensureOnline())) {
+    try {
+      const records = await pb.collection("oogst").getFullList({
+        filter: pb.filter("partij = {:partij}", { partij: partijId }),
+        sort: "datum,created",
+      });
+      return records.map((r) => oogstEntity.fromPb(r));
+    } catch {
+      return uitCache();
+    }
+  }
+  return uitCache();
+}
+
+/**
+ * Fase 13 Blok E — koppelt oogstregels aan een partij.
+ *
+ * BEWUST ONLINE-ONLY, anders dan createOogstRecord hierboven. Oogst invoeren
+ * moet in het veld werken zonder bereik; koppelen gebeurt in de kelder, waar de
+ * partij net op de server is aangemaakt. Een offline "koppeling" zou een
+ * verwijzing naar een partij-id opleveren die lokaal nog niet bestaat — dat is
+ * precies het soort halve staat waar de sync-wachtrij niet mee overweg kan (zie
+ * ARCHITECTURE.md §7.6). Liever een eerlijke foutmelding.
+ */
+export async function koppelOogstAanPartij(oogstIds: string[], partijId: string): Promise<number> {
+  if (oogstIds.length === 0) return 0;
+  const pb = getPb();
+  if (!pb || !(await ensureOnline())) {
+    throw new Error(
+      "Geen verbinding met de server — de oogst kon niet aan de partij gekoppeld worden. De partij zelf is wél aangemaakt; koppel de oogst later alsnog.",
+    );
+  }
+  let gekoppeld = 0;
+  for (const id of oogstIds) {
+    await pb.collection("oogst").update(id, { partij: partijId });
+    gekoppeld++;
+  }
+  logAudit("gewijzigd", "oogst", `${gekoppeld} oogstregel(s) gekoppeld aan partij ${partijId}`);
+
+  // Lokale cache bijwerken zodat het overzicht niet blijft hangen op "nog niet
+  // gekoppeld" tot de volgende volledige ophaalronde.
+  const cache = readLs<OogstRecord[]>("wg.oogst.v1", []);
+  const ids = new Set(oogstIds);
+  writeLs(
+    "wg.oogst.v1",
+    cache.map((o) => (ids.has(o.id) ? { ...o, partij: partijId } : o)),
+  );
+  return gekoppeld;
+}
 
 // Verwachte opbrengst per plant (kg) — eenvoudige vuistregel voor jonge
 // aanplant; later te vervangen door een echte yield prediction.

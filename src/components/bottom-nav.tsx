@@ -1,16 +1,87 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { BarChart3, Map, Calendar, Settings, LineChart, ClipboardList } from "lucide-react";
+import {
+  BarChart3,
+  Map,
+  Calendar,
+  Settings,
+  Zap,
+  ClipboardList,
+  Home,
+  Wine,
+  Grape,
+  BookOpen,
+  Container,
+  Sparkles,
+  Package,
+  ShoppingCart,
+  Wrench,
+} from "lucide-react";
+
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof Home;
+  exact?: boolean;
+}
+
+// Elke module heeft een eigen navigatiebalk: in de Wijngaard geen Kelder-links
+// en andersom. "Home" brengt je altijd terug naar de modulekiezer op /.
+// De hub zelf toont geen balk — dat scherm ís het menu.
+// Fase 11 Blok 3: "Grafiek" is vervangen door "Meten" (/snel). De balk bevatte
+// vijf kijkschermen en geen enkele invoeractie, terwijl invoeren is wat er in
+// het veld gebeurt — een Brix-meting kostte drie tikken (Home → Kaart → Snelle
+// meting) voor je het eerste veld zag. Grafieken blijven bereikbaar via Meer.
+const WIJNGAARD_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/perceelkaart", label: "Kaart", icon: Map },
+  { to: "/snel", label: "Meten", icon: Zap },
+  { to: "/seizoen", label: "Seizoen", icon: Calendar },
+  { to: "/steekproeven", label: "Steek", icon: ClipboardList },
+  { to: "/dashboard", label: "Dash", icon: BarChart3 },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
+const KELDER_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/kelder", label: "Kelder", icon: Wine, exact: true },
+  { to: "/kelder/partijen", label: "Partijen", icon: Grape },
+  { to: "/kelder/tanks", label: "Tanks", icon: Container },
+  { to: "/kelder/tankboek", label: "Boek", icon: BookOpen },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
+const ASSISTENT_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/assistent", label: "Assistent", icon: Sparkles },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
+const VOORRAAD_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/voorraad", label: "Voorraad", icon: Package, exact: true },
+  { to: "/verkoop", label: "Verkoop", icon: ShoppingCart },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
+const MATERIEEL_ITEMS: NavItem[] = [
+  { to: "/", label: "Home", icon: Home, exact: true },
+  { to: "/materieel", label: "Materieel", icon: Wrench },
+  { to: "/instellingen", label: "Meer", icon: Settings },
+];
+
+function itemsVoorPad(pathname: string): NavItem[] | null {
+  if (pathname === "/") return null; // modulekiezer = zelf het menu
+  if (pathname.startsWith("/kelder")) return KELDER_ITEMS;
+  if (pathname.startsWith("/assistent")) return ASSISTENT_ITEMS;
+  if (pathname.startsWith("/voorraad") || pathname.startsWith("/verkoop")) return VOORRAAD_ITEMS;
+  if (pathname.startsWith("/materieel")) return MATERIEEL_ITEMS;
+  return WIJNGAARD_ITEMS;
+}
 
 export function BottomNav() {
   const { pathname } = useLocation();
-  const items = [
-    { to: "/perceelkaart", label: "Kaart", icon: Map, exact: false },
-    { to: "/seizoen", label: "Seizoen", icon: Calendar, exact: false },
-    { to: "/steekproeven", label: "Steek", icon: ClipboardList, exact: false },
-    { to: "/dashboard", label: "Dash", icon: BarChart3, exact: false },
-    { to: "/grafieken", label: "Grafiek", icon: LineChart, exact: false },
-    { to: "/instellingen", label: "Meer", icon: Settings, exact: false },
-  ];
+  const items = itemsVoorPad(pathname);
+  if (!items) return null;
 
   return (
     <nav

@@ -18,7 +18,7 @@ export function YearSelector({ extra = [], className = "" }: YearSelectorProps) 
       <button
         type="button"
         onClick={() => setJaar(jaar - 1)}
-        className="flex h-9 w-9 items-center justify-center rounded-l-lg hover:bg-muted"
+        className="flex h-11 w-11 items-center justify-center rounded-l-lg hover:bg-muted"
         aria-label="Vorig seizoen"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -26,7 +26,7 @@ export function YearSelector({ extra = [], className = "" }: YearSelectorProps) 
       <select
         value={jaar}
         onChange={(e) => setJaar(Number(e.target.value))}
-        className="h-9 bg-transparent px-1 text-sm font-semibold outline-none"
+        className="h-11 bg-transparent px-1 text-sm font-semibold outline-none"
       >
         {all.map((j) => (
           <option key={j} value={j}>
@@ -37,7 +37,7 @@ export function YearSelector({ extra = [], className = "" }: YearSelectorProps) 
       <button
         type="button"
         onClick={() => setJaar(jaar + 1)}
-        className="flex h-9 w-9 items-center justify-center rounded-r-lg hover:bg-muted"
+        className="flex h-11 w-11 items-center justify-center rounded-r-lg hover:bg-muted"
         aria-label="Volgend seizoen"
       >
         <ChevronRight className="h-4 w-4" />

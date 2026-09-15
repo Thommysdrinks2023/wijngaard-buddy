@@ -176,7 +176,7 @@ function ZoekenPage() {
 
   return (
     <>
-      <AppHeader back title="Zoeken" subtitle="Door alle registraties" />
+      <AppHeader back title="Zoeken" subtitle="Rijen, metingen, observaties, oogst en werkuren" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -205,11 +205,17 @@ function ZoekenPage() {
             <p>
               • <strong>zwavel</strong> — spuitregistraties met dat middel
             </p>
+            <p className="pt-1 text-xs">
+              Dit doorzoekt alleen wijngaardgegevens. Voor partijen, tanks, flessen of klanten: zie
+              de Kelder- en Voorraadmodules.
+            </p>
           </div>
         ) : aanHetLaden ? (
           <p className="text-sm text-muted-foreground">Gegevens laden…</p>
         ) : resultaten.length === 0 ? (
-          <EmptyState message={`Niets gevonden voor "${term}".`} />
+          <EmptyState
+            message={`Niets gevonden voor "${term}" in de wijngaardgegevens. Zoek je een partij, tank, fles of klant? Dat doorzoekt dit scherm niet — kijk in Kelder of Voorraad.`}
+          />
         ) : (
           <>
             <p className="text-xs text-muted-foreground">

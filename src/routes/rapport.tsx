@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { APP_NAAM } from "@/config/app";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
@@ -198,7 +199,10 @@ function RapportPage() {
         {/* Rapportkop */}
         <section className="rounded-xl border border-border bg-card p-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
           <div className="flex items-center gap-3">
-            <img src="/logo-icon.png" alt="" className="h-14 w-14 object-contain" />
+            <picture>
+              <source srcSet="/logo-icon.webp" type="image/webp" />
+              <img src="/logo-icon.png" alt="" className="h-14 w-14 object-contain" />
+            </picture>
             <div>
               <h2 className="text-xl font-bold text-foreground">
                 {wijngaard.naam} — Seizoensrapport {jaar}
@@ -341,8 +345,7 @@ function RapportPage() {
         </section>
 
         <p className="pb-4 text-center text-[10px] text-muted-foreground">
-          Wijngaard Buddy · {wijngaard.naam} ·{" "}
-          {format(new Date(), "d MMMM yyyy HH:mm", { locale: nl })}
+          {APP_NAAM} · {wijngaard.naam} · {format(new Date(), "d MMMM yyyy HH:mm", { locale: nl })}
         </p>
       </div>
     </>

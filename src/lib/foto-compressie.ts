@@ -1,6 +1,14 @@
 // Foto-compressie vóór upload: telefoonfoto's van 8-12 MB worden
 // teruggebracht naar ~0,3-0,8 MB (max 1600px breed, JPEG 80%).
 // Scheelt 80-90% upload op mobiel internet in het veld.
+//
+// Privacy (Fase 7 Blok A): elke afbeelding wordt ALTIJD via canvas
+// gehercodeerd, ook kleine bestanden en ook als het resultaat groter
+// uitvalt. Canvas-hercodering schrijft een kale JPEG zonder
+// EXIF-metadata — GPS-locatie, cameramodel en tijdstempel uit de
+// telefoonfoto komen dus nooit in PocketBase terecht. Alleen als de
+// browser de afbeelding helemaal niet kan decoderen valt het origineel
+// door (zeldzaam; gedocumenteerd restrisico in docs/security.md).
 
 const MAX_BREEDTE = 1600;
 const JPEG_KWALITEIT = 0.8;
@@ -13,8 +21,7 @@ export interface CompressieResultaat {
 
 export async function comprimeerFoto(origineel: File): Promise<CompressieResultaat> {
   const origineelKb = Math.round(origineel.size / 1024);
-  // niet-afbeeldingen en al-kleine bestanden ongemoeid laten
-  if (!origineel.type.startsWith("image/") || origineel.size < 300 * 1024) {
+  if (!origineel.type.startsWith("image/")) {
     return { file: origineel, origineelKb, gecomprimeerdKb: origineelKb };
   }
 
@@ -35,7 +42,9 @@ export async function comprimeerFoto(origineel: File): Promise<CompressieResulta
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", JPEG_KWALITEIT),
     );
-    if (!blob || blob.size >= origineel.size) {
+    // Ook een groter-uitgevallen blob gebruiken we: metadata-vrij weegt
+    // zwaarder dan de laatste kilobytes (gebeurt alleen bij al-kleine foto's).
+    if (!blob) {
       return { file: origineel, origineelKb, gecomprimeerdKb: origineelKb };
     }
     const naam = origineel.name.replace(/\.\w+$/, "") + ".jpg";
@@ -45,7 +54,7 @@ export async function comprimeerFoto(origineel: File): Promise<CompressieResulta
       gecomprimeerdKb: Math.round(blob.size / 1024),
     };
   } catch {
-    // compressie is een optimalisatie — bij twijfel het origineel gebruiken
+    // decodering mislukt — origineel gebruiken (restrisico, zie docs/security.md)
     return { file: origineel, origineelKb, gecomprimeerdKb: origineelKb };
   }
 }

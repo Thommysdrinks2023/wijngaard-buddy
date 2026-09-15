@@ -17,7 +17,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { fetchRijen } from "@/lib/data";
+import { fetchRijen, isIngelogd } from "@/lib/data";
 import {
   createWerkuur,
   fetchWerkuren,
@@ -28,6 +28,7 @@ import {
   type SpuitReden,
   type TaakType,
 } from "@/lib/extra-data";
+import { doseringOverschrijdt, fetchMiddelen, vindMiddel } from "@/lib/middelen-data";
 import { useInvoerder } from "@/lib/use-invoerder";
 import { useSeizoen } from "@/lib/seizoen";
 import { getPerceelOppervlakte, getUurloon } from "@/lib/app-instellingen";
@@ -106,6 +107,17 @@ function WerkrapportPage() {
   }, [rijenQ.data]);
 
   const isSpuiten = taak === "Spuiten";
+
+  // Fase 7 Blok F1 — Ctgb-restrictiecheck bij de spuitregistratie
+  const middelenQ = useQuery({
+    queryKey: ["middelen"],
+    queryFn: fetchMiddelen,
+    enabled: isIngelogd(), // auth-only bron; zonder sessie geen Ctgb-check (Fase 8)
+  });
+  const ctgbMiddel = isSpuiten ? vindMiddel(middelenQ.data ?? [], middel) : null;
+  const ctgbOverschrijding = ctgbMiddel
+    ? doseringOverschrijdt(ctgbMiddel, dosering ? Number(dosering) : null, doseringEenheid)
+    : null;
 
   const m = useMutation({
     mutationFn: async () => {
@@ -262,6 +274,35 @@ function WerkrapportPage() {
                 {fouten.middel && (
                   <span className="mt-1 block text-sm text-destructive">{fouten.middel}</span>
                 )}
+                {middel.trim() &&
+                  (ctgbMiddel ? (
+                    <span
+                      className={`mt-1 block rounded-lg border px-2.5 py-1.5 text-xs ${
+                        ctgbOverschrijding
+                          ? "border-destructive/40 bg-destructive/10 font-medium text-destructive"
+                          : "border-border bg-background text-muted-foreground"
+                      }`}
+                    >
+                      {ctgbOverschrijding
+                        ? `⚠️ Dosering overschrijdt het Ctgb-maximum van ${ctgbMiddel.max_dosering} ${ctgbMiddel.max_dosering_eenheid} voor ${ctgbMiddel.naam}!`
+                        : `Ctgb: ${ctgbMiddel.naam} (${ctgbMiddel.toelatingsnummer})` +
+                          (ctgbMiddel.max_dosering
+                            ? ` · max ${ctgbMiddel.max_dosering} ${ctgbMiddel.max_dosering_eenheid}`
+                            : "") +
+                          (ctgbMiddel.veiligheidstermijn_dagen
+                            ? ` · veiligheidstermijn ${ctgbMiddel.veiligheidstermijn_dagen} dgn`
+                            : "") +
+                          (ctgbMiddel.herbetreding_uren
+                            ? ` · herbetreding ${ctgbMiddel.herbetreding_uren} u`
+                            : "")}
+                    </span>
+                  ) : (
+                    (middelenQ.data ?? []).length > 0 && (
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Niet in de Ctgb-lijst — vrije invoer, geen automatische check.
+                      </span>
+                    )
+                  ))}
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">

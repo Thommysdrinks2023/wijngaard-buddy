@@ -7,15 +7,22 @@ interface EmptyStateProps {
   message?: string;
   className?: string;
   icon?: React.ReactNode;
+  action?: React.ReactNode;
 }
 
-export function EmptyState({ message = SEIZOEN_LEEG_MSG, className = "", icon }: EmptyStateProps) {
+export function EmptyState({
+  message = SEIZOEN_LEEG_MSG,
+  className = "",
+  icon,
+  action,
+}: EmptyStateProps) {
   return (
     <div
       className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center ${className}`}
     >
       <div className="text-muted-foreground/70">{icon ?? <Inbox className="h-6 w-6" />}</div>
       <p className="text-sm text-muted-foreground">{message}</p>
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }
