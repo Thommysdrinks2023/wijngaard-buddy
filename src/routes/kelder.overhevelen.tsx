@@ -133,6 +133,7 @@ function OverhevelenPage() {
       if (r.waarschuwing) toast.warning(r.waarschuwing);
       qc.invalidateQueries({ queryKey: ["tanks"] });
       qc.invalidateQueries({ queryKey: ["tankboek"] });
+      qc.invalidateQueries({ queryKey: ["kelderlog"] });
       navigate({ to: "/kelder" });
     },
     onError: (e: Error) => {
@@ -360,8 +361,9 @@ function OverhevelenPage() {
             Overheveling boeken
           </button>
           <p className="text-xs text-muted-foreground">
-            De server controleert capaciteit, inhoud en partij vóór het boeken; bij een verschil
-            tussen systeem en werkelijkheid wordt de boeking geweigerd met uitleg.
+            De overheveling wordt ook in het werklogboek vastgelegd: je hoeft haar niet nogmaals in
+            te voeren. De server controleert capaciteit, inhoud en partij vóór het boeken; bij een
+            verschil tussen systeem en werkelijkheid wordt de boeking geweigerd met uitleg.
           </p>
         </section>
       </div>

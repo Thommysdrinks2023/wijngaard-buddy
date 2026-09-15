@@ -13,10 +13,48 @@ function leesbareFout(err) {
 /**
  * Valideert een boeking en voert haar uit binnen de meegegeven transactie.
  * Retourneert { fout } bij een validatieprobleem (er is dan nog NIETS
- * geschreven), anders { waarschuwing, regelId }. Gooit zelf nooit: fouten
- * die de transactiegrens passeren verliezen hun boodschap.
+ * geschreven), anders { waarschuwing, regelId }. Na writes gooien fouten
+ * voor rollback; overhevelen registreert ook één bijbehorende werklogregel.
  */
 function voerBoekingUit(txApp, b) {
+  const resultaat = voerBoekingZonderWerklogUit(txApp, b);
+  if (resultaat.fout || b.actie !== "overhevelen") return resultaat;
+
+  // Eén werklog per handeling, ook bij een extra verliesregel. Een fout
+  // hier moet de hele transactie afbreken, inclusief de tankboekregels.
+  const bron = txApp.findRecordById("tanks", b.van_tank);
+  const doel = txApp.findRecordById("tanks", b.naar_tank);
+  const log = new Record(txApp.findCollectionByNameOrId("kelderlog"));
+  log.set("datum", b.datum);
+  log.set("partij", b.partij);
+  log.set("tank", b.naar_tank);
+  log.set("actie", "overhevelen");
+  log.set("hoeveelheid", Number(b.volume_l));
+  log.set("eenheid", "l");
+  log.set("ingevoerd_door", b.verantwoordelijke);
+  log.set("vineyard_id", b.vineyard_id || "");
+  log.set(
+    "notitie",
+    "Overgeheveld van tank " +
+      bron.getString("code") +
+      " naar tank " +
+      doel.getString("code") +
+      ": " +
+      Number(b.volume_l) +
+      " L aangekomen." +
+      (Number(b.verlies_l) > 0
+        ? " Verlies: " + Number(b.verlies_l) + " L (" + (b.verlies_type || "overig") + ")."
+        : "") +
+      " Tankboek: " +
+      resultaat.regelId +
+      (resultaat.verliesRegelId ? "; verliesregel: " + resultaat.verliesRegelId : "") +
+      (b.notitie ? " — " + b.notitie : ""),
+  );
+  txApp.save(log);
+  return Object.assign({}, resultaat, { kelderlogId: log.id });
+}
+
+function voerBoekingZonderWerklogUit(txApp, b) {
   if (b.verlies_l != null) {
     const verlies = Number(b.verlies_l);
     const aangekomen = Number(b.volume_l);
@@ -42,9 +80,9 @@ function voerBoekingUit(txApp, b) {
     const basis = Object.assign({}, b);
     delete basis.verlies_l;
     delete basis.verlies_type;
-    const transfer = voerBoekingUit(txApp, basis);
+    const transfer = voerBoekingZonderWerklogUit(txApp, basis);
     if (transfer.fout || verlies === 0) return transfer;
-    const verliesregel = voerBoekingUit(
+    const verliesregel = voerBoekingZonderWerklogUit(
       txApp,
       Object.assign({}, basis, {
         actie: "verlies",

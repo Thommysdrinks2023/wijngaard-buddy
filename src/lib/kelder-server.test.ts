@@ -78,6 +78,7 @@ function omgeving(foutBij?: string) {
     },
     findCollectionByNameOrId: (naam: string) => naam,
     save: (record: TestRecord) => {
+      if (record.collectie === foutBij) throw new Error(`Testfout bij ${foutBij}`);
       if (record.id === "nieuw") record.id = `nieuw-${schrijft.length}`;
       schrijft.push(record);
     },
@@ -107,6 +108,35 @@ function omgeving(foutBij?: string) {
 }
 
 describe("Kelder — echte serverboekingslogica", () => {
+  it.each([undefined, 0, 5])(
+    "registreert precies één werklog bij overhevelverlies %s",
+    (verlies) => {
+      const { boek, schrijft } = omgeving();
+      const resultaat = boek({
+        verlies_l: verlies,
+        verlies_type: "droesem",
+        notitie: "Na klaring",
+      });
+      expect(resultaat.fout).toBeUndefined();
+      const logs = schrijft.filter((r) => r.collectie === "kelderlog");
+      expect(logs).toHaveLength(1);
+      expect(logs[0].getString("actie")).toBe("overhevelen");
+      expect(logs[0].getString("partij")).toBe("partij");
+      expect(logs[0].getString("tank")).toBe("doel");
+      expect(logs[0].getFloat("hoeveelheid")).toBe(40);
+      expect(logs[0].getString("eenheid")).toBe("l");
+      expect(logs[0].getString("ingevoerd_door")).toBe("test");
+      expect(logs[0].getString("notitie")).toContain("TEST-A naar tank TEST-B");
+      expect(logs[0].getString("notitie")).toContain(`Tankboek: ${resultaat.regelId}`);
+      expect(logs[0].getString("notitie")).toContain("Na klaring");
+      if (verlies) expect(logs[0].getString("notitie")).toContain("Verlies: 5 L (droesem)");
+    },
+  );
+  it("gooit bij late werklogfout zodat de aanroeper moet terugrollen", () => {
+    const { boek, schrijft } = omgeving("kelderlog");
+    expect(() => boek({ verlies_l: 5 })).toThrow("Testfout bij kelderlog");
+    expect(schrijft.filter((r) => r.collectie === "tankboek")).toHaveLength(2);
+  });
   it.each(["verbruik_botteling", "breuk"])("gooit bij late bottelfout: %s", (foutBij) => {
     const { bottel, schrijft, flessenMutaties } = omgeving(foutBij);
     expect(() => bottel({ flestype_ref: "flestype", flessen_breuk: 2 })).toThrow(

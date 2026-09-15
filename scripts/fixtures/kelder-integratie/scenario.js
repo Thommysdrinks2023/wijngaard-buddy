@@ -9,6 +9,7 @@ function run(app) {
     partijen: ["naam eigenaar", "jaargang"],
     tanks: ["code huidige_partij status", "capaciteit_l huidig_volume_l"],
     tankboek: ["datum partij actie van_tank naar_tank notitie", "volume_l"],
+    kelderlog: ["datum partij tank actie eenheid notitie ingevoerd_door", "hoeveelheid"],
     bottelrondes: ["partij van_tank flestype_ref notities", "aantal_flessen flessen_breuk"],
     voorraad_flessen: ["partij bottelronde status", "aantal_beginvoorraad aantal_huidig"],
     flestypes: ["test_fout", ""],
@@ -100,6 +101,75 @@ function run(app) {
       );
     }
     geslaagd.push(fout ? "rollback: " + fout : "geslaagde botteling met breuk");
+  }
+  for (const faal of [false, true]) {
+    const partij = maak("partijen", { naam: "OVERHEVELTEST" });
+    const bron = maak("tanks", {
+      code: "BRON",
+      huidige_partij: partij.id,
+      status: "in_gebruik",
+      capaciteit_l: 500,
+      huidig_volume_l: 100,
+    });
+    const doel = maak("tanks", {
+      code: "DOEL",
+      status: "leeg",
+      capaciteit_l: 500,
+      huidig_volume_l: 0,
+    });
+    const voor = JSON.stringify(aantallen());
+    let fouttekst = "";
+    let geschrevenVoorFout = 0;
+    try {
+      app.runInTransaction((tx) => {
+        try {
+          const r = logica.voerBoekingUit(tx, {
+            partij: partij.id,
+            actie: "overhevelen",
+            van_tank: bron.id,
+            naar_tank: doel.id,
+            volume_l: 40,
+            verlies_l: 5,
+            verlies_type: "droesem",
+            datum: "2026-01-01",
+            verantwoordelijke: "integratietest",
+            notitie: faal ? "x".repeat(4930) : "Na klaring",
+          });
+          eis(!r.fout, "Onverwachte validatiefout: " + r.fout);
+        } catch (e) {
+          geschrevenVoorFout = tx.findRecordsByFilter("tankboek", "partij = {:id}", "", 10, 0, {
+            id: partij.id,
+          }).length;
+          fouttekst = String(e);
+          throw e;
+        }
+      });
+    } catch (e) {
+      if (!fouttekst) throw e;
+    }
+    const logs = app.findRecordsByFilter("kelderlog", "partij = {:id}", "", 10, 0, {
+      id: partij.id,
+    });
+    const bronNa = app.findRecordById("tanks", bron.id);
+    const doelNa = app.findRecordById("tanks", doel.id);
+    if (faal) {
+      eis(!!fouttekst, "Werklogvalidatie moest falen");
+      eis(geschrevenVoorFout === 2, "Fout moet pas na beide tankboekregels optreden");
+      eis(JSON.stringify(aantallen()) === voor, "Halve overheveling achtergebleven");
+      eis(bronNa.getFloat("huidig_volume_l") === 100, "Bron niet teruggedraaid");
+      eis(doelNa.getFloat("huidig_volume_l") === 0, "Doel niet teruggedraaid");
+      eis(doelNa.getString("status") === "leeg", "Doelstatus niet teruggedraaid");
+    } else {
+      eis(!fouttekst, fouttekst);
+      eis(logs.length === 1, "Precies één werklog vereist");
+      eis(logs[0].getFloat("hoeveelheid") === 40, "Werklogvolume onjuist");
+      eis(logs[0].getString("notitie").includes("Verlies: 5 L"), "Verlies ontbreekt in werklog");
+      eis(bronNa.getFloat("huidig_volume_l") === 55, "Bronvolume onjuist");
+      eis(doelNa.getFloat("huidig_volume_l") === 40, "Doelvolume onjuist");
+    }
+    geslaagd.push(
+      faal ? "rollback: werklog bij overhevelen" : "overhevelen met verlies en één werklog",
+    );
   }
   return { ok: true, geslaagd };
 }
