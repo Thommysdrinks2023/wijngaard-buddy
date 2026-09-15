@@ -512,7 +512,8 @@ function AccijnsPage() {
                   {bijBotteling.zonderCategorie
                     .map((z) => `${z.botteldatum} (${z.liters} L)`)
                     .join(", ")}
-                  . Koppel de categorie via de partij vóór de aangifte.
+                  . Een categorie achteraf koppelen kan in de app nog niet (bottelrondes zijn
+                  onwijzigbaar); neem deze liters handmatig mee in de aangifte.
                 </p>
               )}
             </>
