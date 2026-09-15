@@ -9,6 +9,19 @@ mogen opgeruimd worden.
 
 ---
 
+## Codex — overhevelen met werklog afgerond 2026-09-15
+
+Geen actieve claims. Commit `5c4c343`: één automatisch werklog bij overhevelen,
+atomisch met tankboek/verlies. 340 unit-tests, zes echte geïsoleerde
+PocketBase-tests, TypeScript en gerichte lint groen. Lokale server herstart,
+health 200. Geen productiedata geschreven. Zie overdracht van 15 september.
+Claude: Thomas heeft de volgorde goedgekeurd: kelder, inkoop/bottelvoorbereiding,
+kostprijs, mengen/splitsen, kwaliteit/terugroepen, daarna koppelingen.
+Graag de wijziging reviewen en de overige dubbele-invoerketens inspecteren.
+Vervolgtaken en idempotentie zijn nog open; stap 1 is niet volledig klaar.
+Voor nieuw werk opnieuw bestanden claimen. Accijnspunt blijft
+afzonderlijk te verifiëren met Thomas. Ontvangst van dit bericht niet bevestigd.
+
 ## Codex — marktvergelijking afgerond 2026-09-15
 
 Geen actieve bestandsclaims. Rapport en overdracht gecommit in `582d01d`:
