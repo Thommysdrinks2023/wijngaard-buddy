@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { Bottelronde, VoorraadMutatie } from "./types";
+import type { AccijnsCategorie, Bottelronde, VoorraadMutatie } from "./types";
 import {
+  accijnsplichtigeLiters,
+  berekenAccijnsBijBotteling,
   berekenAccijnsOverzicht,
   kwartaalPeriode,
+  leesBelastbaarMoment,
   maandPeriode,
   tariefGeverifieerd,
+  type Tarief,
 } from "./accijns";
 
 function bottelronde(overrides: Partial<Bottelronde>): Bottelronde {
@@ -131,5 +135,243 @@ describe("periode-helpers", () => {
 
   it("kwartaalPeriode: Q1 2026", () => {
     expect(kwartaalPeriode(2026, 1)).toEqual({ van: "2026-01-01", tot: "2026-03-31" });
+  });
+});
+
+describe("belastbaar moment botteling", () => {
+  const stil: AccijnsCategorie = {
+    id: "c-stil",
+    naam: "Wijn, stil, > 8,5% vol",
+    tariefsleutel: "accijns_stille_wijn_per_hl",
+    heffing: "accijns",
+    mousserend: false,
+    alcohol_bereik: "hoog",
+    volgorde: 2,
+    actief: true,
+  };
+  const mousserend: AccijnsCategorie = {
+    ...stil,
+    id: "c-mouss",
+    naam: "Wijn, mousserend, > 8,5% vol",
+    tariefsleutel: "accijns_mousserende_wijn_per_hl",
+    mousserend: true,
+    volgorde: 4,
+  };
+  const sap: AccijnsCategorie = {
+    ...stil,
+    id: "c-sap",
+    naam: "Alcoholvrij / vruchtensap (verbruiksbelasting)",
+    tariefsleutel: "verbruiksbelasting_alcoholvrij_per_hl",
+    heffing: "verbruiksbelasting",
+    volgorde: 8,
+  };
+  const categorieen = [stil, mousserend, sap];
+  const periode = { van: "2026-07-01", tot: "2026-09-30" };
+  const geverifieerd = (waarde: number) => ({ waarde, laatst_gecontroleerd: "2026-01-01" });
+
+  it("leest de instelling: alles behalve uitslag is botteling", () => {
+    expect(leesBelastbaarMoment("botteling")).toBe("botteling");
+    expect(leesBelastbaarMoment(" Uitslag ")).toBe("uitslag");
+    expect(leesBelastbaarMoment("")).toBe("botteling");
+    expect(leesBelastbaarMoment(undefined)).toBe("botteling");
+  });
+
+  it("gebruikt het vastgelegde accijnsvolume, en valt terug op flessen x inhoud", () => {
+    expect(
+      accijnsplichtigeLiters(bottelronde({ accijnsplichtig_volume_l: 630, aantal_flessen: 840 })),
+    ).toBe(630);
+    // Bottelronde van vóór Blok C: veld ontbreekt (0), 30 x 750 ml = 22,5 L
+    expect(
+      accijnsplichtigeLiters(bottelronde({ accijnsplichtig_volume_l: 0, aantal_flessen: 30 })),
+    ).toBe(22.5);
+    // aantal_flessen_gevuld is leidend als het er is
+    expect(
+      accijnsplichtigeLiters(
+        bottelronde({ aantal_flessen: 100, aantal_flessen_gevuld: 98, flesinhoud_ml: 500 }),
+      ),
+    ).toBe(49);
+  });
+
+  it("normaal geval: per categorie liters en bedrag, totaal over de accijnsregels", () => {
+    const r = berekenAccijnsBijBotteling({
+      periode,
+      bottelrondes: [
+        bottelronde({
+          id: "b1",
+          botteldatum: "2026-08-28",
+          aantal_flessen: 840,
+          accijnsplichtig_volume_l: 630,
+          accijns_categorie: "c-stil",
+        }),
+        bottelronde({
+          id: "b2",
+          botteldatum: "2026-09-02",
+          aantal_flessen: 200,
+          accijnsplichtig_volume_l: 150,
+          accijns_categorie: "c-stil",
+        }),
+        bottelronde({
+          id: "b3",
+          botteldatum: "2026-09-10",
+          aantal_flessen: 100,
+          accijnsplichtig_volume_l: 75,
+          accijns_categorie: "c-mouss",
+        }),
+      ],
+      categorieen,
+      tariefPerSleutel: new Map([
+        ["accijns_stille_wijn_per_hl", geverifieerd(100)],
+        ["accijns_mousserende_wijn_per_hl", geverifieerd(200)],
+      ]),
+    });
+    expect(r.accijns.map((x) => [x.categorie.id, x.flessen, x.liters, x.bedragEur])).toEqual([
+      ["c-stil", 1040, 780, 780], // 7,8 hl x 100
+      ["c-mouss", 100, 75, 150], // 0,75 hl x 200
+    ]);
+    expect(r.totaalAccijnsEur).toBe(930);
+    expect(r.totaalLiters).toBe(855);
+    expect(r.totaalFlessen).toBe(1140);
+    expect(r.zonderCategorie).toEqual([]);
+    expect(r.verbruiksbelasting).toEqual([]);
+  });
+
+  it("geen bedrag en geen totaal zolang een tarief niet geverifieerd is", () => {
+    const r = berekenAccijnsBijBotteling({
+      periode,
+      bottelrondes: [
+        bottelronde({
+          botteldatum: "2026-08-28",
+          accijnsplichtig_volume_l: 630,
+          accijns_categorie: "c-stil",
+        }),
+        bottelronde({
+          id: "b2",
+          botteldatum: "2026-09-10",
+          accijnsplichtig_volume_l: 75,
+          accijns_categorie: "c-mouss",
+        }),
+      ],
+      categorieen,
+      tariefPerSleutel: new Map<string, Tarief | null>([
+        ["accijns_stille_wijn_per_hl", geverifieerd(100)],
+        // mousserend: waarde zonder controle-datum telt niet
+        ["accijns_mousserende_wijn_per_hl", { waarde: 200, laatst_gecontroleerd: null }],
+      ]),
+    });
+    expect(r.accijns[0].bedragEur).toBe(630);
+    expect(r.accijns[1].bedragEur).toBeNull();
+    expect(r.totaalAccijnsEur).toBeNull(); // geen halve som presenteren
+    expect(r.accijns[1].liters).toBe(75); // het volume staat er wél
+  });
+
+  it("bottelronde zonder categorie: wél in de liters, geen bedrag, apart gemeld", () => {
+    const r = berekenAccijnsBijBotteling({
+      periode,
+      bottelrondes: [
+        bottelronde({
+          id: "oud",
+          botteldatum: "2026-07-16",
+          aantal_flessen: 30,
+          accijns_categorie: null,
+        }),
+        bottelronde({
+          id: "onbekend",
+          botteldatum: "2026-08-01",
+          accijnsplichtig_volume_l: 10,
+          accijns_categorie: "bestaat-niet",
+        }),
+        bottelronde({
+          id: "b1",
+          botteldatum: "2026-08-28",
+          accijnsplichtig_volume_l: 630,
+          accijns_categorie: "c-stil",
+        }),
+      ],
+      categorieen,
+      tariefPerSleutel: new Map([["accijns_stille_wijn_per_hl", geverifieerd(100)]]),
+    });
+    expect(r.zonderCategorie).toEqual([
+      { bottelrondeId: "oud", botteldatum: "2026-07-16", liters: 22.5 },
+      { bottelrondeId: "onbekend", botteldatum: "2026-08-01", liters: 10 },
+    ]);
+    expect(r.accijns).toHaveLength(1);
+    expect(r.totaalAccijnsEur).toBe(630); // alleen over wat een categorie heeft
+    expect(r.totaalLiters).toBe(662.5); // maar de liters tellen wel mee
+  });
+
+  it("verbruiksbelasting staat apart en telt niet mee in de accijns", () => {
+    const r = berekenAccijnsBijBotteling({
+      periode,
+      bottelrondes: [
+        bottelronde({
+          id: "b1",
+          botteldatum: "2026-08-28",
+          accijnsplichtig_volume_l: 630,
+          accijns_categorie: "c-stil",
+        }),
+        bottelronde({
+          id: "s1",
+          botteldatum: "2026-08-29",
+          accijnsplichtig_volume_l: 100,
+          accijns_categorie: "c-sap",
+        }),
+      ],
+      categorieen,
+      tariefPerSleutel: new Map([
+        ["accijns_stille_wijn_per_hl", geverifieerd(100)],
+        ["verbruiksbelasting_alcoholvrij_per_hl", geverifieerd(10)],
+      ]),
+    });
+    expect(r.accijns.map((x) => x.categorie.id)).toEqual(["c-stil"]);
+    expect(r.verbruiksbelasting.map((x) => [x.categorie.id, x.bedragEur])).toEqual([["c-sap", 10]]);
+    expect(r.totaalAccijnsEur).toBe(630);
+  });
+
+  it("randgeval: periodegrenzen zijn inclusief, erbuiten telt niet", () => {
+    const r = berekenAccijnsBijBotteling({
+      periode: { van: "2026-08-01", tot: "2026-08-31" },
+      bottelrondes: [
+        bottelronde({
+          id: "a",
+          botteldatum: "2026-07-31",
+          accijnsplichtig_volume_l: 1,
+          accijns_categorie: "c-stil",
+        }),
+        bottelronde({
+          id: "b",
+          botteldatum: "2026-08-01",
+          accijnsplichtig_volume_l: 2,
+          accijns_categorie: "c-stil",
+        }),
+        bottelronde({
+          id: "c",
+          botteldatum: "2026-08-31",
+          accijnsplichtig_volume_l: 4,
+          accijns_categorie: "c-stil",
+        }),
+        bottelronde({
+          id: "d",
+          botteldatum: "2026-09-01",
+          accijnsplichtig_volume_l: 8,
+          accijns_categorie: "c-stil",
+        }),
+      ],
+      categorieen,
+      tariefPerSleutel: new Map(),
+    });
+    expect(r.totaalLiters).toBe(6);
+    expect(r.accijns[0].bedragEur).toBeNull(); // geen tarief bekend
+  });
+
+  it("randgeval: lege periode geeft nul, geen null", () => {
+    const r = berekenAccijnsBijBotteling({
+      periode,
+      bottelrondes: [],
+      categorieen,
+      tariefPerSleutel: new Map([["accijns_stille_wijn_per_hl", geverifieerd(100)]]),
+    });
+    expect(r.accijns).toEqual([]);
+    expect(r.totaalAccijnsEur).toBe(0);
+    expect(r.totaalLiters).toBe(0);
   });
 });

@@ -4,12 +4,15 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
+  berekenAccijnsBijBotteling,
   berekenAccijnsOverzicht,
   kwartaalPeriode,
+  leesBelastbaarMoment,
   maandPeriode,
   tariefGeverifieerd,
   type Tarief,
 } from "@/lib/accijns";
+import { fetchAccijnsCategorieen } from "@/lib/flessen-data";
 import {
   fetchRegelgevingInstellingen,
   REGELGEVING_SLEUTELS,
@@ -101,6 +104,10 @@ function AccijnsPage() {
   });
   const partijenQ = useQuery({ queryKey: ["partijen"], queryFn: fetchPartijen });
   const analysesQ = useQuery({ queryKey: ["analyses", "alle"], queryFn: () => fetchAnalyses() });
+  const categorieenQ = useQuery({
+    queryKey: ["accijns-categorieen"],
+    queryFn: fetchAccijnsCategorieen,
+  });
   // Fase 7 Blok D — kelderverliezen (tankboek-actie "verlies") in de periode
   const tankboekQ = useQuery({
     queryKey: ["tankboek", "accijns", "verlies", periode.van, periode.tot],
@@ -114,6 +121,24 @@ function AccijnsPage() {
   const tariefStil = alsTarief(instelling(REGELGEVING_SLEUTELS.accijnsStil));
   const tariefMousserend = alsTarief(instelling(REGELGEVING_SLEUTELS.accijnsMousserend));
   const agpDrempel = instelling(REGELGEVING_SLEUTELS.agpDrempel);
+  // Fase 15 Blok D — het belastbare moment bepaalt de grondslag van de
+  // bedragen. Bij "botteling" (De Tappenmars, zoals genoteerd bij de Douane)
+  // telt wat gebotteld is; de uitslagcijfers blijven dan voorraadinformatie.
+  const belastbaarMoment = leesBelastbaarMoment(
+    instelling(REGELGEVING_SLEUTELS.belastbaarMoment)?.waarde_tekst,
+  );
+  const bijBotteling = useMemo(
+    () =>
+      berekenAccijnsBijBotteling({
+        periode,
+        bottelrondes: bottelrondesQ.data ?? [],
+        categorieen: categorieenQ.data ?? [],
+        tariefPerSleutel: new Map(
+          (instellingenQ.data ?? []).map((i) => [i.sleutel, alsTarief(i)] as const),
+        ),
+      }),
+    [periode, bottelrondesQ.data, categorieenQ.data, instellingenQ.data],
+  );
 
   const kelderverliesRegels = useMemo(
     () =>
@@ -206,11 +231,37 @@ function AccijnsPage() {
     ["Kelderverlies tank (liters)", kelderverliesLiters],
     ["Beginvoorraad (flessen)", overzicht.beginvoorraadFlessen],
     ["Eindvoorraad (flessen)", overzicht.eindvoorraadFlessen],
-    ["Accijns stil (indicatie EUR)", overzicht.accijnsStilEur ?? "tarief niet geverifieerd"],
-    [
-      "Accijns mousserend (indicatie EUR)",
-      overzicht.accijnsMousserendEur ?? "tarief niet geverifieerd",
-    ],
+    ["Belastbaar moment", belastbaarMoment],
+    ...(belastbaarMoment === "botteling"
+      ? [
+          ...bijBotteling.accijns.map((r) => [
+            `Accijns ${r.categorie.naam} (${r.liters} L, indicatie EUR)`,
+            r.bedragEur ?? "tarief niet geverifieerd",
+          ]),
+          ...bijBotteling.verbruiksbelasting.map((r) => [
+            `Verbruiksbelasting ${r.categorie.naam} (${r.liters} L, indicatie EUR)`,
+            r.bedragEur ?? "tarief niet geverifieerd",
+          ]),
+          [
+            "Accijns totaal (indicatie EUR)",
+            bijBotteling.totaalAccijnsEur ?? "tarief niet geverifieerd",
+          ],
+          [
+            "Bottelrondes zonder accijnscategorie",
+            bijBotteling.zonderCategorie.length === 0
+              ? "geen"
+              : bijBotteling.zonderCategorie
+                  .map((z) => `${z.botteldatum} (${z.liters} L)`)
+                  .join("; "),
+          ],
+        ]
+      : [
+          ["Accijns stil (indicatie EUR)", overzicht.accijnsStilEur ?? "tarief niet geverifieerd"],
+          [
+            "Accijns mousserend (indicatie EUR)",
+            overzicht.accijnsMousserendEur ?? "tarief niet geverifieerd",
+          ],
+        ]),
   ];
   const pakketM = useMutation({
     mutationFn: () =>
@@ -237,17 +288,41 @@ function AccijnsPage() {
       <AppHeader back title="Accijns" subtitle="Indicatief overzicht per aangifteperiode" />
       <div className="mx-auto max-w-screen-md space-y-4 px-3 py-4 print:max-w-none">
         <OfflineWaarschuwing wat="het accijnsoverzicht" />
-        {(bottelrondesQ.isError || voorraadQ.isError || mutatiesQ.isError || tankboekQ.isError) && (
+        {(bottelrondesQ.isError ||
+          voorraadQ.isError ||
+          mutatiesQ.isError ||
+          tankboekQ.isError ||
+          categorieenQ.isError ||
+          instellingenQ.isError) && (
           <ErrorState
-            error={bottelrondesQ.error || voorraadQ.error || mutatiesQ.error || tankboekQ.error}
+            error={
+              bottelrondesQ.error ||
+              voorraadQ.error ||
+              mutatiesQ.error ||
+              tankboekQ.error ||
+              categorieenQ.error ||
+              instellingenQ.error
+            }
             onRetry={() => {
               bottelrondesQ.refetch();
               voorraadQ.refetch();
               mutatiesQ.refetch();
               tankboekQ.refetch();
+              categorieenQ.refetch();
+              instellingenQ.refetch();
             }}
           />
         )}
+        {/* Fase 15 Blok D — grondslag altijd zichtbaar, ook op de print */}
+        <div className="rounded-xl border border-border bg-card p-3 text-sm">
+          <p className="font-medium">Belastbaar moment: {belastbaarMoment}</p>
+          <p className="text-xs text-muted-foreground">
+            {belastbaarMoment === "botteling"
+              ? "De accijns wordt afgedragen over wat gebotteld is, per bevestigde categorie. Verkoop en eigen gebruik hieronder zijn voorraadinformatie, geen heffingsgrondslag."
+              : "De accijns wordt afgedragen bij uitslag: verkoop en eigen gebruik. Gebottelde volumes hieronder zijn voorraadinformatie."}{" "}
+            Instelling: <code>accijns_belastbaar_moment</code>.
+          </p>
+        </div>
         {/* AGP-signaal */}
         {overDrempel && (
           <div className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
@@ -303,26 +378,7 @@ function AccijnsPage() {
                 exporteerCsv(
                   `accijns_${periodeLabel.replace(/\s/g, "_")}`,
                   ["Onderdeel", "Waarde"],
-                  [
-                    ["Periode", periodeLabel],
-                    ["Gebotteld (flessen)", overzicht.gebotteldFlessen],
-                    ["Gebotteld (liters)", overzicht.gebotteldLiters],
-                    ["Uitslag stil (flessen)", overzicht.uitslagStil.flessen],
-                    ["Uitslag stil (liters)", overzicht.uitslagStil.liters],
-                    ["Uitslag mousserend (flessen)", overzicht.uitslagMousserend.flessen],
-                    ["Uitslag mousserend (liters)", overzicht.uitslagMousserend.liters],
-                    ["Breuk (flessen)", overzicht.breuk.flessen],
-                    ["Beginvoorraad (flessen)", overzicht.beginvoorraadFlessen],
-                    ["Eindvoorraad (flessen)", overzicht.eindvoorraadFlessen],
-                    [
-                      "Accijns stil (indicatie EUR)",
-                      overzicht.accijnsStilEur ?? "tarief niet geverifieerd",
-                    ],
-                    [
-                      "Accijns mousserend (indicatie EUR)",
-                      overzicht.accijnsMousserendEur ?? "tarief niet geverifieerd",
-                    ],
-                  ],
+                  accijnsRegels,
                 )
               }
               className="flex h-11 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-xs font-medium"
@@ -404,31 +460,90 @@ function AccijnsPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Accijns — indicatie, controleer bij aangifte
           </h2>
-          {[
-            { naam: "Stille wijn", bedrag: overzicht.accijnsStilEur, tarief: tariefStil },
-            {
-              naam: "Mousserende wijn",
-              bedrag: overzicht.accijnsMousserendEur,
-              tarief: tariefMousserend,
-            },
-          ].map((r) => (
-            <div key={r.naam} className="flex items-center justify-between text-sm">
-              <span>{r.naam}</span>
-              {r.bedrag != null ? (
-                <span className="tabular-nums">
-                  {euro(r.bedrag)}{" "}
-                  <span className="text-xs text-muted-foreground">
-                    (tarief €{r.tarief?.waarde}/hl, gecontroleerd {r.tarief?.laatst_gecontroleerd})
-                  </span>
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <AlertTriangle className="h-3.5 w-3.5" /> tarief nog niet geverifieerd
-                </span>
+          {belastbaarMoment === "botteling" ? (
+            <>
+              {bijBotteling.accijns.length === 0 && bijBotteling.zonderCategorie.length === 0 && (
+                <p className="text-sm text-muted-foreground">Geen bottelrondes in deze periode.</p>
               )}
-            </div>
-          ))}
-          {overzicht.partijenZonderAlcohol.length > 0 && (
+              {[...bijBotteling.accijns, ...bijBotteling.verbruiksbelasting].map((r) => (
+                <div
+                  key={r.categorie.id}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <span>
+                    {r.categorie.heffing === "verbruiksbelasting" && (
+                      <span className="text-xs text-muted-foreground">(aparte aangifte) </span>
+                    )}
+                    {r.categorie.naam}{" "}
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {r.liters} L · {r.flessen} fl.
+                    </span>
+                  </span>
+                  {r.bedragEur != null ? (
+                    <span className="shrink-0 text-right tabular-nums">
+                      {euro(r.bedragEur)}{" "}
+                      <span className="text-xs text-muted-foreground">
+                        (€{r.tarief?.waarde}/hl, gecontroleerd {r.tarief?.laatst_gecontroleerd})
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                      <AlertTriangle className="h-3.5 w-3.5" /> tarief nog niet geverifieerd
+                    </span>
+                  )}
+                </div>
+              ))}
+              {bijBotteling.accijns.length > 0 && (
+                <div className="flex items-center justify-between border-t border-border/60 pt-2 text-sm font-semibold">
+                  <span>Accijns totaal</span>
+                  {bijBotteling.totaalAccijnsEur != null ? (
+                    <span className="tabular-nums">{euro(bijBotteling.totaalAccijnsEur)}</span>
+                  ) : (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      onvolledig — niet elk tarief is geverifieerd
+                    </span>
+                  )}
+                </div>
+              )}
+              {bijBotteling.zonderCategorie.length > 0 && (
+                <p className="text-xs text-destructive" role="status">
+                  ⚠️ {bijBotteling.zonderCategorie.length} bottelronde(s) zonder accijnscategorie —
+                  hierover is geen bedrag berekend:{" "}
+                  {bijBotteling.zonderCategorie
+                    .map((z) => `${z.botteldatum} (${z.liters} L)`)
+                    .join(", ")}
+                  . Koppel de categorie via de partij vóór de aangifte.
+                </p>
+              )}
+            </>
+          ) : (
+            [
+              { naam: "Stille wijn", bedrag: overzicht.accijnsStilEur, tarief: tariefStil },
+              {
+                naam: "Mousserende wijn",
+                bedrag: overzicht.accijnsMousserendEur,
+                tarief: tariefMousserend,
+              },
+            ].map((r) => (
+              <div key={r.naam} className="flex items-center justify-between text-sm">
+                <span>{r.naam}</span>
+                {r.bedrag != null ? (
+                  <span className="tabular-nums">
+                    {euro(r.bedrag)}{" "}
+                    <span className="text-xs text-muted-foreground">
+                      (tarief €{r.tarief?.waarde}/hl, gecontroleerd {r.tarief?.laatst_gecontroleerd}
+                      )
+                    </span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangle className="h-3.5 w-3.5" /> tarief nog niet geverifieerd
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+          {belastbaarMoment === "uitslag" && overzicht.partijenZonderAlcohol.length > 0 && (
             <p className="text-xs text-destructive">
               ⚠️ Geen alcohol% bekend voor: {overzicht.partijenZonderAlcohol.join(", ")} — voer een
               analyse met alcohol% in vóór de aangifte.
@@ -452,7 +567,9 @@ function AccijnsPage() {
           {(instellingenQ.data ?? [])
             .filter(
               (i) =>
-                i.sleutel !== REGELGEVING_SLEUTELS.agentLimiet && i.sleutel !== "laatste_backup",
+                i.sleutel !== REGELGEVING_SLEUTELS.agentLimiet &&
+                i.sleutel !== REGELGEVING_SLEUTELS.belastbaarMoment &&
+                i.sleutel !== "laatste_backup",
             )
             .map((i) => {
               const b = bewerk[i.id] ?? {

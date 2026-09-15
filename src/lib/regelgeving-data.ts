@@ -15,6 +15,8 @@ export interface RegelgevingInstelling {
   geldig_vanaf?: string;
   laatst_gecontroleerd?: string;
   bron?: string;
+  /** Voor instellingen die geen getal zijn (bv. accijns_belastbaar_moment). */
+  waarde_tekst?: string;
 }
 
 export const REGELGEVING_SLEUTELS = {
@@ -22,6 +24,7 @@ export const REGELGEVING_SLEUTELS = {
   accijnsMousserend: "accijns_mousserende_wijn_per_hl",
   agpDrempel: "agp_drempel_liters_per_jaar",
   agentLimiet: "agent_berichten_per_uur_per_ip",
+  belastbaarMoment: "accijns_belastbaar_moment",
 } as const;
 
 function instellingFromPb(r: RecordModel): RegelgevingInstelling {
@@ -34,6 +37,7 @@ function instellingFromPb(r: RecordModel): RegelgevingInstelling {
     geldig_vanaf: r["geldig_vanaf"] ?? "",
     laatst_gecontroleerd: r["laatst_gecontroleerd"] ?? "",
     bron: r["bron"] ?? "",
+    waarde_tekst: r["waarde_tekst"] ?? "",
   };
 }
 

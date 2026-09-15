@@ -4,7 +4,7 @@
 // alleen als het tarief een waarde én een "laatst gecontroleerd"-datum heeft,
 // en de UI hoort er altijd "indicatie — controleer bij aangifte" bij te tonen.
 
-import type { Bottelronde, VoorraadMutatie } from "./types";
+import type { AccijnsCategorie, Bottelronde, VoorraadMutatie } from "./types";
 
 export interface AccijnsPeriode {
   van: string; // yyyy-MM-dd, inclusief
@@ -145,4 +145,121 @@ export function kwartaalPeriode(jaar: number, kwartaal: number): AccijnsPeriode 
   const startMaand = (kwartaal - 1) * 3 + 1;
   const eindMaand = startMaand + 2;
   return { van: maandPeriode(jaar, startMaand).van, tot: maandPeriode(jaar, eindMaand).tot };
+}
+
+// ---------------------------------------------------------------------------
+// Belastbaar moment BOTTELING (Fase 15 Blok D, 15 september 2026).
+//
+// De Tappenmars draagt de accijns af bij botteling, niet bij uitslag (zo
+// genoteerd bij de Douane, zie ARCHITECTURE.md §9). Het overzicht hierboven
+// rekent bedragen uit verkoop/eigen gebruik; dat is de grondslag voor
+// `accijns_belastbaar_moment = "uitslag"`. Hieronder de grondslag voor
+// `"botteling"`: per bottelronde het accijnsplichtige volume, gegroepeerd op
+// de bij het bottelen bevestigde categorie. Welke van de twee de pagina toont
+// bepaalt de instelling — de aangifte zelf blijft altijd handwerk.
+//
+// Een bottelronde ZONDER categorie krijgt geen bedrag en wordt apart gemeld:
+// een stil nulbedrag zou bij een controle een onderbetaling verbergen.
+
+export type BelastbaarMoment = "botteling" | "uitslag";
+
+export function leesBelastbaarMoment(waardeTekst: string | null | undefined): BelastbaarMoment {
+  return (waardeTekst ?? "").trim().toLowerCase() === "uitslag" ? "uitslag" : "botteling";
+}
+
+/** Liters waarover bij deze bottelronde is afgedragen. */
+export function accijnsplichtigeLiters(b: Bottelronde): number {
+  if ((b.accijnsplichtig_volume_l ?? 0) > 0) return b.accijnsplichtig_volume_l as number;
+  // Bottelrondes van vóór Blok C hebben het veld niet: wat in de flessen zit.
+  const flessen = b.aantal_flessen_gevuld || b.aantal_flessen;
+  return (flessen * b.flesinhoud_ml) / 1000;
+}
+
+export interface AccijnsCategorieRegel {
+  categorie: AccijnsCategorie;
+  flessen: number;
+  liters: number;
+  tarief: Tarief | null;
+  /** null zolang het tarief van deze categorie niet geverifieerd is */
+  bedragEur: number | null;
+}
+
+export interface AccijnsBijBotteling {
+  /** Alleen categorieën met volume in de periode, in de beheerde volgorde. */
+  accijns: AccijnsCategorieRegel[];
+  /** Andere heffing, andere aangifte — nooit bij de accijns optellen. */
+  verbruiksbelasting: AccijnsCategorieRegel[];
+  /** Som van de accijnsregels; null zodra één tarief ontbreekt. */
+  totaalAccijnsEur: number | null;
+  totaalLiters: number;
+  totaalFlessen: number;
+  /** Bottelrondes in de periode zonder (bekende) categorie: geen bedrag, wél melden. */
+  zonderCategorie: { bottelrondeId: string; botteldatum: string; liters: number }[];
+}
+
+const rond2 = (n: number) => Math.round(n * 100) / 100;
+
+export function berekenAccijnsBijBotteling(opties: {
+  periode: AccijnsPeriode;
+  bottelrondes: Bottelronde[];
+  categorieen: AccijnsCategorie[];
+  tariefPerSleutel: Map<string, Tarief | null>;
+}): AccijnsBijBotteling {
+  const { periode } = opties;
+  const perCategorie = new Map<string, { flessen: number; liters: number }>();
+  const zonderCategorie: AccijnsBijBotteling["zonderCategorie"] = [];
+  const bekend = new Set(opties.categorieen.map((c) => c.id));
+  let totaalLiters = 0;
+  let totaalFlessen = 0;
+
+  for (const b of opties.bottelrondes) {
+    if (b.botteldatum < periode.van || b.botteldatum > periode.tot) continue;
+    const liters = accijnsplichtigeLiters(b);
+    const flessen = b.aantal_flessen_gevuld || b.aantal_flessen;
+    totaalLiters += liters;
+    totaalFlessen += flessen;
+    if (!b.accijns_categorie || !bekend.has(b.accijns_categorie)) {
+      zonderCategorie.push({
+        bottelrondeId: b.id,
+        botteldatum: b.botteldatum,
+        liters: rond2(liters),
+      });
+      continue;
+    }
+    const som = perCategorie.get(b.accijns_categorie) ?? { flessen: 0, liters: 0 };
+    som.flessen += flessen;
+    som.liters += liters;
+    perCategorie.set(b.accijns_categorie, som);
+  }
+
+  const regels: AccijnsCategorieRegel[] = [];
+  for (const categorie of opties.categorieen) {
+    const som = perCategorie.get(categorie.id);
+    if (!som) continue;
+    const tarief = opties.tariefPerSleutel.get(categorie.tariefsleutel) ?? null;
+    regels.push({
+      categorie,
+      flessen: som.flessen,
+      liters: rond2(som.liters),
+      tarief,
+      bedragEur: tariefGeverifieerd(tarief)
+        ? rond2((som.liters / 100) * (tarief!.waarde as number))
+        : null,
+    });
+  }
+
+  const accijns = regels.filter((r) => r.categorie.heffing === "accijns");
+  const verbruiksbelasting = regels.filter((r) => r.categorie.heffing === "verbruiksbelasting");
+  const totaalAccijnsEur = accijns.some((r) => r.bedragEur == null)
+    ? null
+    : rond2(accijns.reduce((acc, r) => acc + (r.bedragEur as number), 0));
+
+  return {
+    accijns,
+    verbruiksbelasting,
+    totaalAccijnsEur,
+    totaalLiters: rond2(totaalLiters),
+    totaalFlessen,
+    zonderCategorie,
+  };
 }
