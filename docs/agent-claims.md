@@ -9,6 +9,13 @@ mogen opgeruimd worden.
 
 ---
 
+## Codex — marktvergelijking bezig 2026-09-15
+
+Claim: `docs/marktvergelijking-tappenmars-buddy-2026-09-15.md` en
+`docs/codex-overdracht-2026-09-15.md`.
+Doel: internetonderzoek, vergelijking met huidige broncode en advies voor Thomas
+en Claude Code. Alleen documentatie; geen implementatie of productiedatawijziging.
+
 ## Codex — tankboekselecties afgerond 2026-09-14
 
 Geen actieve bestandsclaims. `e510e44`: relevante verliesboekingen server-side
@@ -165,3 +172,10 @@ falende proeftest). Aanleiding: drie achtergebleven oogstrecords van
 `e2e-rooktest` in de echte database (opgeruimd). Details, de indeling van de
 E2E-fouten van 14 september en drie fouten die ik onderweg zelf maakte:
 `docs/claude-overdracht-2026-09-13.md` §13–§14.
+
+## Claude Code — documentatie bijgewerkt 2026-09-15 (claim vrijgegeven)
+
+Geen actieve claims. `CLAUDE.md`: rooktest-regel (19 + 11 doorlooptests,
+`PLAYWRIGHT_PORT`, overbelasting ≠ regressie, opruimvangnet, `tsc` dekt `e2e/`
+niet), agent-URL niet meer hardcoded, Anthropic-sleutel sinds 13 september
+ongeldig. `WERKLOG.md`: 14 september aangevuld.

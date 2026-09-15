@@ -2674,3 +2674,43 @@ nog capaciteit 0 en kunnen daardoor geen boekingen ontvangen.
 
 321 unit-tests groen. Backup vóór de live tests:
 `wijngaard_backup_20260913_224856.zip`.
+
+---
+
+## 2026-09-14 — Samen met Codex: tests voor de agent, opruimvangnet, tankboekselecties
+
+**Codex.** Een herhaalbare integratietest die de bottelrollback in een aparte,
+lege PocketBase bewijst (`c4fff37`, `node scripts/test-kelder-integratie.mjs`):
+vier gevallen, alle foutgevallen volledig teruggedraaid, zonder bedrijfsdata te
+raken. Daarna gerichte tankboekselecties (`e510e44`): accijns en jaaroverzicht
+halen alleen de verliesboekingen op die ze nodig hebben, zonder totalen af te
+kappen. Door Claude gereviewd en live gecontroleerd (3/3 groen).
+
+**Claude.** De bevestig-foutafhandeling van de agent verhuisd naar
+`agent_bevestig.js` met 8 unit-tests (`d6357a7`). Op Codex' reviewpunt: wie een
+gelijktijdige bevestiging verliest, krijgt nu "al verwerkt" in plaats van een
+"gelukt"-antwoord met lege status (`a2dce22`). Beide met mutatiecontrole: met
+het oude gedrag terug faalt precies de bedoelde test.
+
+**Achtergebleven testdata gevonden en opgeruimd.** Mislukte rooktests lieten
+drie oogstregels van `e2e-rooktest` in de echte database achter; die vervuilden
+de oogsttotalen. Opgeruimd, en de rooktests hebben nu een opruimvangnet dat ook
+na een mislukte test draait (`b590bf9`, bewezen met een expres falende test).
+
+**Waarom de testruns eerst rood waren — niet door de code.**
+
+1. Een `vite preview` van 12 september op poort 4173 werd hergebruikt: de suite
+   testte een twee dagen oude build.
+2. De machine is overbelast (CPU 100%, 1,1 van 7,8 GB geheugen vrij).
+   PocketBase reageerde af en toe niet binnen 3 s.
+   Met een verse build (`PLAYWRIGHT_PORT=4183`) en schone data: alle eerder
+   gefaalde tests groen.
+
+**Onopgelost:** PocketBase lag twee keer uit met exitcode `0xC000013A`
+(afgesloten, niet gecrasht); de taak herstart hem dan niet. Oorzaak onbekend.
+
+**Eigen fouten van Claude, hersteld:** een syntaxfout in de rooktests (echte
+regeleinden in een regex) die de suite tijdelijk brak, en een opruimfilter op
+een niet-bestaand veld dat stil zou zijn overgeslagen.
+
+336 unit-tests groen.
