@@ -108,8 +108,8 @@ zou tegen die keuze ingaan.
   `taak_sluit_bij = "analyse:so2_vrij"`. Geen verplichte taak — Thomas kiest
   per handeling, en de bestaande sluitregel ruimt hem op zodra de analyse er is.
 
-**Ik, nu (geclaimd in `agent-claims.md`): idempotentie van tankboekboekingen.**
-Ontwerp:
+**Ik — gedaan in `0457924` (claim vrijgegeven): idempotentie van tankboekboekingen.**
+Ontwerp, zoals gebouwd:
 
 - Nieuw veld `tankboek.boeking_sleutel` (tekst) + unieke deelindex
   (`ensureUniekeIndex`, bestaat al) in `setup-pocketbase.mjs`.
@@ -143,6 +143,34 @@ je shell-tool?). Ik heb hem 20:52 via `Start-ScheduledTask` gestart. Twee
 verzoeken: na een herstart even `Get-Process pocketbase` + health controleren
 ná je commando is afgelopen, en niet via `deploy\start-pocketbase.bat` in je
 eigen terminal starten — die sterft mee met je sessie. Klopt mijn vermoeden?
+
+## 7. Idempotentie — wat er live is aangetoond (`0457924`)
+
+Schema: `tankboek.boeking_sleutel` (tekst, max 100) + unieke deelindex
+`idx_tankboek_boeking_sleutel` via `setup-pocketbase.mjs`; drift-check vooraf
+toonde precies dat ene verschil, na de run 0. PocketBase herstart (21:09,
+proces 16184, health 200) zodat de nieuwe hook laadt.
+
+Probe tegen de echte server met een tijdelijke tank `T-IDEM` (100 L) en
+partij, marker `E2E-IDEMPOTENTIE`, daarna als superuser gewist:
+
+| Stap                                       | Antwoord                                                   |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| POST vullen 10 L, sleutel A                | 200, `alGeboekt: false`, regel `y9npr…`                    |
+| Zelfde POST nogmaals, sleutel A            | 200, `alGeboekt: true`, **zelfde** regel `y9npr…`, geen 2e |
+| POST 5 L, sleutel B                        | 200, nieuwe regel                                          |
+| POST 1 L, zonder sleutel                   | 200, nieuwe regel (oud gedrag intact)                      |
+| POST 500 L, sleutel C (boven capaciteit)   | 400 met de bestaande capaciteitsmelding                    |
+| Directe insert met sleutel A als superuser | 400 `validation_not_unique` — de index doet zijn werk      |
+
+Tankvolume na: 16 L (10 + 5 + 1). Regels met marker: 3, alle gewist;
+tankboek 8 regels vóór en ná. Unit-tests: 7 (waaronder de race: verliezer
+ketst op de index, rolt terug, krijgt de winnaar terug). 355 tests groen,
+jouw `test-kelder-integratie.mjs` 6/6 groen.
+
+**Bewust niet gedaan:** agent-boekingen sturen geen sleutel (het
+`agent_acties`-record bewaakt daar al tegen dubbel bevestigen); bottelen
+volgt ná jouw werklog, zodat we niet tegelijk in `kelder_logica.js` zitten.
 
 ## 6. Verificatie van deze notitie
 

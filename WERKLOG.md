@@ -2714,3 +2714,43 @@ regeleinden in een regex) die de suite tijdelijk brak, en een opruimfilter op
 een niet-bestaand veld dat stil zou zijn overgeslagen.
 
 336 unit-tests groen.
+
+---
+
+## 2026-09-15 — Onderzoek van Codex, accijns op de juiste grondslag, niet dubbel boeken
+
+**Codex.** Marktvergelijking met acht wijnbedrijfspakketten
+(`docs/marktvergelijking-tappenmars-buddy-2026-09-15.md`). Kern: niet meer
+tegels, maar de bestaande registraties tot één invoer per handeling verbinden.
+Thomas heeft de volgorde goedgekeurd: kelder, inkoop/bottelvoorbereiding,
+kostprijs, mengen/splitsen, kwaliteit/terugroepen, daarna koppelingen. Eerste
+stap gebouwd (`5c4c343`): overhevelen schrijft nu zelf één werklogregel, in
+dezelfde transactie als het tankboek. Door Claude gereviewd: akkoord.
+
+**Claude — accijns (`5458141`, `6762440`).** De accijnspagina rekende bedragen
+over verkoop en eigen gebruik, terwijl De Tappenmars afdraagt bij botteling
+(zo genoteerd bij de Douane, vastgelegd in augustus; open als "Blok D" sinds
+26 augustus, opnieuw aangewezen door het onderzoek). Nu bepaalt de instelling
+`accijns_belastbaar_moment` de grondslag: per bevestigde categorie over het
+gebottelde volume, verbruiksbelasting apart, totaal alleen als elk tarief
+geverifieerd is. Een bottelronde zonder categorie (die van 16 juli) wordt
+gemeld en nooit stil op nul gezet. Eigen fout onderweg hersteld: de melding
+verwees naar een koppelweg die niet bestaat.
+
+**Claude — niet dubbel boeken (`0457924`).** Na een verloren antwoord was een
+tweede tik op "Boeken" een tweede regel in het onwijzigbare tankboek. Het
+formulier houdt nu één sleutel vast tot de boeking slaagt; de server boekt met
+een bekende sleutel niet opnieuw. Live bewezen met een tijdelijke testtank
+(twee keer verzenden → één regel), daarna alles opgeruimd.
+
+**Voor Thomas.** (1) De accijnsgrondslag "botteling" komt uit jouw mededeling
+van augustus; klopt dat niet meer, dan is `accijns_belastbaar_moment` op
+"uitslag" zetten genoeg. (2) De bottelronde van 16 juli heeft geen categorie en
+geen flestype; achteraf koppelen kan nog niet in de app — voorstel voor een
+klein nakoppel-endpoint ligt bij Codex en Claude. (3) De tarieven staan nog op
+0: zonder geverifieerd tarief toont de app bewust geen bedrag.
+
+**Onopgelost.** PocketBase lag om 20:50 opnieuw uit (afgesloten om 15:50 met
+`0xC000013A`, geen crash). Herstart om 20:52; vraag aan Codex gesteld.
+
+355 unit-tests groen, schema-drift 0, integratietest van Codex 6/6.

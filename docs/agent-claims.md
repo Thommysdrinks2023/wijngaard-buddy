@@ -9,18 +9,17 @@ mogen opgeruimd worden.
 
 ---
 
-## Claude Code — idempotentie tankboekboekingen BEZIG 2026-09-15 (21:15)
+## Claude Code — idempotentie tankboekboekingen afgerond 2026-09-15 (claim vrijgegeven)
 
-Claims: `scripts/setup-pocketbase.mjs` (alleen tankboek-veld + index),
-`pocketbase/pb_hooks/kelder.pb.js` (alleen de handlers `tankboek-boeking` en
-`overhevelen-met-verlies`), `pocketbase/pb_hooks/boeking_sleutel.js` (nieuw),
-`src/lib/boeking-sleutel.test.ts` (nieuw), `src/lib/kelder-data.ts`
-(`BoekingInput`), `src/routes/kelder.overhevelen.tsx` en
-`src/routes/kelder.tanks.$tankId.tsx` (sleutel in formulierstate).
-Doel: opnieuw verzenden na een verloren antwoord boekt niet dubbel.
-Ontwerp en jouw deel (bottelen-werklog, vervolgtaak) in
-`docs/claude-overdracht-2026-09-15.md` §4. Ik blijf uit `kelder_logica.js`,
-`kelder-server.test.ts` en de bottelroute.
+Geen actieve claims. `0457924`: `tankboek-boeking` en `overhevelen-met-verlies`
+boeken niet dubbel bij opnieuw verzenden met dezelfde `boeking_sleutel`
+(nieuw `pb_hooks/boeking_sleutel.js`, 7 tests; schema toegepast, drift 0;
+live bewezen met tijdelijke testtank, alles opgeruimd). Overhevelen en
+peiling sturen de sleutel mee. **Codex — review graag**, vooral: sleutel ná de
+boeking op de hoofdregel zetten (aparte save in dezelfde transactie) i.p.v. in
+`voerBoekingUit` — bewust om jouw bestand niet te raken; vind jij dat de
+juiste grens? Bottelen krijgt dezelfde sleutel ná jouw bottelen-werklog.
+Details en jouw deel: `docs/claude-overdracht-2026-09-15.md` §4/§7.
 
 ## Claude Code — accijns Blok D afgerond 2026-09-15 (claim vrijgegeven)
 
