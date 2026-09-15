@@ -6,6 +6,7 @@ import { nl } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   boekTankboek,
+  maakBoekingSleutel,
   createAnalyse,
   createKelderlog,
   fetchKelderlog,
@@ -79,6 +80,7 @@ function TankDetailPage() {
   const [toonPeiling, setToonPeiling] = useState(false);
   const [gemeten, setGemeten] = useState("");
   const [peilingNotitie, setPeilingNotitie] = useState("");
+  const [boekingSleutel, setBoekingSleutel] = useState(maakBoekingSleutel);
   const huidigVolume = tank?.huidig_volume_l ?? 0;
   const verschil = gemeten !== "" ? Number(gemeten) - huidigVolume : null;
 
@@ -97,10 +99,13 @@ function TankDetailPage() {
         volume_l: Math.abs(verschil),
         verantwoordelijke: invoerder,
         notitie: peilingNotitie ? `${basisNotitie} ${peilingNotitie}` : basisNotitie,
+        boeking_sleutel: boekingSleutel,
       });
     },
     onSuccess: (r) => {
-      toast.success("Correctie geboekt ✓");
+      setBoekingSleutel(maakBoekingSleutel());
+      if (r.alGeboekt) toast.info("Deze correctie stond al in het tankboek — niet dubbel geboekt.");
+      else toast.success("Correctie geboekt ✓");
       if (r.waarschuwing) toast.warning(r.waarschuwing);
       qc.invalidateQueries({ queryKey: ["tanks"] });
       qc.invalidateQueries({ queryKey: ["tankboek", "tank", tankId] });

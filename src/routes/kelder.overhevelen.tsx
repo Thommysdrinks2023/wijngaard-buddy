@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { boekTankboek, fetchKelderlog, fetchTankboek, fetchTanks } from "@/lib/kelder-data";
+import {
+  boekTankboek,
+  fetchKelderlog,
+  fetchTankboek,
+  fetchTanks,
+  maakBoekingSleutel,
+} from "@/lib/kelder-data";
 import { fetchPartijen } from "@/lib/partijen-data";
 import { foutenPerVeld, isGeldig, valideerBoeking } from "@/lib/validatie";
 import { useInvoerder } from "@/lib/use-invoerder";
@@ -43,6 +49,9 @@ function OverhevelenPage() {
   const [verliesType, setVerliesType] = useState<(typeof VERLIES_TYPES)[number]>("droesem");
   const [datum, setDatum] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [notitie, setNotitie] = useState("");
+  // Blijft gelijk bij opnieuw verzenden (verloren antwoord): de server boekt
+  // dan niet dubbel. Pas ná een geslaagde boeking komt er een nieuwe.
+  const [boekingSleutel, setBoekingSleutel] = useState(maakBoekingSleutel);
   const [fouten, setFouten] = useState<Record<string, string>>({});
 
   // Fase 7 Blok D — verliezenboekhouding: als er minder aankomt dan vertrok,
@@ -121,15 +130,20 @@ function OverhevelenPage() {
         verlies_type: verschil > 0 ? verliesType : undefined,
         verantwoordelijke: invoerder,
         notitie,
+        boeking_sleutel: boekingSleutel,
       });
       return r;
     },
     onSuccess: (r) => {
-      toast.success(
-        verschil > 0
-          ? `Overheveling + verlies (${verschil} L, ${verliesType}) geboekt ✓`
-          : "Overheveling geboekt ✓",
-      );
+      setBoekingSleutel(maakBoekingSleutel());
+      if (r.alGeboekt)
+        toast.info("Deze overheveling stond al in het tankboek — niet dubbel geboekt.");
+      else
+        toast.success(
+          verschil > 0
+            ? `Overheveling + verlies (${verschil} L, ${verliesType}) geboekt ✓`
+            : "Overheveling geboekt ✓",
+        );
       if (r.waarschuwing) toast.warning(r.waarschuwing);
       qc.invalidateQueries({ queryKey: ["tanks"] });
       qc.invalidateQueries({ queryKey: ["tankboek"] });

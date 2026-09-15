@@ -2061,6 +2061,13 @@ async function main() {
     },
   ]);
 
+  // Idempotentie (15 september 2026): het formulier stuurt bij opnieuw
+  // verzenden dezelfde sleutel mee en de server boekt dan niet nog een keer
+  // (pb_hooks/boeking_sleutel.js). De unieke deelindex vangt twee gelijktijdige
+  // aanvragen; lege sleutels (oude clients, agent) vallen buiten de index.
+  await ensureVelden("tankboek", [{ name: "boeking_sleutel", type: "text", max: 100 }]);
+  await ensureUniekeIndex("tankboek", "boeking_sleutel", "idx_tankboek_boeking_sleutel");
+
   // Fase 13 Blok A — vastleggen WELKE analysevelden zijn ingevuld.
   // Onderzocht op PocketBase 0.39: een optioneel number-veld komt altijd als 0
   // terug, of je het nu weglaat, null stuurt of leeg laat. Er is dus geen

@@ -236,12 +236,25 @@ export interface BoekingInput {
   verantwoordelijke: string;
   corrigeert?: string;
   notitie?: string;
+  /** Zie maakBoekingSleutel(): gelijk houden tot de boeking geslaagd is. */
+  boeking_sleutel?: string;
 }
 
 export interface BoekingResultaat {
   ok: boolean;
   waarschuwing: string;
   regelId?: string;
+  /** true = deze sleutel was al geboekt; de server heeft niets nieuws geschreven. */
+  alGeboekt?: boolean;
+}
+
+// Eén sleutel per handeling zodat opnieuw verzenden na een verloren antwoord
+// niet dubbel boekt. crypto.randomUUID bestaat alleen in een beveiligde
+// context — op de telefoon via http://<lan-ip> dus niet; vandaar de terugval.
+export function maakBoekingSleutel(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+    return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 export async function boekTankboek(input: BoekingInput): Promise<BoekingResultaat> {

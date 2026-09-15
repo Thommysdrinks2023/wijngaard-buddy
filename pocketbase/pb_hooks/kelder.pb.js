@@ -23,7 +23,7 @@ for (const route of [
 ]) {
   routerAdd("POST", route, (e) => {
     const logica = require(`${__hooks}/kelder_logica.js`);
-    let resultaat = null;
+    const sleutels = require(`${__hooks}/boeking_sleutel.js`);
     try {
       const b = e.requestInfo().body;
       // Blok B — rolhandhaving vóór alles (dus ook vóór validatie)
@@ -33,17 +33,19 @@ for (const route of [
         const rolFout = logica.eisBeheerder(e.auth, "correctieboekingen doen");
         if (rolFout) return e.json(403, { message: rolFout });
       }
-      e.app.runInTransaction((txApp) => {
-        resultaat = logica.voerBoekingUit(txApp, b);
-        if (resultaat.fout) throw new Error(resultaat.fout); // rollback
-      });
+      // Idempotent: met een al bekende boeking_sleutel wordt niet opnieuw
+      // geboekt (zie boeking_sleutel.js). Transactie + rollback zitten daarin.
+      const uitkomst = sleutels.boekMetSleutel(e.app, b, (txApp, body) =>
+        logica.voerBoekingUit(txApp, body),
+      );
+      if (uitkomst.fout) throw new BadRequestError(uitkomst.fout);
       return e.json(200, {
         ok: true,
-        waarschuwing: resultaat.waarschuwing || "",
-        regelId: resultaat.regelId,
+        waarschuwing: uitkomst.waarschuwing,
+        regelId: uitkomst.regelId,
+        alGeboekt: uitkomst.alGeboekt,
       });
     } catch (err) {
-      if (resultaat && resultaat.fout) throw new BadRequestError(resultaat.fout);
       throw logica.leesbareFout(err);
     }
   });
