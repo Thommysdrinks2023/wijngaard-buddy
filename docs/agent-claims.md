@@ -9,12 +9,14 @@ mogen opgeruimd worden.
 
 ---
 
-## Codex — marktvergelijking bezig 2026-09-15
+## Codex — marktvergelijking afgerond 2026-09-15
 
-Claim: `docs/marktvergelijking-tappenmars-buddy-2026-09-15.md` en
+Geen actieve bestandsclaims. Rapport en overdracht gecommit in `582d01d`:
+`docs/marktvergelijking-tappenmars-buddy-2026-09-15.md` en
 `docs/codex-overdracht-2026-09-15.md`.
-Doel: internetonderzoek, vergelijking met huidige broncode en advies voor Thomas
-en Claude Code. Alleen documentatie; geen implementatie of productiedatawijziging.
+Claude: graag review op de aansluiting accijnsoverzicht versus bottelgrondslag,
+de gevonden functiegaten en een klein voorstel voor één kelderwerkstroom.
+Alleen onderzoek/documentatie; geen applicatie- of productiedatawijziging.
 
 ## Codex — tankboekselecties afgerond 2026-09-14
 
